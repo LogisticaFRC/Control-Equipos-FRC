@@ -1207,16 +1207,16 @@
           if (str.includes('T')) str = str.split('T')[0];
           if (str.includes(' ')) str = str.split(' ')[0];
           
+          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(str)) {
+            const parts = str.split(/[-/]/);
+            return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
+          }
+
           if (str.includes('-')) {
             const parts = str.split('-');
             if (parts[0].length === 4) {
               return new Date(`${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}T00:00:00`).getTime();
             } else if (parts[2].length === 4) {
-              return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
-            }
-          } else if (str.includes('/')) {
-            const parts = str.split('/');
-            if (parts[2].length === 4) {
               return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
             }
           }
@@ -1231,13 +1231,9 @@
           if (str.includes('T')) str = str.split('T')[0];
           if (str.includes(' ')) str = str.split(' ')[0];
           
-          // Si viene en formato latino DD-MM-YYYY o DD/MM/YYYY
           if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(str)) {
             const parts = str.split(/[-/]/);
-            const dd = parts[0].padStart(2, '0');
-            const mm = parts[1].padStart(2, '0');
-            const yyyy = parts[2];
-            return `${yyyy}-${mm}-${dd}`;
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
           }
 
           if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
@@ -1275,7 +1271,6 @@
           if (strVal.includes('T')) strVal = strVal.split('T')[0];
           if (strVal.includes(' ')) strVal = strVal.split(' ')[0];
 
-          // Forzar formato latino DD-MM-YYYY o DD/MM/YYYY
           if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
             const parts = strVal.split(/[-/]/);
             return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
@@ -1872,7 +1867,7 @@
             }
 
             await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron ${totalInsertados} registros con fechas chilenas corregidas.`);
+            alert(`¡Éxito! Se importaron ${totalInsertados} registros.`);
           } catch (err) { alert("Error al procesar el archivo Excel."); }
         };
 
