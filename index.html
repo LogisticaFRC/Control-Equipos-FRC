@@ -90,22 +90,22 @@
           </div>
 
           <nav class="flex items-center gap-1.5 overflow-x-auto py-1">
-            <button @click="switchTab('dashboard')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'dashboard' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+            <button @click="switchTab('dashboard')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'dashboard' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-chart-line"></i> Dashboard
             </button>
-            <button @click="switchTab('inventario')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'inventario' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+            <button @click="switchTab('inventario')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'inventario' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-boxes-stacked"></i> Inventario AFI ({{ dbEquipos.length }})
             </button>
-            <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+            <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-truck-ramp-box"></i> Movimientos ({{ dbMovimientos.length }})
             </button>
-            <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+            <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-file-medical"></i> Hojas de Vida ({{ dbIntervenciones.length }})
             </button>
-            <button @click="switchTab('aceites')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'aceites' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+            <button @click="switchTab('aceites')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'aceites' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-oil-can"></i> Control Aceites
             </button>
-            <button @click="switchTab('configuracion')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'configuracion' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+            <button @click="switchTab('configuracion')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'configuracion' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-gear"></i> Config & Usuarios
             </button>
           </nav>
@@ -115,10 +115,10 @@
               <i class="fa-solid fa-plus-circle text-sm"></i> Agregar Mantención
             </button>
             <div class="text-right text-xs">
-              <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm">
+              <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap">
                 <i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin)
               </span>
-              <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700">
+              <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap">
                 <i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)
               </span>
             </div>
@@ -291,34 +291,34 @@
                       <i class="fa-solid fa-clock-rotate-left w-4 text-amber-600"></i> 
                       <strong>Mantención Programada:</strong> 
                       <span class="font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-[11px] ml-1">
-                        {{ getTipoHorasMantencionAFI(e.afi) }}
+                        {{ e.tipoHorasMantencion || '250 hrs' }}
                       </span>
                     </p>
                   </div>
 
-                  <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.afi)]">
+                  <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.horometros)]">
                     <div class="flex justify-between items-center border-b pb-1.5 font-bold">
                       <span><i class="fa-solid fa-gauge-high text-amber-600"></i> Control de Horómetros:</span>
-                      <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', getPrediccionStatusBadge(e.afi)]">
-                        {{ get3Horometros(e.afi).estadoTexto }}
+                      <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', getPrediccionStatusBadge(e.horometros)]">
+                        {{ e.horometros?.estadoTexto || 'OK' }}
                       </span>
                     </div>
                     <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
                       <div class="bg-white/80 p-1.5 rounded border">
                         <span class="text-slate-500 font-bold block">OFICIAL</span>
-                        <strong class="font-mono text-slate-800">{{ get3Horometros(e.afi).hOficial }}h</strong>
+                        <strong class="font-mono text-slate-800">{{ e.horometros?.hOficial || 0 }}h</strong>
                       </div>
                       <div class="bg-white/80 p-1.5 rounded border">
                         <span class="text-slate-500 font-bold block">APROX (HOY)</span>
-                        <strong class="font-mono text-blue-700">{{ get3Horometros(e.afi).hAprox }}h</strong>
+                        <strong class="font-mono text-blue-700">{{ e.horometros?.hAprox || 0 }}h</strong>
                       </div>
                       <div class="bg-white/80 p-1.5 rounded border">
                         <span class="text-slate-500 font-bold block">TARGET</span>
-                        <strong class="font-mono text-emerald-700">{{ get3Horometros(e.afi).hTarget }}h</strong>
+                        <strong class="font-mono text-emerald-700">{{ e.horometros?.hTarget || 0 }}h</strong>
                       </div>
                     </div>
                     <div class="text-[11px] font-medium text-slate-700 pt-1 text-center bg-white/60 p-1 rounded">
-                      <i class="fa-solid fa-calendar-days text-amber-600 mr-1"></i> Fecha aprox. mantención: <strong>{{ get3Horometros(e.afi).fechaEstimada }}</strong>
+                      <i class="fa-solid fa-calendar-days text-amber-600 mr-1"></i> Fecha aprox. mantención: <strong>{{ e.horometros?.fechaEstimada || '-' }}</strong>
                     </div>
                   </div>
                 </div>
@@ -370,7 +370,7 @@
                 </select>
               </div>
               <div class="flex items-end">
-                <button @click="renderCharts()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold p-2 rounded-lg shadow flex items-center justify-center gap-1.5">
+                <button class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold p-2 rounded-lg shadow flex items-center justify-center gap-1.5">
                   <i class="fa-solid fa-magnifying-glass"></i> Buscar
                 </button>
               </div>
@@ -416,7 +416,7 @@
             <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-2">
               <div class="flex items-center gap-3">
                 <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <i class="fa-solid fa-filter text-blue-600"></i> Historial Completo (Cargados: {{ dbIntervenciones.length }} registros de Supabase)
+                  <i class="fa-solid fa-filter text-blue-600"></i> Historial Completo (Cargados: {{ dbIntervenciones.length }} registros)
                 </h2>
               </div>
               <div class="flex items-center gap-2">
@@ -474,7 +474,7 @@
                 <input type="text" v-model="filterInt.mecText" placeholder="Nombre de mecánico..." class="w-full p-2 border rounded-lg">
               </div>
               <div class="flex items-end">
-                <button @click="renderCharts()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold p-2 rounded-lg shadow flex items-center justify-center gap-2">
+                <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold p-2 rounded-lg shadow flex items-center justify-center gap-2">
                   <i class="fa-solid fa-magnifying-glass"></i> Aplicar Filtros / Buscar
                 </button>
               </div>
@@ -953,24 +953,24 @@
             <div class="bg-slate-900 text-white p-4 rounded-xl space-y-3 shadow-inner">
               <div class="flex justify-between items-center border-b border-slate-700 pb-2 font-bold text-xs">
                 <span><i class="fa-solid fa-gauge-high text-amber-400 mr-1.5"></i> Control de los Horómetros y Proyección</span>
-                <span class="bg-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold">{{ calcular3Horometros(equipoDetalle.afi).estadoTexto }}</span>
+                <span class="bg-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold">{{ equipoDetalle.horometros?.estadoTexto || 'CALCULANDO' }}</span>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-center text-xs">
                 <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
                   <span class="text-slate-400 block text-[10px] uppercase font-semibold">Oficial</span>
-                  <strong class="font-mono text-white text-sm">{{ calcular3Horometros(equipoDetalle.afi).hOficial }} hrs</strong>
+                  <strong class="font-mono text-white text-sm">{{ equipoDetalle.horometros?.hOficial || 0 }} hrs</strong>
                 </div>
                 <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
                   <span class="text-slate-400 block text-[10px] uppercase font-semibold">Aprox (Hoy)</span>
-                  <strong class="font-mono text-sky-300 text-sm">{{ calcular3Horometros(equipoDetalle.afi).hAprox }} hrs</strong>
+                  <strong class="font-mono text-sky-300 text-sm">{{ equipoDetalle.horometros?.hAprox || 0 }} hrs</strong>
                 </div>
                 <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
                   <span class="text-slate-400 block text-[10px] uppercase font-semibold">Target (Mant)</span>
-                  <strong class="font-mono text-emerald-300 text-sm">{{ calcular3Horometros(equipoDetalle.afi).hTarget }} hrs</strong>
+                  <strong class="font-mono text-emerald-300 text-sm">{{ equipoDetalle.horometros?.hTarget || 0 }} hrs</strong>
                 </div>
                 <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
                   <span class="text-slate-400 block text-[10px] uppercase font-semibold">Fecha Estimada</span>
-                  <strong class="font-mono text-amber-300 text-xs">{{ calcular3Horometros(equipoDetalle.afi).fechaEstimada }}</strong>
+                  <strong class="font-mono text-amber-300 text-xs">{{ equipoDetalle.horometros?.fechaEstimada || '-' }}</strong>
                 </div>
               </div>
             </div>
@@ -1201,7 +1201,6 @@
           currentTab.value = 'inventario';
         };
 
-        // BARRERA ANTI-CRASH PARA FECHAS
         const parseIsoDate = (val) => {
           try {
             if (!val || val === '-' || val === 'N/A') return 0;
@@ -1227,7 +1226,7 @@
             const d = new Date(str);
             return isNaN(d.getTime()) ? 0 : d.getTime();
           } catch (e) {
-            return 0; // Si falla, pacíficamente retorna 0 sin romper Vue
+            return 0;
           }
         };
 
@@ -1348,24 +1347,16 @@
           return `${Math.floor(finalMins / 60)}h ${finalMins % 60}m`;
         };
 
-        const getTipoHorasMantencionAFI = (afi) => {
-          const inters = dbIntervenciones.value
-            .filter(i => String(i.afi).trim().toUpperCase() === String(afi).trim().toUpperCase() && i.tipoHorasMant)
-            .sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
-          return inters.length > 0 ? inters[0].tipoHorasMant : '250 hrs';
-        };
-
         const listaTiposAceitesDisponibles = computed(() => {
           const setAceites = new Set();
           dbIntervenciones.value.forEach(i => {
             if (i.aceiteDetallesArray && Array.isArray(i.aceiteDetallesArray)) {
-              i.aceiteDetallesArray.forEach(ad => setAceites.add(ad.nombre));
+              i.aceiteDetallesArray.forEach(ad => { if (ad && ad.nombre) setAceites.add(ad.nombre); });
             }
           });
           return Array.from(setAceites);
         });
 
-        // BARRERA ANTI-CRASH PARA FILTROS
         const filteredAceitesRecords = computed(() => {
           try {
             let arr = dbIntervenciones.value.filter(i => {
@@ -1381,7 +1372,6 @@
             arr.sort((a, b) => sortAceitesOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
             return arr;
           } catch(err) {
-            console.error("Error filtro aceites:", err);
             return [];
           }
         });
@@ -1402,90 +1392,116 @@
 
         const costoTotalAceitesFiltrados = computed(() => filteredAceitesRecords.value.reduce((acc, curr) => acc + Number(curr.costo || 0), 0));
 
+        // OPTIMIZACIÓN EXTREMA: Calcular todo de golpe una sola vez y guardarlo en el objeto del equipo.
         const actualizarHorometrosDesdeHistorial = () => {
+          
+          // Agrupar intervenciones por AFI en un mapa (Ultra-rápido)
+          const intervencionesPorAFI = {};
+          dbIntervenciones.value.forEach(i => {
+            if (!i.afi) return;
+            const cleanAFI = String(i.afi).trim().toUpperCase();
+            if (!intervencionesPorAFI[cleanAFI]) intervencionesPorAFI[cleanAFI] = [];
+            intervencionesPorAFI[cleanAFI].push(i);
+          });
+
+          // Ordenar cronológicamente una sola vez por cada AFI
+          for (const afi in intervencionesPorAFI) {
+             intervencionesPorAFI[afi].sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
+          }
+
           dbEquipos.value.forEach(eq => {
             const userAfi = String(eq.afi).trim().toUpperCase();
-            const intervs = dbIntervenciones.value
-              .filter(i => String(i.afi).trim().toUpperCase() === userAfi && Number(i.horometro) > 0 && i.fecha)
-              .sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
-            if (intervs.length > 0) eq.horometroActual = Number(intervs[0].horometro);
-          });
-        };
+            const histFull = intervencionesPorAFI[userAfi] || [];
+            
+            // 1. EXTRAER TIPO DE HORAS (El más reciente con dato)
+            let tipoHoras = '250 hrs';
+            for (let i = histFull.length - 1; i >= 0; i--) {
+                if (histFull[i].tipoHorasMant) {
+                    tipoHoras = histFull[i].tipoHorasMant;
+                    break;
+                }
+            }
+            eq.tipoHorasMantencion = tipoHoras;
 
-        const calcular3Horometros = (afi) => {
-          try {
-            const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(afi).trim().toUpperCase());
-            const freq = Number(eq ? eq.frecuenciaMantencion : 250) || 250;
-            const hist = dbIntervenciones.value
-              .filter(i => String(i.afi).trim().toUpperCase() === String(afi).trim().toUpperCase() && Number(i.horometro) > 0 && i.fecha)
-              .sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
-
-            let hOficial = Number(eq ? eq.horometroActual : 0) || 0;
+            // 2. CALCULAR HOROMETROS Y PROYECCIÓN
+            const histHorometros = histFull.filter(i => Number(i.horometro) > 0 && i.fecha);
+            const freq = Number(eq.frecuenciaMantencion) || 250;
+            let hOficial = Number(eq.horometroActual) || 0;
             let dUltima = new Date();
-            if (hist.length > 0) {
-              hOficial = Number(hist[hist.length - 1].horometro) || hOficial;
-              dUltima = new Date(parseIsoDate(hist[hist.length - 1].fecha));
+            
+            if (histHorometros.length > 0) {
+              const laUltima = histHorometros[histHorometros.length - 1];
+              hOficial = Number(laUltima.horometro) || hOficial;
+              dUltima = new Date(parseIsoDate(laUltima.fecha));
+              eq.horometroActual = hOficial; // Actualizar oficial base
             }
             
-            const hOficialVal = Number(hOficial) || 0;
             const hoy = new Date();
             const diasDesdeUltima = Math.max(0, Math.floor((hoy - dUltima) / (1000 * 60 * 60 * 24)));
             
             let rateHrsDia = 0;
-            if (hist.length >= 2) {
-              const deltaH = Number(hist[hist.length - 1].horometro) - Number(hist[hist.length - 2].horometro);
-              const diasEntre = Math.max(1, Math.floor((parseIsoDate(hist[hist.length - 1].fecha) - parseIsoDate(hist[hist.length - 2].fecha)) / (1000 * 60 * 60 * 24)));
+            if (histHorometros.length >= 2) {
+              const deltaH = Number(histHorometros[histHorometros.length - 1].horometro) - Number(histHorometros[histHorometros.length - 2].horometro);
+              const diasEntre = Math.max(1, Math.floor((parseIsoDate(histHorometros[histHorometros.length - 1].fecha) - parseIsoDate(histHorometros[histHorometros.length - 2].fecha)) / (1000 * 60 * 60 * 24)));
               if (deltaH > 0) rateHrsDia = deltaH / diasEntre;
             }
             
-            const hAprox = hOficialVal + (diasDesdeUltima * rateHrsDia);
-            const hTarget = hOficialVal + freq;
+            const hAprox = hOficial + (diasDesdeUltima * rateHrsDia);
+            const hTarget = hOficial + freq;
             const horasFaltantes = hTarget - hAprox;
 
             let diasFaltantes = rateHrsDia > 0 ? Math.ceil(horasFaltantes / rateHrsDia) : 30;
-            
-            // PREVENCIÓN DE CRASH SI DA INFINITO
             if (!isFinite(diasFaltantes) || diasFaltantes > 3650) diasFaltantes = 3650; 
             if (diasFaltantes < -3650) diasFaltantes = -3650;
 
             let fechaEstimadaStr = "-";
-            const fechaEst = new Date();
-            fechaEst.setDate(hoy.getDate() + diasFaltantes);
-            fechaEstimadaStr = fechaEst.toISOString().substring(0, 10);
+            try {
+              const fechaEst = new Date();
+              fechaEst.setDate(hoy.getDate() + diasFaltantes);
+              fechaEstimadaStr = fechaEst.toISOString().substring(0, 10);
+            } catch(e) { }
 
             let estadoTexto = "OPERATIVO";
             if (horasFaltantes <= 0) estadoTexto = "¡PASADO!";
             else if (horasFaltantes <= 50) estadoTexto = "PRÓXIMO";
 
-            return {
-              hOficial: Math.round(hOficialVal),
+            // Guardarlo directamente en el objeto del equipo para consumo instantáneo en HTML
+            eq.horometros = {
+              hOficial: Math.round(hOficial),
               hAprox: Math.round(hAprox * 10) / 10,
               hTarget: Math.round(hTarget),
               horasFaltantes: Math.round(horasFaltantes * 10) / 10,
               fechaEstimada: fechaEstimadaStr,
               estadoTexto
             };
-          } catch(err) {
-            return { hOficial: 0, hAprox: 0, hTarget: 0, horasFaltantes: 0, fechaEstimada: "-", estadoTexto: "OK" };
-          }
+          });
         };
 
-        const get3Horometros = (afi) => calcular3Horometros(afi);
-        const getHorometroCardBgClass = (afi) => {
-          const h = calcular3Horometros(afi);
+        const getHorometroCardBgClass = (h) => {
+          if (!h) return 'bg-slate-50 border-slate-200';
           if (h.horasFaltantes <= 0) return 'bg-rose-50 border-rose-300';
           if (h.horasFaltantes <= 50) return 'bg-amber-50 border-amber-300';
           return 'bg-slate-50 border-slate-200';
         };
-        const getPrediccionStatusBadge = (afi) => {
-          const h = calcular3Horometros(afi);
+        
+        const getPrediccionStatusBadge = (h) => {
+          if (!h) return 'bg-emerald-600 text-white';
           if (h.horasFaltantes <= 0) return 'bg-rose-600 text-white animate-pulse';
           if (h.horasFaltantes <= 50) return 'bg-amber-500 text-white';
           return 'bg-emerald-600 text-white';
         };
 
-        const getHistorialMovimientosAFI = (afi) => dbMovimientos.value.filter(m => String(m.afi).trim().toUpperCase() === String(afi).trim().toUpperCase());
-        const getHistorialIntervencionesAFI = (afi) => dbIntervenciones.value.filter(i => String(i.afi).trim().toUpperCase() === String(afi).trim().toUpperCase());
+        const getHistorialMovimientosAFI = (afi) => {
+          if(!afi) return [];
+          const query = String(afi).trim().toUpperCase();
+          return dbMovimientos.value.filter(m => String(m.afi).trim().toUpperCase() === query);
+        };
+        
+        const getHistorialIntervencionesAFI = (afi) => {
+          if(!afi) return [];
+          const query = String(afi).trim().toUpperCase();
+          return dbIntervenciones.value.filter(i => String(i.afi).trim().toUpperCase() === query).sort((a,b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
+        };
 
         const verDetalleCompletoAFI = (equipo) => {
           equipoDetalle.value = equipo;
@@ -1582,7 +1598,9 @@
                 anio: item.anio || 2023,
                 horometroActual: Number(item.horometroactual || 0),
                 frecuenciaMantencion: 250,
-                foto: item.foto || ''
+                foto: item.foto || '',
+                horometros: null, // Se calculará después masivamente
+                tipoHorasMantencion: "250 hrs"
               }));
             }
 
@@ -1896,7 +1914,7 @@
             }
 
             await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron ${totalInsertados} registros con fechas chilenas corregidas.`);
+            alert(`¡Éxito! Se importaron ${totalInsertados} registros.`);
           } catch (err) { alert("Error al procesar el archivo Excel."); }
         };
 
@@ -1980,7 +1998,6 @@
           { Metrica: "Disponibles", Valor: countEstado('Disponible') }
         ]);
 
-        // BARRERA ANTI-CRASH PARA FILTROS
         const filteredEquipos = computed(() => {
           try {
             let arr = dbEquipos.value.filter(e => {
@@ -1997,7 +2014,6 @@
           }
         });
 
-        // BARRERA ANTI-CRASH PARA FILTROS
         const filteredMovimientos = computed(() => {
           try {
             let arr = dbMovimientos.value.filter(m => {
@@ -2019,7 +2035,6 @@
           }
         });
 
-        // BARRERA ANTI-CRASH PARA FILTROS
         const filteredIntervenciones = computed(() => {
           try {
             let arr = dbIntervenciones.value.filter(i => {
@@ -2053,7 +2068,6 @@
             arr.sort((a, b) => sortHistorialOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
             return arr;
           } catch (err) {
-            console.error("Error filtrando historial:", err);
             return [];
           }
         });
@@ -2094,11 +2108,10 @@
           listaTiposAceitesDisponibles, sumaTotalCantidadAceites, costoTotalAceitesFiltrados, exportarCSV,
           importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
           getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
-          getTipoHorasMantencionAFI,
           showDetalleAfiModal, equipoDetalle, verDetalleCompletoAFI,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion,
           agregarFilaAceiteForm, eliminarFilaAceiteForm, guardarMantencionForm,
-          get3Horometros, calcular3Horometros, getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts
+          getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts
         };
       }
     }).mount('#app');
