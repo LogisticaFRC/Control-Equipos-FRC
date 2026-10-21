@@ -1207,7 +1207,7 @@
           return str || '-';
         };
 
-        // PARSEADOR UNIVERSAL DE FECHAS PARA SUPABASE
+        // PARSEADOR UNIVERSAL DE FECHAS
         const formatIsoDateForSupabase = (val) => {
           if (val === null || val === undefined || val === '') return null;
 
@@ -1502,10 +1502,44 @@
           }
         };
 
-        // CARGAR DATOS DESDE SUPABASE
+        // FUNCIÓN AUXILIAR PARA CONSULTAR TODOS LOS REGISTROS SIN LÍMITE DE 1000
+        const fetchAllRowsSupabase = async (tableName) => {
+          let allRows = [];
+          let page = 0;
+          const pageSize = 1000;
+          let hasMore = true;
+
+          while (hasMore) {
+            const from = page * pageSize;
+            const to = from + pageSize - 1;
+            const { data, error } = await supabaseClient
+              .from(tableName)
+              .select('*')
+              .range(from, to);
+
+            if (error) {
+              console.error(`Error consultando ${tableName}:`, error);
+              break;
+            }
+
+            if (data && data.length > 0) {
+              allRows = allRows.concat(data);
+              if (data.length < pageSize) {
+                hasMore = false;
+              } else {
+                page++;
+              }
+            } else {
+              hasMore = false;
+            }
+          }
+          return allRows;
+        };
+
+        // CARGAR DATOS COMPLETOS DESDE SUPABASE
         const cargarDatosDesdeSupabase = async () => {
           try {
-            const { data: eqData } = await supabaseClient.from('BD_INVENTARIO').select('*');
+            const eqData = await fetchAllRowsSupabase('BD_INVENTARIO');
             if (eqData && eqData.length > 0) {
               dbEquipos.value = eqData.map(item => ({
                 id: item.id,
@@ -1522,7 +1556,7 @@
               }));
             }
 
-            const { data: movData } = await supabaseClient.from('BD_MOVIMIENTOS').select('*');
+            const movData = await fetchAllRowsSupabase('BD_MOVIMIENTOS');
             if (movData && movData.length > 0) {
               dbMovimientos.value = movData.map(item => ({
                 id: item.id,
@@ -1536,7 +1570,7 @@
               }));
             }
 
-            const { data: intData } = await supabaseClient.from('BD_HISTORIAL').select('*');
+            const intData = await fetchAllRowsSupabase('BD_HISTORIAL');
             if (intData && intData.length > 0) {
               dbIntervenciones.value = intData.map(item => {
                 const aceiteDetallesArray = [];
