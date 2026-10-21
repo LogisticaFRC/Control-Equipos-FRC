@@ -1230,6 +1230,16 @@
           if (str === "null" || str === "undefined") return '-';
           if (str.includes('T')) str = str.split('T')[0];
           if (str.includes(' ')) str = str.split(' ')[0];
+          
+          // Si viene en formato latino DD-MM-YYYY o DD/MM/YYYY
+          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(str)) {
+            const parts = str.split(/[-/]/);
+            const dd = parts[0].padStart(2, '0');
+            const mm = parts[1].padStart(2, '0');
+            const yyyy = parts[2];
+            return `${yyyy}-${mm}-${dd}`;
+          }
+
           if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
           
           if (typeof val === 'number' || (!isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
@@ -1265,20 +1275,15 @@
           if (strVal.includes('T')) strVal = strVal.split('T')[0];
           if (strVal.includes(' ')) strVal = strVal.split(' ')[0];
 
+          // Forzar formato latino DD-MM-YYYY o DD/MM/YYYY
+          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
+            const parts = strVal.split(/[-/]/);
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          }
+
           if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(strVal)) {
             const parts = strVal.split(/[-/]/);
             return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-          }
-          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
-            const parts = strVal.split(/[-/]/);
-            let p1 = parseInt(parts[0], 10);
-            let p2 = parseInt(parts[1], 10);
-            let year = parts[2];
-            let month, day;
-            if (p1 > 12) { day = p1; month = p2; }
-            else if (p2 > 12) { month = p1; day = p2; }
-            else { day = p1; month = p2; }
-            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           }
           return null;
         };
@@ -1867,7 +1872,7 @@
             }
 
             await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron ${totalInsertados} registros.`);
+            alert(`¡Éxito! Se importaron ${totalInsertados} registros con fechas chilenas corregidas.`);
           } catch (err) { alert("Error al procesar el archivo Excel."); }
         };
 
