@@ -1566,41 +1566,59 @@
           });
         };
 
-        // FUNCIÓN DE IMPORTACIÓN DE INVENTARIO CORREGIDA PARA LEER 'AÑO' CORRECTAMENTE
+        // FUNCIÓN DE IMPORTACIÓN MASIVA (BATCH) EN 1 SOLA PETICIÓN
         const importarInventarioFile = async (e) => {
           const file = e.target.files[0];
           if (!file) return;
           try {
             const rows = await parseFileAnyFormat(file);
+            const payloads = [];
+
             for (const item of rows) {
               const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
               if (rawAfi) {
                 const rawAnio = getVal(item, "año", "ano", "anio");
                 const parsedAnio = rawAnio !== "" && !isNaN(Number(rawAnio)) ? Number(rawAnio) : null;
                 const rawHor = getVal(item, "hor", "horometro", "horometro actual", "horometroactual");
+                const parsedHor = rawHor !== "" && !isNaN(Number(rawHor)) ? Number(rawHor) : 0;
 
-                await supabaseClient.from('BD_INVENTARIO').upsert({
+                payloads.push({
                   afi: String(rawAfi).trim(),
                   tipo: String(getVal(item, "tipo", "equipo") || "").trim(),
                   marca: String(getVal(item, "marca") || "").trim(),
-                  modelo: String(getVal(item, "modelo", "modelo") || "").trim(),
-                  n_serie: String(getVal(item, "n° serie", "n_serie", "serie") || "").trim(),
+                  modelo: String(getVal(item, "modelo") || "").trim(),
+                  n_serie: String(getVal(item, "n° serie", "n_serie", "serie", "nserie") || "").trim(),
                   anio: parsedAnio,
                   ubicacion: String(getVal(item, "ubicación", "ubicacion", "planta") || "").trim(),
                   contrato: String(getVal(item, "contrato") || "").trim(),
                   empresa: String(getVal(item, "empresa") || "").trim(),
                   disponibilidad: normalizarClave(getVal(item, "disponibilidad", "estado") || "Operativo"),
                   gps: String(getVal(item, "gps") || "").trim(),
-                  imei_gps: String(getVal(item, "imei gps", "imei_gps") || "").trim(),
-                  horometroactual: Number(rawHor || 0)
-                }, { onConflict: 'afi' });
+                  imei_gps: String(getVal(item, "imei gps", "imei_gps", "imeigps") || "").trim(),
+                  horometroactual: parsedHor
+                });
               }
             }
+
+            if (payloads.length === 0) {
+              alert("No se encontraron filas con la columna 'AFI' en el archivo Excel.");
+              return;
+            }
+
+            // Inserción / Actualización masiva
+            const { error } = await supabaseClient.from('BD_INVENTARIO').upsert(payloads, { onConflict: 'afi' });
+            
+            if (error) {
+              console.error("Error Supabase:", error);
+              alert("Error de Supabase: " + error.message + "\n\nEjecuta el comando SQL indicado arriba para habilitar la restricción UNIQUE en 'afi'.");
+              return;
+            }
+
             await cargarDatosDesdeSupabase();
-            alert("¡Inventario importado a Supabase con éxito!");
+            alert(`¡Éxito! Se importaron/actualizaron ${payloads.length} equipos en Supabase.`);
           } catch (err) { 
             console.error("Error al importar inventario:", err);
-            alert("Error al importar inventario. Revisa la consola F12."); 
+            alert("Error al procesar el archivo Excel. Revisa la consola F12."); 
           }
         };
 
@@ -1609,10 +1627,12 @@
           if (!file) return;
           try {
             const rows = await parseFileAnyFormat(file);
+            const payloads = [];
+
             for (const item of rows) {
               const rawAfi = getVal(item, "afi", "codigo afi");
               if (rawAfi) {
-                await supabaseClient.from('BD_MOVIMIENTOS').insert([{
+                payloads.push({
                   afi: String(rawAfi).trim(),
                   fecha: formatExcelDate(getVal(item, "fecha")),
                   tipo: String(getVal(item, "tipo") || "").trim(),
@@ -1624,11 +1644,24 @@
                   ubicacion_actual: String(getVal(item, "ubicación actual", "destino") || "").trim(),
                   camion_encargado: String(getVal(item, "camión encargado", "camion") || "").trim(),
                   conductor_encargado: String(getVal(item, "conductor encargado", "conductor") || "").trim()
-                }]);
+                });
               }
             }
+
+            if (payloads.length === 0) {
+              alert("No se encontraron filas con la columna 'AFI' en el archivo.");
+              return;
+            }
+
+            const { error } = await supabaseClient.from('BD_MOVIMIENTOS').insert(payloads);
+            if (error) {
+              console.error("Error Supabase Movimientos:", error);
+              alert("Error en Supabase: " + error.message);
+              return;
+            }
+
             await cargarDatosDesdeSupabase();
-            alert("Movimientos importados a Supabase con éxito.");
+            alert(`¡Éxito! Se importaron ${payloads.length} movimientos a Supabase.`);
           } catch (err) { alert("Error al importar movimientos."); }
         };
 
@@ -1637,10 +1670,12 @@
           if (!file) return;
           try {
             const rows = await parseFileAnyFormat(file);
+            const payloads = [];
+
             for (const item of rows) {
               const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
               if (rawAfi) {
-                await supabaseClient.from('BD_HISTORIAL').insert([{
+                payloads.push({
                   afi: String(rawAfi).trim(),
                   fecha: formatExcelDate(getVal(item, "fecha", "fecha mantencion")),
                   lugar: String(getVal(item, "lugar", "ubicacion") || "").trim(),
@@ -1661,11 +1696,24 @@
                   costo: Number(getVal(item, "costo") || 0),
                   numero_oc: String(getVal(item, "n° oc", "oc") || "").trim(),
                   numero_ot: String(getVal(item, "n° ot", "ot") || "").trim()
-                }]);
+                });
               }
             }
+
+            if (payloads.length === 0) {
+              alert("No se encontraron registros válidos.");
+              return;
+            }
+
+            const { error } = await supabaseClient.from('BD_HISTORIAL').insert(payloads);
+            if (error) {
+              console.error("Error Supabase Historial:", error);
+              alert("Error en Supabase: " + error.message);
+              return;
+            }
+
             await cargarDatosDesdeSupabase();
-            alert("Historial importado a Supabase con éxito.");
+            alert(`¡Éxito! Se importaron ${payloads.length} intervenciones de historial.`);
           } catch (err) { alert("Error al importar historial."); }
         };
 
