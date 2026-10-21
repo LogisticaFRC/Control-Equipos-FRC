@@ -1566,7 +1566,7 @@
           });
         };
 
-        // FUNCIÓN DE IMPORTACIÓN DE INVENTARIO ACTUALIZADA CON TODAS TUS COLUMNAS
+        // FUNCIÓN DE IMPORTACIÓN DE INVENTARIO CORREGIDA PARA LEER 'AÑO' CORRECTAMENTE
         const importarInventarioFile = async (e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -1575,15 +1575,15 @@
             for (const item of rows) {
               const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
               if (rawAfi) {
-                const rawAnio = getVal(item, "año", "anio");
-                const parsedAnio = rawAnio && !isNaN(Number(rawAnio)) ? Number(rawAnio) : null;
-                const rawHor = getVal(item, "hor", "horometro", "horometroactual");
+                const rawAnio = getVal(item, "año", "ano", "anio");
+                const parsedAnio = rawAnio !== "" && !isNaN(Number(rawAnio)) ? Number(rawAnio) : null;
+                const rawHor = getVal(item, "hor", "horometro", "horometro actual", "horometroactual");
 
                 await supabaseClient.from('BD_INVENTARIO').upsert({
                   afi: String(rawAfi).trim(),
                   tipo: String(getVal(item, "tipo", "equipo") || "").trim(),
                   marca: String(getVal(item, "marca") || "").trim(),
-                  modelo: String(getVal(item, "modelo") || "").trim(),
+                  modelo: String(getVal(item, "modelo", "modelo") || "").trim(),
                   n_serie: String(getVal(item, "n° serie", "n_serie", "serie") || "").trim(),
                   anio: parsedAnio,
                   ubicacion: String(getVal(item, "ubicación", "ubicacion", "planta") || "").trim(),
