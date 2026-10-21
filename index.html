@@ -46,7 +46,7 @@
             <i class="fa-solid fa-truck-ramp-box"></i> Movimientos
           </button>
           <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-            <i class="fa-solid fa-file-medical"></i> Hojas de Vida
+            <i class="fa-solid fa-file-medical"></i> Hojas de Vida ({{ dbIntervenciones.length }})
           </button>
           <button @click="switchTab('aceites')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'aceites' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
             <i class="fa-solid fa-oil-can"></i> Control Aceites
@@ -362,7 +362,7 @@
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center gap-3">
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-blue-600"></i> Filtros de Historial</h2>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-blue-600"></i> Filtros de Historial ({{ filteredIntervenciones.length }})</h2>
               <div class="flex items-center gap-2">
                 <label class="text-xs font-bold text-slate-700">Orden:</label>
                 <select v-model="sortHistorialOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
@@ -416,24 +416,25 @@
                   <th v-if="isAdmin" class="p-2 text-center">ACCIONES</th>
                   <th class="p-2">AFI</th>
                   <th class="p-2">FECHA</th>
+                  <th class="p-2">EQUIPO</th>
                   <th class="p-2">LUGAR</th>
                   <th class="p-2">CAUSA</th>
                   <th class="p-2">TIPO MANT.</th>
                   <th class="p-2 text-amber-300">TIPO EN HORAS (H)</th>
                   <th class="p-2">HORÓMETRO</th>
                   <th class="p-2">MECÁNICOS</th>
-                  <th class="p-2 text-sky-300">INICIO HORA (Q)</th>
-                  <th class="p-2 text-sky-300">TÉRMINO HORA (R)</th>
-                  <th class="p-2 text-amber-300">TOTAL (RESTA)</th>
+                  <th class="p-2 text-sky-300">INICIO HORA</th>
+                  <th class="p-2 text-sky-300">TÉRMINO HORA</th>
+                  <th class="p-2 text-amber-300">TOTAL HORAS</th>
                   <th class="p-2">CAUSA DETALLADA</th>
                   <th class="p-2">DESCRIPCIÓN</th>
                   <th class="p-2">INTERFERENCIA</th>
-                  <th class="p-2">EMPRESA ARRIENDO</th>
+                  <th class="p-2">EMPRESA</th>
                   <th class="p-2">COSTO</th>
                   <th class="p-2">N° OC</th>
                   <th class="p-2">N° OT</th>
                   <th class="p-2 text-amber-300">CONSUMO ACEITES</th>
-                  <th class="p-2 text-center">DOC. ADJUNTO</th>
+                  <th class="p-2 text-center">LINK / ADJUNTO</th>
                 </tr>
               </thead>
               <tbody class="divide-y bg-white">
@@ -444,8 +445,9 @@
                   </td>
                   <td class="p-2 font-bold text-amber-700">{{ i.afi }}</td>
                   <td class="p-2 font-mono">{{ i.fecha }}</td>
+                  <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
                   <td class="p-2">{{ i.lugar || '-' }}</td>
-                  <td class="p-2 font-bold">{{ i.causa }}</td>
+                  <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
                   <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
                   <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
                   <td class="p-2 font-mono font-bold">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
@@ -460,10 +462,10 @@
                   <td class="p-2 font-bold text-emerald-700">${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
                   <td class="p-2 font-mono">{{ i.numeroOC || '-' }}</td>
                   <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
-                  <td class="p-2 font-bold text-amber-800 bg-amber-50">{{ i.aceites || 'Sin consumo' }}</td>
+                  <td class="p-2 font-bold text-amber-800 bg-amber-50">{{ i.aceites }}</td>
                   <td class="p-2 text-center">
-                    <a v-if="i.documentoAdjunto" :href="i.documentoAdjunto.data" :download="i.documentoAdjunto.nombre" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1">
-                      <i class="fa-solid fa-file-arrow-down"></i> Ver
+                    <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1">
+                      <i class="fa-solid fa-link"></i> Ver Drive
                     </a>
                     <span v-else class="text-slate-400 italic">-</span>
                   </td>
@@ -532,7 +534,7 @@
             <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
               <div>
                 <p class="text-[11px] font-bold uppercase text-blue-800">Suma Total Cantidad (Filtro Actual)</p>
-                <h3 class="text-xl font-bold text-blue-900 mt-1 font-mono">{{ sumaTotalCantidadAceites.toLocaleString('es-CL', { maximumFractionDigits: 2 }) }}</h3>
+                <h3 class="text-xl font-bold text-blue-900 mt-1 font-mono">{{ sumaTotalCantidadAceites.toLocaleString('es-CL', { maximumFractionDigits: 2 }) }} L</h3>
               </div>
               <div class="w-10 h-10 rounded-full bg-blue-200/60 text-blue-700 flex items-center justify-center text-lg"><i class="fa-solid fa-calculator"></i></div>
             </div>
@@ -745,7 +747,6 @@
 
         <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
           
-          <!-- SECCIÓN 1: DATOS PRINCIPALES -->
           <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
             <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-list-check text-amber-600"></i> Informes Principales</h4>
             <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -771,7 +772,6 @@
             </div>
           </div>
 
-          <!-- SECCIÓN 2: CAUSA & TIPO DE MANTENCIÓN -->
           <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
             <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-sliders text-blue-600"></i> Clasificación Técnica</h4>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -798,7 +798,6 @@
             </div>
           </div>
 
-          <!-- SECCIÓN 3: MECÁNICOS Y TIEMPOS -->
           <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
             <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-gear text-emerald-600"></i> Personal & Horarios</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -819,7 +818,6 @@
             </div>
           </div>
 
-          <!-- SECCIÓN 4: ACEITES Y CANTIDADES -->
           <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
             <div class="flex justify-between items-center">
               <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5">
@@ -839,7 +837,6 @@
             </div>
           </div>
 
-          <!-- SECCIÓN 5: DETALLES, COSTOS Y DOCUMENTO ADJUNTO -->
           <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
             <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar text-violet-600"></i> Costos, Órdenes & Adjuntos</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -852,14 +849,6 @@
               <div><label class="block font-bold mb-1">Causa Detallada</label><textarea v-model="formMant.causaDetallada" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
               <div><label class="block font-bold mb-1">Descripción</label><textarea v-model="formMant.descripcion" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
               <div><label class="block font-bold mb-1">Interferencia</label><textarea v-model="formMant.interferencia" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
-            </div>
-            <div class="pt-2 border-t">
-              <label class="block font-bold mb-1">Adjuntar Documento / Reporte (PDF, Imagen, etc.)</label>
-              <input type="file" @change="subirAdjuntoMantencion" class="w-full text-xs">
-              <p v-if="formMant.documentoAdjunto" class="mt-1 text-xs text-emerald-700 font-bold flex items-center gap-1">
-                <i class="fa-solid fa-paperclip"></i> Adjunto subido: {{ formMant.documentoAdjunto.nombre }}
-                <button @click="formMant.documentoAdjunto = null" class="text-rose-600 underline ml-2">Eliminar Adjunto</button>
-              </p>
             </div>
           </div>
 
@@ -1075,7 +1064,7 @@
             const fotoBase64 = evt.target.result;
             item.foto = fotoBase64;
             const { error } = await supabaseClient.from('BD_INVENTARIO').update({ foto: fotoBase64 }).eq('id', item.id);
-            if (!error) alert("¡Foto guardada en la nube con éxito para todos!");
+            if (!error) alert("¡Foto guardada en la nube con éxito!");
             else alert("Error al guardar la foto en Supabase.");
           };
           reader.readAsDataURL(file);
@@ -1181,6 +1170,28 @@
           return str || '-';
         };
 
+        const formatIsoDateForSupabase = (val) => {
+          if (!val && val !== 0) return null;
+          if (typeof val === 'number' || (!isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
+            const num = Number(val);
+            if (num > 20000 && num < 80000) {
+              const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
+              return dateObj.toISOString().split('T')[0];
+            }
+          }
+          let str = String(val).trim();
+          if (str.includes('T')) str = str.split('T')[0];
+          if (str.includes('/')) {
+            const parts = str.split('/');
+            if (parts.length === 3) {
+              if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+              if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+          }
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+          return null;
+        };
+
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 
         const getVal = (row, ...keys) => {
@@ -1194,6 +1205,17 @@
             }
           }
           return "";
+        };
+
+        const parseNum = (val) => {
+          if (val === null || val === undefined || String(val).trim() === '') return null;
+          const n = Number(String(val).replace(',', '.'));
+          return isNaN(n) ? null : n;
+        };
+
+        const parseStr = (val) => {
+          if (val === null || val === undefined) return "";
+          return String(val).trim();
         };
 
         const getMecanicosText = (item) => {
@@ -1429,13 +1451,15 @@
                 const camposAceites = [
                   "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90",
                   "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme",
-                  "w530", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46",
+                  "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46",
                   "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico"
                 ];
+                
                 camposAceites.forEach(c => {
                   if (item[c] && Number(item[c]) > 0) {
-                    aceitesConsumidos.push(`${c}: ${item[c]}`);
-                    aceiteDetallesArray.push({ nombre: c, cantidad: Number(item[c]) });
+                    const nombreLindo = c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase();
+                    aceitesConsumidos.push(`${nombreLindo}: ${item[c]}L`);
+                    aceiteDetallesArray.push({ nombre: nombreLindo, cantidad: Number(item[c]) });
                   }
                 });
 
@@ -1443,6 +1467,7 @@
                   id: item.id,
                   afi: String(item.afi || ''),
                   fecha: formatExcelDate(item.fecha),
+                  equipo: String(item.equipo || ''),
                   lugar: String(item.lugar || ''),
                   causa: String(item.causa || ''),
                   tipoMant: String(item.tipo_mantencion || ''),
@@ -1461,9 +1486,9 @@
                   costo: Number(item.costo || 0),
                   numeroOC: String(item.numero_oc || ''),
                   numeroOT: String(item.numero_ot || ''),
+                  linkDrive: String(item.link || ''),
                   aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo",
-                  aceiteDetallesArray,
-                  documentoAdjunto: null
+                  aceiteDetallesArray
                 };
               });
             }
@@ -1508,16 +1533,6 @@
         const agregarFilaAceiteForm = () => { formMant.value.aceiteDetallesArray.push({ nombre: "", cantidad: "" }); };
         const eliminarFilaAceiteForm = (index) => { formMant.value.aceiteDetallesArray.splice(index, 1); };
 
-        const subirAdjuntoMantencion = (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (evt) => {
-            formMant.value.documentoAdjunto = { nombre: file.name, data: evt.target.result };
-          };
-          reader.readAsDataURL(file);
-        };
-
         const guardarMantencionForm = async () => {
           const payload = {
             afi: formMant.value.afi,
@@ -1526,12 +1541,12 @@
             causa: formMant.value.causa,
             tipo_mantencion: formMant.value.tipoMant,
             tipo_horas_mantencion: formMant.value.tipoHorasMant,
-            horometro: Number(formMant.value.horometro || 0),
+            horometro: parseNum(formMant.value.horometro),
             mecanico_1: formMant.value.mec1, mecanico_2: formMant.value.mec2, mecanico_3: formMant.value.mec3, mecanico_4: formMant.value.mec4,
             hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino,
             causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
             interferencia: formMant.value.interferencia, empresa: formMant.value.empresaArriendo,
-            costo: Number(formMant.value.costo || 0), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT
+            costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT
           };
 
           if (isEditingMantencion.value && formMant.value.id) {
@@ -1566,7 +1581,6 @@
           });
         };
 
-        // FUNCIÓN DE IMPORTACIÓN MASIVA (BATCH) EN 1 SOLA PETICIÓN
         const importarInventarioFile = async (e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -1576,26 +1590,21 @@
 
             for (const item of rows) {
               const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
-              if (rawAfi) {
-                const rawAnio = getVal(item, "año", "ano", "anio");
-                const parsedAnio = rawAnio !== "" && !isNaN(Number(rawAnio)) ? Number(rawAnio) : null;
-                const rawHor = getVal(item, "hor", "horometro", "horometro actual", "horometroactual");
-                const parsedHor = rawHor !== "" && !isNaN(Number(rawHor)) ? Number(rawHor) : 0;
-
+              if (rawAfi && String(rawAfi).trim() !== "") {
                 payloads.push({
                   afi: String(rawAfi).trim(),
-                  tipo: String(getVal(item, "tipo", "equipo") || "").trim(),
-                  marca: String(getVal(item, "marca") || "").trim(),
-                  modelo: String(getVal(item, "modelo") || "").trim(),
-                  n_serie: String(getVal(item, "n° serie", "n_serie", "serie", "nserie") || "").trim(),
-                  anio: parsedAnio,
-                  ubicacion: String(getVal(item, "ubicación", "ubicacion", "planta") || "").trim(),
-                  contrato: String(getVal(item, "contrato") || "").trim(),
-                  empresa: String(getVal(item, "empresa") || "").trim(),
+                  tipo: parseStr(getVal(item, "tipo", "equipo")),
+                  marca: parseStr(getVal(item, "marca")),
+                  modelo: parseStr(getVal(item, "modelo")),
+                  n_serie: parseStr(getVal(item, "n° serie", "n_serie", "serie", "nserie")),
+                  anio: parseNum(getVal(item, "año", "ano", "anio")),
+                  ubicacion: parseStr(getVal(item, "ubicación", "ubicacion", "planta")),
+                  contrato: parseStr(getVal(item, "contrato")),
+                  empresa: parseStr(getVal(item, "empresa")),
                   disponibilidad: normalizarClave(getVal(item, "disponibilidad", "estado") || "Operativo"),
-                  gps: String(getVal(item, "gps") || "").trim(),
-                  imei_gps: String(getVal(item, "imei gps", "imei_gps", "imeigps") || "").trim(),
-                  horometroactual: parsedHor
+                  gps: parseStr(getVal(item, "gps")),
+                  imei_gps: parseStr(getVal(item, "imei gps", "imei_gps", "imeigps")),
+                  horometroactual: parseNum(getVal(item, "hor", "horometro", "horometro actual", "horometroactual")) || 0
                 });
               }
             }
@@ -1605,12 +1614,11 @@
               return;
             }
 
-            // Inserción / Actualización masiva
             const { error } = await supabaseClient.from('BD_INVENTARIO').upsert(payloads, { onConflict: 'afi' });
             
             if (error) {
               console.error("Error Supabase:", error);
-              alert("Error de Supabase: " + error.message + "\n\nEjecuta el comando SQL indicado arriba para habilitar la restricción UNIQUE en 'afi'.");
+              alert("Error de Supabase: " + error.message);
               return;
             }
 
@@ -1618,7 +1626,7 @@
             alert(`¡Éxito! Se importaron/actualizaron ${payloads.length} equipos en Supabase.`);
           } catch (err) { 
             console.error("Error al importar inventario:", err);
-            alert("Error al procesar el archivo Excel. Revisa la consola F12."); 
+            alert("Error al procesar el archivo Excel."); 
           }
         };
 
@@ -1631,25 +1639,25 @@
 
             for (const item of rows) {
               const rawAfi = getVal(item, "afi", "codigo afi");
-              if (rawAfi) {
+              if (rawAfi && String(rawAfi).trim() !== "") {
                 payloads.push({
                   afi: String(rawAfi).trim(),
-                  fecha: formatExcelDate(getVal(item, "fecha")),
-                  tipo: String(getVal(item, "tipo") || "").trim(),
-                  marca: String(getVal(item, "marca") || "").trim(),
-                  modelo: String(getVal(item, "modelo") || "").trim(),
-                  ubicacion_anterior: String(getVal(item, "ubicación anterior", "origen") || "").trim(),
-                  empresa_arriendo: String(getVal(item, "empresa arriendo") || "").trim(),
-                  estado: String(getVal(item, "estado") || "").trim(),
-                  ubicacion_actual: String(getVal(item, "ubicación actual", "destino") || "").trim(),
-                  camion_encargado: String(getVal(item, "camión encargado", "camion") || "").trim(),
-                  conductor_encargado: String(getVal(item, "conductor encargado", "conductor") || "").trim()
+                  fecha: formatIsoDateForSupabase(getVal(item, "fecha")),
+                  tipo: parseStr(getVal(item, "tipo")),
+                  marca: parseStr(getVal(item, "marca")),
+                  modelo: parseStr(getVal(item, "modelo")),
+                  ubicacion_anterior: parseStr(getVal(item, "ubicación anterior", "origen")),
+                  empresa_arriendo: parseStr(getVal(item, "empresa arriendo")),
+                  estado: parseStr(getVal(item, "estado")),
+                  ubicacion_actual: parseStr(getVal(item, "ubicación actual", "destino")),
+                  camion_encargado: parseStr(getVal(item, "camión encargado", "camion")),
+                  conductor_encargado: parseStr(getVal(item, "conductor encargado", "conductor"))
                 });
               }
             }
 
             if (payloads.length === 0) {
-              alert("No se encontraron filas con la columna 'AFI' en el archivo.");
+              alert("No se encontraron filas válidas.");
               return;
             }
 
@@ -1665,6 +1673,7 @@
           } catch (err) { alert("Error al importar movimientos."); }
         };
 
+        // IMPORTACIÓN COMPLETA DEL HISTORIAL EN LOTES DE 200 FILAS
         const importarIntervencionesFile = async (e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -1674,47 +1683,85 @@
 
             for (const item of rows) {
               const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
-              if (rawAfi) {
+              if (rawAfi && String(rawAfi).trim() !== "") {
                 payloads.push({
                   afi: String(rawAfi).trim(),
-                  fecha: formatExcelDate(getVal(item, "fecha", "fecha mantencion")),
-                  lugar: String(getVal(item, "lugar", "ubicacion") || "").trim(),
-                  causa: String(getVal(item, "causa") || "").trim(),
-                  tipo_mantencion: String(getVal(item, "tipo mantencion") || "").trim(),
-                  tipo_horas_mantencion: String(getVal(item, "tipo horas", "frecuencia horas") || "").trim(),
-                  horometro: Number(getVal(item, "horometro") || 0),
-                  mecanico_1: String(getVal(item, "mecanico 1") || "").trim(),
-                  mecanico_2: String(getVal(item, "mecanico 2") || "").trim(),
-                  mecanico_3: String(getVal(item, "mecanico 3") || "").trim(),
-                  mecanico_4: String(getVal(item, "mecanico 4") || "").trim(),
-                  hora_inicio: String(getVal(item, "hora inicio") || "").trim(),
-                  hora_termino: String(getVal(item, "hora termino") || "").trim(),
-                  causa_intervencion: String(getVal(item, "causa de la intervencion", "causa detallada") || "").trim(),
-                  descripcion: String(getVal(item, "descripcion") || "").trim(),
-                  interferencia: String(getVal(item, "interferencia") || "").trim(),
-                  empresa: String(getVal(item, "empresa") || "").trim(),
-                  costo: Number(getVal(item, "costo") || 0),
-                  numero_oc: String(getVal(item, "n° oc", "oc") || "").trim(),
-                  numero_ot: String(getVal(item, "n° ot", "ot") || "").trim()
+                  fecha: formatIsoDateForSupabase(getVal(item, "fecha", "fecha mantencion")),
+                  equipo: parseStr(getVal(item, "equipo", "tipo equipo")),
+                  lugar: parseStr(getVal(item, "lugar", "ubicacion")),
+                  tipo_documento: parseStr(getVal(item, "tipo documento", "tipo_documento")),
+                  causa: parseStr(getVal(item, "causa")),
+                  tipo_mantencion: parseStr(getVal(item, "tipo mantencion", "tipo_mantencion")),
+                  tipo_horas_mantencion: parseStr(getVal(item, "tipo en horas mantencion", "tipo_horas_mantencion", "tipo horas")),
+                  horometro: parseNum(getVal(item, "horometro")),
+                  mecanico_1: parseStr(getVal(item, "mecanico 1", "mecanico_1")),
+                  mecanico_2: parseStr(getVal(item, "mecanico 2", "mecanico_2")),
+                  mecanico_3: parseStr(getVal(item, "mecanico 3", "mecanico_3")),
+                  mecanico_4: parseStr(getVal(item, "mecanico 4", "mecanico_4")),
+                  uso_de_art: parseStr(getVal(item, "uso de art", "uso_de_art")),
+                  bloqueo_de_equipo: parseStr(getVal(item, "bloqueo de equipo", "bloqueo_de_equipo")),
+                  hora_falla: parseStr(getVal(item, "hora falla", "hora_falla")),
+                  hora_inicio: parseStr(getVal(item, "hora inicio", "hora_inicio")),
+                  hora_termino: parseStr(getVal(item, "hora termino", "hora_termino")),
+                  hora_total: parseStr(getVal(item, "hora total", "hora_total")),
+                  causa_intervencion: parseStr(getVal(item, "causa de la intervencion", "causa_intervencion", "causa detallada")),
+                  descripcion: parseStr(getVal(item, "descripcion")),
+                  interferencia: parseStr(getVal(item, "interferencia")),
+                  empresa: parseStr(getVal(item, "empresa")),
+                  link: parseStr(getVal(item, "link")),
+                  kit_bodega: parseStr(getVal(item, "kit bodega", "kit_bodega")),
+                  costo: parseNum(getVal(item, "costo")),
+                  numero_oc: parseStr(getVal(item, "n° oc", "numero_oc", "oc")),
+                  numero_ot: parseStr(getVal(item, "n° ot", "numero_ot", "ot")),
+                  aceite_15w40_ci4: parseNum(getVal(item, "aceite 15w40 ci-4", "aceite_15w40_ci4")),
+                  aceite_15w40_ck4: parseNum(getVal(item, "aceite 15w40 ck4", "aceite_15w40_ck4")),
+                  aceite_refrigerante_5050: parseNum(getVal(item, "aceite refrigerante 50/50", "aceite_refrigerante_5050")),
+                  aceite_80w90: parseNum(getVal(item, "aceite 80w90", "aceite_80w90")),
+                  aceite_dacnis_68: parseNum(getVal(item, "aceite dacnis 68", "aceite_dacnis_68")),
+                  aceite_dacnis_46: parseNum(getVal(item, "aceite dacnis 46", "aceite  dacnis 46", "aceite_dacnis_46")),
+                  paroil_m_extreme: parseNum(getVal(item, "paroil m extreme", "paroil_m_extreme")),
+                  paroil_s_extreme: parseNum(getVal(item, "paroil s extreme", "paroil_s_extreme")),
+                  aceite_5w30: parseNum(getVal(item, "5w30", "aceite_5w30")),
+                  liquido_freno_dot4: parseNum(getVal(item, "liquido de freno dot-4", "liquido_freno_dot4")),
+                  tractofluid_10w30: parseNum(getVal(item, "tractofluid (10w30)", "tractofluid_10w30")),
+                  sae_30: parseNum(getVal(item, "sae 30", "sae_30")),
+                  hydra46: parseNum(getVal(item, "hydra46")),
+                  hydra_68: parseNum(getVal(item, "hydra 68", "hydra_68")),
+                  adblue: parseNum(getVal(item, "adblue")),
+                  aceite_75w90: parseNum(getVal(item, "aceite 75w90", "aceite_75w90")),
+                  aceite_10w40: parseNum(getVal(item, "aceite 10w40", "aceite_10w40")),
+                  multiproposito: parseNum(getVal(item, "multiproposito")),
+                  desegransante: parseNum(getVal(item, "desegransante")),
+                  acido_muriatico: parseNum(getVal(item, "acido muriatico", "acido_muriatico"))
                 });
               }
             }
 
             if (payloads.length === 0) {
-              alert("No se encontraron registros válidos.");
+              alert("No se encontraron registros válidos con columna 'AFI'.");
               return;
             }
 
-            const { error } = await supabaseClient.from('BD_HISTORIAL').insert(payloads);
-            if (error) {
-              console.error("Error Supabase Historial:", error);
-              alert("Error en Supabase: " + error.message);
-              return;
+            // Inserción masiva dividida en lotes de 200 filas
+            const BATCH_SIZE = 200;
+            let totalInsertados = 0;
+            for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
+              const chunk = payloads.slice(i, i + BATCH_SIZE);
+              const { error } = await supabaseClient.from('BD_HISTORIAL').insert(chunk);
+              if (error) {
+                console.error("Error lote Supabase:", error);
+                alert(`Error en lote ${i+1}: ${error.message}`);
+                return;
+              }
+              totalInsertados += chunk.length;
             }
 
             await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron ${payloads.length} intervenciones de historial.`);
-          } catch (err) { alert("Error al importar historial."); }
+            alert(`¡Éxito! Se importaron correctamente ${totalInsertados} registros del Historial a Supabase.`);
+          } catch (err) { 
+            console.error("Error al importar historial:", err);
+            alert("Error al procesar el archivo Excel del Historial."); 
+          }
         };
 
         const exportarCSV = (dataArray, filename = 'Export') => {
@@ -1862,7 +1909,7 @@
           getTipoHorasMantencionAFI,
           showDetalleAfiModal, equipoDetalle, verDetalleCompletoAFI,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion,
-          agregarFilaAceiteForm, eliminarFilaAceiteForm, subirAdjuntoMantencion, guardarMantencionForm,
+          agregarFilaAceiteForm, eliminarFilaAceiteForm, guardarMantencionForm,
           get3Horometros, calcular3Horometros, getHorometroCardBgClass, getPrediccionStatusBadge, login, logout
         };
       }
