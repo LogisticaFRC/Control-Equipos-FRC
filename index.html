@@ -1225,9 +1225,9 @@
         };
 
         const formatExcelDate = (val) => {
-          if (!val && val !== 0) return '-';
+          if (val === null || val === undefined) return '-';
           let str = String(val).trim();
-          if (str === "null" || str === "undefined") return '-';
+          if (str === "null" || str === "undefined" || str === "") return '-';
           if (str.includes('T')) str = str.split('T')[0];
           if (str.includes(' ')) str = str.split(' ')[0];
           
@@ -1404,29 +1404,44 @@
             hOficial = Number(hist[hist.length - 1].horometro) || hOficial;
             dUltima = new Date(parseIsoDate(hist[hist.length - 1].fecha));
           }
+          
+          const hOficialVal = Number(hOficial) || 0;
           const hoy = new Date();
           const diasDesdeUltima = Math.max(0, Math.floor((hoy - dUltima) / (1000 * 60 * 60 * 24)));
+          
           let rateHrsDia = 0;
           if (hist.length >= 2) {
             const deltaH = Number(hist[hist.length - 1].horometro) - Number(hist[hist.length - 2].horometro);
             const diasEntre = Math.max(1, Math.floor((parseIsoDate(hist[hist.length - 1].fecha) - parseIsoDate(hist[hist.length - 2].fecha)) / (1000 * 60 * 60 * 24)));
             if (deltaH > 0) rateHrsDia = deltaH / diasEntre;
           }
-          const hAprox = hOficial + (diasDesdeUltima * rateHrsDia);
-          const hTarget = hOficial + freq;
+          
+          const hAprox = hOficialVal + (diasDesdeUltima * rateHrsDia);
+          const hTarget = hOficialVal + freq;
           const horasFaltantes = hTarget - hAprox;
 
           let diasFaltantes = rateHrsDia > 0 ? Math.ceil(horasFaltantes / rateHrsDia) : 30;
-          const fechaEst = new Date();
-          fechaEst.setDate(hoy.getDate() + diasFaltantes);
-          const fechaEstimadaStr = fechaEst.toISOString().substring(0, 10);
+          
+          // PREVENCIÓN DE CRASH (Protección Vue.js si el cálculo falla o da infinito)
+          if (!isFinite(diasFaltantes) || diasFaltantes > 3650) diasFaltantes = 3650; 
+          if (diasFaltantes < -3650) diasFaltantes = -3650;
+
+          let fechaEstimadaStr = "-";
+          try {
+            const fechaEst = new Date();
+            fechaEst.setDate(hoy.getDate() + diasFaltantes);
+            fechaEstimadaStr = fechaEst.toISOString().substring(0, 10);
+          } catch(err) {
+            console.error("Error fecha estimada", err);
+            fechaEstimadaStr = "N/A";
+          }
 
           let estadoTexto = "OPERATIVO";
           if (horasFaltantes <= 0) estadoTexto = "¡PASADO!";
           else if (horasFaltantes <= 50) estadoTexto = "PRÓXIMO";
 
           return {
-            hOficial: Math.round(hOficial),
+            hOficial: Math.round(hOficialVal),
             hAprox: Math.round(hAprox * 10) / 10,
             hTarget: Math.round(hTarget),
             horasFaltantes: Math.round(horasFaltantes * 10) / 10,
@@ -1567,7 +1582,6 @@
 
             const intData = await fetchAllRowsSupabase('BD_HISTORIAL');
             if (intData && intData.length > 0) {
-              const mapaUnicos = new Set();
               const listaProcesada = [];
 
               intData.forEach(item => {
@@ -1575,56 +1589,52 @@
                 const afiFmt = String(item.afi || '').trim();
                 const horoFmt = Number(item.horometro || 0);
                 const descFmt = String(item.descripcion || '').trim();
-                const claveUnica = `${afiFmt}_${fechaFmt}_${horoFmt}_${descFmt}`;
 
-                if (!mapaUnicos.has(claveUnica)) {
-                  mapaUnicos.add(claveUnica);
+                const aceiteDetallesArray = [];
+                const aceitesConsumidos = [];
+                const camposAceites = [
+                  "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90",
+                  "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme",
+                  "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46",
+                  "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico"
+                ];
+                
+                camposAceites.forEach(c => {
+                  if (item[c] && Number(item[c]) > 0) {
+                    const nombreLindo = c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase();
+                    aceitesConsumidos.push(`${nombreLindo}: ${item[c]}L`);
+                    aceiteDetallesArray.push({ nombre: nombreLindo, cantidad: Number(item[c]) });
+                  }
+                });
 
-                  const aceiteDetallesArray = [];
-                  const aceitesConsumidos = [];
-                  const camposAceites = [
-                    "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90",
-                    "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme",
-                    "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46",
-                    "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico"
-                  ];
-                  
-                  camposAceites.forEach(c => {
-                    if (item[c] && Number(item[c]) > 0) {
-                      const nombreLindo = c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase();
-                      aceitesConsumidos.push(`${nombreLindo}: ${item[c]}L`);
-                      aceiteDetallesArray.push({ nombre: nombreLindo, cantidad: Number(item[c]) });
-                    }
-                  });
-
-                  listaProcesada.push({
-                    id: item.id,
-                    afi: afiFmt,
-                    fecha: fechaFmt,
-                    equipo: String(item.equipo || ''),
-                    lugar: String(item.lugar || ''),
-                    causa: String(item.causa || ''),
-                    tipoMant: String(item.tipo_mantencion || ''),
-                    tipoHorasMant: String(item.tipo_horas_mantencion || ''),
-                    horometro: horoFmt,
-                    mec1: String(item.mecanico_1 || ''),
-                    mec2: String(item.mecanico_2 || ''),
-                    mec3: String(item.mecanico_3 || ''),
-                    mec4: String(item.mecanico_4 || ''),
-                    horaInicio: String(item.hora_inicio || ''),
-                    horaTermino: String(item.hora_termino || ''),
-                    causaDetallada: String(item.causa_intervencion || ''),
-                    descripcion: descFmt,
-                    interferencia: String(item.interferencia || ''),
-                    empresaArriendo: String(item.empresa || ''),
-                    costo: Number(item.costo || 0),
-                    numeroOC: String(item.numero_oc || ''),
-                    numeroOT: String(item.numero_ot || ''),
-                    linkDrive: String(item.link || ''),
-                    aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo",
-                    aceiteDetallesArray
-                  });
-                }
+                // Carga del 100% de los registros, sin eliminar ninguno
+                listaProcesada.push({
+                  id: item.id,
+                  afi: afiFmt,
+                  fecha: fechaFmt,
+                  equipo: String(item.equipo || ''),
+                  lugar: String(item.lugar || ''),
+                  causa: String(item.causa || ''),
+                  tipoMant: String(item.tipo_mantencion || ''),
+                  tipoHorasMant: String(item.tipo_horas_mantencion || ''),
+                  horometro: horoFmt,
+                  mec1: String(item.mecanico_1 || ''),
+                  mec2: String(item.mecanico_2 || ''),
+                  mec3: String(item.mecanico_3 || ''),
+                  mec4: String(item.mecanico_4 || ''),
+                  horaInicio: String(item.hora_inicio || ''),
+                  horaTermino: String(item.hora_termino || ''),
+                  causaDetallada: String(item.causa_intervencion || ''),
+                  descripcion: descFmt,
+                  interferencia: String(item.interferencia || ''),
+                  empresaArriendo: String(item.empresa || ''),
+                  costo: Number(item.costo || 0),
+                  numeroOC: String(item.numero_oc || ''),
+                  numeroOT: String(item.numero_ot || ''),
+                  linkDrive: String(item.link || ''),
+                  aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo",
+                  aceiteDetallesArray
+                });
               });
 
               dbIntervenciones.value = listaProcesada;
@@ -1867,7 +1877,7 @@
             }
 
             await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron ${totalInsertados} registros.`);
+            alert(`¡Éxito! Se importaron ${totalInsertados} registros con fechas chilenas corregidas.`);
           } catch (err) { alert("Error al procesar el archivo Excel."); }
         };
 
