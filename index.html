@@ -25,20 +25,17 @@
     <div v-if="!usuarioActivo" class="min-h-screen flex items-center justify-center bg-slate-900 p-4 w-full flex-grow">
       <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-8 space-y-6 text-center">
         
-        <!-- LOGO EMPRESA -->
         <div class="flex justify-center">
           <div class="bg-slate-900 p-3 rounded-2xl w-28 h-28 flex items-center justify-center border border-slate-700 shadow-xl">
             <img :src="config.logo" alt="Logo Empresa" class="max-h-full max-w-full object-contain">
           </div>
         </div>
 
-        <!-- TÍTULO Y SUBTÍTULO -->
         <div>
           <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">{{ config.title }}</h2>
           <p class="text-xs text-slate-500 mt-1 font-semibold">{{ config.subtitle }}</p>
         </div>
 
-        <!-- FORMULARIO DE ACCESO -->
         <form @submit.prevent="login" class="space-y-4 text-left text-xs">
           <div>
             <label class="font-bold text-slate-700 block mb-1">Usuario</label>
@@ -76,10 +73,9 @@
       </div>
     </div>
 
-    <!-- PANEL PRINCIPAL (SISTEMA UNA VEZ AUTENTICADO) -->
+    <!-- PANEL PRINCIPAL -->
     <template v-else>
 
-      <!-- HEADER / NAVBAR -->
       <header :style="headerStyle" class="text-white shadow-lg sticky top-0 z-40 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
           
@@ -133,10 +129,9 @@
         </div>
       </header>
 
-      <!-- CONTENIDO PRINCIPAL -->
       <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
 
-        <!-- PESTAÑA 1: DASHBOARD -->
+        <!-- DASHBOARD -->
         <section v-if="currentTab === 'dashboard'" class="space-y-6">
           <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
             <div>
@@ -220,7 +215,7 @@
           </div>
         </section>
 
-        <!-- PESTAÑA 2: INVENTARIO AFI -->
+        <!-- INVENTARIO AFI -->
         <section v-if="currentTab === 'inventario'" class="space-y-4">
           <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -337,7 +332,7 @@
           </div>
         </section>
 
-        <!-- PESTAÑA 3: MOVIMIENTOS -->
+        <!-- MOVIMIENTOS -->
         <section v-if="currentTab === 'movimientos'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap justify-between items-center gap-3">
@@ -412,13 +407,13 @@
           </div>
         </section>
 
-        <!-- PESTAÑA 4: HOJA DE VIDA E HISTORIAL -->
+        <!-- HOJA DE VIDA E HISTORIAL -->
         <section v-if="currentTab === 'hojaVida'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-2">
               <div class="flex items-center gap-3">
                 <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <i class="fa-solid fa-filter text-blue-600"></i> Búsqueda Avanzada de Historial ({{ filteredIntervenciones.length }} de {{ dbIntervenciones.length }} Cargar)
+                  <i class="fa-solid fa-filter text-blue-600"></i> Historial Completo (Cargados: {{ dbIntervenciones.length }} registros de Supabase)
                 </h2>
               </div>
               <div class="flex items-center gap-2">
@@ -435,7 +430,6 @@
               </div>
             </div>
 
-            <!-- BUSCADOR CON BOTÓN DESTACADO -->
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-xs pt-1">
               <div class="lg:col-span-2">
                 <label class="block font-bold mb-1 text-slate-700">Búsqueda General (OC, OT, Detalle, Insumo...)</label>
@@ -555,7 +549,7 @@
           </div>
         </section>
 
-        <!-- PESTAÑA 5: CONTROL Y FILTROS DE ACEITES E INSUMOS -->
+        <!-- CONTROL DE ACEITES -->
         <section v-if="currentTab === 'aceites'" class="space-y-6">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-3">
@@ -612,7 +606,7 @@
               </div>
               <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
                 <div>
-                  <p class="text-[11px] font-bold uppercase text-blue-800">Suma Total Cantidad (Filtro Actual)</p>
+                  <p class="text-[11px] font-bold uppercase text-blue-800">Suma Total Cantidad</p>
                   <h3 class="text-xl font-bold text-blue-900 mt-1 font-mono">{{ sumaTotalCantidadAceites.toLocaleString('es-CL', { maximumFractionDigits: 2 }) }} L</h3>
                 </div>
                 <div class="w-10 h-10 rounded-full bg-blue-200/60 text-blue-700 flex items-center justify-center text-lg"><i class="fa-solid fa-calculator"></i></div>
@@ -666,10 +660,8 @@
           </div>
         </section>
 
-        <!-- PESTAÑA 6: CONFIGURACIÓN & GESTIÓN DE USUARIOS -->
+        <!-- CONFIGURACIÓN & USUARIOS -->
         <section v-if="currentTab === 'configuracion'" class="space-y-6">
-          
-          <!-- MÓDULO ADMINISTRADOR DE USUARIOS -->
           <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex items-center justify-between border-b pb-3">
               <div>
@@ -681,7 +673,6 @@
               <span v-if="!isAdmin" class="text-xs bg-rose-100 text-rose-800 font-bold px-3 py-1 rounded">Requiere Sesión Admin</span>
             </div>
 
-            <!-- FORMULARIO CREAR USUARIO (SOLO ADMIN) -->
             <div v-if="isAdmin" class="bg-slate-50 p-4 rounded-xl border space-y-3 text-xs">
               <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-plus text-emerald-600"></i> Crear Nuevo Usuario</h4>
               <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -708,7 +699,6 @@
               </div>
             </div>
 
-            <!-- TABLA DE USUARIOS CREADOS -->
             <div class="overflow-x-auto border rounded-lg text-xs">
               <table class="w-full text-left border-collapse">
                 <thead class="bg-slate-800 text-white uppercase text-[10px]">
@@ -738,7 +728,6 @@
             </div>
           </div>
 
-          <!-- PERSONALIZACIÓN DE DISEÑO -->
           <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
             <div class="flex items-center justify-between border-b pb-3">
               <div>
@@ -810,7 +799,7 @@
 
       </main>
 
-      <!-- FORMULARIO MODAL: AGREGAR / EDITAR MANTENCIÓN -->
+      <!-- MODAL FORMULARIO MANTENCIÓN -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
           
@@ -943,7 +932,7 @@
         </div>
       </div>
 
-      <!-- MODAL DETALLE / PERFIL DEL AFI -->
+      <!-- MODAL DETALLE AFI -->
       <div v-if="showDetalleAfiModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
           
@@ -1056,7 +1045,6 @@
   <script>
     const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
-    // CONEXIÓN SUPABASE CONFIGURADA
     const SUPABASE_URL = "https://dxpfaweuiijumvfrykvl.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4cGZhd2V1aWlqdW12ZnJ5a3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODE5NDcsImV4cCI6MjEwODE1Nzk0N30.du61QLSaevcDVDd0GmlM2xTYmE_c4envzjmneocnHgc";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1124,8 +1112,8 @@
             const fotoBase64 = evt.target.result;
             item.foto = fotoBase64;
             const { error } = await supabaseClient.from('BD_INVENTARIO').update({ foto: fotoBase64 }).eq('id', item.id);
-            if (!error) alert("¡Foto guardada en la nube con éxito!");
-            else alert("Error al guardar la foto en Supabase.");
+            if (!error) alert("¡Foto guardada en Supabase con éxito!");
+            else alert("Error al guardar la foto.");
           };
           reader.readAsDataURL(file);
         };
@@ -1240,7 +1228,6 @@
           return str || '-';
         };
 
-        // PARSEADOR UNIVERSAL DE FECHAS
         const formatIsoDateForSupabase = (val) => {
           if (val === null || val === undefined || val === '') return null;
 
@@ -1491,7 +1478,6 @@
           if (eq) verDetalleCompletoAFI(eq);
         };
 
-        // GESTIÓN DE USUARIOS EN LA NUBE
         const cargarUsuariosDesdeSupabase = async () => {
           try {
             const { data } = await supabaseClient.from('usuarios').select('*');
@@ -1517,9 +1503,9 @@
           if (!error) {
             await cargarUsuariosDesdeSupabase();
             nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" };
-            alert("¡Usuario guardado en la nube con éxito!");
+            alert("¡Usuario guardado en Supabase con éxito!");
           } else {
-            alert("Error al guardar usuario en Supabase.");
+            alert("Error al guardar usuario.");
           }
         };
 
@@ -1535,20 +1521,20 @@
           }
         };
 
-        // DESCARGA COMPLETA DESDE SUPABASE SIN LÍMITE DE 1000
+        // FUNCIÓN DE PAGINACIÓN INFINITA PARA DESCARGAR TODOS LOS REGISTROS (> 1000)
         const fetchAllRowsSupabase = async (tableName) => {
           let allRows = [];
           let page = 0;
           const pageSize = 1000;
-          let hasMore = true;
+          let keepFetching = true;
 
-          while (hasMore) {
+          while (keepFetching) {
             const from = page * pageSize;
             const to = from + pageSize - 1;
+
             const { data, error } = await supabaseClient
               .from(tableName)
               .select('*')
-              .order('id', { ascending: true })
               .range(from, to);
 
             if (error) {
@@ -1559,20 +1545,20 @@
             if (data && data.length > 0) {
               allRows = allRows.concat(data);
               if (data.length < pageSize) {
-                hasMore = false;
+                keepFetching = false;
               } else {
                 page++;
               }
             } else {
-              hasMore = false;
+              keepFetching = false;
             }
           }
           return allRows;
         };
 
-        // CARGAR DATOS COMPLETOS DESDE SUPABASE
         const cargarDatosDesdeSupabase = async () => {
           try {
+            // Carga de Equipos
             const eqData = await fetchAllRowsSupabase('BD_INVENTARIO');
             if (eqData && eqData.length > 0) {
               dbEquipos.value = eqData.map(item => ({
@@ -1590,6 +1576,7 @@
               }));
             }
 
+            // Carga de Movimientos
             const movData = await fetchAllRowsSupabase('BD_MOVIMIENTOS');
             if (movData && movData.length > 0) {
               dbMovimientos.value = movData.map(item => ({
@@ -1604,54 +1591,72 @@
               }));
             }
 
+            // Carga de Historial Completo
             const intData = await fetchAllRowsSupabase('BD_HISTORIAL');
             if (intData && intData.length > 0) {
-              dbIntervenciones.value = intData.map(item => {
-                const aceiteDetallesArray = [];
-                const aceitesConsumidos = [];
-                const camposAceites = [
-                  "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90",
-                  "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme",
-                  "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46",
-                  "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico"
-                ];
-                
-                camposAceites.forEach(c => {
-                  if (item[c] && Number(item[c]) > 0) {
-                    const nombreLindo = c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase();
-                    aceitesConsumidos.push(`${nombreLindo}: ${item[c]}L`);
-                    aceiteDetallesArray.push({ nombre: nombreLindo, cantidad: Number(item[c]) });
-                  }
-                });
+              const mapaUnicos = new Set();
+              const listaProcesada = [];
 
-                return {
-                  id: item.id,
-                  afi: String(item.afi || ''),
-                  fecha: formatExcelDate(item.fecha),
-                  equipo: String(item.equipo || ''),
-                  lugar: String(item.lugar || ''),
-                  causa: String(item.causa || ''),
-                  tipoMant: String(item.tipo_mantencion || ''),
-                  tipoHorasMant: String(item.tipo_horas_mantencion || ''),
-                  horometro: Number(item.horometro || 0),
-                  mec1: String(item.mecanico_1 || ''),
-                  mec2: String(item.mecanico_2 || ''),
-                  mec3: String(item.mecanico_3 || ''),
-                  mec4: String(item.mecanico_4 || ''),
-                  horaInicio: String(item.hora_inicio || ''),
-                  horaTermino: String(item.hora_termino || ''),
-                  causaDetallada: String(item.causa_intervencion || ''),
-                  descripcion: String(item.descripcion || ''),
-                  interferencia: String(item.interferencia || ''),
-                  empresaArriendo: String(item.empresa || ''),
-                  costo: Number(item.costo || 0),
-                  numeroOC: String(item.numero_oc || ''),
-                  numeroOT: String(item.numero_ot || ''),
-                  linkDrive: String(item.link || ''),
-                  aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo",
-                  aceiteDetallesArray
-                };
+              intData.forEach(item => {
+                const fechaFmt = formatExcelDate(item.fecha);
+                const afiFmt = String(item.afi || '').trim();
+                const horoFmt = Number(item.horometro || 0);
+                const descFmt = String(item.descripcion || '').trim();
+
+                // Clave para evitar contar duplicados si se subieron repetidos
+                const claveUnica = `${afiFmt}_${fechaFmt}_${horoFmt}_${descFmt}`;
+
+                if (!mapaUnicos.has(claveUnica)) {
+                  mapaUnicos.add(claveUnica);
+
+                  const aceiteDetallesArray = [];
+                  const aceitesConsumidos = [];
+                  const camposAceites = [
+                    "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90",
+                    "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme",
+                    "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46",
+                    "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico"
+                  ];
+                  
+                  camposAceites.forEach(c => {
+                    if (item[c] && Number(item[c]) > 0) {
+                      const nombreLindo = c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase();
+                      aceitesConsumidos.push(`${nombreLindo}: ${item[c]}L`);
+                      aceiteDetallesArray.push({ nombre: nombreLindo, cantidad: Number(item[c]) });
+                    }
+                  });
+
+                  listaProcesada.push({
+                    id: item.id,
+                    afi: afiFmt,
+                    fecha: fechaFmt,
+                    equipo: String(item.equipo || ''),
+                    lugar: String(item.lugar || ''),
+                    causa: String(item.causa || ''),
+                    tipoMant: String(item.tipo_mantencion || ''),
+                    tipoHorasMant: String(item.tipo_horas_mantencion || ''),
+                    horometro: horoFmt,
+                    mec1: String(item.mecanico_1 || ''),
+                    mec2: String(item.mecanico_2 || ''),
+                    mec3: String(item.mecanico_3 || ''),
+                    mec4: String(item.mecanico_4 || ''),
+                    horaInicio: String(item.hora_inicio || ''),
+                    horaTermino: String(item.hora_termino || ''),
+                    causaDetallada: String(item.causa_intervencion || ''),
+                    descripcion: descFmt,
+                    interferencia: String(item.interferencia || ''),
+                    empresaArriendo: String(item.empresa || ''),
+                    costo: Number(item.costo || 0),
+                    numeroOC: String(item.numero_oc || ''),
+                    numeroOT: String(item.numero_ot || ''),
+                    linkDrive: String(item.link || ''),
+                    aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo",
+                    aceiteDetallesArray
+                  });
+                }
               });
+
+              dbIntervenciones.value = listaProcesada;
             }
 
             actualizarHorometrosDesdeHistorial();
@@ -1718,7 +1723,7 @@
 
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("Mantención guardada en la nube con éxito.");
+          alert("Mantención guardada en Supabase con éxito.");
         };
 
         const parseFileAnyFormat = (file) => {
@@ -1770,17 +1775,14 @@
               }
             }
 
-            if (payloads.length === 0) {
-              alert("No se encontraron filas con la columna 'AFI'.");
-              return;
-            }
+            if (payloads.length === 0) return alert("No se encontraron filas válidas.");
 
             const { error } = await supabaseClient.from('BD_INVENTARIO').upsert(payloads, { onConflict: 'afi' });
-            if (error) { alert("Error Supabase: " + error.message); return; }
+            if (error) return alert("Error Supabase: " + error.message);
 
             await cargarDatosDesdeSupabase();
             alert(`¡Éxito! Se importaron ${payloads.length} equipos en Supabase.`);
-          } catch (err) { alert("Error al procesar el archivo Excel."); }
+          } catch (err) { alert("Error al procesar el archivo."); }
         };
 
         const importarMovimientosFile = async (e) => {
@@ -1809,10 +1811,10 @@
               }
             }
 
-            if (payloads.length === 0) { alert("Sin registros válidos."); return; }
+            if (payloads.length === 0) return alert("Sin registros válidos.");
 
             const { error } = await supabaseClient.from('BD_MOVIMIENTOS').insert(payloads);
-            if (error) { alert("Error Supabase: " + error.message); return; }
+            if (error) return alert("Error Supabase: " + error.message);
 
             await cargarDatosDesdeSupabase();
             alert(`¡Éxito! Se importaron ${payloads.length} movimientos.`);
@@ -1882,26 +1884,20 @@
               }
             }
 
-            if (payloads.length === 0) {
-              alert("No se encontraron registros válidos.");
-              return;
-            }
+            if (payloads.length === 0) return alert("No se encontraron registros válidos.");
 
             const BATCH_SIZE = 200;
             let totalInsertados = 0;
             for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
               const chunk = payloads.slice(i, i + BATCH_SIZE);
               const { error } = await supabaseClient.from('BD_HISTORIAL').insert(chunk);
-              if (error) {
-                alert(`Error en lote ${i+1}: ${error.message}`);
-                return;
-              }
+              if (error) return alert(`Error en lote: ${error.message}`);
               totalInsertados += chunk.length;
             }
 
             await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron correctamente ${totalInsertados} registros a Supabase.`);
-          } catch (err) { alert("Error al procesar el archivo Excel del Historial."); }
+            alert(`¡Éxito! Se importaron ${totalInsertados} registros.`);
+          } catch (err) { alert("Error al procesar el archivo Excel."); }
         };
 
         const exportarCSV = (dataArray, filename = 'Export') => {
