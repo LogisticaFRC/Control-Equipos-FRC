@@ -14,6 +14,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- SheetJS CDN (Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body :style="bodyStyle" class="font-sans min-h-screen flex flex-col transition-colors duration-300">
 
@@ -242,7 +244,6 @@
                   <p><i class="fa-solid fa-industry w-4 text-slate-400"></i> <strong>Marca/Modelo:</strong> {{ e.marca }} {{ e.modelo }}</p>
                   <p><i class="fa-solid fa-location-dot w-4 text-rose-500"></i> <strong>Ubicación:</strong> <span class="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{{ e.ubicacion }}</span></p>
                   
-                  <!-- COLUMNA H: TIPO EN MANTENCIÓN EN HORAS EN EL MENÚ/TARJETA AFI -->
                   <p class="pt-1 border-t mt-1">
                     <i class="fa-solid fa-clock-rotate-left w-4 text-amber-600"></i> 
                     <strong>Mantención Programada:</strong> 
@@ -1008,9 +1009,13 @@
   <script>
     const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
+    // CONEXIÓN SUPABASE CONFIGURADA
+    const SUPABASE_URL = "https://dxpfaweuiijumvfrykvl.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4cGZhd2V1aWlqdW12ZnJ5a3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODE5NDcsImV4cCI6MjEwODE1Nzk0N30.du61QLSaevcDVDd0GmlM2xTYmE_c4envzjmneocnHgc";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     createApp({
       setup() {
-        // AUTENTICACIÓN Y USUARIOS
         const usuarioActivo = ref(null);
         const isAdmin = computed(() => usuarioActivo.value && usuarioActivo.value.rol === 'admin');
 
@@ -1089,51 +1094,18 @@
           reader.readAsDataURL(file);
         };
 
-        // CAUSAS EXACTAS DE LA IMAGEN
         const listaCausas = [
-          "FALLA MECANICA",
-          "FALLA ELECTRICA",
-          "INSPECCION",
-          "REPARACION",
-          "ESTANDARIZACION",
-          "DAÑO OPERACIÓN",
-          "PUESTA EN MARCHA",
-          "IMPLEMENTACION",
-          "PRUEBAS MEDICIONES",
-          "CHECK LIST",
-          "FALLA CONDICION",
-          "MANTENCION",
-          "MANTENCION INTERMEDIA",
-          "SERVICIO",
-          "COMPRA",
-          "RETIRO",
-          "CONEXIÓN/DESCONEXION",
-          "FALLA OPERACIONAL",
-          "INSPECCION (ELECTRICA)"
+          "FALLA MECANICA", "FALLA ELECTRICA", "INSPECCION", "REPARACION", "ESTANDARIZACION",
+          "DAÑO OPERACIÓN", "PUESTA EN MARCHA", "IMPLEMENTACION", "PRUEBAS MEDICIONES", "CHECK LIST",
+          "FALLA CONDICION", "MANTENCION", "MANTENCION INTERMEDIA", "SERVICIO", "COMPRA",
+          "RETIRO", "CONEXIÓN/DESCONEXION", "FALLA OPERACIONAL", "INSPECCION (ELECTRICA)"
         ];
 
-        // 20 ACEITES E INSUMOS EXACTOS DE LA IMAGEN
         const listaAceitesEstandar = ref([
-          "ACEITE 15W40 CI-4",
-          "ACEITE 15W40 CK4",
-          "ACEITE REFRIGERANTE 50/50",
-          "ACEITE 80W90",
-          "ACEITE DACNIS 68",
-          "ACEITE DACNIS 46",
-          "PAROIL M EXTREME",
-          "PAROIL S EXTREME",
-          "5W30",
-          "LIQUIDO DE FRENO DOT-4",
-          "TRACTOFLUID (10W30)",
-          "SAE 30",
-          "HYDRA46",
-          "HYDRA 68",
-          "ADBLUE",
-          "ACEITE 75W",
-          "ACEITE 10W",
-          "MULTIPROPOSITO",
-          "DESEGRANSANTE",
-          "ACIDO MURIATICO"
+          "ACEITE 15W40 CI-4", "ACEITE 15W40 CK4", "ACEITE REFRIGERANTE 50/50", "ACEITE 80W90",
+          "ACEITE DACNIS 68", "ACEITE DACNIS 46", "PAROIL M EXTREME", "PAROIL S EXTREME",
+          "5W30", "LIQUIDO DE FRENO DOT-4", "TRACTOFLUID (10W30)", "SAE 30", "HYDRA46",
+          "HYDRA 68", "ADBLUE", "ACEITE 75W", "ACEITE 10W", "MULTIPROPOSITO", "DESEGRANSANTE", "ACIDO MURIATICO"
         ]);
 
         const dbEquipos = ref([]);
@@ -1266,7 +1238,6 @@
           return `${Math.floor(finalMins / 60)}h ${finalMins % 60}m`;
         };
 
-        // COLUMNA H
         const getTipoHorasMantencionAFI = (afi) => {
           const inters = dbIntervenciones.value
             .filter(i => String(i.afi).trim().toUpperCase() === String(afi).trim().toUpperCase() && i.tipoHorasMant)
@@ -1391,7 +1362,97 @@
           if (eq) verDetalleCompletoAFI(eq);
         };
 
-        // GESTIÓN DE USUARIOS
+        // CARGAR DATOS DESDE SUPABASE
+        const cargarDatosDesdeSupabase = async () => {
+          try {
+            // 1. Inventario
+            const { data: eqData } = await supabaseClient.from('BD_INVENTARIO').select('*');
+            if (eqData && eqData.length > 0) {
+              dbEquipos.value = eqData.map(item => ({
+                id: item.id,
+                afi: String(item.afi || ''),
+                tipo: String(item.tipo || ''),
+                marca: String(item.marca || ''),
+                modelo: String(item.modelo || ''),
+                ubicacion: String(item.ubicacion || ''),
+                disponibilidad: normalizarClave(item.disponibilidad),
+                anio: item.anio || 2023,
+                horometroActual: Number(item.horometroactual || 0),
+                frecuenciaMantencion: 250,
+                foto: item.foto || ''
+              }));
+            }
+
+            // 2. Movimientos
+            const { data: movData } = await supabaseClient.from('BD_MOVIMIENTOS').select('*');
+            if (movData && movData.length > 0) {
+              dbMovimientos.value = movData.map(item => ({
+                id: item.id,
+                fecha: formatExcelDate(item.fecha),
+                afi: String(item.afi || ''),
+                tipo: String(item.tipo || ''),
+                origen: String(item.ubicacion_anterior || ''),
+                destino: String(item.ubicacion_actual || ''),
+                camion: String(item.camion_encargado || ''),
+                conductor: String(item.conductor_encargado || '')
+              }));
+            }
+
+            // 3. Historial / Mantenciones
+            const { data: intData } = await supabaseClient.from('BD_HISTORIAL').select('*');
+            if (intData && intData.length > 0) {
+              dbIntervenciones.value = intData.map(item => {
+                const aceiteDetallesArray = [];
+                const aceitesConsumidos = [];
+                const camposAceites = [
+                  "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90",
+                  "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme",
+                  "w530", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46",
+                  "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico"
+                ];
+                camposAceites.forEach(c => {
+                  if (item[c] && Number(item[c]) > 0) {
+                    aceitesConsumidos.push(`${c}: ${item[c]}`);
+                    aceiteDetallesArray.push({ nombre: c, cantidad: Number(item[c]) });
+                  }
+                });
+
+                return {
+                  id: item.id,
+                  afi: String(item.afi || ''),
+                  fecha: formatExcelDate(item.fecha),
+                  lugar: String(item.lugar || ''),
+                  causa: String(item.causa || ''),
+                  tipoMant: String(item.tipo_mantencion || ''),
+                  tipoHorasMant: String(item.tipo_horas_mantencion || ''),
+                  horometro: Number(item.horometro || 0),
+                  mec1: String(item.mecanico_1 || ''),
+                  mec2: String(item.mecanico_2 || ''),
+                  mec3: String(item.mecanico_3 || ''),
+                  mec4: String(item.mecanico_4 || ''),
+                  horaInicio: String(item.hora_inicio || ''),
+                  horaTermino: String(item.hora_termino || ''),
+                  causaDetallada: String(item.causa_intervencion || ''),
+                  descripcion: String(item.descripcion || ''),
+                  interferencia: String(item.interferencia || ''),
+                  empresaArriendo: String(item.empresa || ''),
+                  costo: Number(item.costo || 0),
+                  numeroOC: String(item.numero_oc || ''),
+                  numeroOT: String(item.numero_ot || ''),
+                  aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo",
+                  aceiteDetallesArray,
+                  documentoAdjunto: null
+                };
+              });
+            }
+
+            actualizarHorometrosDesdeHistorial();
+            renderCharts();
+          } catch (err) {
+            console.error("Error al sincronizar con Supabase:", err);
+          }
+        };
+
         const crearNuevoUsuario = () => {
           if (!nuevoUsuario.value.usuario || !nuevoUsuario.value.clave) return alert("Completa usuario y clave.");
           const existe = dbUsuarios.value.some(u => u.usuario.toLowerCase() === nuevoUsuario.value.usuario.toLowerCase());
@@ -1416,7 +1477,6 @@
           }
         };
 
-        // FORMULARIO: MANTENCIONES
         const abrirFormularioNuevaMantencion = (afiInicial = "") => {
           isEditingMantencion.value = false;
           formMant.value = {
@@ -1445,11 +1505,12 @@
           showFormMantencionModal.value = true;
         };
 
-        const eliminarMantencion = (id) => {
+        const eliminarMantencion = async (id) => {
           if (confirm("¿Estás seguro de que deseas eliminar este registro de mantención?")) {
+            await supabaseClient.from('BD_HISTORIAL').delete().eq('id', id);
             dbIntervenciones.value = dbIntervenciones.value.filter(i => i.id !== id);
             actualizarHorometrosDesdeHistorial();
-            saveStorage();
+            renderCharts();
           }
         };
 
@@ -1474,128 +1535,45 @@
           reader.readAsDataURL(file);
         };
 
-        const guardarMantencionForm = () => {
+        const guardarMantencionForm = async () => {
           const arrAceites = formMant.value.aceiteDetallesArray
             .filter(a => a.nombre && String(a.nombre).trim() !== "")
             .map(a => `${a.nombre.trim()}: ${a.cantidad || 1}`);
           
           const aceitesTexto = arrAceites.length > 0 ? arrAceites.join("; ") : "Sin consumo";
 
-          if (isEditingMantencion.value) {
-            const idx = dbIntervenciones.value.findIndex(i => i.id === formMant.value.id);
-            if (idx !== -1) {
-              dbIntervenciones.value[idx] = {
-                ...formMant.value,
-                aceites: aceitesTexto
-              };
-            }
+          const payload = {
+            afi: formMant.value.afi,
+            fecha: formMant.value.fecha,
+            lugar: formMant.value.lugar,
+            causa: formMant.value.causa,
+            tipo_mantencion: formMant.value.tipoMant,
+            tipo_horas_mantencion: formMant.value.tipoHorasMant,
+            horometro: Number(formMant.value.horometro || 0),
+            mecanico_1: formMant.value.mec1,
+            mecanico_2: formMant.value.mec2,
+            mecanico_3: formMant.value.mec3,
+            mecanico_4: formMant.value.mec4,
+            hora_inicio: formMant.value.horaInicio,
+            hora_termino: formMant.value.horaTermino,
+            causa_intervencion: formMant.value.causaDetallada,
+            descripcion: formMant.value.descripcion,
+            interferencia: formMant.value.interferencia,
+            empresa: formMant.value.empresaArriendo,
+            costo: Number(formMant.value.costo || 0),
+            numero_oc: formMant.value.numeroOC,
+            numero_ot: formMant.value.numeroOT
+          };
+
+          if (isEditingMantencion.value && formMant.value.id) {
+            await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
           } else {
-            const nuevoRegistro = {
-              ...formMant.value,
-              id: Date.now() + Math.random(),
-              aceites: aceitesTexto
-            };
-            dbIntervenciones.value.unshift(nuevoRegistro);
+            await supabaseClient.from('BD_HISTORIAL').insert([payload]);
           }
 
-          actualizarHorometrosDesdeHistorial();
-          saveStorage();
+          await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("Mantención guardada con éxito.");
-        };
-
-        // MAPEOS E IMPORTACIÓN
-        const aplanarFilasJson = (jsonObj) => {
-          if (Array.isArray(jsonObj)) return jsonObj;
-          if (typeof jsonObj === 'object' && jsonObj !== null) {
-            let acumulado = [];
-            Object.values(jsonObj).forEach(hoja => { if (Array.isArray(hoja)) acumulado = acumulado.concat(hoja); });
-            return acumulado;
-          }
-          return [];
-        };
-
-        const procesarMapeoInventario = (filas) => {
-          return filas.map((item, idx) => {
-            const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
-            if (!rawAfi) return null;
-            return {
-              id: Date.now() + Math.random() + idx,
-              afi: String(rawAfi).trim(),
-              tipo: String(getVal(item, "tipo", "equipo") || "Equipo").trim(),
-              marca: String(getVal(item, "marca") || "-").trim(),
-              modelo: String(getVal(item, "modelo") || "-").trim(),
-              ubicacion: String(getVal(item, "ubicación", "ubicacion", "planta") || "Planta").trim(),
-              disponibilidad: normalizarClave(getVal(item, "disponibilidad", "estado") || "Operativo"),
-              anio: getVal(item, "año", "anio") || 2023,
-              horometroActual: Number(getVal(item, "horometro") || 0),
-              frecuenciaMantencion: Number(getVal(item, "frecuencia") || 250),
-              foto: ""
-            };
-          }).filter(Boolean);
-        };
-
-        const procesarMapeoMovimientos = (filas) => {
-          return filas.map((item, idx) => {
-            const rawAfi = getVal(item, "afi", "codigo afi");
-            if (!rawAfi) return null;
-            return {
-              id: Date.now() + Math.random() + idx,
-              fecha: formatExcelDate(getVal(item, "fecha")),
-              afi: String(rawAfi).trim(),
-              tipo: String(getVal(item, "tipo") || "-").trim(),
-              origen: String(getVal(item, "ubicación anterior", "origen") || "-").trim(),
-              destino: String(getVal(item, "ubicación actual", "destino") || "-").trim(),
-              camion: String(getVal(item, "camión encargado", "camion") || "-").trim(),
-              conductor: String(getVal(item, "conductor encargado", "conductor") || "-").trim()
-            };
-          }).filter(Boolean);
-        };
-
-        const procesarMapeoHistorial = (filas) => {
-          return filas.map((item, idx) => {
-            const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
-            if (!rawAfi) return null;
-            const aceitesConsumidos = [];
-            const aceiteDetallesArray = [];
-            Object.keys(item).forEach(colKey => {
-              const colNorm = normalizeKey(colKey);
-              if (colNorm.includes('aceite') || colNorm.includes('paroil') || colNorm.includes('hydra') || colNorm.includes('5w30') || colNorm.includes('adblue') || colNorm.includes('sae') || colNorm.includes('tractofluid') || colNorm.includes('dacnis') || colNorm.includes('freno') || colNorm.includes('muriatico') || colNorm.includes('desegransante')) {
-                const val = item[colKey];
-                if (val && String(val).trim() !== "0" && String(val).trim() !== "") {
-                  aceitesConsumidos.push(`${colKey.trim()}: ${val}`);
-                  const numVal = parseFloat(String(val).replace(/[^0-9.,]/g, '').replace(',', '.')) || 1;
-                  aceiteDetallesArray.push({ nombre: colKey.trim(), cantidad: numVal });
-                }
-              }
-            });
-            return {
-              id: Date.now() + Math.random() + idx,
-              afi: String(rawAfi).trim(),
-              fecha: formatExcelDate(getVal(item, "fecha", "fecha mantencion")),
-              lugar: String(getVal(item, "lugar", "ubicacion") || "-").trim(),
-              causa: String(getVal(item, "causa") || "MANTENCION").trim(),
-              tipoMant: String(getVal(item, "tipo mantencion") || "PREVENTIVA").trim(),
-              tipoHorasMant: String(getVal(item, "tipo horas", "frecuencia horas") || "250 hrs").trim(),
-              horometro: Number(getVal(item, "horometro") || 0),
-              mec1: String(getVal(item, "mecanico 1", "mec1") || "").trim(),
-              mec2: String(getVal(item, "mecanico 2", "mec2") || "").trim(),
-              mec3: String(getVal(item, "mecanico 3", "mec3") || "").trim(),
-              mec4: String(getVal(item, "mecanico 4", "mec4") || "").trim(),
-              horaInicio: String(getVal(item, "hora inicio") || "").trim(),
-              horaTermino: String(getVal(item, "hora termino") || "").trim(),
-              causaDetallada: String(getVal(item, "causa detallada") || "").trim(),
-              descripcion: String(getVal(item, "descripcion") || "").trim(),
-              interferencia: String(getVal(item, "interferencia") || "").trim(),
-              empresaArriendo: String(getVal(item, "empresa arriendo") || "").trim(),
-              costo: Number(getVal(item, "costo") || 0),
-              numeroOC: String(getVal(item, "n° oc", "oc") || "").trim(),
-              numeroOT: String(getVal(item, "n° ot", "ot") || "").trim(),
-              aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo",
-              aceiteDetallesArray,
-              documentoAdjunto: null
-            };
-          }).filter(Boolean);
+          alert("Mantención guardada en la nube con éxito.");
         };
 
         const parseFileAnyFormat = (file) => {
@@ -1623,10 +1601,24 @@
           const file = e.target.files[0];
           if (!file) return;
           try {
-            dbEquipos.value = procesarMapeoInventario(aplanarFilasJson(await parseFileAnyFormat(file)));
-            actualizarHorometrosDesdeHistorial();
-            saveStorage();
-            alert("Inventario importado con éxito.");
+            const rows = await parseFileAnyFormat(file);
+            for (const item of rows) {
+              const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
+              if (rawAfi) {
+                await supabaseClient.from('BD_INVENTARIO').upsert({
+                  afi: String(rawAfi).trim(),
+                  tipo: String(getVal(item, "tipo", "equipo") || "").trim(),
+                  marca: String(getVal(item, "marca") || "").trim(),
+                  modelo: String(getVal(item, "modelo") || "").trim(),
+                  ubicacion: String(getVal(item, "ubicación", "ubicacion", "planta") || "").trim(),
+                  disponibilidad: normalizarClave(getVal(item, "disponibilidad", "estado") || "Operativo"),
+                  anio: Number(getVal(item, "año", "anio") || 2023),
+                  horometroactual: Number(getVal(item, "horometro") || 0)
+                }, { onConflict: 'afi' });
+              }
+            }
+            await cargarDatosDesdeSupabase();
+            alert("Inventario importado a Supabase con éxito.");
           } catch (err) { alert("Error al importar inventario."); }
         };
 
@@ -1634,9 +1626,27 @@
           const file = e.target.files[0];
           if (!file) return;
           try {
-            dbMovimientos.value = procesarMapeoMovimientos(aplanarFilasJson(await parseFileAnyFormat(file)));
-            saveStorage();
-            alert("Movimientos importados con éxito.");
+            const rows = await parseFileAnyFormat(file);
+            for (const item of rows) {
+              const rawAfi = getVal(item, "afi", "codigo afi");
+              if (rawAfi) {
+                await supabaseClient.from('BD_MOVIMIENTOS').insert([{
+                  afi: String(rawAfi).trim(),
+                  fecha: formatExcelDate(getVal(item, "fecha")),
+                  tipo: String(getVal(item, "tipo") || "").trim(),
+                  marca: String(getVal(item, "marca") || "").trim(),
+                  modelo: String(getVal(item, "modelo") || "").trim(),
+                  ubicacion_anterior: String(getVal(item, "ubicación anterior", "origen") || "").trim(),
+                  empresa_arriendo: String(getVal(item, "empresa arriendo") || "").trim(),
+                  estado: String(getVal(item, "estado") || "").trim(),
+                  ubicacion_actual: String(getVal(item, "ubicación actual", "destino") || "").trim(),
+                  camion_encargado: String(getVal(item, "camión encargado", "camion") || "").trim(),
+                  conductor_encargado: String(getVal(item, "conductor encargado", "conductor") || "").trim()
+                }]);
+              }
+            }
+            await cargarDatosDesdeSupabase();
+            alert("Movimientos importados a Supabase con éxito.");
           } catch (err) { alert("Error al importar movimientos."); }
         };
 
@@ -1644,10 +1654,36 @@
           const file = e.target.files[0];
           if (!file) return;
           try {
-            dbIntervenciones.value = procesarMapeoHistorial(aplanarFilasJson(await parseFileAnyFormat(file)));
-            actualizarHorometrosDesdeHistorial();
-            saveStorage();
-            alert("Historial importado con éxito.");
+            const rows = await parseFileAnyFormat(file);
+            for (const item of rows) {
+              const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
+              if (rawAfi) {
+                await supabaseClient.from('BD_HISTORIAL').insert([{
+                  afi: String(rawAfi).trim(),
+                  fecha: formatExcelDate(getVal(item, "fecha", "fecha mantencion")),
+                  lugar: String(getVal(item, "lugar", "ubicacion") || "").trim(),
+                  causa: String(getVal(item, "causa") || "").trim(),
+                  tipo_mantencion: String(getVal(item, "tipo mantencion") || "").trim(),
+                  tipo_horas_mantencion: String(getVal(item, "tipo horas", "frecuencia horas") || "").trim(),
+                  horometro: Number(getVal(item, "horometro") || 0),
+                  mecanico_1: String(getVal(item, "mecanico 1") || "").trim(),
+                  mecanico_2: String(getVal(item, "mecanico 2") || "").trim(),
+                  mecanico_3: String(getVal(item, "mecanico 3") || "").trim(),
+                  mecanico_4: String(getVal(item, "mecanico 4") || "").trim(),
+                  hora_inicio: String(getVal(item, "hora inicio") || "").trim(),
+                  hora_termino: String(getVal(item, "hora termino") || "").trim(),
+                  causa_intervencion: String(getVal(item, "causa de la intervencion", "causa detallada") || "").trim(),
+                  descripcion: String(getVal(item, "descripcion") || "").trim(),
+                  interferencia: String(getVal(item, "interferencia") || "").trim(),
+                  empresa: String(getVal(item, "empresa") || "").trim(),
+                  costo: Number(getVal(item, "costo") || 0),
+                  numero_oc: String(getVal(item, "n° oc", "oc") || "").trim(),
+                  numero_ot: String(getVal(item, "n° ot", "ot") || "").trim()
+                }]);
+              }
+            }
+            await cargarDatosDesdeSupabase();
+            alert("Historial importado a Supabase con éxito.");
           } catch (err) { alert("Error al importar historial."); }
         };
 
@@ -1758,29 +1794,15 @@
           return arr;
         });
 
-        onMounted(() => {
+        onMounted(async () => {
           const userSaved = localStorage.getItem('afi_usuarios_db');
           if (userSaved) dbUsuarios.value = JSON.parse(userSaved);
 
-          const eqSaved = localStorage.getItem('afi_equipos_db');
-          if (eqSaved) dbEquipos.value = JSON.parse(eqSaved);
-          const movSaved = localStorage.getItem('afi_movimientos_db');
-          if (movSaved) dbMovimientos.value = JSON.parse(movSaved);
-          const intSaved = localStorage.getItem('afi_intervenciones_db');
-          if (intSaved) dbIntervenciones.value = JSON.parse(intSaved);
           const cfgSaved = localStorage.getItem('afi_config_custom');
           if (cfgSaved) config.value = JSON.parse(cfgSaved);
 
-          actualizarHorometrosDesdeHistorial();
-          renderCharts();
+          await cargarDatosDesdeSupabase();
         });
-
-        const saveStorage = () => {
-          localStorage.setItem('afi_equipos_db', JSON.stringify(dbEquipos.value));
-          localStorage.setItem('afi_movimientos_db', JSON.stringify(dbMovimientos.value));
-          localStorage.setItem('afi_intervenciones_db', JSON.stringify(dbIntervenciones.value));
-          renderCharts();
-        };
 
         const login = () => {
           const userEncontrado = dbUsuarios.value.find(u => u.usuario.toLowerCase() === loginUser.value.trim().toLowerCase() && u.clave === loginPass.value.trim());
