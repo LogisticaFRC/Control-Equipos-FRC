@@ -101,7 +101,7 @@
               <i class="fa-solid fa-boxes-stacked"></i> Inventario AFI ({{ dbEquipos.length }})
             </button>
             <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-truck-ramp-box"></i> Movimientos
+              <i class="fa-solid fa-truck-ramp-box"></i> Movimientos ({{ dbMovimientos.length }})
             </button>
             <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-file-medical"></i> Hojas de Vida ({{ dbIntervenciones.length }})
@@ -231,7 +231,7 @@
                   <option value="desc">Más Recientes primero</option>
                   <option value="asc">Más Antiguos primero</option>
                 </select>
-                <button @click="resetFiltrosInventario" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Reset</button>
+                <button @click="resetFiltrosInventario" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Limpiar</button>
                 <button @click="exportarCSV(filteredEquipos, 'Inventario_AFI_Filtrado')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
               </div>
             </div>
@@ -342,7 +342,7 @@
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap justify-between items-center gap-3">
               <div class="flex items-center gap-3">
-                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Movimientos</h2>
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Búsqueda & Filtros de Movimientos</h2>
                 <div class="flex items-center gap-2">
                   <label class="text-xs font-bold text-slate-700">Orden:</label>
                   <select v-model="sortMovimientosOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
@@ -351,53 +351,60 @@
                   </select>
                 </div>
               </div>
-              <button @click="exportarCSV(filteredMovimientos, 'Movimientos_Filtrados')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
+              <div class="flex items-center gap-2">
+                <button @click="limpiarFiltrosMovimientos" class="text-xs text-slate-500 hover:text-slate-800 underline mx-1">Limpiar Filtros</button>
+                <button @click="exportarCSV(filteredMovimientos, 'Movimientos_Filtrados')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
+              </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
-              <div><label class="block font-bold mb-1">Desde</label><input type="date" v-model="filterMov.dateStart" class="w-full p-2 border rounded-lg"></div>
-              <div><label class="block font-bold mb-1">Hasta</label><input type="date" v-model="filterMov.dateEnd" class="w-full p-2 border rounded-lg"></div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 text-xs pt-1">
+              <div class="md:col-span-2">
+                <label class="block font-bold mb-1 text-slate-700">Buscar por Texto (Chofer, Camión, Destino...)</label>
+                <input type="text" v-model="filterMov.queryText" placeholder="Escribe para buscar..." class="w-full p-2 border rounded-lg bg-slate-50 focus:bg-white font-bold">
+              </div>
+              <div><label class="block font-bold mb-1">Fecha Desde</label><input type="date" v-model="filterMov.dateStart" class="w-full p-2 border rounded-lg"></div>
+              <div><label class="block font-bold mb-1">Fecha Hasta</label><input type="date" v-model="filterMov.dateEnd" class="w-full p-2 border rounded-lg"></div>
               <div>
-                <label class="block font-bold mb-1">AFI</label>
-                <select v-model="filterMov.afi" class="w-full p-2 border rounded-lg">
-                  <option value="ALL">-- Todos --</option>
+                <label class="block font-bold mb-1">AFI Equipo</label>
+                <select v-model="filterMov.afi" class="w-full p-2 border rounded-lg font-bold">
+                  <option value="ALL">-- Todos los AFI --</option>
                   <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">{{ e.afi }} - {{ e.tipo }}</option>
                 </select>
               </div>
-              <div><label class="block font-bold mb-1">Texto</label><input type="text" v-model="filterMov.queryText" placeholder="Chofer, camión..." class="w-full p-2 border rounded-lg"></div>
-              <div>
-                <label class="block font-bold mb-1">Estado</label>
-                <select v-model="filterMov.estado" class="w-full p-2 border rounded-lg">
-                  <option value="ALL">-- Todos --</option>
-                  <option value="Operativo">Operativo</option>
-                  <option value="En Traslado">En Traslado</option>
-                </select>
+              <div class="flex items-end">
+                <button @click="renderCharts()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold p-2 rounded-lg shadow flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                </button>
               </div>
             </div>
           </div>
 
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <div class="overflow-x-auto border rounded-lg">
+            <div class="overflow-x-auto border rounded-lg max-h-[600px]">
               <table class="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr class="bg-slate-200 font-bold uppercase text-[11px] border-b">
+                <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
+                  <tr>
                     <th class="p-2.5">FECHA</th>
                     <th class="p-2.5">AFI</th>
                     <th class="p-2.5">TIPO</th>
                     <th class="p-2.5">ORIGEN</th>
                     <th class="p-2.5">DESTINO</th>
-                    <th class="p-2.5">CAMIÓN</th>
+                    <th class="p-2.5">CAMIÓN ENCARGADO</th>
                     <th class="p-2.5">CONDUCTOR</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y bg-white">
                   <tr v-for="m in filteredMovimientos" :key="m.id" class="hover:bg-slate-50">
-                    <td class="p-2.5 font-mono font-bold text-slate-800">{{ m.fecha }}</td>
+                    <td class="p-2.5 font-mono font-bold text-slate-800 bg-amber-50/30">{{ m.fecha }}</td>
                     <td class="p-2.5 font-bold text-amber-700">{{ m.afi }}</td>
-                    <td class="p-2.5">{{ m.tipo }}</td>
-                    <td class="p-2.5">{{ m.origen }}</td>
-                    <td class="p-2.5 font-bold text-emerald-700">{{ m.destino }}</td>
-                    <td class="p-2.5">{{ m.camion }}</td>
-                    <td class="p-2.5">{{ m.conductor }}</td>
+                    <td class="p-2.5 font-semibold">{{ m.tipo }}</td>
+                    <td class="p-2.5 text-slate-600">{{ m.origen || '-' }}</td>
+                    <td class="p-2.5 font-bold text-emerald-700 bg-emerald-50/50">{{ m.destino || '-' }}</td>
+                    <td class="p-2.5">{{ m.camion || '-' }}</td>
+                    <td class="p-2.5 font-semibold">{{ m.conductor || '-' }}</td>
+                  </tr>
+                  <tr v-if="filteredMovimientos.length === 0">
+                    <td colspan="7" class="p-8 text-center text-slate-500 font-bold">No se encontraron movimientos con los filtros ingresados.</td>
                   </tr>
                 </tbody>
               </table>
@@ -408,37 +415,47 @@
         <!-- PESTAÑA 4: HOJA DE VIDA E HISTORIAL -->
         <section v-if="currentTab === 'hojaVida'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-            <div class="flex flex-wrap justify-between items-center gap-3">
+            <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-2">
               <div class="flex items-center gap-3">
-                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-blue-600"></i> Filtros de Historial ({{ filteredIntervenciones.length }})</h2>
-                <div class="flex items-center gap-2">
-                  <label class="text-xs font-bold text-slate-700">Orden:</label>
-                  <select v-model="sortHistorialOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
-                    <option value="desc">Más Recientes</option>
-                    <option value="asc">Más Antiguos</option>
-                  </select>
-                </div>
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <i class="fa-solid fa-filter text-blue-600"></i> Búsqueda Avanzada de Historial ({{ filteredIntervenciones.length }} de {{ dbIntervenciones.length }} Cargar)
+                </h2>
               </div>
               <div class="flex items-center gap-2">
+                <label class="text-xs font-bold text-slate-700">Orden:</label>
+                <select v-model="sortHistorialOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
+                  <option value="desc">Más Recientes primero</option>
+                  <option value="asc">Más Antiguos primero</option>
+                </select>
+                <button @click="limpiarFiltrosHistorial" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Limpiar Filtros</button>
                 <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5">
                   <i class="fa-solid fa-plus-circle"></i> + Registrar Mantención
                 </button>
                 <button @click="exportarCSV(filteredIntervenciones, 'HojaVida_Filtrada')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
               </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-              <div><label class="block font-bold mb-1">Desde</label><input type="date" v-model="filterInt.dateStart" class="w-full p-2 border rounded-lg"></div>
-              <div><label class="block font-bold mb-1">Hasta</label><input type="date" v-model="filterInt.dateEnd" class="w-full p-2 border rounded-lg"></div>
+
+            <!-- BUSCADOR CON BOTÓN DESTACADO -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-xs pt-1">
+              <div class="lg:col-span-2">
+                <label class="block font-bold mb-1 text-slate-700">Búsqueda General (OC, OT, Detalle, Insumo...)</label>
+                <div class="relative">
+                  <input type="text" v-model="filterInt.searchQuery" placeholder="Escribe cualquier palabra..." class="w-full p-2 pl-8 border rounded-lg bg-amber-50/50 focus:bg-white font-bold text-slate-800">
+                  <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400"></i>
+                </div>
+              </div>
+              <div><label class="block font-bold mb-1">Fecha Desde</label><input type="date" v-model="filterInt.dateStart" class="w-full p-2 border rounded-lg"></div>
+              <div><label class="block font-bold mb-1">Fecha Hasta</label><input type="date" v-model="filterInt.dateEnd" class="w-full p-2 border rounded-lg"></div>
               <div>
-                <label class="block font-bold mb-1">AFI</label>
+                <label class="block font-bold mb-1">Filtrar por AFI</label>
                 <select v-model="filterInt.afi" class="w-full p-2 border border-amber-300 bg-amber-50 font-bold rounded-lg">
-                  <option value="ALL">-- Todos --</option>
+                  <option value="ALL">-- Todos los AFI --</option>
                   <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
                 </select>
               </div>
               <div>
                 <label class="block font-bold mb-1">Tipo Mantención</label>
-                <select v-model="filterInt.tipoMant" class="w-full p-2 border rounded-lg">
+                <select v-model="filterInt.tipoMant" class="w-full p-2 border rounded-lg font-semibold">
                   <option value="ALL">-- Todos --</option>
                   <option value="PREVENTIVA">PREVENTIVA</option>
                   <option value="PREDICTIVA">PREDICTIVA</option>
@@ -452,7 +469,18 @@
                   <option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option>
                 </select>
               </div>
-              <div><label class="block font-bold mb-1">Mecánico</label><input type="text" v-model="filterInt.mecText" placeholder="Nombre..." class="w-full p-2 border rounded-lg"></div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div class="sm:col-span-2">
+                <label class="block font-bold mb-1 text-slate-700">Mecánico</label>
+                <input type="text" v-model="filterInt.mecText" placeholder="Nombre de mecánico..." class="w-full p-2 border rounded-lg">
+              </div>
+              <div class="flex items-end">
+                <button @click="renderCharts()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold p-2 rounded-lg shadow flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-magnifying-glass"></i> Aplicar Filtros / Buscar
+                </button>
+              </div>
             </div>
           </div>
 
@@ -517,6 +545,9 @@
                       </a>
                       <span v-else class="text-slate-400 italic">-</span>
                     </td>
+                  </tr>
+                  <tr v-if="filteredIntervenciones.length === 0">
+                    <td colspan="22" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros con los filtros aplicados.</td>
                   </tr>
                 </tbody>
               </table>
@@ -1123,13 +1154,15 @@
         const filterMov = ref({ dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" });
         const sortMovimientosOrder = ref("desc");
 
-        const filterInt = ref({ dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" });
+        const filterInt = ref({ searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" });
         const sortHistorialOrder = ref("desc");
         
         const filterOil = ref({ dateStart: "", dateEnd: "", afi: "ALL", tipoAceite: "ALL" });
         const sortAceitesOrder = ref("desc");
 
         const resetFiltrosInventario = () => { filterInv.value = { search: "", ubicacion: "", estado: "ALL", gps: "ALL" }; };
+        const limpiarFiltrosHistorial = () => { filterInt.value = { searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" }; };
+        const limpiarFiltrosMovimientos = () => { filterMov.value = { dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" }; };
 
         const normalizarClave = (str) => {
           if (!str) return 'Disponible';
@@ -1502,7 +1535,7 @@
           }
         };
 
-        // FUNCIÓN AUXILIAR PARA CONSULTAR TODOS LOS REGISTROS SIN LÍMITE DE 1000
+        // DESCARGA COMPLETA DESDE SUPABASE SIN LÍMITE DE 1000
         const fetchAllRowsSupabase = async (tableName) => {
           let allRows = [];
           let page = 0;
@@ -1515,6 +1548,7 @@
             const { data, error } = await supabaseClient
               .from(tableName)
               .select('*')
+              .order('id', { ascending: true })
               .range(from, to);
 
             if (error) {
@@ -1952,10 +1986,11 @@
 
         const filteredEquipos = computed(() => {
           let arr = dbEquipos.value.filter(e => {
-            const matchSearch = !filterInv.value.search || String(e.afi).toLowerCase().includes(filterInv.value.search.toLowerCase()) || String(e.tipo).toLowerCase().includes(filterInv.value.search.toLowerCase());
+            const matchSearch = !filterInv.value.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion].join(" ").toLowerCase().includes(filterInv.value.search.toLowerCase());
             const matchUbi = !filterInv.value.ubicacion || String(e.ubicacion).toLowerCase().includes(filterInv.value.ubicacion.toLowerCase());
             const matchEst = filterInv.value.estado === "ALL" || normalizarClave(e.disponibilidad) === normalizarClave(filterInv.value.estado);
-            return matchSearch && matchUbi && matchEst;
+            const matchGps = filterInv.value.gps === "ALL" || (filterInv.value.gps === "Instalado" ? Boolean(e.gps) : !e.gps);
+            return matchSearch && matchUbi && matchEst && matchGps;
           });
           arr.sort((a, b) => sortInventarioOrder.value === 'desc' ? b.id - a.id : a.id - b.id);
           return arr;
@@ -1963,7 +1998,16 @@
 
         const filteredMovimientos = computed(() => {
           let arr = dbMovimientos.value.filter(m => {
-            return filterMov.value.afi === "ALL" || String(m.afi).trim().toUpperCase() === String(filterMov.value.afi).trim().toUpperCase();
+            if (filterMov.value.afi !== "ALL" && String(m.afi).trim().toUpperCase() !== String(filterMov.value.afi).trim().toUpperCase()) return false;
+            const fStr = formatExcelDate(m.fecha);
+            if (filterMov.value.dateStart && fStr < filterMov.value.dateStart) return false;
+            if (filterMov.value.dateEnd && fStr > filterMov.value.dateEnd) return false;
+            if (filterMov.value.queryText && filterMov.value.queryText.trim() !== "") {
+              const q = filterMov.value.queryText.trim().toLowerCase();
+              const matchAll = [m.afi, m.tipo, m.origen, m.destino, m.camion, m.conductor].join(" ").toLowerCase();
+              if (!matchAll.includes(q)) return false;
+            }
+            return true;
           });
           arr.sort((a, b) => sortMovimientosOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
           return arr;
@@ -1971,8 +2015,33 @@
 
         const filteredIntervenciones = computed(() => {
           let arr = dbIntervenciones.value.filter(i => {
-            return filterInt.value.afi === "ALL" || String(i.afi).trim().toUpperCase() === String(filterInt.value.afi).trim().toUpperCase();
+            if (filterInt.value.afi !== "ALL" && String(i.afi).trim().toUpperCase() !== String(filterInt.value.afi).trim().toUpperCase()) return false;
+            if (filterInt.value.tipoMant !== "ALL" && String(i.tipoMant).trim().toUpperCase() !== String(filterInt.value.tipoMant).trim().toUpperCase()) return false;
+            if (filterInt.value.causa !== "ALL" && String(i.causa).trim().toUpperCase() !== String(filterInt.value.causa).trim().toUpperCase()) return false;
+            
+            const fStr = formatExcelDate(i.fecha);
+            if (filterInt.value.dateStart && fStr < filterInt.value.dateStart) return false;
+            if (filterInt.value.dateEnd && fStr > filterInt.value.dateEnd) return false;
+
+            if (filterInt.value.mecText && filterInt.value.mecText.trim() !== "") {
+              const mecQuery = filterInt.value.mecText.trim().toLowerCase();
+              const mecs = getMecanicosText(i).toLowerCase();
+              if (!mecs.includes(mecQuery)) return false;
+            }
+
+            if (filterInt.value.searchQuery && filterInt.value.searchQuery.trim() !== "") {
+              const q = filterInt.value.searchQuery.trim().toLowerCase();
+              const matchAll = [
+                i.afi, i.equipo, i.lugar, i.causa, i.tipoMant, i.tipoHorasMant,
+                i.causaDetallada, i.descripcion, i.interferencia, i.empresaArriendo,
+                i.numeroOC, i.numeroOT, i.aceites, getMecanicosText(i)
+              ].join(" ").toLowerCase();
+              if (!matchAll.includes(q)) return false;
+            }
+
+            return true;
           });
+
           arr.sort((a, b) => sortHistorialOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
           return arr;
         });
@@ -2007,7 +2076,8 @@
           listaCausas, listaAceitesEstandar, dbEquipos, dbMovimientos, dbIntervenciones,
           countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
           sortInventarioOrder, sortMovimientosOrder, sortHistorialOrder, sortAceitesOrder,
-          resetFiltrosInventario, filtrarYIrAInventario, verDetallePorAfiString, getEstadoText, getBadgeClass,
+          resetFiltrosInventario, limpiarFiltrosHistorial, limpiarFiltrosMovimientos,
+          filtrarYIrAInventario, verDetallePorAfiString, getEstadoText, getBadgeClass,
           filteredEquipos, filteredMovimientos, filteredIntervenciones, filteredAceitesRecords,
           listaTiposAceitesDisponibles, sumaTotalCantidadAceites, costoTotalAceitesFiltrados, exportarCSV,
           importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
@@ -2016,7 +2086,7 @@
           showDetalleAfiModal, equipoDetalle, verDetalleCompletoAFI,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion,
           agregarFilaAceiteForm, eliminarFilaAceiteForm, guardarMantencionForm,
-          get3Horometros, calcular3Horometros, getHorometroCardBgClass, getPrediccionStatusBadge, login, logout
+          get3Horometros, calcular3Horometros, getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts
         };
       }
     }).mount('#app');
