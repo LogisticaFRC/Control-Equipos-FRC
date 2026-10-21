@@ -272,7 +272,7 @@
                     {{ getEstadoText(e.disponibilidad) }}
                   </span>
                   <label v-if="isAdmin" class="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg text-xs cursor-pointer shadow flex items-center gap-1">
-                    <i class="fa-solid fa-camera"></i> <span>Subir Imagen</span>
+                    <i class="fa-solid fa-camera"></i> <span>Subir Foto</span>
                     <input type="file" @change="uploadFotoEquipo($event, e)" accept="image/*" class="hidden">
                   </label>
                 </div>
@@ -298,7 +298,7 @@
 
                   <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.afi)]">
                     <div class="flex justify-between items-center border-b pb-1.5 font-bold">
-                      <span><i class="fa-solid fa-gauge-high text-amber-600"></i> Horómetros:</span>
+                      <span><i class="fa-solid fa-gauge-high text-amber-600"></i> Control de Horómetros:</span>
                       <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', getPrediccionStatusBadge(e.afi)]">
                         {{ get3Horometros(e.afi).estadoTexto }}
                       </span>
@@ -309,13 +309,16 @@
                         <strong class="font-mono text-slate-800">{{ get3Horometros(e.afi).hOficial }}h</strong>
                       </div>
                       <div class="bg-white/80 p-1.5 rounded border">
-                        <span class="text-slate-500 font-bold block">APROX</span>
+                        <span class="text-slate-500 font-bold block">APROX (HOY)</span>
                         <strong class="font-mono text-blue-700">{{ get3Horometros(e.afi).hAprox }}h</strong>
                       </div>
                       <div class="bg-white/80 p-1.5 rounded border">
                         <span class="text-slate-500 font-bold block">TARGET</span>
                         <strong class="font-mono text-emerald-700">{{ get3Horometros(e.afi).hTarget }}h</strong>
                       </div>
+                    </div>
+                    <div class="text-[11px] font-medium text-slate-700 pt-1 text-center bg-white/60 p-1 rounded">
+                      <i class="fa-solid fa-calendar-days text-amber-600 mr-1"></i> Fecha aprox. mantención: <strong>{{ get3Horometros(e.afi).fechaEstimada }}</strong>
                     </div>
                   </div>
                 </div>
@@ -532,7 +535,7 @@
                     <td class="p-2 font-bold text-emerald-700">${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
                     <td class="p-2 font-mono">{{ i.numeroOC || '-' }}</td>
                     <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
-                    <td class="p-2 font-bold text-amber-800 bg-amber-50">{{ i.aceites }}</td>
+                    <td class="p-2 text-amber-300 font-bold bg-amber-50">{{ i.aceites }}</td>
                     <td class="p-2 text-center">
                       <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1">
                         <i class="fa-solid fa-link"></i> Ver Drive
@@ -949,10 +952,10 @@
           <div class="p-6 overflow-y-auto space-y-6 flex-grow">
             <div class="bg-slate-900 text-white p-4 rounded-xl space-y-3 shadow-inner">
               <div class="flex justify-between items-center border-b border-slate-700 pb-2 font-bold text-xs">
-                <span><i class="fa-solid fa-gauge-high text-amber-400 mr-1.5"></i> Control de los 3 Horómetros</span>
+                <span><i class="fa-solid fa-gauge-high text-amber-400 mr-1.5"></i> Control de los Horómetros y Proyección</span>
                 <span class="bg-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold">{{ calcular3Horometros(equipoDetalle.afi).estadoTexto }}</span>
               </div>
-              <div class="grid grid-cols-3 gap-2 text-center text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-center text-xs">
                 <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
                   <span class="text-slate-400 block text-[10px] uppercase font-semibold">Oficial</span>
                   <strong class="font-mono text-white text-sm">{{ calcular3Horometros(equipoDetalle.afi).hOficial }} hrs</strong>
@@ -964,6 +967,10 @@
                 <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
                   <span class="text-slate-400 block text-[10px] uppercase font-semibold">Target (Mant)</span>
                   <strong class="font-mono text-emerald-300 text-sm">{{ calcular3Horometros(equipoDetalle.afi).hTarget }} hrs</strong>
+                </div>
+                <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
+                  <span class="text-slate-400 block text-[10px] uppercase font-semibold">Fecha Estimada</span>
+                  <strong class="font-mono text-amber-300 text-xs">{{ calcular3Horometros(equipoDetalle.afi).fechaEstimada }}</strong>
                 </div>
               </div>
             </div>
@@ -1112,7 +1119,7 @@
             const fotoBase64 = evt.target.result;
             item.foto = fotoBase64;
             const { error } = await supabaseClient.from('BD_INVENTARIO').update({ foto: fotoBase64 }).eq('id', item.id);
-            if (!error) alert("¡Foto guardada en Supabase con éxito!");
+            if (!error) alert("¡Foto guardada en Supabase con éxito y disponible para todos!");
             else alert("Error al guardar la foto.");
           };
           reader.readAsDataURL(file);
@@ -1199,9 +1206,19 @@
           let str = String(val).trim();
           if (str.includes('T')) str = str.split('T')[0];
           if (str.includes(' ')) str = str.split(' ')[0];
+          
           if (str.includes('-')) {
             const parts = str.split('-');
-            if (parts[0].length === 2 && parts[2].length === 4) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+            if (parts[0].length === 4) {
+              return new Date(`${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}T00:00:00`).getTime();
+            } else if (parts[2].length === 4) {
+              return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
+            }
+          } else if (str.includes('/')) {
+            const parts = str.split('/');
+            if (parts[2].length === 4) {
+              return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
+            }
           }
           const d = new Date(str);
           return isNaN(d.getTime()) ? 0 : d.getTime();
@@ -1230,44 +1247,28 @@
 
         const formatIsoDateForSupabase = (val) => {
           if (val === null || val === undefined || val === '') return null;
-
           if (val instanceof Date) {
             if (isNaN(val.getTime())) return null;
-            const yyyy = val.getFullYear();
-            const mm = String(val.getMonth() + 1).padStart(2, '0');
-            const dd = String(val.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
+            return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
           }
-
           let strVal = String(val).trim();
-          if (strVal === "" || strVal === "-" || strVal === "null" || strVal === "undefined" || strVal === "N/A") {
-            return null;
-          }
+          if (strVal === "" || strVal === "-" || strVal === "null" || strVal === "undefined" || strVal === "N/A") return null;
 
           if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/') && !strVal.includes(' '))) {
             const num = Number(val);
             if (num > 20000 && num < 80000) {
               const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
-              const yyyy = dateObj.getUTCFullYear();
-              const mm = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-              const dd = String(dateObj.getUTCDate()).padStart(2, '0');
-              return `${yyyy}-${mm}-${dd}`;
+              return `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth() + 1).padStart(2, '0')}-${String(dateObj.getUTCDate()).padStart(2, '0')}`;
             }
           }
 
           if (strVal.includes('T')) strVal = strVal.split('T')[0];
-          if (strVal.includes(' ')) {
-            const spaceParts = strVal.split(' ');
-            if (spaceParts[0].includes('-') || spaceParts[0].includes('/')) {
-              strVal = spaceParts[0];
-            }
-          }
+          if (strVal.includes(' ')) strVal = strVal.split(' ')[0];
 
           if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(strVal)) {
             const parts = strVal.split(/[-/]/);
             return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
           }
-
           if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
             const parts = strVal.split(/[-/]/);
             let p1 = parseInt(parts[0], 10);
@@ -1279,27 +1280,6 @@
             else { day = p1; month = p2; }
             return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           }
-
-          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{2}$/.test(strVal)) {
-            const parts = strVal.split(/[-/]/);
-            let p1 = parseInt(parts[0], 10);
-            let p2 = parseInt(parts[1], 10);
-            let year = "20" + parts[2];
-            let month, day;
-            if (p1 > 12) { day = p1; month = p2; }
-            else if (p2 > 12) { month = p1; day = p2; }
-            else { day = p1; month = p2; }
-            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          }
-
-          const dParsed = new Date(strVal);
-          if (!isNaN(dParsed.getTime())) {
-            const yyyy = dParsed.getFullYear();
-            const mm = String(dParsed.getMonth() + 1).padStart(2, '0');
-            const dd = String(dParsed.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
-          }
-
           return null;
         };
 
@@ -1326,10 +1306,7 @@
           return isNaN(n) ? null : n;
         };
 
-        const parseStr = (val) => {
-          if (val === null || val === undefined) return "";
-          return String(val).trim();
-        };
+        const parseStr = (val) => (val === null || val === undefined) ? "" : String(val).trim();
 
         const getMecanicosText = (item) => {
           const list = [item.mec1, item.mec2, item.mec3, item.mec4].filter(m => m && String(m).trim() !== "" && String(m).trim() !== "-");
@@ -1438,6 +1415,12 @@
           const hAprox = hOficial + (diasDesdeUltima * rateHrsDia);
           const hTarget = hOficial + freq;
           const horasFaltantes = hTarget - hAprox;
+
+          let diasFaltantes = rateHrsDia > 0 ? Math.ceil(horasFaltantes / rateHrsDia) : 30;
+          const fechaEst = new Date();
+          fechaEst.setDate(hoy.getDate() + diasFaltantes);
+          const fechaEstimadaStr = fechaEst.toISOString().substring(0, 10);
+
           let estadoTexto = "OPERATIVO";
           if (horasFaltantes <= 0) estadoTexto = "¡PASADO!";
           else if (horasFaltantes <= 50) estadoTexto = "PRÓXIMO";
@@ -1447,6 +1430,7 @@
             hAprox: Math.round(hAprox * 10) / 10,
             hTarget: Math.round(hTarget),
             horasFaltantes: Math.round(horasFaltantes * 10) / 10,
+            fechaEstimada: fechaEstimadaStr,
             estadoTexto
           };
         };
@@ -1521,7 +1505,6 @@
           }
         };
 
-        // FUNCIÓN DE PAGINACIÓN INFINITA PARA DESCARGAR TODOS LOS REGISTROS (> 1000)
         const fetchAllRowsSupabase = async (tableName) => {
           let allRows = [];
           let page = 0;
@@ -1531,11 +1514,7 @@
           while (keepFetching) {
             const from = page * pageSize;
             const to = from + pageSize - 1;
-
-            const { data, error } = await supabaseClient
-              .from(tableName)
-              .select('*')
-              .range(from, to);
+            const { data, error } = await supabaseClient.from(tableName).select('*').range(from, to);
 
             if (error) {
               console.error(`Error consultando ${tableName}:`, error);
@@ -1544,11 +1523,8 @@
 
             if (data && data.length > 0) {
               allRows = allRows.concat(data);
-              if (data.length < pageSize) {
-                keepFetching = false;
-              } else {
-                page++;
-              }
+              if (data.length < pageSize) keepFetching = false;
+              else page++;
             } else {
               keepFetching = false;
             }
@@ -1558,7 +1534,6 @@
 
         const cargarDatosDesdeSupabase = async () => {
           try {
-            // Carga de Equipos
             const eqData = await fetchAllRowsSupabase('BD_INVENTARIO');
             if (eqData && eqData.length > 0) {
               dbEquipos.value = eqData.map(item => ({
@@ -1576,7 +1551,6 @@
               }));
             }
 
-            // Carga de Movimientos
             const movData = await fetchAllRowsSupabase('BD_MOVIMIENTOS');
             if (movData && movData.length > 0) {
               dbMovimientos.value = movData.map(item => ({
@@ -1591,7 +1565,6 @@
               }));
             }
 
-            // Carga de Historial Completo
             const intData = await fetchAllRowsSupabase('BD_HISTORIAL');
             if (intData && intData.length > 0) {
               const mapaUnicos = new Set();
@@ -1602,8 +1575,6 @@
                 const afiFmt = String(item.afi || '').trim();
                 const horoFmt = Number(item.horometro || 0);
                 const descFmt = String(item.descripcion || '').trim();
-
-                // Clave para evitar contar duplicados si se subieron repetidos
                 const claveUnica = `${afiFmt}_${fechaFmt}_${horoFmt}_${descFmt}`;
 
                 if (!mapaUnicos.has(claveUnica)) {
