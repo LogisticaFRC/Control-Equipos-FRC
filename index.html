@@ -593,9 +593,9 @@
           <div class="flex items-center justify-between border-b pb-3">
             <div>
               <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-users-gear text-amber-600"></i> Gestión de Usuarios del Sistema
+                <i class="fa-solid fa-users-gear text-amber-600"></i> Gestión de Usuarios del Sistema (En la Nube)
               </h3>
-              <p class="text-xs text-slate-500">Crea nuevos usuarios. Los usuarios de rol "Lectura" pueden ver todas las hojas pero no modificar datos.</p>
+              <p class="text-xs text-slate-500">Crea nuevos usuarios guardados en Supabase para ingresar desde cualquier equipo.</p>
             </div>
             <span v-if="!isAdmin" class="text-xs bg-rose-100 text-rose-800 font-bold px-3 py-1 rounded">Requiere Sesión Admin</span>
           </div>
@@ -657,7 +657,7 @@
           </div>
         </div>
 
-        <!-- PERSONALIZACIÓN DE DISEÑO (SOLO ADMIN) -->
+        <!-- PERSONALIZACIÓN DE DISEÑO -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
           <div class="flex items-center justify-between border-b pb-3">
             <div>
@@ -729,7 +729,7 @@
 
     </main>
 
-    <!-- FORMULARIO MODAL: AGREGAR / EDITAR MANTENCIÓN CON SELECTOR DE ACEITES -->
+    <!-- FORMULARIO MODAL: AGREGAR / EDITAR MANTENCIÓN -->
     <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
         
@@ -757,15 +757,15 @@
                 </select>
               </div>
               <div>
-                <label class="block font-bold mb-1">Fecha (Col B)</label>
+                <label class="block font-bold mb-1">Fecha</label>
                 <input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white">
               </div>
               <div>
-                <label class="block font-bold mb-1">Lugar (Col D)</label>
+                <label class="block font-bold mb-1">Lugar</label>
                 <input type="text" v-model="formMant.lugar" placeholder="Ej: Planta Tierras Blancas" class="w-full p-2 border rounded-lg bg-white">
               </div>
               <div>
-                <label class="block font-bold mb-1">Horómetro (Col I)</label>
+                <label class="block font-bold mb-1">Horómetro</label>
                 <input type="number" step="any" v-model="formMant.horometro" placeholder="Ej: 1250" class="w-full p-2 border rounded-lg bg-white font-mono font-bold">
               </div>
             </div>
@@ -776,14 +776,14 @@
             <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-sliders text-blue-600"></i> Clasificación Técnica</h4>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label class="block font-bold mb-1">Causa (Col F)</label>
+                <label class="block font-bold mb-1">Causa</label>
                 <select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold">
                   <option value="">-- Seleccionar Causa --</option>
                   <option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option>
                 </select>
               </div>
               <div>
-                <label class="block font-bold mb-1">Tipo Mantención (Col G)</label>
+                <label class="block font-bold mb-1">Tipo Mantención</label>
                 <select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white">
                   <option value="">-- Seleccionar Tipo --</option>
                   <option value="PREVENTIVA">PREVENTIVA</option>
@@ -792,7 +792,7 @@
                 </select>
               </div>
               <div>
-                <label class="block font-bold mb-1">Tipo en Horas Mantención (Col H)</label>
+                <label class="block font-bold mb-1">Tipo en Horas Mantención</label>
                 <input type="text" v-model="formMant.tipoHorasMant" placeholder="Ej: 250, 500, 1000..." class="w-full p-2 border rounded-lg bg-white font-bold text-amber-800">
               </div>
             </div>
@@ -802,14 +802,14 @@
           <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
             <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-gear text-emerald-600"></i> Personal & Horarios</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              <div><label class="block font-bold mb-1">Mecánico 1 (Col J)</label><input type="text" v-model="formMant.mec1" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Mecánico 2 (Col K)</label><input type="text" v-model="formMant.mec2" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Mecánico 3 (Col L)</label><input type="text" v-model="formMant.mec3" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Mecánico 4 (Col M)</label><input type="text" v-model="formMant.mec4" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" class="w-full p-2 border rounded-lg bg-white"></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t">
-              <div><label class="block font-bold mb-1">Hora Inicio (Col Q)</label><input type="time" v-model="formMant.horaInicio" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Hora Término (Col R)</label><input type="time" v-model="formMant.horaTermino" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold mb-1">Hora Inicio</label><input type="time" v-model="formMant.horaInicio" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold mb-1">Hora Término</label><input type="time" v-model="formMant.horaTermino" class="w-full p-2 border rounded-lg bg-white"></div>
               <div>
                 <label class="block font-bold mb-1">Total Horas (Calculado)</label>
                 <div class="p-2 border rounded-lg bg-amber-50 font-bold text-amber-900 font-mono text-center">
@@ -819,24 +819,21 @@
             </div>
           </div>
 
-          <!-- SECCIÓN 4: ACEITES Y CANTIDADES CON OPCIONES DE SELECCIÓN Y TEXTO -->
+          <!-- SECCIÓN 4: ACEITES Y CANTIDADES -->
           <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
             <div class="flex justify-between items-center">
               <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5">
-                <i class="fa-solid fa-oil-can text-amber-600"></i> Aceites & Insumos Consumidos (Col AC - AV)
+                <i class="fa-solid fa-oil-can text-amber-600"></i> Aceites & Insumos Consumidos
               </h4>
               <button @click="agregarFilaAceiteForm" class="bg-amber-100 hover:bg-amber-200 text-amber-900 px-2.5 py-1 rounded font-bold text-[11px] flex items-center gap-1">
                 <i class="fa-solid fa-plus"></i> Añadir Insumo
               </button>
             </div>
             <div v-for="(ac, idx) in formMant.aceiteDetallesArray" :key="idx" class="flex flex-wrap items-center gap-2">
-              
-              <!-- SELECTOR CON DATALIST DE LOS 20 ACEITES EXACTOS -->
               <input type="text" v-model="ac.nombre" list="opcionesAceites" placeholder="Selecciona o escribe el aceite/insumo..." class="flex-grow p-2 border rounded-lg bg-white font-bold text-slate-800">
               <datalist id="opcionesAceites">
                 <option v-for="opc in listaAceitesEstandar" :key="opc" :value="opc"></option>
               </datalist>
-
               <input type="number" step="any" v-model="ac.cantidad" placeholder="Litros / Cant." class="w-32 p-2 border rounded-lg bg-white font-mono font-bold text-amber-900">
               <button @click="eliminarFilaAceiteForm(idx)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-2 rounded-lg" title="Eliminar fila"><i class="fa-solid fa-trash"></i></button>
             </div>
@@ -846,15 +843,15 @@
           <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
             <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar text-violet-600"></i> Costos, Órdenes & Adjuntos</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              <div><label class="block font-bold mb-1">Costo ($ Col Z)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-bold text-emerald-700"></div>
-              <div><label class="block font-bold mb-1">N° OC (Col AA)</label><input type="text" v-model="formMant.numeroOC" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">N° OT (Col AB)</label><input type="text" v-model="formMant.numeroOT" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Empresa Arriendo (Col W)</label><input type="text" v-model="formMant.empresaArriendo" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-bold text-emerald-700"></div>
+              <div><label class="block font-bold mb-1">N° OC</label><input type="text" v-model="formMant.numeroOC" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold mb-1">N° OT</label><input type="text" v-model="formMant.numeroOT" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold mb-1">Empresa Arriendo</label><input type="text" v-model="formMant.empresaArriendo" class="w-full p-2 border rounded-lg bg-white"></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-              <div><label class="block font-bold mb-1">Causa Detallada (Col T)</label><textarea v-model="formMant.causaDetallada" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
-              <div><label class="block font-bold mb-1">Descripción (Col U)</label><textarea v-model="formMant.descripcion" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
-              <div><label class="block font-bold mb-1">Interferencia (Col V)</label><textarea v-model="formMant.interferencia" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
+              <div><label class="block font-bold mb-1">Causa Detallada</label><textarea v-model="formMant.causaDetallada" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
+              <div><label class="block font-bold mb-1">Descripción</label><textarea v-model="formMant.descripcion" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
+              <div><label class="block font-bold mb-1">Interferencia</label><textarea v-model="formMant.interferencia" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
             </div>
             <div class="pt-2 border-t">
               <label class="block font-bold mb-1">Adjuntar Documento / Reporte (PDF, Imagen, etc.)</label>
@@ -1025,10 +1022,7 @@
         const authError = ref(false);
         const currentTab = ref("dashboard");
 
-        const dbUsuarios = ref([
-          { usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística" }
-        ]);
-
+        const dbUsuarios = ref([]);
         const nuevoUsuario = ref({ usuario: "", clave: "", rol: "lectura" });
 
         const showDetalleAfiModal = ref(false);
@@ -1037,20 +1031,10 @@
         const showFormMantencionModal = ref(false);
         const isEditingMantencion = ref(false);
         const formMant = ref({
-          id: null,
-          afi: "",
-          fecha: "",
-          lugar: "",
-          causa: "",
-          tipoMant: "",
-          tipoHorasMant: "",
-          horometro: "",
-          mec1: "", mec2: "", mec3: "", mec4: "",
-          horaInicio: "", horaTermino: "",
-          causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "",
-          costo: 0, numeroOC: "", numeroOT: "",
-          aceiteDetallesArray: [],
-          documentoAdjunto: null
+          id: null, afi: "", fecha: "", lugar: "", causa: "", tipoMant: "", tipoHorasMant: "", horometro: "",
+          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "",
+          descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+          aceiteDetallesArray: [], documentoAdjunto: null
         });
 
         const config = ref({
@@ -1069,7 +1053,7 @@
 
         const guardarConfiguracionPersonalizada = () => {
           localStorage.setItem('afi_config_custom', JSON.stringify(config.value));
-          alert("¡Configuración guardada y aplicada con éxito!");
+          alert("¡Configuración guardada!");
         };
 
         const subirNuevaFotoLogo = (e) => {
@@ -1087,9 +1071,12 @@
           const file = e.target.files[0];
           if (!file) return;
           const reader = new FileReader();
-          reader.onload = (evt) => {
-            item.foto = evt.target.result;
-            saveStorage();
+          reader.onload = async (evt) => {
+            const fotoBase64 = evt.target.result;
+            item.foto = fotoBase64;
+            const { error } = await supabaseClient.from('BD_INVENTARIO').update({ foto: fotoBase64 }).eq('id', item.id);
+            if (!error) alert("¡Foto guardada en la nube con éxito para todos!");
+            else alert("Error al guardar la foto en Supabase.");
           };
           reader.readAsDataURL(file);
         };
@@ -1174,9 +1161,7 @@
           if (str.includes('T')) str = str.split('T')[0];
           if (str.includes('-')) {
             const parts = str.split('-');
-            if (parts[0].length === 2 && parts[2].length === 4) {
-              return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
-            }
+            if (parts[0].length === 2 && parts[2].length === 4) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
           }
           const d = new Date(str);
           return isNaN(d.getTime()) ? 0 : d.getTime();
@@ -1196,9 +1181,7 @@
           return str || '-';
         };
 
-        const normalizeKey = (str) => {
-          return String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
-        };
+        const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 
         const getVal = (row, ...keys) => {
           if (!row) return "";
@@ -1284,9 +1267,7 @@
           return suma;
         });
 
-        const costoTotalAceitesFiltrados = computed(() => {
-          return filteredAceitesRecords.value.reduce((acc, curr) => acc + Number(curr.costo || 0), 0);
-        });
+        const costoTotalAceitesFiltrados = computed(() => filteredAceitesRecords.value.reduce((acc, curr) => acc + Number(curr.costo || 0), 0));
 
         const actualizarHorometrosDesdeHistorial = () => {
           dbEquipos.value.forEach(eq => {
@@ -1362,10 +1343,53 @@
           if (eq) verDetalleCompletoAFI(eq);
         };
 
+        // GESTIÓN DE USUARIOS EN LA NUBE
+        const cargarUsuariosDesdeSupabase = async () => {
+          try {
+            const { data } = await supabaseClient.from('usuarios').select('*');
+            if (data && data.length > 0) {
+              dbUsuarios.value = data;
+            } else {
+              dbUsuarios.value = [{ usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística FRC" }];
+            }
+          } catch (err) {
+            console.error("Error usuarios:", err);
+          }
+        };
+
+        const crearNuevoUsuario = async () => {
+          if (!nuevoUsuario.value.usuario || !nuevoUsuario.value.clave) return alert("Completa usuario y clave.");
+          const payload = {
+            usuario: nuevoUsuario.value.usuario.trim(),
+            clave: nuevoUsuario.value.clave.trim(),
+            rol: nuevoUsuario.value.rol,
+            nombre: nuevoUsuario.value.usuario.trim()
+          };
+          const { error } = await supabaseClient.from('usuarios').insert([payload]);
+          if (!error) {
+            await cargarUsuariosDesdeSupabase();
+            nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" };
+            alert("¡Usuario guardado en la nube con éxito!");
+          } else {
+            alert("Error al guardar usuario en Supabase.");
+          }
+        };
+
+        const eliminarUsuario = async (username) => {
+          if (confirm(`¿Eliminar al usuario ${username}?`)) {
+            const { error } = await supabaseClient.from('usuarios').delete().eq('usuario', username);
+            if (!error) {
+              await cargarUsuariosDesdeSupabase();
+              alert("Usuario eliminado correctamente.");
+            } else {
+              alert("Error al eliminar usuario.");
+            }
+          }
+        };
+
         // CARGAR DATOS DESDE SUPABASE
         const cargarDatosDesdeSupabase = async () => {
           try {
-            // 1. Inventario
             const { data: eqData } = await supabaseClient.from('BD_INVENTARIO').select('*');
             if (eqData && eqData.length > 0) {
               dbEquipos.value = eqData.map(item => ({
@@ -1383,7 +1407,6 @@
               }));
             }
 
-            // 2. Movimientos
             const { data: movData } = await supabaseClient.from('BD_MOVIMIENTOS').select('*');
             if (movData && movData.length > 0) {
               dbMovimientos.value = movData.map(item => ({
@@ -1398,7 +1421,6 @@
               }));
             }
 
-            // 3. Historial / Mantenciones
             const { data: intData } = await supabaseClient.from('BD_HISTORIAL').select('*');
             if (intData && intData.length > 0) {
               dbIntervenciones.value = intData.map(item => {
@@ -1449,31 +1471,7 @@
             actualizarHorometrosDesdeHistorial();
             renderCharts();
           } catch (err) {
-            console.error("Error al sincronizar con Supabase:", err);
-          }
-        };
-
-        const crearNuevoUsuario = () => {
-          if (!nuevoUsuario.value.usuario || !nuevoUsuario.value.clave) return alert("Completa usuario y clave.");
-          const existe = dbUsuarios.value.some(u => u.usuario.toLowerCase() === nuevoUsuario.value.usuario.toLowerCase());
-          if (existe) return alert("El nombre de usuario ya existe.");
-          
-          dbUsuarios.value.push({
-            usuario: nuevoUsuario.value.usuario.trim(),
-            clave: nuevoUsuario.value.clave.trim(),
-            rol: nuevoUsuario.value.rol,
-            nombre: nuevoUsuario.value.usuario.trim()
-          });
-
-          localStorage.setItem('afi_usuarios_db', JSON.stringify(dbUsuarios.value));
-          nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" };
-          alert("Usuario creado correctamente.");
-        };
-
-        const eliminarUsuario = (username) => {
-          if (confirm(`¿Eliminar al usuario ${username}?`)) {
-            dbUsuarios.value = dbUsuarios.value.filter(u => u.usuario !== username);
-            localStorage.setItem('afi_usuarios_db', JSON.stringify(dbUsuarios.value));
+            console.error("Error sincronización:", err);
           }
         };
 
@@ -1483,17 +1481,10 @@
             id: null,
             afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
             fecha: new Date().toISOString().substring(0, 10),
-            lugar: "",
-            causa: "MANTENCION",
-            tipoMant: "PREVENTIVA",
-            tipoHorasMant: "250 hrs",
-            horometro: "",
-            mec1: "", mec2: "", mec3: "", mec4: "",
-            horaInicio: "", horaTermino: "",
+            lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs",
+            horometro: "", mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "",
             causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "",
-            costo: 0, numeroOC: "", numeroOT: "",
-            aceiteDetallesArray: [],
-            documentoAdjunto: null
+            costo: 0, numeroOC: "", numeroOT: "", aceiteDetallesArray: [], documentoAdjunto: null
           };
           showFormMantencionModal.value = true;
         };
@@ -1514,34 +1505,20 @@
           }
         };
 
-        const agregarFilaAceiteForm = () => {
-          formMant.value.aceiteDetallesArray.push({ nombre: "", cantidad: "" });
-        };
-
-        const eliminarFilaAceiteForm = (index) => {
-          formMant.value.aceiteDetallesArray.splice(index, 1);
-        };
+        const agregarFilaAceiteForm = () => { formMant.value.aceiteDetallesArray.push({ nombre: "", cantidad: "" }); };
+        const eliminarFilaAceiteForm = (index) => { formMant.value.aceiteDetallesArray.splice(index, 1); };
 
         const subirAdjuntoMantencion = (e) => {
           const file = e.target.files[0];
           if (!file) return;
           const reader = new FileReader();
           reader.onload = (evt) => {
-            formMant.value.documentoAdjunto = {
-              nombre: file.name,
-              data: evt.target.result
-            };
+            formMant.value.documentoAdjunto = { nombre: file.name, data: evt.target.result };
           };
           reader.readAsDataURL(file);
         };
 
         const guardarMantencionForm = async () => {
-          const arrAceites = formMant.value.aceiteDetallesArray
-            .filter(a => a.nombre && String(a.nombre).trim() !== "")
-            .map(a => `${a.nombre.trim()}: ${a.cantidad || 1}`);
-          
-          const aceitesTexto = arrAceites.length > 0 ? arrAceites.join("; ") : "Sin consumo";
-
           const payload = {
             afi: formMant.value.afi,
             fecha: formMant.value.fecha,
@@ -1550,19 +1527,11 @@
             tipo_mantencion: formMant.value.tipoMant,
             tipo_horas_mantencion: formMant.value.tipoHorasMant,
             horometro: Number(formMant.value.horometro || 0),
-            mecanico_1: formMant.value.mec1,
-            mecanico_2: formMant.value.mec2,
-            mecanico_3: formMant.value.mec3,
-            mecanico_4: formMant.value.mec4,
-            hora_inicio: formMant.value.horaInicio,
-            hora_termino: formMant.value.horaTermino,
-            causa_intervencion: formMant.value.causaDetallada,
-            descripcion: formMant.value.descripcion,
-            interferencia: formMant.value.interferencia,
-            empresa: formMant.value.empresaArriendo,
-            costo: Number(formMant.value.costo || 0),
-            numero_oc: formMant.value.numeroOC,
-            numero_ot: formMant.value.numeroOT
+            mecanico_1: formMant.value.mec1, mecanico_2: formMant.value.mec2, mecanico_3: formMant.value.mec3, mecanico_4: formMant.value.mec4,
+            hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino,
+            causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
+            interferencia: formMant.value.interferencia, empresa: formMant.value.empresaArriendo,
+            costo: Number(formMant.value.costo || 0), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT
           };
 
           if (isEditingMantencion.value && formMant.value.id) {
@@ -1597,6 +1566,7 @@
           });
         };
 
+        // FUNCIÓN DE IMPORTACIÓN DE INVENTARIO ACTUALIZADA CON TODAS TUS COLUMNAS
         const importarInventarioFile = async (e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -1605,21 +1575,33 @@
             for (const item of rows) {
               const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
               if (rawAfi) {
+                const rawAnio = getVal(item, "año", "anio");
+                const parsedAnio = rawAnio && !isNaN(Number(rawAnio)) ? Number(rawAnio) : null;
+                const rawHor = getVal(item, "hor", "horometro", "horometroactual");
+
                 await supabaseClient.from('BD_INVENTARIO').upsert({
                   afi: String(rawAfi).trim(),
                   tipo: String(getVal(item, "tipo", "equipo") || "").trim(),
                   marca: String(getVal(item, "marca") || "").trim(),
                   modelo: String(getVal(item, "modelo") || "").trim(),
+                  n_serie: String(getVal(item, "n° serie", "n_serie", "serie") || "").trim(),
+                  anio: parsedAnio,
                   ubicacion: String(getVal(item, "ubicación", "ubicacion", "planta") || "").trim(),
+                  contrato: String(getVal(item, "contrato") || "").trim(),
+                  empresa: String(getVal(item, "empresa") || "").trim(),
                   disponibilidad: normalizarClave(getVal(item, "disponibilidad", "estado") || "Operativo"),
-                  anio: Number(getVal(item, "año", "anio") || 2023),
-                  horometroactual: Number(getVal(item, "horometro") || 0)
+                  gps: String(getVal(item, "gps") || "").trim(),
+                  imei_gps: String(getVal(item, "imei gps", "imei_gps") || "").trim(),
+                  horometroactual: Number(rawHor || 0)
                 }, { onConflict: 'afi' });
               }
             }
             await cargarDatosDesdeSupabase();
-            alert("Inventario importado a Supabase con éxito.");
-          } catch (err) { alert("Error al importar inventario."); }
+            alert("¡Inventario importado a Supabase con éxito!");
+          } catch (err) { 
+            console.error("Error al importar inventario:", err);
+            alert("Error al importar inventario. Revisa la consola F12."); 
+          }
         };
 
         const importarMovimientosFile = async (e) => {
@@ -1795,12 +1777,10 @@
         });
 
         onMounted(async () => {
-          const userSaved = localStorage.getItem('afi_usuarios_db');
-          if (userSaved) dbUsuarios.value = JSON.parse(userSaved);
-
           const cfgSaved = localStorage.getItem('afi_config_custom');
           if (cfgSaved) config.value = JSON.parse(cfgSaved);
 
+          await cargarUsuariosDesdeSupabase();
           await cargarDatosDesdeSupabase();
         });
 
@@ -1817,9 +1797,7 @@
           }
         };
 
-        const logout = () => {
-          usuarioActivo.value = null;
-        };
+        const logout = () => { usuarioActivo.value = null; };
 
         return {
           usuarioActivo, isAdmin, showAuthModal, loginUser, loginPass, authError, currentTab, switchTab,
