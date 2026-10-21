@@ -1201,86 +1201,101 @@
           currentTab.value = 'inventario';
         };
 
+        // BARRERA ANTI-CRASH PARA FECHAS
         const parseIsoDate = (val) => {
-          if (!val) return 0;
-          let str = String(val).trim();
-          if (str.includes('T')) str = str.split('T')[0];
-          if (str.includes(' ')) str = str.split(' ')[0];
-          
-          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(str)) {
-            const parts = str.split(/[-/]/);
-            return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
-          }
-
-          if (str.includes('-')) {
-            const parts = str.split('-');
-            if (parts[0].length === 4) {
-              return new Date(`${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}T00:00:00`).getTime();
-            } else if (parts[2].length === 4) {
-              return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
+          try {
+            if (!val || val === '-' || val === 'N/A') return 0;
+            let str = String(val).trim();
+            if (str.includes('T')) str = str.split('T')[0];
+            if (str.includes(' ')) str = str.split(' ')[0];
+            
+            if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(str)) {
+              const parts = str.split(/[-/]/);
+              if (parts.length >= 3) return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
             }
+
+            if (str.includes('-')) {
+              const parts = str.split('-');
+              if (parts.length >= 3) {
+                if (parts[0].length === 4) {
+                  return new Date(`${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}T00:00:00`).getTime();
+                } else if (parts[2].length === 4) {
+                  return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
+                }
+              }
+            }
+            const d = new Date(str);
+            return isNaN(d.getTime()) ? 0 : d.getTime();
+          } catch (e) {
+            return 0; // Si falla, pacíficamente retorna 0 sin romper Vue
           }
-          const d = new Date(str);
-          return isNaN(d.getTime()) ? 0 : d.getTime();
         };
 
         const formatExcelDate = (val) => {
-          if (val === null || val === undefined) return '-';
-          let str = String(val).trim();
-          if (str === "null" || str === "undefined" || str === "") return '-';
-          if (str.includes('T')) str = str.split('T')[0];
-          if (str.includes(' ')) str = str.split(' ')[0];
-          
-          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(str)) {
-            const parts = str.split(/[-/]/);
-            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-          }
-
-          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-          
-          if (typeof val === 'number' || (!isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
-            const num = Number(val);
-            if (num > 20000 && num < 80000) {
-              const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
-              const yyyy = dateObj.getUTCFullYear();
-              const mm = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-              const dd = String(dateObj.getUTCDate()).padStart(2, '0');
-              return `${yyyy}-${mm}-${dd}`;
+          try {
+            if (val === null || val === undefined) return '-';
+            let str = String(val).trim();
+            if (str === "null" || str === "undefined" || str === "") return '-';
+            if (str.includes('T')) str = str.split('T')[0];
+            if (str.includes(' ')) str = str.split(' ')[0];
+            
+            if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(str)) {
+              const parts = str.split(/[-/]/);
+              if (parts.length >= 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
             }
+
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+            
+            if (typeof val === 'number' || (!isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
+              const num = Number(val);
+              if (num > 20000 && num < 80000) {
+                const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
+                const yyyy = dateObj.getUTCFullYear();
+                const mm = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+                const dd = String(dateObj.getUTCDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+              }
+            }
+            return str || '-';
+          } catch(e) {
+            return '-';
           }
-          return str || '-';
         };
 
         const formatIsoDateForSupabase = (val) => {
-          if (val === null || val === undefined || val === '') return null;
-          if (val instanceof Date) {
-            if (isNaN(val.getTime())) return null;
-            return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
-          }
-          let strVal = String(val).trim();
-          if (strVal === "" || strVal === "-" || strVal === "null" || strVal === "undefined" || strVal === "N/A") return null;
-
-          if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/') && !strVal.includes(' '))) {
-            const num = Number(val);
-            if (num > 20000 && num < 80000) {
-              const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
-              return `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth() + 1).padStart(2, '0')}-${String(dateObj.getUTCDate()).padStart(2, '0')}`;
+          try {
+            if (val === null || val === undefined || val === '') return null;
+            if (val instanceof Date) {
+              if (isNaN(val.getTime())) return null;
+              return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
             }
-          }
+            let strVal = String(val).trim();
+            if (strVal === "" || strVal === "-" || strVal === "null" || strVal === "undefined" || strVal === "N/A") return null;
 
-          if (strVal.includes('T')) strVal = strVal.split('T')[0];
-          if (strVal.includes(' ')) strVal = strVal.split(' ')[0];
+            if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/') && !strVal.includes(' '))) {
+              const num = Number(val);
+              if (num > 20000 && num < 80000) {
+                const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
+                return `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth() + 1).padStart(2, '0')}-${String(dateObj.getUTCDate()).padStart(2, '0')}`;
+              }
+            }
 
-          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
-            const parts = strVal.split(/[-/]/);
-            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-          }
+            if (strVal.includes('T')) strVal = strVal.split('T')[0];
+            if (strVal.includes(' ')) strVal = strVal.split(' ')[0];
 
-          if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(strVal)) {
-            const parts = strVal.split(/[-/]/);
-            return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
+              const parts = strVal.split(/[-/]/);
+              if (parts.length >= 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+
+            if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(strVal)) {
+              const parts = strVal.split(/[-/]/);
+              if (parts.length >= 3) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            }
+            return null;
+          } catch(e) {
+            return null;
           }
-          return null;
         };
 
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
@@ -1350,19 +1365,25 @@
           return Array.from(setAceites);
         });
 
+        // BARRERA ANTI-CRASH PARA FILTROS
         const filteredAceitesRecords = computed(() => {
-          let arr = dbIntervenciones.value.filter(i => {
-            if (!i.aceites || i.aceites === "Sin consumo" || !i.aceiteDetallesArray || i.aceiteDetallesArray.length === 0) return false;
-            const matchAfi = filterOil.value.afi === "ALL" || String(i.afi).trim().toUpperCase() === String(filterOil.value.afi).trim().toUpperCase();
-            let matchTipoAceite = filterOil.value.tipoAceite === "ALL" || i.aceiteDetallesArray.some(ad => ad.nombre === filterOil.value.tipoAceite);
-            let matchDate = true;
-            const fechaStr = formatExcelDate(i.fecha);
-            if (filterOil.value.dateStart && fechaStr < filterOil.value.dateStart) matchDate = false;
-            if (filterOil.value.dateEnd && fechaStr > filterOil.value.dateEnd) matchDate = false;
-            return matchAfi && matchTipoAceite && matchDate;
-          });
-          arr.sort((a, b) => sortAceitesOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
-          return arr;
+          try {
+            let arr = dbIntervenciones.value.filter(i => {
+              if (!i.aceites || i.aceites === "Sin consumo" || !i.aceiteDetallesArray || i.aceiteDetallesArray.length === 0) return false;
+              const matchAfi = filterOil.value.afi === "ALL" || String(i.afi).trim().toUpperCase() === String(filterOil.value.afi).trim().toUpperCase();
+              let matchTipoAceite = filterOil.value.tipoAceite === "ALL" || i.aceiteDetallesArray.some(ad => ad.nombre === filterOil.value.tipoAceite);
+              let matchDate = true;
+              const fechaStr = formatExcelDate(i.fecha);
+              if (filterOil.value.dateStart && fechaStr < filterOil.value.dateStart) matchDate = false;
+              if (filterOil.value.dateEnd && fechaStr > filterOil.value.dateEnd) matchDate = false;
+              return matchAfi && matchTipoAceite && matchDate;
+            });
+            arr.sort((a, b) => sortAceitesOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
+            return arr;
+          } catch(err) {
+            console.error("Error filtro aceites:", err);
+            return [];
+          }
         });
 
         const sumaTotalCantidadAceites = computed(() => {
@@ -1392,62 +1413,61 @@
         };
 
         const calcular3Horometros = (afi) => {
-          const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(afi).trim().toUpperCase());
-          const freq = Number(eq ? eq.frecuenciaMantencion : 250) || 250;
-          const hist = dbIntervenciones.value
-            .filter(i => String(i.afi).trim().toUpperCase() === String(afi).trim().toUpperCase() && Number(i.horometro) > 0 && i.fecha)
-            .sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
-
-          let hOficial = Number(eq ? eq.horometroActual : 0) || 0;
-          let dUltima = new Date();
-          if (hist.length > 0) {
-            hOficial = Number(hist[hist.length - 1].horometro) || hOficial;
-            dUltima = new Date(parseIsoDate(hist[hist.length - 1].fecha));
-          }
-          
-          const hOficialVal = Number(hOficial) || 0;
-          const hoy = new Date();
-          const diasDesdeUltima = Math.max(0, Math.floor((hoy - dUltima) / (1000 * 60 * 60 * 24)));
-          
-          let rateHrsDia = 0;
-          if (hist.length >= 2) {
-            const deltaH = Number(hist[hist.length - 1].horometro) - Number(hist[hist.length - 2].horometro);
-            const diasEntre = Math.max(1, Math.floor((parseIsoDate(hist[hist.length - 1].fecha) - parseIsoDate(hist[hist.length - 2].fecha)) / (1000 * 60 * 60 * 24)));
-            if (deltaH > 0) rateHrsDia = deltaH / diasEntre;
-          }
-          
-          const hAprox = hOficialVal + (diasDesdeUltima * rateHrsDia);
-          const hTarget = hOficialVal + freq;
-          const horasFaltantes = hTarget - hAprox;
-
-          let diasFaltantes = rateHrsDia > 0 ? Math.ceil(horasFaltantes / rateHrsDia) : 30;
-          
-          // PREVENCIÓN DE CRASH (Protección Vue.js si el cálculo falla o da infinito)
-          if (!isFinite(diasFaltantes) || diasFaltantes > 3650) diasFaltantes = 3650; 
-          if (diasFaltantes < -3650) diasFaltantes = -3650;
-
-          let fechaEstimadaStr = "-";
           try {
+            const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(afi).trim().toUpperCase());
+            const freq = Number(eq ? eq.frecuenciaMantencion : 250) || 250;
+            const hist = dbIntervenciones.value
+              .filter(i => String(i.afi).trim().toUpperCase() === String(afi).trim().toUpperCase() && Number(i.horometro) > 0 && i.fecha)
+              .sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
+
+            let hOficial = Number(eq ? eq.horometroActual : 0) || 0;
+            let dUltima = new Date();
+            if (hist.length > 0) {
+              hOficial = Number(hist[hist.length - 1].horometro) || hOficial;
+              dUltima = new Date(parseIsoDate(hist[hist.length - 1].fecha));
+            }
+            
+            const hOficialVal = Number(hOficial) || 0;
+            const hoy = new Date();
+            const diasDesdeUltima = Math.max(0, Math.floor((hoy - dUltima) / (1000 * 60 * 60 * 24)));
+            
+            let rateHrsDia = 0;
+            if (hist.length >= 2) {
+              const deltaH = Number(hist[hist.length - 1].horometro) - Number(hist[hist.length - 2].horometro);
+              const diasEntre = Math.max(1, Math.floor((parseIsoDate(hist[hist.length - 1].fecha) - parseIsoDate(hist[hist.length - 2].fecha)) / (1000 * 60 * 60 * 24)));
+              if (deltaH > 0) rateHrsDia = deltaH / diasEntre;
+            }
+            
+            const hAprox = hOficialVal + (diasDesdeUltima * rateHrsDia);
+            const hTarget = hOficialVal + freq;
+            const horasFaltantes = hTarget - hAprox;
+
+            let diasFaltantes = rateHrsDia > 0 ? Math.ceil(horasFaltantes / rateHrsDia) : 30;
+            
+            // PREVENCIÓN DE CRASH SI DA INFINITO
+            if (!isFinite(diasFaltantes) || diasFaltantes > 3650) diasFaltantes = 3650; 
+            if (diasFaltantes < -3650) diasFaltantes = -3650;
+
+            let fechaEstimadaStr = "-";
             const fechaEst = new Date();
             fechaEst.setDate(hoy.getDate() + diasFaltantes);
             fechaEstimadaStr = fechaEst.toISOString().substring(0, 10);
+
+            let estadoTexto = "OPERATIVO";
+            if (horasFaltantes <= 0) estadoTexto = "¡PASADO!";
+            else if (horasFaltantes <= 50) estadoTexto = "PRÓXIMO";
+
+            return {
+              hOficial: Math.round(hOficialVal),
+              hAprox: Math.round(hAprox * 10) / 10,
+              hTarget: Math.round(hTarget),
+              horasFaltantes: Math.round(horasFaltantes * 10) / 10,
+              fechaEstimada: fechaEstimadaStr,
+              estadoTexto
+            };
           } catch(err) {
-            console.error("Error fecha estimada", err);
-            fechaEstimadaStr = "N/A";
+            return { hOficial: 0, hAprox: 0, hTarget: 0, horasFaltantes: 0, fechaEstimada: "-", estadoTexto: "OK" };
           }
-
-          let estadoTexto = "OPERATIVO";
-          if (horasFaltantes <= 0) estadoTexto = "¡PASADO!";
-          else if (horasFaltantes <= 50) estadoTexto = "PRÓXIMO";
-
-          return {
-            hOficial: Math.round(hOficialVal),
-            hAprox: Math.round(hAprox * 10) / 10,
-            hTarget: Math.round(hTarget),
-            horasFaltantes: Math.round(horasFaltantes * 10) / 10,
-            fechaEstimada: fechaEstimadaStr,
-            estadoTexto
-          };
         };
 
         const get3Horometros = (afi) => calcular3Horometros(afi);
@@ -1607,7 +1627,6 @@
                   }
                 });
 
-                // Carga del 100% de los registros, sin eliminar ninguno
                 listaProcesada.push({
                   id: item.id,
                   afi: afiFmt,
@@ -1961,66 +1980,82 @@
           { Metrica: "Disponibles", Valor: countEstado('Disponible') }
         ]);
 
+        // BARRERA ANTI-CRASH PARA FILTROS
         const filteredEquipos = computed(() => {
-          let arr = dbEquipos.value.filter(e => {
-            const matchSearch = !filterInv.value.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion].join(" ").toLowerCase().includes(filterInv.value.search.toLowerCase());
-            const matchUbi = !filterInv.value.ubicacion || String(e.ubicacion).toLowerCase().includes(filterInv.value.ubicacion.toLowerCase());
-            const matchEst = filterInv.value.estado === "ALL" || normalizarClave(e.disponibilidad) === normalizarClave(filterInv.value.estado);
-            const matchGps = filterInv.value.gps === "ALL" || (filterInv.value.gps === "Instalado" ? Boolean(e.gps) : !e.gps);
-            return matchSearch && matchUbi && matchEst && matchGps;
-          });
-          arr.sort((a, b) => sortInventarioOrder.value === 'desc' ? b.id - a.id : a.id - b.id);
-          return arr;
+          try {
+            let arr = dbEquipos.value.filter(e => {
+              const matchSearch = !filterInv.value.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion].join(" ").toLowerCase().includes(filterInv.value.search.toLowerCase());
+              const matchUbi = !filterInv.value.ubicacion || String(e.ubicacion).toLowerCase().includes(filterInv.value.ubicacion.toLowerCase());
+              const matchEst = filterInv.value.estado === "ALL" || normalizarClave(e.disponibilidad) === normalizarClave(filterInv.value.estado);
+              const matchGps = filterInv.value.gps === "ALL" || (filterInv.value.gps === "Instalado" ? Boolean(e.gps) : !e.gps);
+              return matchSearch && matchUbi && matchEst && matchGps;
+            });
+            arr.sort((a, b) => sortInventarioOrder.value === 'desc' ? b.id - a.id : a.id - b.id);
+            return arr;
+          } catch(err) {
+            return [];
+          }
         });
 
+        // BARRERA ANTI-CRASH PARA FILTROS
         const filteredMovimientos = computed(() => {
-          let arr = dbMovimientos.value.filter(m => {
-            if (filterMov.value.afi !== "ALL" && String(m.afi).trim().toUpperCase() !== String(filterMov.value.afi).trim().toUpperCase()) return false;
-            const fStr = formatExcelDate(m.fecha);
-            if (filterMov.value.dateStart && fStr < filterMov.value.dateStart) return false;
-            if (filterMov.value.dateEnd && fStr > filterMov.value.dateEnd) return false;
-            if (filterMov.value.queryText && filterMov.value.queryText.trim() !== "") {
-              const q = filterMov.value.queryText.trim().toLowerCase();
-              const matchAll = [m.afi, m.tipo, m.origen, m.destino, m.camion, m.conductor].join(" ").toLowerCase();
-              if (!matchAll.includes(q)) return false;
-            }
-            return true;
-          });
-          arr.sort((a, b) => sortMovimientosOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
-          return arr;
+          try {
+            let arr = dbMovimientos.value.filter(m => {
+              if (filterMov.value.afi !== "ALL" && String(m.afi).trim().toUpperCase() !== String(filterMov.value.afi).trim().toUpperCase()) return false;
+              const fStr = formatExcelDate(m.fecha);
+              if (filterMov.value.dateStart && fStr < filterMov.value.dateStart) return false;
+              if (filterMov.value.dateEnd && fStr > filterMov.value.dateEnd) return false;
+              if (filterMov.value.queryText && filterMov.value.queryText.trim() !== "") {
+                const q = filterMov.value.queryText.trim().toLowerCase();
+                const matchAll = [m.afi, m.tipo, m.origen, m.destino, m.camion, m.conductor].join(" ").toLowerCase();
+                if (!matchAll.includes(q)) return false;
+              }
+              return true;
+            });
+            arr.sort((a, b) => sortMovimientosOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
+            return arr;
+          } catch(err) {
+            return [];
+          }
         });
 
+        // BARRERA ANTI-CRASH PARA FILTROS
         const filteredIntervenciones = computed(() => {
-          let arr = dbIntervenciones.value.filter(i => {
-            if (filterInt.value.afi !== "ALL" && String(i.afi).trim().toUpperCase() !== String(filterInt.value.afi).trim().toUpperCase()) return false;
-            if (filterInt.value.tipoMant !== "ALL" && String(i.tipoMant).trim().toUpperCase() !== String(filterInt.value.tipoMant).trim().toUpperCase()) return false;
-            if (filterInt.value.causa !== "ALL" && String(i.causa).trim().toUpperCase() !== String(filterInt.value.causa).trim().toUpperCase()) return false;
-            
-            const fStr = formatExcelDate(i.fecha);
-            if (filterInt.value.dateStart && fStr < filterInt.value.dateStart) return false;
-            if (filterInt.value.dateEnd && fStr > filterInt.value.dateEnd) return false;
+          try {
+            let arr = dbIntervenciones.value.filter(i => {
+              if (filterInt.value.afi !== "ALL" && String(i.afi).trim().toUpperCase() !== String(filterInt.value.afi).trim().toUpperCase()) return false;
+              if (filterInt.value.tipoMant !== "ALL" && String(i.tipoMant).trim().toUpperCase() !== String(filterInt.value.tipoMant).trim().toUpperCase()) return false;
+              if (filterInt.value.causa !== "ALL" && String(i.causa).trim().toUpperCase() !== String(filterInt.value.causa).trim().toUpperCase()) return false;
+              
+              const fStr = formatExcelDate(i.fecha);
+              if (filterInt.value.dateStart && fStr < filterInt.value.dateStart) return false;
+              if (filterInt.value.dateEnd && fStr > filterInt.value.dateEnd) return false;
 
-            if (filterInt.value.mecText && filterInt.value.mecText.trim() !== "") {
-              const mecQuery = filterInt.value.mecText.trim().toLowerCase();
-              const mecs = getMecanicosText(i).toLowerCase();
-              if (!mecs.includes(mecQuery)) return false;
-            }
+              if (filterInt.value.mecText && filterInt.value.mecText.trim() !== "") {
+                const mecQuery = filterInt.value.mecText.trim().toLowerCase();
+                const mecs = getMecanicosText(i).toLowerCase();
+                if (!mecs.includes(mecQuery)) return false;
+              }
 
-            if (filterInt.value.searchQuery && filterInt.value.searchQuery.trim() !== "") {
-              const q = filterInt.value.searchQuery.trim().toLowerCase();
-              const matchAll = [
-                i.afi, i.equipo, i.lugar, i.causa, i.tipoMant, i.tipoHorasMant,
-                i.causaDetallada, i.descripcion, i.interferencia, i.empresaArriendo,
-                i.numeroOC, i.numeroOT, i.aceites, getMecanicosText(i)
-              ].join(" ").toLowerCase();
-              if (!matchAll.includes(q)) return false;
-            }
+              if (filterInt.value.searchQuery && filterInt.value.searchQuery.trim() !== "") {
+                const q = filterInt.value.searchQuery.trim().toLowerCase();
+                const matchAll = [
+                  i.afi, i.equipo, i.lugar, i.causa, i.tipoMant, i.tipoHorasMant,
+                  i.causaDetallada, i.descripcion, i.interferencia, i.empresaArriendo,
+                  i.numeroOC, i.numeroOT, i.aceites, getMecanicosText(i)
+                ].join(" ").toLowerCase();
+                if (!matchAll.includes(q)) return false;
+              }
 
-            return true;
-          });
+              return true;
+            });
 
-          arr.sort((a, b) => sortHistorialOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
-          return arr;
+            arr.sort((a, b) => sortHistorialOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
+            return arr;
+          } catch (err) {
+            console.error("Error filtrando historial:", err);
+            return [];
+          }
         });
 
         onMounted(async () => {
