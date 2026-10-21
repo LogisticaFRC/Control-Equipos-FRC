@@ -21,935 +21,362 @@
 
   <div id="app" class="flex-grow flex flex-col">
 
-    <!-- HEADER / NAVBAR -->
-    <header :style="headerStyle" class="text-white shadow-lg sticky top-0 z-40 transition-colors duration-300">
-      <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+    <!-- PANTALLA DE INGRESO / LOGIN (REQUIERE CREDENCIALES) -->
+    <div v-if="!usuarioActivo" class="min-h-screen flex items-center justify-center bg-slate-900 p-4 w-full flex-grow">
+      <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-md p-8 space-y-6 text-center">
         
-        <div class="flex items-center gap-3">
-          <div class="bg-white p-1 rounded-lg w-12 h-12 flex items-center justify-center overflow-hidden border border-slate-700 shadow-sm">
+        <div class="flex justify-center">
+          <div class="bg-slate-900 p-3 rounded-2xl w-28 h-28 flex items-center justify-center border border-slate-700 shadow-lg">
             <img :src="config.logo" alt="Logo Empresa" class="max-h-full max-w-full object-contain">
           </div>
-          <div>
-            <h1 class="font-bold text-lg leading-tight">{{ config.title }}</h1>
-            <p class="text-xs text-slate-300 opacity-90">{{ config.subtitle }}</p>
-          </div>
         </div>
 
-        <nav class="flex items-center gap-1.5 overflow-x-auto py-1">
-          <button @click="switchTab('dashboard')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'dashboard' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-            <i class="fa-solid fa-chart-line"></i> Dashboard
-          </button>
-          <button @click="switchTab('inventario')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'inventario' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-            <i class="fa-solid fa-boxes-stacked"></i> Inventario AFI ({{ dbEquipos.length }})
-          </button>
-          <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-            <i class="fa-solid fa-truck-ramp-box"></i> Movimientos
-          </button>
-          <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-            <i class="fa-solid fa-file-medical"></i> Hojas de Vida ({{ dbIntervenciones.length }})
-          </button>
-          <button @click="switchTab('aceites')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'aceites' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-            <i class="fa-solid fa-oil-can"></i> Control Aceites
-          </button>
-          <button @click="switchTab('configuracion')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'configuracion' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-            <i class="fa-solid fa-gear"></i> Config & Usuarios
-          </button>
-        </nav>
+        <div>
+          <h2 class="text-xl font-extrabold text-slate-800">{{ config.title }}</h2>
+          <p class="text-xs text-slate-500 mt-1 font-semibold">{{ config.subtitle }}</p>
+        </div>
 
-        <div class="flex items-center gap-3">
-          <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
-            <i class="fa-solid fa-plus-circle text-sm"></i> Agregar Mantención
-          </button>
-          <div class="text-right text-xs">
-            <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm">
-              <i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin)
-            </span>
-            <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700">
-              <i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo ? usuarioActivo.nombre : 'Invitado' }} (Lectura)
-            </span>
+        <form @submit.prevent="login" class="space-y-4 text-left text-xs">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">Usuario</label>
+            <input type="text" v-model="loginUser" placeholder="Ingresa tu usuario..." required class="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800">
           </div>
-          <button v-if="!usuarioActivo" @click="showAuthModal = true" :style="primaryBtnStyle" class="font-bold px-3 py-1.5 rounded text-xs transition flex items-center gap-1.5 shadow-md hover:brightness-110">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">Contraseña</label>
+            <input type="password" v-model="loginPass" placeholder="Ingresa tu contraseña..." required class="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800">
+          </div>
+          
+          <p v-if="authError" class="text-rose-600 font-bold text-center bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i> Usuario o contraseña incorrectos
+          </p>
+
+          <button type="submit" :style="primaryBtnStyle" class="w-full font-extrabold py-3.5 rounded-xl shadow-lg hover:brightness-110 transition flex items-center justify-center gap-2 text-sm">
             <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
           </button>
-          <button v-else @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded text-xs transition flex items-center gap-1.5 shadow">
-            <i class="fa-solid fa-right-from-bracket"></i> Salir
-          </button>
-        </div>
-      </div>
-    </header>
+        </form>
 
-    <!-- BANNER MODO LECTURA -->
-    <div v-if="!isAdmin" class="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2 text-xs text-center flex items-center justify-center gap-2">
-      <i class="fa-solid fa-circle-info text-amber-600"></i>
-      <span>Estás en <strong>Modo Lectura</strong>. Puedes explorar todas las pestañas y registros. Para modificar o registrar datos, <button @click="showAuthModal = true" class="underline font-bold text-amber-950">Inicia Sesión con una cuenta Admin</button>.</span>
+      </div>
     </div>
 
-    <!-- CONTENIDO PRINCIPAL -->
-    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+    <!-- SISTEMA PRINCIPAL (UNA VEZ AUTENTICADO) -->
+    <template v-else>
 
-      <!-- PESTAÑA 1: DASHBOARD -->
-      <section v-if="currentTab === 'dashboard'" class="space-y-6">
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
-          <div>
-            <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <i class="fa-solid fa-chart-pie text-emerald-600"></i> Dashboard de Control de Equipos y Estado Operativo
-            </h2>
-            <p class="text-xs text-slate-500">Haz clic en cualquiera de los bloques para filtrar y ver los equipos en el inventario.</p>
+      <!-- HEADER / NAVBAR -->
+      <header :style="headerStyle" class="text-white shadow-lg sticky top-0 z-40 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+          
+          <div class="flex items-center gap-3">
+            <div class="bg-white p-1 rounded-lg w-12 h-12 flex items-center justify-center overflow-hidden border border-slate-700 shadow-sm">
+              <img :src="config.logo" alt="Logo Empresa" class="max-h-full max-w-full object-contain">
+            </div>
+            <div>
+              <h1 class="font-bold text-lg leading-tight">{{ config.title }}</h1>
+              <p class="text-xs text-slate-300 opacity-90">{{ config.subtitle }}</p>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
-              <i class="fa-solid fa-file-excel"></i> Exportar KPIs (CSV)
+
+          <nav class="flex items-center gap-1.5 overflow-x-auto py-1">
+            <button @click="switchTab('dashboard')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'dashboard' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+              <i class="fa-solid fa-chart-line"></i> Dashboard
+            </button>
+            <button @click="switchTab('inventario')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'inventario' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+              <i class="fa-solid fa-boxes-stacked"></i> Inventario AFI ({{ dbEquipos.length }})
+            </button>
+            <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+              <i class="fa-solid fa-truck-ramp-box"></i> Movimientos
+            </button>
+            <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+              <i class="fa-solid fa-file-medical"></i> Hojas de Vida ({{ dbIntervenciones.length }})
+            </button>
+            <button @click="switchTab('aceites')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'aceites' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+              <i class="fa-solid fa-oil-can"></i> Control Aceites
+            </button>
+            <button @click="switchTab('configuracion')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5', currentTab === 'configuracion' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+              <i class="fa-solid fa-gear"></i> Config & Usuarios
+            </button>
+          </nav>
+
+          <div class="flex items-center gap-3">
+            <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
+              <i class="fa-solid fa-plus-circle text-sm"></i> Agregar Mantención
+            </button>
+            <div class="text-right text-xs">
+              <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm">
+                <i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin)
+              </span>
+              <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700">
+                <i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)
+              </span>
+            </div>
+            <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded text-xs transition flex items-center gap-1.5 shadow">
+              <i class="fa-solid fa-right-from-bracket"></i> Salir
             </button>
           </div>
         </div>
+      </header>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          <div @click="filtrarYIrAInventario('ALL')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer hover:border-slate-400 transition">
-            <div>
-              <p class="text-[10px] text-slate-500 font-bold uppercase">Total Flota</p>
-              <h3 class="text-xl font-bold text-slate-800">{{ dbEquipos.length }}</h3>
-            </div>
-            <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-monster"></i></div>
-          </div>
-          <div @click="filtrarYIrAInventario('Operativo')" class="bg-white p-3.5 rounded-xl shadow-sm border border-emerald-200 flex items-center justify-between cursor-pointer hover:border-emerald-500 transition">
-            <div>
-              <p class="text-[10px] text-slate-500 font-bold uppercase">Trabajando</p>
-              <h3 class="text-xl font-bold text-emerald-600">{{ countEstado('Operativo') }}</h3>
-            </div>
-            <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm"><i class="fa-solid fa-circle-check"></i></div>
-          </div>
-          <div @click="filtrarYIrAInventario('Disponible')" class="bg-white p-3.5 rounded-xl shadow-sm border border-sky-200 flex items-center justify-between cursor-pointer hover:border-sky-500 transition">
-            <div>
-              <p class="text-[10px] text-slate-500 font-bold uppercase">Disponible</p>
-              <h3 class="text-xl font-bold text-sky-600">{{ countEstado('Disponible') }}</h3>
-            </div>
-            <div class="w-8 h-8 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center text-sm"><i class="fa-solid fa-warehouse"></i></div>
-          </div>
-          <div @click="filtrarYIrAInventario('En Traslado')" class="bg-white p-3.5 rounded-xl shadow-sm border border-amber-200 flex items-center justify-between cursor-pointer hover:border-amber-500 transition">
-            <div>
-              <p class="text-[10px] text-slate-500 font-bold uppercase">En Traslado</p>
-              <h3 class="text-xl font-bold text-amber-600">{{ countEstado('En Traslado') }}</h3>
-            </div>
-            <div class="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-moving"></i></div>
-          </div>
-          <div @click="filtrarYIrAInventario('En Mantencion')" class="bg-white p-3.5 rounded-xl shadow-sm border border-rose-200 flex items-center justify-between cursor-pointer hover:border-rose-500 transition">
-            <div>
-              <p class="text-[10px] text-slate-500 font-bold uppercase">En Mantención</p>
-              <h3 class="text-xl font-bold text-rose-600">{{ countEstado('En Mantencion') }}</h3>
-            </div>
-            <div class="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-sm"><i class="fa-solid fa-wrench"></i></div>
-          </div>
-          <div @click="filtrarYIrAInventario('Fuera de Servicio')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-300 flex items-center justify-between cursor-pointer hover:border-slate-600 transition">
-            <div>
-              <p class="text-[10px] text-slate-500 font-bold uppercase">Fuera Servicio</p>
-              <h3 class="text-xl font-bold text-slate-700">{{ countEstado('Fuera de Servicio') }}</h3>
-            </div>
-            <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fa-solid fa-ban"></i></div>
-          </div>
-          <div @click="filtrarYIrAInventario('Venta')" class="bg-white p-3.5 rounded-xl shadow-sm border border-purple-200 flex items-center justify-between cursor-pointer hover:border-purple-500 transition">
-            <div>
-              <p class="text-[10px] text-slate-500 font-bold uppercase">En Venta</p>
-              <h3 class="text-xl font-bold text-purple-600">{{ countEstado('Venta') }}</h3>
-            </div>
-            <div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center text-sm"><i class="fa-solid fa-hand-holding-dollar"></i></div>
-          </div>
-        </div>
+      <!-- CONTENIDO PRINCIPAL -->
+      <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-            <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-emerald-600"></i> Estado Operativo</h3>
-            <div class="h-60 relative"><canvas id="chartEstado"></canvas></div>
-          </div>
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-            <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-column text-blue-600"></i> Mantenciones por Tipo</h3>
-            <div class="h-60 relative"><canvas id="chartTiposMant"></canvas></div>
-          </div>
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3 md:col-span-2 lg:col-span-1">
-            <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-amber-600"></i> Causas de Intervención</h3>
-            <div class="h-60 relative"><canvas id="chartCausas"></canvas></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- PESTAÑA 2: INVENTARIO AFI -->
-      <section v-if="currentTab === 'inventario'" class="space-y-4">
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Inventario General</h2>
-            <div class="flex flex-wrap items-center gap-2">
-              <label class="text-xs font-bold text-slate-700 ml-2">Orden:</label>
-              <select v-model="sortInventarioOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
-                <option value="desc">Más Recientes primero</option>
-                <option value="asc">Más Antiguos primero</option>
-              </select>
-              <button @click="resetFiltrosInventario" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Reset</button>
-              <button @click="exportarCSV(filteredEquipos, 'Inventario_AFI_Filtrado')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Buscar (AFI / Tipo / Marca)</label>
-              <input type="text" v-model="filterInv.search" placeholder="Ej: Generador..." class="w-full p-2 border border-slate-300 rounded-lg">
-            </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Ubicación</label>
-              <input type="text" v-model="filterInv.ubicacion" placeholder="Ej: Tierras Blancas" class="w-full p-2 border border-slate-300 rounded-lg">
-            </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Estado</label>
-              <select v-model="filterInv.estado" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
-                <option value="ALL">-- Todos --</option>
-                <option value="Operativo">Trabajando / Operativo</option>
-                <option value="Disponible">Disponible</option>
-                <option value="En Traslado">En Traslado</option>
-                <option value="En Mantencion">En Mantención</option>
-                <option value="Fuera de Servicio">Fuera de Servicio</option>
-                <option value="Venta">En Venta</option>
-              </select>
-            </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">GPS</label>
-              <select v-model="filterInv.gps" class="w-full p-2 border border-slate-300 rounded-lg">
-                <option value="ALL">-- Todos --</option>
-                <option value="Instalado">Instalado</option>
-                <option value="Sin GPS">Sin GPS</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div v-for="e in filteredEquipos" :key="e.id" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
-            <div>
-              <div class="relative h-44 bg-slate-900 group">
-                <img :src="e.foto || 'https://via.placeholder.com/300x180/0f172a/ffffff?text=' + e.afi" class="w-full h-full object-cover">
-                <span :class="['absolute top-2 right-2 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-md', getBadgeClass(e.disponibilidad)]">
-                  {{ getEstadoText(e.disponibilidad) }}
-                </span>
-                <label v-if="isAdmin" class="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg text-xs cursor-pointer shadow flex items-center gap-1">
-                  <i class="fa-solid fa-camera"></i> <span>Subir Imagen</span>
-                  <input type="file" @change="uploadFotoEquipo($event, e)" accept="image/*" class="hidden">
-                </label>
-              </div>
-              <div class="p-4 space-y-3">
-                <div class="flex justify-between items-start">
-                  <div>
-                    <span class="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">AFI: {{ e.afi }}</span>
-                    <h3 class="font-bold text-sm text-slate-800 mt-1">{{ e.tipo }}</h3>
-                  </div>
-                  <span class="text-xs text-slate-400 font-bold">{{ e.anio }}</span>
-                </div>
-                <div class="text-xs space-y-1 text-slate-600">
-                  <p><i class="fa-solid fa-industry w-4 text-slate-400"></i> <strong>Marca/Modelo:</strong> {{ e.marca }} {{ e.modelo }}</p>
-                  <p><i class="fa-solid fa-location-dot w-4 text-rose-500"></i> <strong>Ubicación:</strong> <span class="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{{ e.ubicacion }}</span></p>
-                  
-                  <p class="pt-1 border-t mt-1">
-                    <i class="fa-solid fa-clock-rotate-left w-4 text-amber-600"></i> 
-                    <strong>Mantención Programada:</strong> 
-                    <span class="font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-[11px] ml-1">
-                      {{ getTipoHorasMantencionAFI(e.afi) }}
-                    </span>
-                  </p>
-                </div>
-
-                <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.afi)]">
-                  <div class="flex justify-between items-center border-b pb-1.5 font-bold">
-                    <span><i class="fa-solid fa-gauge-high text-amber-600"></i> Horómetros:</span>
-                    <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', getPrediccionStatusBadge(e.afi)]">
-                      {{ get3Horometros(e.afi).estadoTexto }}
-                    </span>
-                  </div>
-                  <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
-                    <div class="bg-white/80 p-1.5 rounded border">
-                      <span class="text-slate-500 font-bold block">OFICIAL</span>
-                      <strong class="font-mono text-slate-800">{{ get3Horometros(e.afi).hOficial }}h</strong>
-                    </div>
-                    <div class="bg-white/80 p-1.5 rounded border">
-                      <span class="text-slate-500 font-bold block">APROX</span>
-                      <strong class="font-mono text-blue-700">{{ get3Horometros(e.afi).hAprox }}h</strong>
-                    </div>
-                    <div class="bg-white/80 p-1.5 rounded border">
-                      <span class="text-slate-500 font-bold block">TARGET</span>
-                      <strong class="font-mono text-emerald-700">{{ get3Horometros(e.afi).hTarget }}h</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="p-3 bg-slate-50 border-t flex items-center justify-between gap-2">
-              <button @click="verDetalleCompletoAFI(e)" class="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm">
-                <i class="fa-solid fa-layer-group text-amber-600"></i> Historial Completo
-              </button>
-              <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion(e.afi)" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow">
-                <i class="fa-solid fa-plus-circle"></i> + Mantención
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- PESTAÑA 3: MOVIMIENTOS -->
-      <section v-if="currentTab === 'movimientos'" class="space-y-4">
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-          <div class="flex flex-wrap justify-between items-center gap-3">
-            <div class="flex items-center gap-3">
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Movimientos</h2>
-              <div class="flex items-center gap-2">
-                <label class="text-xs font-bold text-slate-700">Orden:</label>
-                <select v-model="sortMovimientosOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
-                  <option value="desc">Más Recientes</option>
-                  <option value="asc">Más Antiguos</option>
-                </select>
-              </div>
-            </div>
-            <button @click="exportarCSV(filteredMovimientos, 'Movimientos_Filtrados')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
-            <div><label class="block font-bold mb-1">Desde</label><input type="date" v-model="filterMov.dateStart" class="w-full p-2 border rounded-lg"></div>
-            <div><label class="block font-bold mb-1">Hasta</label><input type="date" v-model="filterMov.dateEnd" class="w-full p-2 border rounded-lg"></div>
-            <div>
-              <label class="block font-bold mb-1">AFI</label>
-              <select v-model="filterMov.afi" class="w-full p-2 border rounded-lg">
-                <option value="ALL">-- Todos --</option>
-                <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">{{ e.afi }} - {{ e.tipo }}</option>
-              </select>
-            </div>
-            <div><label class="block font-bold mb-1">Texto</label><input type="text" v-model="filterMov.queryText" placeholder="Chofer, camión..." class="w-full p-2 border rounded-lg"></div>
-            <div>
-              <label class="block font-bold mb-1">Estado</label>
-              <select v-model="filterMov.estado" class="w-full p-2 border rounded-lg">
-                <option value="ALL">-- Todos --</option>
-                <option value="Operativo">Operativo</option>
-                <option value="En Traslado">En Traslado</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-          <div class="overflow-x-auto border rounded-lg">
-            <table class="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr class="bg-slate-200 font-bold uppercase text-[11px] border-b">
-                  <th class="p-2.5">FECHA</th>
-                  <th class="p-2.5">AFI</th>
-                  <th class="p-2.5">TIPO</th>
-                  <th class="p-2.5">ORIGEN</th>
-                  <th class="p-2.5">DESTINO</th>
-                  <th class="p-2.5">CAMIÓN</th>
-                  <th class="p-2.5">CONDUCTOR</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y bg-white">
-                <tr v-for="m in filteredMovimientos" :key="m.id" class="hover:bg-slate-50">
-                  <td class="p-2.5 font-mono">{{ m.fecha }}</td>
-                  <td class="p-2.5 font-bold text-amber-700">{{ m.afi }}</td>
-                  <td class="p-2.5">{{ m.tipo }}</td>
-                  <td class="p-2.5">{{ m.origen }}</td>
-                  <td class="p-2.5 font-bold text-emerald-700">{{ m.destino }}</td>
-                  <td class="p-2.5">{{ m.camion }}</td>
-                  <td class="p-2.5">{{ m.conductor }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- PESTAÑA 4: HOJA DE VIDA E HISTORIAL -->
-      <section v-if="currentTab === 'hojaVida'" class="space-y-4">
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-          <div class="flex flex-wrap justify-between items-center gap-3">
-            <div class="flex items-center gap-3">
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-blue-600"></i> Filtros de Historial ({{ filteredIntervenciones.length }})</h2>
-              <div class="flex items-center gap-2">
-                <label class="text-xs font-bold text-slate-700">Orden:</label>
-                <select v-model="sortHistorialOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
-                  <option value="desc">Más Recientes</option>
-                  <option value="asc">Más Antiguos</option>
-                </select>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5">
-                <i class="fa-solid fa-plus-circle"></i> + Registrar Mantención
-              </button>
-              <button @click="exportarCSV(filteredIntervenciones, 'HojaVida_Filtrada')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-            <div><label class="block font-bold mb-1">Desde</label><input type="date" v-model="filterInt.dateStart" class="w-full p-2 border rounded-lg"></div>
-            <div><label class="block font-bold mb-1">Hasta</label><input type="date" v-model="filterInt.dateEnd" class="w-full p-2 border rounded-lg"></div>
-            <div>
-              <label class="block font-bold mb-1">AFI</label>
-              <select v-model="filterInt.afi" class="w-full p-2 border border-amber-300 bg-amber-50 font-bold rounded-lg">
-                <option value="ALL">-- Todos --</option>
-                <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block font-bold mb-1">Tipo Mantención</label>
-              <select v-model="filterInt.tipoMant" class="w-full p-2 border rounded-lg">
-                <option value="ALL">-- Todos --</option>
-                <option value="PREVENTIVA">PREVENTIVA</option>
-                <option value="PREDICTIVA">PREDICTIVA</option>
-                <option value="CORRECTIVA">CORRECTIVA</option>
-              </select>
-            </div>
-            <div>
-              <label class="block font-bold mb-1">Causa</label>
-              <select v-model="filterInt.causa" class="w-full p-2 border rounded-lg">
-                <option value="ALL">-- Todas --</option>
-                <option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option>
-              </select>
-            </div>
-            <div><label class="block font-bold mb-1">Mecánico</label><input type="text" v-model="filterInt.mecText" placeholder="Nombre..." class="w-full p-2 border rounded-lg"></div>
-          </div>
-        </div>
-
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-          <div class="overflow-x-auto border rounded-lg max-h-[600px]">
-            <table class="w-full text-left text-[11px] whitespace-nowrap border-collapse">
-              <thead class="bg-slate-800 text-white sticky top-0 uppercase">
-                <tr>
-                  <th v-if="isAdmin" class="p-2 text-center">ACCIONES</th>
-                  <th class="p-2">AFI</th>
-                  <th class="p-2">FECHA</th>
-                  <th class="p-2">EQUIPO</th>
-                  <th class="p-2">LUGAR</th>
-                  <th class="p-2">CAUSA</th>
-                  <th class="p-2">TIPO MANT.</th>
-                  <th class="p-2 text-amber-300">TIPO EN HORAS (H)</th>
-                  <th class="p-2">HORÓMETRO</th>
-                  <th class="p-2">MECÁNICOS</th>
-                  <th class="p-2 text-sky-300">INICIO HORA</th>
-                  <th class="p-2 text-sky-300">TÉRMINO HORA</th>
-                  <th class="p-2 text-amber-300">TOTAL HORAS</th>
-                  <th class="p-2">CAUSA DETALLADA</th>
-                  <th class="p-2">DESCRIPCIÓN</th>
-                  <th class="p-2">INTERFERENCIA</th>
-                  <th class="p-2">EMPRESA</th>
-                  <th class="p-2">COSTO</th>
-                  <th class="p-2">N° OC</th>
-                  <th class="p-2">N° OT</th>
-                  <th class="p-2 text-amber-300">CONSUMO ACEITES</th>
-                  <th class="p-2 text-center">LINK / ADJUNTO</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y bg-white">
-                <tr v-for="i in filteredIntervenciones" :key="i.id" class="hover:bg-slate-50">
-                  <td v-if="isAdmin" class="p-2 text-center space-x-1">
-                    <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-                    <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
-                  </td>
-                  <td class="p-2 font-bold text-amber-700">{{ i.afi }}</td>
-                  <td class="p-2 font-mono">{{ i.fecha }}</td>
-                  <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
-                  <td class="p-2">{{ i.lugar || '-' }}</td>
-                  <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
-                  <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
-                  <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
-                  <td class="p-2 font-mono font-bold">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
-                  <td class="p-2">{{ getMecanicosText(i) }}</td>
-                  <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
-                  <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
-                  <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ calcularRestaHoras(i.horaInicio, i.horaTermino) }}</td>
-                  <td class="p-2 max-w-xs truncate">{{ i.causaDetallada || '-' }}</td>
-                  <td class="p-2 max-w-xs truncate">{{ i.descripcion || '-' }}</td>
-                  <td class="p-2">{{ i.interferencia || '-' }}</td>
-                  <td class="p-2">{{ i.empresaArriendo || '-' }}</td>
-                  <td class="p-2 font-bold text-emerald-700">${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
-                  <td class="p-2 font-mono">{{ i.numeroOC || '-' }}</td>
-                  <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
-                  <td class="p-2 font-bold text-amber-800 bg-amber-50">{{ i.aceites }}</td>
-                  <td class="p-2 text-center">
-                    <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1">
-                      <i class="fa-solid fa-link"></i> Ver Drive
-                    </a>
-                    <span v-else class="text-slate-400 italic">-</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- PESTAÑA 5: CONTROL Y FILTROS DE ACEITES E INSUMOS -->
-      <section v-if="currentTab === 'aceites'" class="space-y-6">
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
-          <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-3">
+        <!-- PESTAÑA 1: DASHBOARD -->
+        <section v-if="currentTab === 'dashboard'" class="space-y-6">
+          <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
             <div>
               <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-oil-can text-amber-600"></i> Control y Filtros Avanzados de Aceites e Insumos
+                <i class="fa-solid fa-chart-pie text-emerald-600"></i> Dashboard de Control de Equipos y Estado Operativo
               </h2>
-              <p class="text-xs text-slate-500">Visualiza el consumo general de aceites y aplica filtros por rangos de fechas, tipo específico y equipo.</p>
+              <p class="text-xs text-slate-500">Haz clic en cualquiera de los bloques para filtrar y ver los equipos en el inventario.</p>
             </div>
             <div class="flex items-center gap-2">
-              <label class="text-xs font-bold text-slate-700">Orden:</label>
-              <select v-model="sortAceitesOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
-                <option value="desc">Más Recientes</option>
-                <option value="asc">Más Antiguos</option>
-              </select>
-              <button @click="exportarCSV(filteredAceitesRecords, 'Reporte_Consumo_Aceites')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5">
-                <i class="fa-solid fa-file-excel"></i> Exportar (CSV)
+              <button @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
+                <i class="fa-solid fa-file-excel"></i> Exportar KPIs (CSV)
               </button>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-slate-50 p-4 rounded-xl border">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Fecha Desde</label>
-              <input type="date" v-model="filterOil.dateStart" class="w-full p-2 border rounded-lg bg-white">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div @click="filtrarYIrAInventario('ALL')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer hover:border-slate-400 transition">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Total Flota</p>
+                <h3 class="text-xl font-bold text-slate-800">{{ dbEquipos.length }}</h3>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-monster"></i></div>
             </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Fecha Hasta</label>
-              <input type="date" v-model="filterOil.dateEnd" class="w-full p-2 border rounded-lg bg-white">
+            <div @click="filtrarYIrAInventario('Operativo')" class="bg-white p-3.5 rounded-xl shadow-sm border border-emerald-200 flex items-center justify-between cursor-pointer hover:border-emerald-500 transition">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Trabajando</p>
+                <h3 class="text-xl font-bold text-emerald-600">{{ countEstado('Operativo') }}</h3>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm"><i class="fa-solid fa-circle-check"></i></div>
             </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Equipo AFI</label>
-              <select v-model="filterOil.afi" class="w-full p-2 border rounded-lg bg-white font-semibold">
-                <option value="ALL">-- Todos los Equipos --</option>
-                <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
-              </select>
+            <div @click="filtrarYIrAInventario('Disponible')" class="bg-white p-3.5 rounded-xl shadow-sm border border-sky-200 flex items-center justify-between cursor-pointer hover:border-sky-500 transition">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Disponible</p>
+                <h3 class="text-xl font-bold text-sky-600">{{ countEstado('Disponible') }}</h3>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center text-sm"><i class="fa-solid fa-warehouse"></i></div>
             </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Tipo de Aceite / Insumo</label>
-              <select v-model="filterOil.tipoAceite" class="w-full p-2 border rounded-lg bg-white font-semibold text-amber-800">
-                <option value="ALL">-- Todos los Aceites e Insumos --</option>
-                <option v-for="t in listaTiposAceitesDisponibles" :key="t" :value="t">{{ t }}</option>
-              </select>
+            <div @click="filtrarYIrAInventario('En Traslado')" class="bg-white p-3.5 rounded-xl shadow-sm border border-amber-200 flex items-center justify-between cursor-pointer hover:border-amber-500 transition">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">En Traslado</p>
+                <h3 class="text-xl font-bold text-amber-600">{{ countEstado('En Traslado') }}</h3>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-moving"></i></div>
+            </div>
+            <div @click="filtrarYIrAInventario('En Mantencion')" class="bg-white p-3.5 rounded-xl shadow-sm border border-rose-200 flex items-center justify-between cursor-pointer hover:border-rose-500 transition">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">En Mantención</p>
+                <h3 class="text-xl font-bold text-rose-600">{{ countEstado('En Mantencion') }}</h3>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-sm"><i class="fa-solid fa-wrench"></i></div>
+            </div>
+            <div @click="filtrarYIrAInventario('Fuera de Servicio')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-300 flex items-center justify-between cursor-pointer hover:border-slate-600 transition">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Fuera Servicio</p>
+                <h3 class="text-xl font-bold text-slate-700">{{ countEstado('Fuera de Servicio') }}</h3>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fa-solid fa-ban"></i></div>
+            </div>
+            <div @click="filtrarYIrAInventario('Venta')" class="bg-white p-3.5 rounded-xl shadow-sm border border-purple-200 flex items-center justify-between cursor-pointer hover:border-purple-500 transition">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">En Venta</p>
+                <h3 class="text-xl font-bold text-purple-600">{{ countEstado('Venta') }}</h3>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center text-sm"><i class="fa-solid fa-hand-holding-dollar"></i></div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between">
-              <div>
-                <p class="text-[11px] font-bold uppercase text-amber-800">Registros con Consumo</p>
-                <h3 class="text-2xl font-bold text-amber-900 mt-1">{{ filteredAceitesRecords.length }}</h3>
-              </div>
-              <div class="w-10 h-10 rounded-full bg-amber-200/60 text-amber-700 flex items-center justify-center text-lg"><i class="fa-solid fa-clipboard-list"></i></div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-emerald-600"></i> Estado Operativo</h3>
+              <div class="h-60 relative"><canvas id="chartEstado"></canvas></div>
             </div>
-            <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
-              <div>
-                <p class="text-[11px] font-bold uppercase text-blue-800">Suma Total Cantidad (Filtro Actual)</p>
-                <h3 class="text-xl font-bold text-blue-900 mt-1 font-mono">{{ sumaTotalCantidadAceites.toLocaleString('es-CL', { maximumFractionDigits: 2 }) }} L</h3>
-              </div>
-              <div class="w-10 h-10 rounded-full bg-blue-200/60 text-blue-700 flex items-center justify-center text-lg"><i class="fa-solid fa-calculator"></i></div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-column text-blue-600"></i> Mantenciones por Tipo</h3>
+              <div class="h-60 relative"><canvas id="chartTiposMant"></canvas></div>
             </div>
-            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
-              <div>
-                <p class="text-[11px] font-bold uppercase text-emerald-800">Costo Total Intervenciones</p>
-                <h3 class="text-xl font-bold text-emerald-900 mt-1">${{ costoTotalAceitesFiltrados.toLocaleString('es-CL') }}</h3>
-              </div>
-              <div class="w-10 h-10 rounded-full bg-emerald-200/60 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-dollar-sign"></i></div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3 md:col-span-2 lg:col-span-1">
+              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-amber-600"></i> Causas de Intervención</h3>
+              <div class="h-60 relative"><canvas id="chartCausas"></canvas></div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-          <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2">
-            <i class="fa-solid fa-list-check text-blue-600"></i> Detalle de Consumos Encontrados ({{ filteredAceitesRecords.length }} Resultados)
-          </h3>
-
-          <div class="overflow-x-auto border rounded-lg max-h-[500px]">
-            <table class="w-full text-left text-xs border-collapse">
-              <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
-                <tr>
-                  <th class="p-2.5">FECHA</th>
-                  <th class="p-2.5">AFI</th>
-                  <th class="p-2.5">EQUIPO</th>
-                  <th class="p-2.5">LUGAR</th>
-                  <th class="p-2.5">CAUSA / TIPO</th>
-                  <th class="p-2.5 text-amber-300">DETALLE DE ACEITES E INSUMOS CONSUMIDOS</th>
-                  <th class="p-2.5 text-right">COSTO</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y bg-white">
-                <tr v-for="item in filteredAceitesRecords" :key="item.id" class="hover:bg-slate-50">
-                  <td class="p-2.5 font-mono text-slate-600">{{ item.fecha }}</td>
-                  <td class="p-2.5 font-bold text-amber-700">
-                    <button @click="verDetallePorAfiString(item.afi)" class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200 hover:underline">{{ item.afi }}</button>
-                  </td>
-                  <td class="p-2.5 font-semibold">{{ item.equipo || '-' }}</td>
-                  <td class="p-2.5 text-slate-600">{{ item.lugar || '-' }}</td>
-                  <td class="p-2.5">
-                    <span class="font-bold block text-slate-800">{{ item.causa }}</span>
-                    <span class="text-[10px] text-blue-600">{{ item.tipoMant }}</span>
-                  </td>
-                  <td class="p-2.5 font-bold text-amber-900 bg-amber-50/50">{{ item.aceites }}</td>
-                  <td class="p-2.5 font-bold text-emerald-700 text-right">${{ Number(item.costo || 0).toLocaleString('es-CL') }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- PESTAÑA 6: CONFIGURACIÓN & GESTIÓN DE USUARIOS -->
-      <section v-if="currentTab === 'configuracion'" class="space-y-6">
-        
-        <!-- MÓDULO ADMINISTRADOR DE USUARIOS -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-          <div class="flex items-center justify-between border-b pb-3">
-            <div>
-              <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-users-gear text-amber-600"></i> Gestión de Usuarios del Sistema (En la Nube)
-              </h3>
-              <p class="text-xs text-slate-500">Crea nuevos usuarios guardados en Supabase para ingresar desde cualquier equipo.</p>
+        <!-- PESTAÑA 2: INVENTARIO AFI -->
+        <section v-if="currentTab === 'inventario'" class="space-y-4">
+          <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Inventario General</h2>
+              <div class="flex flex-wrap items-center gap-2">
+                <label class="text-xs font-bold text-slate-700 ml-2">Orden:</label>
+                <select v-model="sortInventarioOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
+                  <option value="desc">Más Recientes primero</option>
+                  <option value="asc">Más Antiguos primero</option>
+                </select>
+                <button @click="resetFiltrosInventario" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Reset</button>
+                <button @click="exportarCSV(filteredEquipos, 'Inventario_AFI_Filtrado')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
+              </div>
             </div>
-            <span v-if="!isAdmin" class="text-xs bg-rose-100 text-rose-800 font-bold px-3 py-1 rounded">Requiere Sesión Admin</span>
-          </div>
 
-          <!-- FORMULARIO CREAR USUARIO (SOLO ADMIN) -->
-          <div v-if="isAdmin" class="bg-slate-50 p-4 rounded-xl border space-y-3 text-xs">
-            <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-plus text-emerald-600"></i> Crear Nuevo Usuario</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div>
-                <label class="block font-bold mb-1">Nombre / Usuario</label>
-                <input type="text" v-model="nuevoUsuario.usuario" placeholder="Ej: pedro_logistica" class="w-full p-2 border rounded-lg bg-white">
+                <label class="block font-bold text-slate-700 mb-1">Buscar (AFI / Tipo / Marca)</label>
+                <input type="text" v-model="filterInv.search" placeholder="Ej: Generador..." class="w-full p-2 border border-slate-300 rounded-lg">
               </div>
               <div>
-                <label class="block font-bold mb-1">Contraseña</label>
-                <input type="password" v-model="nuevoUsuario.clave" placeholder="****" class="w-full p-2 border rounded-lg bg-white">
+                <label class="block font-bold text-slate-700 mb-1">Ubicación</label>
+                <input type="text" v-model="filterInv.ubicacion" placeholder="Ej: Tierras Blancas" class="w-full p-2 border border-slate-300 rounded-lg">
               </div>
               <div>
-                <label class="block font-bold mb-1">Rol / Permisos</label>
-                <select v-model="nuevoUsuario.rol" class="w-full p-2 border rounded-lg bg-white font-bold">
-                  <option value="lectura">Solo Lectura (Ver datos)</option>
-                  <option value="admin">Administrador (Control Total)</option>
+                <label class="block font-bold text-slate-700 mb-1">Estado</label>
+                <select v-model="filterInv.estado" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
+                  <option value="ALL">-- Todos --</option>
+                  <option value="Operativo">Trabajando / Operativo</option>
+                  <option value="Disponible">Disponible</option>
+                  <option value="En Traslado">En Traslado</option>
+                  <option value="En Mantencion">En Mantención</option>
+                  <option value="Fuera de Servicio">Fuera de Servicio</option>
+                  <option value="Venta">En Venta</option>
                 </select>
               </div>
-              <div class="flex items-end">
-                <button @click="crearNuevoUsuario" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2 rounded-lg shadow">
-                  <i class="fa-solid fa-plus-circle"></i> Guardar Usuario
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">GPS</label>
+                <select v-model="filterInv.gps" class="w-full p-2 border border-slate-300 rounded-lg">
+                  <option value="ALL">-- Todos --</option>
+                  <option value="Instalado">Instalado</option>
+                  <option value="Sin GPS">Sin GPS</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-for="e in filteredEquipos" :key="e.id" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+              <div>
+                <div class="relative h-44 bg-slate-900 group">
+                  <img :src="e.foto || 'https://via.placeholder.com/300x180/0f172a/ffffff?text=' + e.afi" class="w-full h-full object-cover">
+                  <span :class="['absolute top-2 right-2 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-md', getBadgeClass(e.disponibilidad)]">
+                    {{ getEstadoText(e.disponibilidad) }}
+                  </span>
+                  <label v-if="isAdmin" class="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg text-xs cursor-pointer shadow flex items-center gap-1">
+                    <i class="fa-solid fa-camera"></i> <span>Subir Imagen</span>
+                    <input type="file" @change="uploadFotoEquipo($event, e)" accept="image/*" class="hidden">
+                  </label>
+                </div>
+                <div class="p-4 space-y-3">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <span class="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">AFI: {{ e.afi }}</span>
+                      <h3 class="font-bold text-sm text-slate-800 mt-1">{{ e.tipo }}</h3>
+                    </div>
+                    <span class="text-xs text-slate-400 font-bold">{{ e.anio }}</span>
+                  </div>
+                  <div class="text-xs space-y-1 text-slate-600">
+                    <p><i class="fa-solid fa-industry w-4 text-slate-400"></i> <strong>Marca/Modelo:</strong> {{ e.marca }} {{ e.modelo }}</p>
+                    <p><i class="fa-solid fa-location-dot w-4 text-rose-500"></i> <strong>Ubicación:</strong> <span class="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{{ e.ubicacion }}</span></p>
+                    
+                    <p class="pt-1 border-t mt-1">
+                      <i class="fa-solid fa-clock-rotate-left w-4 text-amber-600"></i> 
+                      <strong>Mantención Programada:</strong> 
+                      <span class="font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-[11px] ml-1">
+                        {{ getTipoHorasMantencionAFI(e.afi) }}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.afi)]">
+                    <div class="flex justify-between items-center border-b pb-1.5 font-bold">
+                      <span><i class="fa-solid fa-gauge-high text-amber-600"></i> Horómetros:</span>
+                      <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', getPrediccionStatusBadge(e.afi)]">
+                        {{ get3Horometros(e.afi).estadoTexto }}
+                      </span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+                      <div class="bg-white/80 p-1.5 rounded border">
+                        <span class="text-slate-500 font-bold block">OFICIAL</span>
+                        <strong class="font-mono text-slate-800">{{ get3Horometros(e.afi).hOficial }}h</strong>
+                      </div>
+                      <div class="bg-white/80 p-1.5 rounded border">
+                        <span class="text-slate-500 font-bold block">APROX</span>
+                        <strong class="font-mono text-blue-700">{{ get3Horometros(e.afi).hAprox }}h</strong>
+                      </div>
+                      <div class="bg-white/80 p-1.5 rounded border">
+                        <span class="text-slate-500 font-bold block">TARGET</span>
+                        <strong class="font-mono text-emerald-700">{{ get3Horometros(e.afi).hTarget }}h</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="p-3 bg-slate-50 border-t flex items-center justify-between gap-2">
+                <button @click="verDetalleCompletoAFI(e)" class="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm">
+                  <i class="fa-solid fa-layer-group text-amber-600"></i> Historial Completo
+                </button>
+                <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion(e.afi)" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow">
+                  <i class="fa-solid fa-plus-circle"></i> + Mantención
                 </button>
               </div>
             </div>
           </div>
+        </section>
 
-          <!-- TABLA DE USUARIOS CREADOS -->
-          <div class="overflow-x-auto border rounded-lg text-xs">
-            <table class="w-full text-left border-collapse">
-              <thead class="bg-slate-800 text-white uppercase text-[10px]">
-                <tr>
-                  <th class="p-2.5">USUARIO</th>
-                  <th class="p-2.5">ROL</th>
-                  <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y bg-white">
-                <tr v-for="u in dbUsuarios" :key="u.usuario" class="hover:bg-slate-50">
-                  <td class="p-2.5 font-bold text-slate-800">{{ u.usuario }}</td>
-                  <td class="p-2.5">
-                    <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', u.rol === 'admin' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700']">
-                      {{ u.rol === 'admin' ? 'Administrador' : 'Solo Lectura' }}
-                    </span>
-                  </td>
-                  <td v-if="isAdmin" class="p-2.5 text-center">
-                    <button v-if="u.usuario !== 'logistica'" @click="eliminarUsuario(u.usuario)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-1 rounded font-bold" title="Eliminar">
-                      <i class="fa-solid fa-trash"></i>
-                    </button>
-                    <span v-else class="text-slate-400 italic text-[10px]">Principal</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- PERSONALIZACIÓN DE DISEÑO -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
-          <div class="flex items-center justify-between border-b pb-3">
-            <div>
-              <h3 class="text-base font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-palette text-violet-600"></i> Personalización del Sistema</h3>
-              <p class="text-xs text-slate-500">Cambia el título, el logotipo, el color de la cabecera y el fondo general de la página web.</p>
-            </div>
-          </div>
-
-          <div v-if="isAdmin" class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border">
-            <div>
-              <label class="block font-bold text-xs mb-1">Título Principal del Sistema</label>
-              <input type="text" v-model="config.title" class="w-full p-2 border rounded text-xs bg-white">
-            </div>
-            <div>
-              <label class="block font-bold text-xs mb-1">Subtítulo</label>
-              <input type="text" v-model="config.subtitle" class="w-full p-2 border rounded text-xs bg-white">
-            </div>
-            <div>
-              <label class="block font-bold text-xs mb-1">URL o Cargar Nueva Foto / Logo</label>
-              <input type="text" v-model="config.logo" placeholder="https://..." class="w-full p-2 border rounded text-xs bg-white mb-2">
-              <input type="file" @change="subirNuevaFotoLogo" accept="image/*" class="text-xs">
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block font-bold text-xs mb-1">Color Header</label>
-                <input type="color" v-model="config.customHeaderBg" class="w-full h-10 p-1 border rounded cursor-pointer">
-              </div>
-              <div>
-                <label class="block font-bold text-xs mb-1">Color de Fondo General (Body)</label>
-                <input type="color" v-model="config.customBodyBg" class="w-full h-10 p-1 border rounded cursor-pointer">
-              </div>
-            </div>
-            <div class="md:col-span-2 flex justify-end">
-              <button @click="guardarConfiguracionPersonalizada" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow">
-                <i class="fa-solid fa-floppy-disk mr-1"></i> Guardar Cambios
-              </button>
-            </div>
-          </div>
-
-          <div class="border-t pt-4">
-            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-3"><i class="fa-solid fa-file-import text-violet-600"></i> Centro Importador de Bases de Datos</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-                <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-boxes-stacked text-emerald-600"></i> 1. Inventario AFI</h4>
-                <label :class="['w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-500']">
-                  <i class="fa-solid fa-file-excel"></i> Seleccionar
-                  <input type="file" :disabled="!isAdmin" @change="importarInventarioFile" accept=".xlsx, .xls, .csv, .json" class="hidden">
-                </label>
-              </div>
-              <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-                <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-truck-fast text-amber-600"></i> 2. Movimientos</h4>
-                <label :class="['w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-amber-600 text-white' : 'bg-slate-300 text-slate-500']">
-                  <i class="fa-solid fa-file-excel"></i> Seleccionar
-                  <input type="file" :disabled="!isAdmin" @change="importarMovimientosFile" accept=".xlsx, .xls, .csv, .json" class="hidden">
-                </label>
-              </div>
-              <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-                <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-wrench text-blue-600"></i> 3. BD HISTORIAL (Aceites & Horas)</h4>
-                <label :class="['w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-blue-600 text-white' : 'bg-slate-300 text-slate-500']">
-                  <i class="fa-solid fa-file-excel"></i> Seleccionar
-                  <input type="file" :disabled="!isAdmin" @change="importarIntervencionesFile" accept=".xlsx, .xls, .csv, .json" class="hidden">
-                </label>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-    </main>
-
-    <!-- FORMULARIO MODAL: AGREGAR / EDITAR MANTENCIÓN -->
-    <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
-        
-        <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
-          <h3 class="text-sm font-bold flex items-center gap-2">
-            <i class="fa-solid fa-wrench text-amber-400"></i> 
-            {{ isEditingMantencion ? 'Editar Mantención / Intervención' : 'Registrar Nueva Mantención / Intervención' }}
-          </h3>
-          <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white">
-            <i class="fa-solid fa-xmark text-lg"></i>
-          </button>
-        </div>
-
-        <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
-          
-          <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-            <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-list-check text-amber-600"></i> Informes Principales</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              <div>
-                <label class="block font-bold mb-1">AFI (Equipo)</label>
-                <select v-model="formMant.afi" class="w-full p-2 border rounded-lg bg-white font-bold text-amber-900">
-                  <option value="">-- Seleccionar AFI --</option>
-                  <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block font-bold mb-1">Fecha</label>
-                <input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white">
-              </div>
-              <div>
-                <label class="block font-bold mb-1">Lugar</label>
-                <input type="text" v-model="formMant.lugar" placeholder="Ej: Planta Tierras Blancas" class="w-full p-2 border rounded-lg bg-white">
-              </div>
-              <div>
-                <label class="block font-bold mb-1">Horómetro</label>
-                <input type="number" step="any" v-model="formMant.horometro" placeholder="Ej: 1250" class="w-full p-2 border rounded-lg bg-white font-mono font-bold">
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-            <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-sliders text-blue-600"></i> Clasificación Técnica</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label class="block font-bold mb-1">Causa</label>
-                <select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold">
-                  <option value="">-- Seleccionar Causa --</option>
-                  <option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block font-bold mb-1">Tipo Mantención</label>
-                <select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white">
-                  <option value="">-- Seleccionar Tipo --</option>
-                  <option value="PREVENTIVA">PREVENTIVA</option>
-                  <option value="PREDICTIVA">PREDICTIVA</option>
-                  <option value="CORRECTIVA">CORRECTIVA</option>
-                </select>
-              </div>
-              <div>
-                <label class="block font-bold mb-1">Tipo en Horas Mantención</label>
-                <input type="text" v-model="formMant.tipoHorasMant" placeholder="Ej: 250, 500, 1000..." class="w-full p-2 border rounded-lg bg-white font-bold text-amber-800">
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-            <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-gear text-emerald-600"></i> Personal & Horarios</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" class="w-full p-2 border rounded-lg bg-white"></div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t">
-              <div><label class="block font-bold mb-1">Hora Inicio</label><input type="time" v-model="formMant.horaInicio" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Hora Término</label><input type="time" v-model="formMant.horaTermino" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div>
-                <label class="block font-bold mb-1">Total Horas (Calculado)</label>
-                <div class="p-2 border rounded-lg bg-amber-50 font-bold text-amber-900 font-mono text-center">
-                  {{ calcularRestaHoras(formMant.horaInicio, formMant.horaTermino) }}
+        <!-- PESTAÑA 3: MOVIMIENTOS -->
+        <section v-if="currentTab === 'movimientos'" class="space-y-4">
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+            <div class="flex flex-wrap justify-between items-center gap-3">
+              <div class="flex items-center gap-3">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Movimientos</h2>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs font-bold text-slate-700">Orden:</label>
+                  <select v-model="sortMovimientosOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
+                    <option value="desc">Más Recientes</option>
+                    <option value="asc">Más Antiguos</option>
+                  </select>
                 </div>
               </div>
+              <button @click="exportarCSV(filteredMovimientos, 'Movimientos_Filtrados')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
             </div>
-          </div>
-
-          <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-            <div class="flex justify-between items-center">
-              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5">
-                <i class="fa-solid fa-oil-can text-amber-600"></i> Aceites & Insumos Consumidos
-              </h4>
-              <button @click="agregarFilaAceiteForm" class="bg-amber-100 hover:bg-amber-200 text-amber-900 px-2.5 py-1 rounded font-bold text-[11px] flex items-center gap-1">
-                <i class="fa-solid fa-plus"></i> Añadir Insumo
-              </button>
-            </div>
-            <div v-for="(ac, idx) in formMant.aceiteDetallesArray" :key="idx" class="flex flex-wrap items-center gap-2">
-              <input type="text" v-model="ac.nombre" list="opcionesAceites" placeholder="Selecciona o escribe el aceite/insumo..." class="flex-grow p-2 border rounded-lg bg-white font-bold text-slate-800">
-              <datalist id="opcionesAceites">
-                <option v-for="opc in listaAceitesEstandar" :key="opc" :value="opc"></option>
-              </datalist>
-              <input type="number" step="any" v-model="ac.cantidad" placeholder="Litros / Cant." class="w-32 p-2 border rounded-lg bg-white font-mono font-bold text-amber-900">
-              <button @click="eliminarFilaAceiteForm(idx)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-2 rounded-lg" title="Eliminar fila"><i class="fa-solid fa-trash"></i></button>
-            </div>
-          </div>
-
-          <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-            <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar text-violet-600"></i> Costos, Órdenes & Adjuntos</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-bold text-emerald-700"></div>
-              <div><label class="block font-bold mb-1">N° OC</label><input type="text" v-model="formMant.numeroOC" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">N° OT</label><input type="text" v-model="formMant.numeroOT" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Empresa Arriendo</label><input type="text" v-model="formMant.empresaArriendo" class="w-full p-2 border rounded-lg bg-white"></div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-              <div><label class="block font-bold mb-1">Causa Detallada</label><textarea v-model="formMant.causaDetallada" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
-              <div><label class="block font-bold mb-1">Descripción</label><textarea v-model="formMant.descripcion" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
-              <div><label class="block font-bold mb-1">Interferencia</label><textarea v-model="formMant.interferencia" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
-            </div>
-          </div>
-
-        </div>
-
-        <div class="px-6 py-3 border-t bg-slate-100 flex justify-end gap-2">
-          <button @click="showFormMantencionModal = false" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded-lg">Cancelar</button>
-          <button @click="guardarMantencionForm" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg shadow flex items-center gap-1.5">
-            <i class="fa-solid fa-floppy-disk"></i> Guardar Mantención
-          </button>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- MODAL DETALLE / PERFIL DEL AFI -->
-    <div v-if="showDetalleAfiModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
-        
-        <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-50">
-          <div class="flex items-center gap-3">
-            <span class="text-xs font-mono font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded">AFI: {{ equipoDetalle.afi }}</span>
-            <h3 class="text-sm font-bold text-slate-800">{{ equipoDetalle.tipo }} - {{ equipoDetalle.marca }} {{ equipoDetalle.modelo }}</h3>
-          </div>
-          <button @click="showDetalleAfiModal = false" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition">
-            <i class="fa-solid fa-xmark text-base"></i>
-          </button>
-        </div>
-
-        <div class="p-6 overflow-y-auto space-y-6 flex-grow">
-          <div class="bg-slate-900 text-white p-4 rounded-xl space-y-3 shadow-inner">
-            <div class="flex justify-between items-center border-b border-slate-700 pb-2 font-bold text-xs">
-              <span><i class="fa-solid fa-gauge-high text-amber-400 mr-1.5"></i> Control de los 3 Horómetros</span>
-              <span class="bg-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold">{{ calcular3Horometros(equipoDetalle.afi).estadoTexto }}</span>
-            </div>
-            <div class="grid grid-cols-3 gap-2 text-center text-xs">
-              <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
-                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Oficial</span>
-                <strong class="font-mono text-white text-sm">{{ calcular3Horometros(equipoDetalle.afi).hOficial }} hrs</strong>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+              <div><label class="block font-bold mb-1">Desde</label><input type="date" v-model="filterMov.dateStart" class="w-full p-2 border rounded-lg"></div>
+              <div><label class="block font-bold mb-1">Hasta</label><input type="date" v-model="filterMov.dateEnd" class="w-full p-2 border rounded-lg"></div>
+              <div>
+                <label class="block font-bold mb-1">AFI</label>
+                <select v-model="filterMov.afi" class="w-full p-2 border rounded-lg">
+                  <option value="ALL">-- Todos --</option>
+                  <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">{{ e.afi }} - {{ e.tipo }}</option>
+                </select>
               </div>
-              <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
-                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Aprox (Hoy)</span>
-                <strong class="font-mono text-sky-300 text-sm">{{ calcular3Horometros(equipoDetalle.afi).hAprox }} hrs</strong>
-              </div>
-              <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
-                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Target (Mant)</span>
-                <strong class="font-mono text-emerald-300 text-sm">{{ calcular3Horometros(equipoDetalle.afi).hTarget }} hrs</strong>
+              <div><label class="block font-bold mb-1">Texto</label><input type="text" v-model="filterMov.queryText" placeholder="Chofer, camión..." class="w-full p-2 border rounded-lg"></div>
+              <div>
+                <label class="block font-bold mb-1">Estado</label>
+                <select v-model="filterMov.estado" class="w-full p-2 border rounded-lg">
+                  <option value="ALL">-- Todos --</option>
+                  <option value="Operativo">Operativo</option>
+                  <option value="En Traslado">En Traslado</option>
+                </select>
               </div>
             </div>
           </div>
 
-          <div class="space-y-2">
-            <h4 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2">
-              <i class="fa-solid fa-wrench text-blue-600"></i> Historial de Mantenciones ({{ getHistorialIntervencionesAFI(equipoDetalle.afi).length }})
-            </h4>
-            <div class="border rounded-xl overflow-x-auto max-h-52 bg-white">
-              <table class="w-full text-left text-xs whitespace-nowrap">
-                <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
-                  <tr>
-                    <th class="p-2.5">Fecha</th>
-                    <th class="p-2.5">Causa</th>
-                    <th class="p-2.5">Tipo Mant.</th>
-                    <th class="p-2.5">Tipo Horas</th>
-                    <th class="p-2.5">Horómetro</th>
-                    <th class="p-2.5">Descripción</th>
-                    <th class="p-2.5 text-amber-300">Aceites e Insumos</th>
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div class="overflow-x-auto border rounded-lg">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="bg-slate-200 font-bold uppercase text-[11px] border-b">
+                    <th class="p-2.5">FECHA</th>
+                    <th class="p-2.5">AFI</th>
+                    <th class="p-2.5">TIPO</th>
+                    <th class="p-2.5">ORIGEN</th>
+                    <th class="p-2.5">DESTINO</th>
+                    <th class="p-2.5">CAMIÓN</th>
+                    <th class="p-2.5">CONDUCTOR</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y bg-white">
-                  <tr v-for="i in getHistorialIntervencionesAFI(equipoDetalle.afi)" :key="i.id" class="hover:bg-slate-50">
-                    <td class="p-2.5 font-mono">{{ i.fecha }}</td>
-                    <td class="p-2.5 font-bold">{{ i.causa }}</td>
-                    <td class="p-2.5 font-semibold text-blue-600">{{ i.tipoMant }}</td>
-                    <td class="p-2.5 font-bold text-amber-800 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
-                    <td class="p-2.5 font-mono">{{ i.horometro }} hrs</td>
-                    <td class="p-2.5 max-w-xs truncate">{{ i.descripcion }}</td>
-                    <td class="p-2.5 font-bold text-amber-800 bg-amber-50">{{ i.aceites }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="space-y-2">
-            <h4 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2">
-              <i class="fa-solid fa-truck-moving text-amber-500"></i> Historial de Traslados ({{ getHistorialMovimientosAFI(equipoDetalle.afi).length }})
-            </h4>
-            <div class="border rounded-xl overflow-x-auto max-h-48 bg-white">
-              <table class="w-full text-left text-xs whitespace-nowrap">
-                <thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[10px]">
-                  <tr>
-                    <th class="p-2.5">Fecha</th>
-                    <th class="p-2.5">Origen</th>
-                    <th class="p-2.5">Destino</th>
-                    <th class="p-2.5">Camión</th>
-                    <th class="p-2.5">Conductor</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y bg-white">
-                  <tr v-for="m in getHistorialMovimientosAFI(equipoDetalle.afi)" :key="m.id" class="hover:bg-slate-50">
+                  <tr v-for="m in filteredMovimientos" :key="m.id" class="hover:bg-slate-50">
                     <td class="p-2.5 font-mono">{{ m.fecha }}</td>
+                    <td class="p-2.5 font-bold text-amber-700">{{ m.afi }}</td>
+                    <td class="p-2.5">{{ m.tipo }}</td>
                     <td class="p-2.5">{{ m.origen }}</td>
                     <td class="p-2.5 font-bold text-emerald-700">{{ m.destino }}</td>
                     <td class="p-2.5">{{ m.camion }}</td>
@@ -959,36 +386,622 @@
               </table>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div class="px-6 py-3 border-t bg-slate-50 flex justify-end">
-          <button @click="showDetalleAfiModal = false" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow">
-            Cerrar Ventana
-          </button>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- MODAL AUTHENTICATION -->
-    <div v-if="showAuthModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative">
-        <button @click="showAuthModal = false" class="absolute top-4 right-4 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
-        <h3 class="text-lg font-bold text-slate-800 mb-4 text-center">Iniciar Sesión</h3>
-        <form @submit.prevent="login" class="space-y-4 text-xs">
-          <div>
-            <label class="font-semibold block mb-1">Usuario</label>
-            <input type="text" v-model="loginUser" placeholder="Ingresa tu usuario..." required class="w-full p-2.5 border rounded-lg">
+        <!-- PESTAÑA 4: HOJA DE VIDA E HISTORIAL -->
+        <section v-if="currentTab === 'hojaVida'" class="space-y-4">
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+            <div class="flex flex-wrap justify-between items-center gap-3">
+              <div class="flex items-center gap-3">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-blue-600"></i> Filtros de Historial ({{ filteredIntervenciones.length }})</h2>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs font-bold text-slate-700">Orden:</label>
+                  <select v-model="sortHistorialOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
+                    <option value="desc">Más Recientes</option>
+                    <option value="asc">Más Antiguos</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5">
+                  <i class="fa-solid fa-plus-circle"></i> + Registrar Mantención
+                </button>
+                <button @click="exportarCSV(filteredIntervenciones, 'HojaVida_Filtrada')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+              <div><label class="block font-bold mb-1">Desde</label><input type="date" v-model="filterInt.dateStart" class="w-full p-2 border rounded-lg"></div>
+              <div><label class="block font-bold mb-1">Hasta</label><input type="date" v-model="filterInt.dateEnd" class="w-full p-2 border rounded-lg"></div>
+              <div>
+                <label class="block font-bold mb-1">AFI</label>
+                <select v-model="filterInt.afi" class="w-full p-2 border border-amber-300 bg-amber-50 font-bold rounded-lg">
+                  <option value="ALL">-- Todos --</option>
+                  <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold mb-1">Tipo Mantención</label>
+                <select v-model="filterInt.tipoMant" class="w-full p-2 border rounded-lg">
+                  <option value="ALL">-- Todos --</option>
+                  <option value="PREVENTIVA">PREVENTIVA</option>
+                  <option value="PREDICTIVA">PREDICTIVA</option>
+                  <option value="CORRECTIVA">CORRECTIVA</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold mb-1">Causa</label>
+                <select v-model="filterInt.causa" class="w-full p-2 border rounded-lg">
+                  <option value="ALL">-- Todas --</option>
+                  <option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option>
+                </select>
+              </div>
+              <div><label class="block font-bold mb-1">Mecánico</label><input type="text" v-model="filterInt.mecText" placeholder="Nombre..." class="w-full p-2 border rounded-lg"></div>
+            </div>
           </div>
-          <div>
-            <label class="font-semibold block mb-1">Contraseña</label>
-            <input type="password" v-model="loginPass" placeholder="Ingresa tu clave..." required class="w-full p-2.5 border rounded-lg">
+
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div class="overflow-x-auto border rounded-lg max-h-[600px]">
+              <table class="w-full text-left text-[11px] whitespace-nowrap border-collapse">
+                <thead class="bg-slate-800 text-white sticky top-0 uppercase">
+                  <tr>
+                    <th v-if="isAdmin" class="p-2 text-center">ACCIONES</th>
+                    <th class="p-2">AFI</th>
+                    <th class="p-2">FECHA</th>
+                    <th class="p-2">EQUIPO</th>
+                    <th class="p-2">LUGAR</th>
+                    <th class="p-2">CAUSA</th>
+                    <th class="p-2">TIPO MANT.</th>
+                    <th class="p-2 text-amber-300">TIPO EN HORAS (H)</th>
+                    <th class="p-2">HORÓMETRO</th>
+                    <th class="p-2">MECÁNICOS</th>
+                    <th class="p-2 text-sky-300">INICIO HORA</th>
+                    <th class="p-2 text-sky-300">TÉRMINO HORA</th>
+                    <th class="p-2 text-amber-300">TOTAL HORAS</th>
+                    <th class="p-2">CAUSA DETALLADA</th>
+                    <th class="p-2">DESCRIPCIÓN</th>
+                    <th class="p-2">INTERFERENCIA</th>
+                    <th class="p-2">EMPRESA</th>
+                    <th class="p-2">COSTO</th>
+                    <th class="p-2">N° OC</th>
+                    <th class="p-2">N° OT</th>
+                    <th class="p-2 text-amber-300">CONSUMO ACEITES</th>
+                    <th class="p-2 text-center">LINK / ADJUNTO</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y bg-white">
+                  <tr v-for="i in filteredIntervenciones" :key="i.id" class="hover:bg-slate-50">
+                    <td v-if="isAdmin" class="p-2 text-center space-x-1">
+                      <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                      <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                    <td class="p-2 font-bold text-amber-700">{{ i.afi }}</td>
+                    <td class="p-2 font-mono font-bold text-slate-800">{{ i.fecha }}</td>
+                    <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
+                    <td class="p-2">{{ i.lugar || '-' }}</td>
+                    <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
+                    <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
+                    <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
+                    <td class="p-2 font-mono font-bold">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
+                    <td class="p-2">{{ getMecanicosText(i) }}</td>
+                    <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
+                    <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
+                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ calcularRestaHoras(i.horaInicio, i.horaTermino) }}</td>
+                    <td class="p-2 max-w-xs truncate">{{ i.causaDetallada || '-' }}</td>
+                    <td class="p-2 max-w-xs truncate">{{ i.descripcion || '-' }}</td>
+                    <td class="p-2">{{ i.interferencia || '-' }}</td>
+                    <td class="p-2">{{ i.empresaArriendo || '-' }}</td>
+                    <td class="p-2 font-bold text-emerald-700">${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
+                    <td class="p-2 font-mono">{{ i.numeroOC || '-' }}</td>
+                    <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
+                    <td class="p-2 font-bold text-amber-800 bg-amber-50">{{ i.aceites }}</td>
+                    <td class="p-2 text-center">
+                      <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1">
+                        <i class="fa-solid fa-link"></i> Ver Drive
+                      </a>
+                      <span v-else class="text-slate-400 italic">-</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-          <p v-if="authError" class="text-rose-600 font-semibold text-center">Usuario o contraseña incorrectos</p>
-          <button type="submit" :style="primaryBtnStyle" class="w-full font-bold py-2.5 rounded-lg shadow">Ingresar</button>
-        </form>
+        </section>
+
+        <!-- PESTAÑA 5: CONTROL Y FILTROS DE ACEITES E INSUMOS -->
+        <section v-if="currentTab === 'aceites'" class="space-y-6">
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-3">
+              <div>
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <i class="fa-solid fa-oil-can text-amber-600"></i> Control y Filtros Avanzados de Aceites e Insumos
+                </h2>
+                <p class="text-xs text-slate-500">Visualiza el consumo general de aceites y aplica filtros por rangos de fechas, tipo específico y equipo.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="text-xs font-bold text-slate-700">Orden:</label>
+                <select v-model="sortAceitesOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
+                  <option value="desc">Más Recientes</option>
+                  <option value="asc">Más Antiguos</option>
+                </select>
+                <button @click="exportarCSV(filteredAceitesRecords, 'Reporte_Consumo_Aceites')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5">
+                  <i class="fa-solid fa-file-excel"></i> Exportar (CSV)
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-slate-50 p-4 rounded-xl border">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Fecha Desde</label>
+                <input type="date" v-model="filterOil.dateStart" class="w-full p-2 border rounded-lg bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Fecha Hasta</label>
+                <input type="date" v-model="filterOil.dateEnd" class="w-full p-2 border rounded-lg bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Equipo AFI</label>
+                <select v-model="filterOil.afi" class="w-full p-2 border rounded-lg bg-white font-semibold">
+                  <option value="ALL">-- Todos los Equipos --</option>
+                  <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Tipo de Aceite / Insumo</label>
+                <select v-model="filterOil.tipoAceite" class="w-full p-2 border rounded-lg bg-white font-semibold text-amber-800">
+                  <option value="ALL">-- Todos los Aceites e Insumos --</option>
+                  <option v-for="t in listaTiposAceitesDisponibles" :key="t" :value="t">{{ t }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between">
+                <div>
+                  <p class="text-[11px] font-bold uppercase text-amber-800">Registros con Consumo</p>
+                  <h3 class="text-2xl font-bold text-amber-900 mt-1">{{ filteredAceitesRecords.length }}</h3>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-amber-200/60 text-amber-700 flex items-center justify-center text-lg"><i class="fa-solid fa-clipboard-list"></i></div>
+              </div>
+              <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
+                <div>
+                  <p class="text-[11px] font-bold uppercase text-blue-800">Suma Total Cantidad (Filtro Actual)</p>
+                  <h3 class="text-xl font-bold text-blue-900 mt-1 font-mono">{{ sumaTotalCantidadAceites.toLocaleString('es-CL', { maximumFractionDigits: 2 }) }} L</h3>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-blue-200/60 text-blue-700 flex items-center justify-center text-lg"><i class="fa-solid fa-calculator"></i></div>
+              </div>
+              <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
+                <div>
+                  <p class="text-[11px] font-bold uppercase text-emerald-800">Costo Total Intervenciones</p>
+                  <h3 class="text-xl font-bold text-emerald-900 mt-1">${{ costoTotalAceitesFiltrados.toLocaleString('es-CL') }}</h3>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-emerald-200/60 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-dollar-sign"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+            <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-blue-600"></i> Detalle de Consumos Encontrados ({{ filteredAceitesRecords.length }} Resultados)
+            </h3>
+
+            <div class="overflow-x-auto border rounded-lg max-h-[500px]">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
+                  <tr>
+                    <th class="p-2.5">FECHA</th>
+                    <th class="p-2.5">AFI</th>
+                    <th class="p-2.5">EQUIPO</th>
+                    <th class="p-2.5">LUGAR</th>
+                    <th class="p-2.5">CAUSA / TIPO</th>
+                    <th class="p-2.5 text-amber-300">DETALLE DE ACEITES E INSUMOS CONSUMIDOS</th>
+                    <th class="p-2.5 text-right">COSTO</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y bg-white">
+                  <tr v-for="item in filteredAceitesRecords" :key="item.id" class="hover:bg-slate-50">
+                    <td class="p-2.5 font-mono text-slate-600 font-bold">{{ item.fecha }}</td>
+                    <td class="p-2.5 font-bold text-amber-700">
+                      <button @click="verDetallePorAfiString(item.afi)" class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200 hover:underline">{{ item.afi }}</button>
+                    </td>
+                    <td class="p-2.5 font-semibold">{{ item.equipo || '-' }}</td>
+                    <td class="p-2.5 text-slate-600">{{ item.lugar || '-' }}</td>
+                    <td class="p-2.5">
+                      <span class="font-bold block text-slate-800">{{ item.causa }}</span>
+                      <span class="text-[10px] text-blue-600">{{ item.tipoMant }}</span>
+                    </td>
+                    <td class="p-2.5 font-bold text-amber-900 bg-amber-50/50">{{ item.aceites }}</td>
+                    <td class="p-2.5 font-bold text-emerald-700 text-right">${{ Number(item.costo || 0).toLocaleString('es-CL') }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- PESTAÑA 6: CONFIGURACIÓN & GESTIÓN DE USUARIOS -->
+        <section v-if="currentTab === 'configuracion'" class="space-y-6">
+          
+          <!-- MÓDULO ADMINISTRADOR DE USUARIOS -->
+          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <i class="fa-solid fa-users-gear text-amber-600"></i> Gestión de Usuarios del Sistema (En la Nube)
+                </h3>
+                <p class="text-xs text-slate-500">Crea nuevos usuarios guardados en Supabase para ingresar desde cualquier equipo.</p>
+              </div>
+              <span v-if="!isAdmin" class="text-xs bg-rose-100 text-rose-800 font-bold px-3 py-1 rounded">Requiere Sesión Admin</span>
+            </div>
+
+            <!-- FORMULARIO CREAR USUARIO (SOLO ADMIN) -->
+            <div v-if="isAdmin" class="bg-slate-50 p-4 rounded-xl border space-y-3 text-xs">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-plus text-emerald-600"></i> Crear Nuevo Usuario</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label class="block font-bold mb-1">Nombre / Usuario</label>
+                  <input type="text" v-model="nuevoUsuario.usuario" placeholder="Ej: pedro_logistica" class="w-full p-2 border rounded-lg bg-white">
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Contraseña</label>
+                  <input type="password" v-model="nuevoUsuario.clave" placeholder="****" class="w-full p-2 border rounded-lg bg-white">
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Rol / Permisos</label>
+                  <select v-model="nuevoUsuario.rol" class="w-full p-2 border rounded-lg bg-white font-bold">
+                    <option value="lectura">Solo Lectura (Ver datos)</option>
+                    <option value="admin">Administrador (Control Total)</option>
+                  </select>
+                </div>
+                <div class="flex items-end">
+                  <button @click="crearNuevoUsuario" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2 rounded-lg shadow">
+                    <i class="fa-solid fa-plus-circle"></i> Guardar Usuario
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- TABLA DE USUARIOS CREADOS -->
+            <div class="overflow-x-auto border rounded-lg text-xs">
+              <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-800 text-white uppercase text-[10px]">
+                  <tr>
+                    <th class="p-2.5">USUARIO</th>
+                    <th class="p-2.5">ROL</th>
+                    <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y bg-white">
+                  <tr v-for="u in dbUsuarios" :key="u.usuario" class="hover:bg-slate-50">
+                    <td class="p-2.5 font-bold text-slate-800">{{ u.usuario }}</td>
+                    <td class="p-2.5">
+                      <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', u.rol === 'admin' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700']">
+                        {{ u.rol === 'admin' ? 'Administrador' : 'Solo Lectura' }}
+                      </span>
+                    </td>
+                    <td v-if="isAdmin" class="p-2.5 text-center">
+                      <button v-if="u.usuario !== 'logistica'" @click="eliminarUsuario(u.usuario)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-1 rounded font-bold" title="Eliminar">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                      <span v-else class="text-slate-400 italic text-[10px]">Principal</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- PERSONALIZACIÓN DE DISEÑO -->
+          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+            <div class="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-palette text-violet-600"></i> Personalización del Sistema</h3>
+                <p class="text-xs text-slate-500">Cambia el título, el logotipo, el color de la cabecera y el fondo general de la página web.</p>
+              </div>
+            </div>
+
+            <div v-if="isAdmin" class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border">
+              <div>
+                <label class="block font-bold text-xs mb-1">Título Principal del Sistema</label>
+                <input type="text" v-model="config.title" class="w-full p-2 border rounded text-xs bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-xs mb-1">Subtítulo</label>
+                <input type="text" v-model="config.subtitle" class="w-full p-2 border rounded text-xs bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-xs mb-1">URL o Cargar Nueva Foto / Logo</label>
+                <input type="text" v-model="config.logo" placeholder="https://..." class="w-full p-2 border rounded text-xs bg-white mb-2">
+                <input type="file" @change="subirNuevaFotoLogo" accept="image/*" class="text-xs">
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block font-bold text-xs mb-1">Color Header</label>
+                  <input type="color" v-model="config.customHeaderBg" class="w-full h-10 p-1 border rounded cursor-pointer">
+                </div>
+                <div>
+                  <label class="block font-bold text-xs mb-1">Color de Fondo General (Body)</label>
+                  <input type="color" v-model="config.customBodyBg" class="w-full h-10 p-1 border rounded cursor-pointer">
+                </div>
+              </div>
+              <div class="md:col-span-2 flex justify-end">
+                <button @click="guardarConfiguracionPersonalizada" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow">
+                  <i class="fa-solid fa-floppy-disk mr-1"></i> Guardar Cambios
+                </button>
+              </div>
+            </div>
+
+            <div class="border-t pt-4">
+              <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-3"><i class="fa-solid fa-file-import text-violet-600"></i> Centro Importador de Bases de Datos</h3>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+                  <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-boxes-stacked text-emerald-600"></i> 1. Inventario AFI</h4>
+                  <label :class="['w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-500']">
+                    <i class="fa-solid fa-file-excel"></i> Seleccionar
+                    <input type="file" :disabled="!isAdmin" @change="importarInventarioFile" accept=".xlsx, .xls, .csv, .json" class="hidden">
+                  </label>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+                  <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-truck-fast text-amber-600"></i> 2. Movimientos</h4>
+                  <label :class="['w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-amber-600 text-white' : 'bg-slate-300 text-slate-500']">
+                    <i class="fa-solid fa-file-excel"></i> Seleccionar
+                    <input type="file" :disabled="!isAdmin" @change="importarMovimientosFile" accept=".xlsx, .xls, .csv, .json" class="hidden">
+                  </label>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+                  <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-wrench text-blue-600"></i> 3. BD HISTORIAL (Aceites & Horas)</h4>
+                  <label :class="['w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-blue-600 text-white' : 'bg-slate-300 text-slate-500']">
+                    <i class="fa-solid fa-file-excel"></i> Seleccionar
+                    <input type="file" :disabled="!isAdmin" @change="importarIntervencionesFile" accept=".xlsx, .xls, .csv, .json" class="hidden">
+                  </label>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+
+      <!-- FORMULARIO MODAL: AGREGAR / EDITAR MANTENCIÓN -->
+      <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+          
+          <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
+            <h3 class="text-sm font-bold flex items-center gap-2">
+              <i class="fa-solid fa-wrench text-amber-400"></i> 
+              {{ isEditingMantencion ? 'Editar Mantención / Intervención' : 'Registrar Nueva Mantención / Intervención' }}
+            </h3>
+            <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white">
+              <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+          </div>
+
+          <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
+            
+            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-list-check text-amber-600"></i> Informes Principales</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div>
+                  <label class="block font-bold mb-1">AFI (Equipo)</label>
+                  <select v-model="formMant.afi" class="w-full p-2 border rounded-lg bg-white font-bold text-amber-900">
+                    <option value="">-- Seleccionar AFI --</option>
+                    <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Fecha</label>
+                  <input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white">
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Lugar</label>
+                  <input type="text" v-model="formMant.lugar" placeholder="Ej: Planta Tierras Blancas" class="w-full p-2 border rounded-lg bg-white">
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Horómetro</label>
+                  <input type="number" step="any" v-model="formMant.horometro" placeholder="Ej: 1250" class="w-full p-2 border rounded-lg bg-white font-mono font-bold">
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-sliders text-blue-600"></i> Clasificación Técnica</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="block font-bold mb-1">Causa</label>
+                  <select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold">
+                    <option value="">-- Seleccionar Causa --</option>
+                    <option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Tipo Mantención</label>
+                  <select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white">
+                    <option value="">-- Seleccionar Tipo --</option>
+                    <option value="PREVENTIVA">PREVENTIVA</option>
+                    <option value="PREDICTIVA">PREDICTIVA</option>
+                    <option value="CORRECTIVA">CORRECTIVA</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Tipo en Horas Mantención</label>
+                  <input type="text" v-model="formMant.tipoHorasMant" placeholder="Ej: 250, 500, 1000..." class="w-full p-2 border rounded-lg bg-white font-bold text-amber-800">
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-gear text-emerald-600"></i> Personal & Horarios</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" class="w-full p-2 border rounded-lg bg-white"></div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t">
+                <div><label class="block font-bold mb-1">Hora Inicio</label><input type="time" v-model="formMant.horaInicio" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Hora Término</label><input type="time" v-model="formMant.horaTermino" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div>
+                  <label class="block font-bold mb-1">Total Horas (Calculado)</label>
+                  <div class="p-2 border rounded-lg bg-amber-50 font-bold text-amber-900 font-mono text-center">
+                    {{ calcularRestaHoras(formMant.horaInicio, formMant.horaTermino) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+              <div class="flex justify-between items-center">
+                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5">
+                  <i class="fa-solid fa-oil-can text-amber-600"></i> Aceites & Insumos Consumidos
+                </h4>
+                <button @click="agregarFilaAceiteForm" class="bg-amber-100 hover:bg-amber-200 text-amber-900 px-2.5 py-1 rounded font-bold text-[11px] flex items-center gap-1">
+                  <i class="fa-solid fa-plus"></i> Añadir Insumo
+                </button>
+              </div>
+              <div v-for="(ac, idx) in formMant.aceiteDetallesArray" :key="idx" class="flex flex-wrap items-center gap-2">
+                <input type="text" v-model="ac.nombre" list="opcionesAceites" placeholder="Selecciona o escribe el aceite/insumo..." class="flex-grow p-2 border rounded-lg bg-white font-bold text-slate-800">
+                <datalist id="opcionesAceites">
+                  <option v-for="opc in listaAceitesEstandar" :key="opc" :value="opc"></option>
+                </datalist>
+                <input type="number" step="any" v-model="ac.cantidad" placeholder="Litros / Cant." class="w-32 p-2 border rounded-lg bg-white font-mono font-bold text-amber-900">
+                <button @click="eliminarFilaAceiteForm(idx)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-2 rounded-lg" title="Eliminar fila"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar text-violet-600"></i> Costos, Órdenes & Adjuntos</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-bold text-emerald-700"></div>
+                <div><label class="block font-bold mb-1">N° OC</label><input type="text" v-model="formMant.numeroOC" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">N° OT</label><input type="text" v-model="formMant.numeroOT" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Empresa Arriendo</label><input type="text" v-model="formMant.empresaArriendo" class="w-full p-2 border rounded-lg bg-white"></div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div><label class="block font-bold mb-1">Causa Detallada</label><textarea v-model="formMant.causaDetallada" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
+                <div><label class="block font-bold mb-1">Descripción</label><textarea v-model="formMant.descripcion" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
+                <div><label class="block font-bold mb-1">Interferencia</label><textarea v-model="formMant.interferencia" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="px-6 py-3 border-t bg-slate-100 flex justify-end gap-2">
+            <button @click="showFormMantencionModal = false" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded-lg">Cancelar</button>
+            <button @click="guardarMantencionForm" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg shadow flex items-center gap-1.5">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar Mantención
+            </button>
+          </div>
+
+        </div>
       </div>
-    </div>
+
+      <!-- MODAL DETALLE / PERFIL DEL AFI -->
+      <div v-if="showDetalleAfiModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+          
+          <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-50">
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-mono font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded">AFI: {{ equipoDetalle.afi }}</span>
+              <h3 class="text-sm font-bold text-slate-800">{{ equipoDetalle.tipo }} - {{ equipoDetalle.marca }} {{ equipoDetalle.modelo }}</h3>
+            </div>
+            <button @click="showDetalleAfiModal = false" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition">
+              <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+          </div>
+
+          <div class="p-6 overflow-y-auto space-y-6 flex-grow">
+            <div class="bg-slate-900 text-white p-4 rounded-xl space-y-3 shadow-inner">
+              <div class="flex justify-between items-center border-b border-slate-700 pb-2 font-bold text-xs">
+                <span><i class="fa-solid fa-gauge-high text-amber-400 mr-1.5"></i> Control de los 3 Horómetros</span>
+                <span class="bg-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold">{{ calcular3Horometros(equipoDetalle.afi).estadoTexto }}</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
+                  <span class="text-slate-400 block text-[10px] uppercase font-semibold">Oficial</span>
+                  <strong class="font-mono text-white text-sm">{{ calcular3Horometros(equipoDetalle.afi).hOficial }} hrs</strong>
+                </div>
+                <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
+                  <span class="text-slate-400 block text-[10px] uppercase font-semibold">Aprox (Hoy)</span>
+                  <strong class="font-mono text-sky-300 text-sm">{{ calcular3Horometros(equipoDetalle.afi).hAprox }} hrs</strong>
+                </div>
+                <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
+                  <span class="text-slate-400 block text-[10px] uppercase font-semibold">Target (Mant)</span>
+                  <strong class="font-mono text-emerald-300 text-sm">{{ calcular3Horometros(equipoDetalle.afi).hTarget }} hrs</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <h4 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2">
+                <i class="fa-solid fa-wrench text-blue-600"></i> Historial de Mantenciones ({{ getHistorialIntervencionesAFI(equipoDetalle.afi).length }})
+              </h4>
+              <div class="border rounded-xl overflow-x-auto max-h-52 bg-white">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                  <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
+                    <tr>
+                      <th class="p-2.5">Fecha</th>
+                      <th class="p-2.5">Causa</th>
+                      <th class="p-2.5">Tipo Mant.</th>
+                      <th class="p-2.5">Tipo Horas</th>
+                      <th class="p-2.5">Horómetro</th>
+                      <th class="p-2.5">Descripción</th>
+                      <th class="p-2.5 text-amber-300">Aceites e Insumos</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y bg-white">
+                    <tr v-for="i in getHistorialIntervencionesAFI(equipoDetalle.afi)" :key="i.id" class="hover:bg-slate-50">
+                      <td class="p-2.5 font-mono font-bold text-slate-800">{{ i.fecha }}</td>
+                      <td class="p-2.5 font-bold">{{ i.causa }}</td>
+                      <td class="p-2.5 font-semibold text-blue-600">{{ i.tipoMant }}</td>
+                      <td class="p-2.5 font-bold text-amber-800 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
+                      <td class="p-2.5 font-mono">{{ i.horometro }} hrs</td>
+                      <td class="p-2.5 max-w-xs truncate">{{ i.descripcion }}</td>
+                      <td class="p-2.5 font-bold text-amber-800 bg-amber-50">{{ i.aceites }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <h4 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2">
+                <i class="fa-solid fa-truck-moving text-amber-500"></i> Historial de Traslados ({{ getHistorialMovimientosAFI(equipoDetalle.afi).length }})
+              </h4>
+              <div class="border rounded-xl overflow-x-auto max-h-48 bg-white">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                  <thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[10px]">
+                    <tr>
+                      <th class="p-2.5">Fecha</th>
+                      <th class="p-2.5">Origen</th>
+                      <th class="p-2.5">Destino</th>
+                      <th class="p-2.5">Camión</th>
+                      <th class="p-2.5">Conductor</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y bg-white">
+                    <tr v-for="m in getHistorialMovimientosAFI(equipoDetalle.afi)" :key="m.id" class="hover:bg-slate-50">
+                      <td class="p-2.5 font-mono font-bold text-slate-800">{{ m.fecha }}</td>
+                      <td class="p-2.5">{{ m.origen }}</td>
+                      <td class="p-2.5 font-bold text-emerald-700">{{ m.destino }}</td>
+                      <td class="p-2.5">{{ m.camion }}</td>
+                      <td class="p-2.5">{{ m.conductor }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 py-3 border-t bg-slate-50 flex justify-end">
+            <button @click="showDetalleAfiModal = false" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow">
+              Cerrar Ventana
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </template>
 
   </div>
 
@@ -1005,7 +1018,6 @@
         const usuarioActivo = ref(null);
         const isAdmin = computed(() => usuarioActivo.value && usuarioActivo.value.rol === 'admin');
 
-        const showAuthModal = ref(false);
         const loginUser = ref("");
         const loginPass = ref("");
         const authError = ref(false);
@@ -1042,7 +1054,7 @@
 
         const guardarConfiguracionPersonalizada = () => {
           localStorage.setItem('afi_config_custom', JSON.stringify(config.value));
-          alert("¡Configuración guardada!");
+          alert("¡Configuración guardada con éxito!");
         };
 
         const subirNuevaFotoLogo = (e) => {
@@ -1159,55 +1171,97 @@
 
         const formatExcelDate = (val) => {
           if (!val && val !== 0) return '-';
+          let str = String(val).trim();
+          if (str.includes('T')) str = str.split('T')[0];
+          if (str.includes(' ')) str = str.split(' ')[0];
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            return str;
+          }
           if (typeof val === 'number' || (!isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
             const num = Number(val);
             if (num > 20000 && num < 80000) {
               const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
-              return `${String(dateObj.getUTCDate()).padStart(2, '0')}-${String(dateObj.getUTCMonth() + 1).padStart(2, '0')}-${dateObj.getUTCFullYear()}`;
+              const yyyy = dateObj.getUTCFullYear();
+              const mm = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+              const dd = String(dateObj.getUTCDate()).padStart(2, '0');
+              return `${yyyy}-${mm}-${dd}`;
             }
           }
-          let str = String(val).trim();
-          if (str.includes('T')) str = str.split('T')[0];
-          if (str.includes(' ')) str = str.split(' ')[0];
           return str || '-';
         };
 
-        // PARSEADOR DE FECHAS MEJORADO QUE MANEJA ESPACIOS, DIAGONALES Y SERIALES
+        // PARSEADOR UNIVERSAL DE FECHAS (SOPORTA 07-26-24, DIAGONALES, HORAS Y SERIALES DE EXCEL)
         const formatIsoDateForSupabase = (val) => {
           if (!val && val !== 0) return null;
+
+          if (val instanceof Date) {
+            if (isNaN(val.getTime())) return null;
+            const yyyy = val.getFullYear();
+            const mm = String(val.getMonth() + 1).padStart(2, '0');
+            const dd = String(val.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+          }
+
           let strVal = String(val).trim();
 
           if (strVal === "" || strVal === "-" || strVal === "null" || strVal === "undefined" || strVal === "N/A") {
             return null;
           }
 
-          if (strVal.includes(' ')) strVal = strVal.split(' ')[0];
-          if (strVal.includes('T')) strVal = strVal.split('T')[0];
-
-          if (/^\d{4}-\d{2}-\d{2}$/.test(strVal)) return strVal;
-
-          if (strVal.includes('-')) {
-            const parts = strVal.split('-');
-            if (parts.length === 3 && parts[2].length === 4) {
-              return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-            }
-          }
-
-          if (strVal.includes('/')) {
-            const parts = strVal.split('/');
-            if (parts.length === 3) {
-              if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-              if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-              if (parts[2].length === 2) return `20${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-            }
-          }
-
-          if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/'))) {
+          if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/') && !strVal.includes(' ') && !strVal.includes(':'))) {
             const num = Number(val);
             if (num > 20000 && num < 80000) {
               const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
-              return dateObj.toISOString().split('T')[0];
+              const yyyy = dateObj.getUTCFullYear();
+              const mm = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+              const dd = String(dateObj.getUTCDate()).padStart(2, '0');
+              return `${yyyy}-${mm}-${dd}`;
             }
+          }
+
+          if (strVal.includes('T')) strVal = strVal.split('T')[0];
+          if (strVal.includes(' ')) {
+            const spaceParts = strVal.split(' ');
+            if (spaceParts[0].includes('-') || spaceParts[0].includes('/')) {
+              strVal = spaceParts[0];
+            }
+          }
+
+          if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(strVal)) {
+            const parts = strVal.split(/[-/]/);
+            return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+          }
+
+          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
+            const parts = strVal.split(/[-/]/);
+            let p1 = parseInt(parts[0], 10);
+            let p2 = parseInt(parts[1], 10);
+            let year = parts[2];
+            let month, day;
+            if (p1 > 12) { day = p1; month = p2; }
+            else if (p2 > 12) { month = p1; day = p2; }
+            else { day = p1; month = p2; }
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          }
+
+          if (/^\d{1,2}[-/]\d{1,2}[-/]\d{2}$/.test(strVal)) {
+            const parts = strVal.split(/[-/]/);
+            let p1 = parseInt(parts[0], 10);
+            let p2 = parseInt(parts[1], 10);
+            let year = "20" + parts[2];
+            let month, day;
+            if (p1 > 12) { day = p1; month = p2; }
+            else if (p2 > 12) { month = p1; day = p2; }
+            else { day = p1; month = p2; }
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          }
+
+          const dParsed = new Date(val);
+          if (!isNaN(dParsed.getTime())) {
+            const yyyy = dParsed.getFullYear();
+            const mm = String(dParsed.getMonth() + 1).padStart(2, '0');
+            const dd = String(dParsed.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
           }
 
           return null;
@@ -1696,7 +1750,7 @@
           } catch (err) { alert("Error al importar movimientos."); }
         };
 
-        // IMPORTACIÓN COMPLETA DEL HISTORIAL EN LOTES DE 200 FILAS CON FORMATO DE FECHA CORREGIDO
+        // IMPORTACIÓN DEL HISTORIAL CON CONVERSIÓN DE FECHA UNIVERSAL
         const importarIntervencionesFile = async (e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -1765,7 +1819,6 @@
               return;
             }
 
-            // Inserción masiva dividida en lotes de 200 filas
             const BATCH_SIZE = 200;
             let totalInsertados = 0;
             for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
@@ -1804,7 +1857,7 @@
 
         let chartEstadoInst = null, chartTiposInst = null, chartCausasInst = null;
         const renderCharts = () => {
-          if (currentTab.value !== 'dashboard') return;
+          if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
           nextTick(() => {
             const ctx1 = document.getElementById('chartEstado');
             if (ctx1) {
@@ -1906,10 +1959,10 @@
           const userEncontrado = dbUsuarios.value.find(u => u.usuario.toLowerCase() === loginUser.value.trim().toLowerCase() && u.clave === loginPass.value.trim());
           if (userEncontrado) {
             usuarioActivo.value = userEncontrado;
-            showAuthModal.value = false;
             authError.value = false;
             loginUser.value = "";
             loginPass.value = "";
+            nextTick(() => renderCharts());
           } else {
             authError.value = true;
           }
@@ -1918,7 +1971,7 @@
         const logout = () => { usuarioActivo.value = null; };
 
         return {
-          usuarioActivo, isAdmin, showAuthModal, loginUser, loginPass, authError, currentTab, switchTab,
+          usuarioActivo, isAdmin, loginUser, loginPass, authError, currentTab, switchTab,
           dbUsuarios, nuevoUsuario, crearNuevoUsuario, eliminarUsuario,
           config, headerStyle, bodyStyle, primaryBtnStyle, guardarConfiguracionPersonalizada, subirNuevaFotoLogo, uploadFotoEquipo,
           listaCausas, listaAceitesEstandar, dbEquipos, dbMovimientos, dbIntervenciones,
