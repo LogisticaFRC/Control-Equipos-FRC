@@ -21,44 +21,62 @@
 
   <div id="app" class="flex-grow flex flex-col">
 
-    <!-- PANTALLA DE INGRESO / LOGIN (REQUIERE CREDENCIALES) -->
+    <!-- MENÚ DE INICIO / ACCESO POR CREDENCIALES -->
     <div v-if="!usuarioActivo" class="min-h-screen flex items-center justify-center bg-slate-900 p-4 w-full flex-grow">
-      <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-md p-8 space-y-6 text-center">
+      <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-8 space-y-6 text-center">
         
+        <!-- LOGO EMPRESA -->
         <div class="flex justify-center">
-          <div class="bg-slate-900 p-3 rounded-2xl w-28 h-28 flex items-center justify-center border border-slate-700 shadow-lg">
+          <div class="bg-slate-900 p-3 rounded-2xl w-28 h-28 flex items-center justify-center border border-slate-700 shadow-xl">
             <img :src="config.logo" alt="Logo Empresa" class="max-h-full max-w-full object-contain">
           </div>
         </div>
 
+        <!-- TÍTULO Y SUBTÍTULO -->
         <div>
-          <h2 class="text-xl font-extrabold text-slate-800">{{ config.title }}</h2>
+          <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">{{ config.title }}</h2>
           <p class="text-xs text-slate-500 mt-1 font-semibold">{{ config.subtitle }}</p>
         </div>
 
+        <!-- FORMULARIO DE ACCESO -->
         <form @submit.prevent="login" class="space-y-4 text-left text-xs">
           <div>
             <label class="font-bold text-slate-700 block mb-1">Usuario</label>
-            <input type="text" v-model="loginUser" placeholder="Ingresa tu usuario..." required class="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800">
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <i class="fa-solid fa-user"></i>
+              </span>
+              <input type="text" v-model="loginUser" placeholder="Ingresa tu usuario..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
+            </div>
           </div>
+
           <div>
             <label class="font-bold text-slate-700 block mb-1">Contraseña</label>
-            <input type="password" v-model="loginPass" placeholder="Ingresa tu contraseña..." required class="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800">
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <i class="fa-solid fa-lock"></i>
+              </span>
+              <input type="password" v-model="loginPass" placeholder="Ingresa tu contraseña..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
+            </div>
           </div>
           
-          <p v-if="authError" class="text-rose-600 font-bold text-center bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+          <p v-if="authError" class="text-rose-600 font-bold text-center bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs">
             <i class="fa-solid fa-triangle-exclamation mr-1"></i> Usuario o contraseña incorrectos
           </p>
 
-          <button type="submit" :style="primaryBtnStyle" class="w-full font-extrabold py-3.5 rounded-xl shadow-lg hover:brightness-110 transition flex items-center justify-center gap-2 text-sm">
+          <button type="submit" :style="primaryBtnStyle" class="w-full font-extrabold py-3.5 rounded-xl shadow-lg hover:brightness-110 transition flex items-center justify-center gap-2 text-sm uppercase tracking-wider">
             <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
           </button>
         </form>
 
+        <div class="text-[11px] text-slate-400 font-medium">
+          Acceso protegido - Sistema Operativo FRC
+        </div>
+
       </div>
     </div>
 
-    <!-- SISTEMA PRINCIPAL (UNA VEZ AUTENTICADO) -->
+    <!-- PANEL PRINCIPAL (SISTEMA UNA VEZ AUTENTICADO) -->
     <template v-else>
 
       <!-- HEADER / NAVBAR -->
@@ -108,7 +126,7 @@
                 <i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)
               </span>
             </div>
-            <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded text-xs transition flex items-center gap-1.5 shadow">
+            <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow">
               <i class="fa-solid fa-right-from-bracket"></i> Salir
             </button>
           </div>
@@ -125,7 +143,7 @@
               <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <i class="fa-solid fa-chart-pie text-emerald-600"></i> Dashboard de Control de Equipos y Estado Operativo
               </h2>
-              <p class="text-xs text-slate-500">Haz clic en cualquiera de los bloques para filtrar y ver los equipos en el inventario.</p>
+              <p class="text-xs text-slate-500">Haz clic en cualquiera de los bloques para filtrar los equipos en el inventario.</p>
             </div>
             <div class="flex items-center gap-2">
               <button @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
@@ -274,7 +292,6 @@
                   <div class="text-xs space-y-1 text-slate-600">
                     <p><i class="fa-solid fa-industry w-4 text-slate-400"></i> <strong>Marca/Modelo:</strong> {{ e.marca }} {{ e.modelo }}</p>
                     <p><i class="fa-solid fa-location-dot w-4 text-rose-500"></i> <strong>Ubicación:</strong> <span class="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{{ e.ubicacion }}</span></p>
-                    
                     <p class="pt-1 border-t mt-1">
                       <i class="fa-solid fa-clock-rotate-left w-4 text-amber-600"></i> 
                       <strong>Mantención Programada:</strong> 
@@ -374,7 +391,7 @@
                 </thead>
                 <tbody class="divide-y bg-white">
                   <tr v-for="m in filteredMovimientos" :key="m.id" class="hover:bg-slate-50">
-                    <td class="p-2.5 font-mono">{{ m.fecha }}</td>
+                    <td class="p-2.5 font-mono font-bold text-slate-800">{{ m.fecha }}</td>
                     <td class="p-2.5 font-bold text-amber-700">{{ m.afi }}</td>
                     <td class="p-2.5">{{ m.tipo }}</td>
                     <td class="p-2.5">{{ m.origen }}</td>
@@ -475,7 +492,7 @@
                       <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                     </td>
                     <td class="p-2 font-bold text-amber-700">{{ i.afi }}</td>
-                    <td class="p-2 font-mono font-bold text-slate-800">{{ i.fecha }}</td>
+                    <td class="p-2 font-mono font-bold text-slate-800 bg-amber-50/50">{{ i.fecha }}</td>
                     <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
                     <td class="p-2">{{ i.lugar || '-' }}</td>
                     <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
@@ -599,7 +616,7 @@
                 </thead>
                 <tbody class="divide-y bg-white">
                   <tr v-for="item in filteredAceitesRecords" :key="item.id" class="hover:bg-slate-50">
-                    <td class="p-2.5 font-mono text-slate-600 font-bold">{{ item.fecha }}</td>
+                    <td class="p-2.5 font-mono text-slate-700 font-bold bg-amber-50/40">{{ item.fecha }}</td>
                     <td class="p-2.5 font-bold text-amber-700">
                       <button @click="verDetallePorAfiString(item.afi)" class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200 hover:underline">{{ item.afi }}</button>
                     </td>
@@ -1172,11 +1189,11 @@
         const formatExcelDate = (val) => {
           if (!val && val !== 0) return '-';
           let str = String(val).trim();
+          if (str === "null" || str === "undefined") return '-';
           if (str.includes('T')) str = str.split('T')[0];
           if (str.includes(' ')) str = str.split(' ')[0];
-          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-            return str;
-          }
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+          
           if (typeof val === 'number' || (!isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
             const num = Number(val);
             if (num > 20000 && num < 80000) {
@@ -1190,9 +1207,9 @@
           return str || '-';
         };
 
-        // PARSEADOR UNIVERSAL DE FECHAS (SOPORTA 07-26-24, DIAGONALES, HORAS Y SERIALES DE EXCEL)
+        // PARSEADOR UNIVERSAL DE FECHAS PARA SUPABASE
         const formatIsoDateForSupabase = (val) => {
-          if (!val && val !== 0) return null;
+          if (val === null || val === undefined || val === '') return null;
 
           if (val instanceof Date) {
             if (isNaN(val.getTime())) return null;
@@ -1203,12 +1220,11 @@
           }
 
           let strVal = String(val).trim();
-
           if (strVal === "" || strVal === "-" || strVal === "null" || strVal === "undefined" || strVal === "N/A") {
             return null;
           }
 
-          if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/') && !strVal.includes(' ') && !strVal.includes(':'))) {
+          if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/') && !strVal.includes(' '))) {
             const num = Number(val);
             if (num > 20000 && num < 80000) {
               const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
@@ -1256,7 +1272,7 @@
             return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           }
 
-          const dParsed = new Date(val);
+          const dParsed = new Date(strVal);
           if (!isNaN(dParsed.getTime())) {
             const yyyy = dParsed.getFullYear();
             const mm = String(dParsed.getMonth() + 1).padStart(2, '0');
@@ -1687,24 +1703,16 @@
             }
 
             if (payloads.length === 0) {
-              alert("No se encontraron filas con la columna 'AFI' en el archivo Excel.");
+              alert("No se encontraron filas con la columna 'AFI'.");
               return;
             }
 
             const { error } = await supabaseClient.from('BD_INVENTARIO').upsert(payloads, { onConflict: 'afi' });
-            
-            if (error) {
-              console.error("Error Supabase:", error);
-              alert("Error de Supabase: " + error.message);
-              return;
-            }
+            if (error) { alert("Error Supabase: " + error.message); return; }
 
             await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron/actualizaron ${payloads.length} equipos en Supabase.`);
-          } catch (err) { 
-            console.error("Error al importar inventario:", err);
-            alert("Error al procesar el archivo Excel."); 
-          }
+            alert(`¡Éxito! Se importaron ${payloads.length} equipos en Supabase.`);
+          } catch (err) { alert("Error al procesar el archivo Excel."); }
         };
 
         const importarMovimientosFile = async (e) => {
@@ -1733,24 +1741,16 @@
               }
             }
 
-            if (payloads.length === 0) {
-              alert("No se encontraron filas válidas.");
-              return;
-            }
+            if (payloads.length === 0) { alert("Sin registros válidos."); return; }
 
             const { error } = await supabaseClient.from('BD_MOVIMIENTOS').insert(payloads);
-            if (error) {
-              console.error("Error Supabase Movimientos:", error);
-              alert("Error en Supabase: " + error.message);
-              return;
-            }
+            if (error) { alert("Error Supabase: " + error.message); return; }
 
             await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron ${payloads.length} movimientos a Supabase.`);
+            alert(`¡Éxito! Se importaron ${payloads.length} movimientos.`);
           } catch (err) { alert("Error al importar movimientos."); }
         };
 
-        // IMPORTACIÓN DEL HISTORIAL CON CONVERSIÓN DE FECHA UNIVERSAL
         const importarIntervencionesFile = async (e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -1815,7 +1815,7 @@
             }
 
             if (payloads.length === 0) {
-              alert("No se encontraron registros válidos con columna 'AFI'.");
+              alert("No se encontraron registros válidos.");
               return;
             }
 
@@ -1825,7 +1825,6 @@
               const chunk = payloads.slice(i, i + BATCH_SIZE);
               const { error } = await supabaseClient.from('BD_HISTORIAL').insert(chunk);
               if (error) {
-                console.error("Error lote Supabase:", error);
                 alert(`Error en lote ${i+1}: ${error.message}`);
                 return;
               }
@@ -1833,11 +1832,8 @@
             }
 
             await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron correctamente ${totalInsertados} registros del Historial a Supabase.`);
-          } catch (err) { 
-            console.error("Error al importar historial:", err);
-            alert("Error al procesar el archivo Excel del Historial."); 
-          }
+            alert(`¡Éxito! Se importaron correctamente ${totalInsertados} registros a Supabase.`);
+          } catch (err) { alert("Error al procesar el archivo Excel del Historial."); }
         };
 
         const exportarCSV = (dataArray, filename = 'Export') => {
