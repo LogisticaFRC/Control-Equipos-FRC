@@ -1119,7 +1119,6 @@
           aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "", aceite_dacnis_68: "", aceite_dacnis_46: "", aceite_5w30: "", hydra46: ""
         });
 
-        // Opciones dinámicas para Horas / Kilometraje según el tipo de equipo
         const opcionesHorasMantencion = computed(() => {
           const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase());
           const tipoStr = eq ? `${eq.tipo} ${eq.marca} ${eq.modelo}`.toLowerCase() : "";
@@ -1191,7 +1190,7 @@
           reader.readAsDataURL(file);
         };
 
-        // LÓGICA PROGRAMAS JERÁRQUICOS
+        // LÓGICA PROGRAMAS JERÁRQUICOS (CORREGIDA PARA SUPABASE)
         const listaCarpetasProgramas = computed(() => {
           const carpetas = new Set();
           dbProgramas.value.forEach(p => { if(p.carpeta) carpetas.add(p.carpeta); });
@@ -1479,7 +1478,7 @@
           } catch (err) { console.error("Error cargando datos:", err); }
         };
 
-        // LÓGICA DE HORÓMETROS MEJORADA (EVALÚA PENÚLTIMO SI EL ÚLTIMO COINCIDE CON LA MANTENCIÓN)
+        // LÓGICA DE HORÓMETROS (EVALÚA PENÚLTIMO SI EL ÚLTIMO COINCIDE CON LA MANTENCIÓN)
         const actualizarHorometrosDesdeHistorial = () => {
           const intervencionesPorAFI = {};
           dbIntervenciones.value.forEach(i => {
@@ -1506,7 +1505,6 @@
             let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : 0;
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : '-';
 
-            // Tasa de uso diario: Si el último horómetro y la mantención son iguales, compara el penúltimo con el último
             let rateHrsDia = 0;
             if (histConHorometro.length >= 2) {
               let idxUltimo = histConHorometro.length - 1;
