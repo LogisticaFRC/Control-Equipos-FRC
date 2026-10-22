@@ -16,6 +16,24 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <style>
+    /* Efecto parpadeo lento rojo para equipos PASADOS */
+    @keyframes blink-red-slow {
+      0% { background-color: #450a0a; border-color: #ef4444; }
+      50% { background-color: #991b1b; border-color: #fca5a5; }
+      100% { background-color: #450a0a; border-color: #ef4444; }
+    }
+    .bg-pasado-blink {
+      animation: blink-red-slow 2.5s ease-in-out infinite;
+      color: white;
+    }
+    .bg-normal-horometro {
+      background-color: #0f172a; /* slate-900 */
+      border-color: #334155; /* slate-700 */
+      color: white;
+    }
+  </style>
 </head>
 <body :style="bodyStyle" class="font-sans min-h-screen flex flex-col transition-colors duration-300">
 
@@ -282,9 +300,6 @@
                       <span class="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">AFI: {{ e.afi }}</span>
                       <h3 class="font-bold text-sm text-slate-800 mt-1">{{ e.tipo }}</h3>
                     </div>
-                    <button v-if="isAdmin" @click="abrirEditarEquipo(e)" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded border shadow-sm flex items-center gap-1 font-bold">
-                      <i class="fa-solid fa-pen"></i> Editar Perfil
-                    </button>
                   </div>
                   <div class="text-xs space-y-1 text-slate-600">
                     <p><i class="fa-solid fa-industry w-4 text-slate-400"></i> <strong>Marca/Modelo:</strong> {{ e.marca }} {{ e.modelo }}</p>
@@ -292,7 +307,6 @@
                   </div>
 
                   <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.horometros)]">
-                    
                     <div class="flex justify-between items-center text-[10px] text-slate-500 font-bold border-b pb-1">
                       <span class="text-amber-700"><i class="fa-solid fa-stopwatch"></i> FRECUENCIA: {{ e.frecuenciaMantencion }}h</span>
                       <span class="text-blue-700"><i class="fa-solid fa-chart-line"></i> USO DIARIO: {{ e.horometros?.rateHrsDia > 0 ? e.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin datos' }}</span>
@@ -325,8 +339,8 @@
                 </div>
               </div>
               <div class="p-3 bg-slate-50 border-t flex items-center justify-between gap-2">
-                <button @click="verDetalleCompletoAFI(e)" class="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm">
-                  <i class="fa-solid fa-layer-group text-amber-600"></i> Historial
+                <button @click="abrirPerfilEquipo(e)" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm transition">
+                  <i class="fa-solid fa-id-card text-blue-300"></i> Perfil Equipo
                 </button>
                 <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion(e.afi)" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow">
                   <i class="fa-solid fa-plus-circle"></i> + Mantención
@@ -336,8 +350,7 @@
           </div>
         </section>
 
-        <!-- (Secciones Movimientos, Hoja de Vida, Control Aceites, Configuración se mantienen intactas en HTML) -->
-        <!-- MOVIMIENTOS -->
+        <!-- (Secciones Movimientos, Hoja Vida, Aceites, Config quedan igual) -->
         <section v-if="currentTab === 'movimientos'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap justify-between items-center gap-3">
@@ -518,7 +531,9 @@
                       <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
                       <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                     </td>
-                    <td class="p-2 font-bold text-amber-700">{{ i.afi }}</td>
+                    <td class="p-2 font-bold text-amber-700">
+                      <button @click="verDetallePorAfiString(i.afi)" class="hover:underline bg-amber-50 px-2 rounded">{{ i.afi }}</button>
+                    </td>
                     <td class="p-2 font-mono font-bold text-slate-800 bg-amber-50/50">{{ i.fecha }}</td>
                     <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
                     <td class="p-2">{{ i.lugar || '-' }}</td>
@@ -771,7 +786,7 @@
                 </button>
               </div>
             </div>
-            <!-- (El resto del importador de excels se mantiene intacto abajo...) -->
+            
             <div class="border-t pt-4">
               <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-3"><i class="fa-solid fa-file-import text-violet-600"></i> Centro Importador de Bases de Datos</h3>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -818,7 +833,7 @@
           </div>
 
           <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
-            <!-- (Campos del form mantención igual al anterior) -->
+            
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
               <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-list-check text-amber-600"></i> Informes Principales</h4>
               <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -936,170 +951,177 @@
         </div>
       </div>
 
-      <!-- MODAL FORMULARIO EDITAR PERFIL EQUIPO -->
-      <div v-if="showFormEquipoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-3xl flex flex-col overflow-hidden">
+      <!-- NUEVO GRAN MODAL: PERFIL DE EQUIPO E HISTORIAL -->
+      <div v-if="showPerfilEquipoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden">
           
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
-            <h3 class="text-sm font-bold flex items-center gap-2">
-              <i class="fa-solid fa-pen text-amber-400"></i> Editar Perfil del Equipo (AFI: {{ formEquipo.afi }})
-            </h3>
-            <button @click="showFormEquipoModal = false" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-          </div>
-
-          <div class="p-6 overflow-y-auto space-y-4 text-xs bg-slate-50">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div><label class="block font-bold mb-1">Tipo de Equipo</label><input type="text" v-model="formEquipo.tipo" class="w-full p-2 border rounded-lg bg-white font-semibold text-slate-800"></div>
-              <div><label class="block font-bold mb-1">Marca</label><input type="text" v-model="formEquipo.marca" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div><label class="block font-bold mb-1">Modelo</label><input type="text" v-model="formEquipo.modelo" class="w-full p-2 border rounded-lg bg-white"></div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><label class="block font-bold mb-1">Ubicación Actual</label><input type="text" v-model="formEquipo.ubicacion" class="w-full p-2 border rounded-lg bg-white"></div>
-              <div>
-                <label class="block font-bold mb-1">Disponibilidad / Estado</label>
-                <select v-model="formEquipo.disponibilidad" class="w-full p-2 border rounded-lg bg-white font-bold text-slate-700">
-                  <option value="Operativo">Trabajando / Operativo</option>
-                  <option value="Disponible">Disponible</option>
-                  <option value="En Traslado">En Traslado</option>
-                  <option value="En Mantencion">En Mantención</option>
-                  <option value="Fuera de Servicio">Fuera de Servicio</option>
-                  <option value="Venta">En Venta</option>
-                </select>
-              </div>
-            </div>
-            
-            <div class="mt-4 p-4 border rounded-xl bg-amber-50 space-y-3">
-              <h4 class="font-bold text-amber-900 flex items-center gap-1.5"><i class="fa-solid fa-stopwatch text-amber-600"></i> Control y Frecuencia</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block font-bold mb-1 text-slate-700">Horómetro Actual Manual (Hrs)</label>
-                  <input type="number" step="any" v-model="formEquipo.horometroActual" class="w-full p-2 border border-amber-300 rounded-lg bg-white font-mono font-bold text-slate-800">
-                  <p class="text-[9px] text-amber-700 mt-1">Si es mayor al último proyectado, se actualizará la meta.</p>
-                </div>
-                <div>
-                  <label class="block font-bold mb-1 text-slate-700">Frecuencia de Mantención (Hrs)</label>
-                  <input type="number" step="any" v-model="formEquipo.frecuenciaMantencion" placeholder="Ej: 250" class="w-full p-2 border border-amber-300 rounded-lg bg-white font-mono font-bold text-emerald-700">
-                  <p class="text-[9px] text-amber-700 mt-1">Cada cuántas horas debe hacerse mantención a este equipo.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="px-6 py-4 border-t bg-white flex justify-end gap-2">
-            <button @click="showFormEquipoModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-lg">Cancelar</button>
-            <button @click="guardarEquipoForm" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow flex items-center gap-1.5">
-              <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios en Nube
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- MODAL DETALLE AFI -->
-      <div v-if="showDetalleAfiModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
-          
-          <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-50">
             <div class="flex items-center gap-3">
-              <span class="text-xs font-mono font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded">AFI: {{ equipoDetalle.afi }}</span>
-              <h3 class="text-sm font-bold text-slate-800">{{ equipoDetalle.tipo }} - {{ equipoDetalle.marca }} {{ equipoDetalle.modelo }}</h3>
+              <span class="text-xs font-mono font-bold bg-amber-500 text-slate-900 px-3 py-1.5 rounded-lg shadow-sm">AFI: {{ perfilEquipo.afi }}</span>
+              <h3 class="text-base font-extrabold tracking-wide uppercase"><i class="fa-solid fa-id-card mr-2"></i> Perfil de Equipo y Control Histórico</h3>
             </div>
-            <button @click="showDetalleAfiModal = false" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition">
+            <button @click="showPerfilEquipoModal = false" class="w-8 h-8 rounded-full bg-slate-700 hover:bg-rose-500 text-white flex items-center justify-center transition shadow">
               <i class="fa-solid fa-xmark text-base"></i>
             </button>
           </div>
 
-          <div class="p-6 overflow-y-auto space-y-6 flex-grow">
-            <div class="bg-slate-900 text-white p-4 rounded-xl space-y-3 shadow-inner">
-              <div class="flex justify-between items-center border-b border-slate-700 pb-2 font-bold text-xs">
-                <span><i class="fa-solid fa-gauge-high text-amber-400 mr-1.5"></i> Control de Horómetros (Frecuencia: {{ equipoDetalle.frecuenciaMantencion }}h)</span>
-                <span class="bg-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold">{{ equipoDetalle.horometros?.estadoTexto || 'CALCULANDO' }}</span>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-center text-xs">
-                <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
-                  <span class="text-slate-400 block text-[10px] uppercase font-semibold">Oficial / Manual</span>
-                  <strong class="font-mono text-white text-sm">{{ equipoDetalle.horometros?.hOficial || 0 }} hrs</strong>
+          <div class="p-6 overflow-y-auto space-y-6 flex-grow bg-slate-100 text-xs">
+            
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-4">
+                <i class="fa-solid fa-truck-monster text-emerald-600"></i> Datos Principales del Equipo
+              </h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div><label class="block font-bold text-slate-700 mb-1">Tipo de Equipo</label><input type="text" v-model="perfilEquipo.tipo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-slate-800"></div>
+                <div><label class="block font-bold text-slate-700 mb-1">Marca</label><input type="text" v-model="perfilEquipo.marca" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
+                <div><label class="block font-bold text-slate-700 mb-1">Modelo</label><input type="text" v-model="perfilEquipo.modelo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
+                <div><label class="block font-bold text-slate-700 mb-1">Ubicación Actual</label><input type="text" v-model="perfilEquipo.ubicacion" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
+                
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Disponibilidad / Estado</label>
+                  <select v-model="perfilEquipo.disponibilidad" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
+                    <option value="Operativo">Trabajando / Operativo</option>
+                    <option value="Disponible">Disponible</option>
+                    <option value="En Traslado">En Traslado</option>
+                    <option value="En Mantencion">En Mantención</option>
+                    <option value="Fuera de Servicio">Fuera de Servicio</option>
+                    <option value="Venta">En Venta</option>
+                  </select>
                 </div>
-                <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
-                  <span class="text-slate-400 block text-[10px] uppercase font-semibold">Aprox (Tasa Uso)</span>
-                  <strong class="font-mono text-sky-300 text-sm">{{ equipoDetalle.horometros?.hAprox || 0 }} hrs</strong>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Estado de GPS</label>
+                  <select v-model="perfilEquipo.gps" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-blue-700">
+                    <option value="Instalado">Instalado</option>
+                    <option value="Sin GPS">Sin GPS</option>
+                  </select>
                 </div>
-                <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
-                  <span class="text-slate-400 block text-[10px] uppercase font-semibold">Meta (Target)</span>
-                  <strong class="font-mono text-emerald-300 text-sm">{{ equipoDetalle.horometros?.hTarget || 0 }} hrs</strong>
-                </div>
-                <div class="bg-slate-800 p-2.5 rounded-lg border border-slate-700">
-                  <span class="text-slate-400 block text-[10px] uppercase font-semibold">Fecha Estimada</span>
-                  <strong class="font-mono text-amber-300 text-xs">{{ equipoDetalle.horometros?.fechaEstimada || '-' }}</strong>
+                <div class="md:col-span-2">
+                  <label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label>
+                  <input type="text" v-model="perfilEquipo.imei_gps" :disabled="!isAdmin" placeholder="Ej: 8645..." class="w-full p-2 border rounded-lg bg-slate-50 font-mono">
                 </div>
               </div>
             </div>
 
-            <div class="space-y-2">
-              <h4 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-wrench text-blue-600"></i> Historial de Mantenciones ({{ getHistorialIntervencionesAFI(equipoDetalle.afi).length }})
-              </h4>
-              <div class="border rounded-xl overflow-x-auto max-h-52 bg-white">
-                <table class="w-full text-left text-xs whitespace-nowrap">
-                  <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
-                    <tr>
-                      <th class="p-2.5">Fecha</th>
-                      <th class="p-2.5">Causa</th>
-                      <th class="p-2.5">Tipo Mant.</th>
-                      <th class="p-2.5">Tipo Horas</th>
-                      <th class="p-2.5">Horómetro</th>
-                      <th class="p-2.5">Descripción</th>
-                      <th class="p-2.5 text-amber-300">Aceites e Insumos</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y bg-white">
-                    <tr v-for="i in getHistorialIntervencionesAFI(equipoDetalle.afi)" :key="i.id" class="hover:bg-slate-50">
-                      <td class="p-2.5 font-mono font-bold text-slate-800">{{ i.fecha }}</td>
-                      <td class="p-2.5 font-bold">{{ i.causa }}</td>
-                      <td class="p-2.5 font-semibold text-blue-600">{{ i.tipoMant }}</td>
-                      <td class="p-2.5 font-bold text-amber-800 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
-                      <td class="p-2.5 font-mono">{{ i.horometro }} hrs</td>
-                      <td class="p-2.5 max-w-xs truncate">{{ i.descripcion }}</td>
-                      <td class="p-2.5 font-bold text-amber-800 bg-amber-50">{{ i.aceites }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+            <!-- SECCIÓN HORÓMETROS CON PARPADEO ROJO SI ESTÁ PASADO -->
+            <div :class="['p-5 rounded-xl shadow-sm border flex flex-col md:flex-row gap-6 items-center', perfilEquipo.horometros?.horasFaltantes <= 0 ? 'bg-pasado-blink' : 'bg-normal-horometro']">
+              
+              <div class="w-full md:w-1/3 space-y-4">
+                <div class="flex items-center justify-between border-b border-white/20 pb-2">
+                  <h4 class="font-bold text-sm flex items-center gap-2 uppercase">
+                    <i class="fa-solid fa-stopwatch"></i> Control & Frecuencia
+                  </h4>
+                  <span v-if="perfilEquipo.horometros?.horasFaltantes <= 0" class="bg-white text-rose-600 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase animate-pulse">¡PASADO!</span>
+                  <span v-else class="bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px] font-extrabold uppercase">AL DÍA</span>
+                </div>
+                
+                <div>
+                  <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Horómetro Actual (Manual)</label>
+                  <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 focus:bg-white/20 font-mono font-bold text-white text-sm outline-none transition">
+                </div>
+                <div>
+                  <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención (Ej: 250)</label>
+                  <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 focus:bg-white/20 font-mono font-bold text-white text-sm outline-none transition">
+                </div>
+              </div>
+
+              <div class="w-full md:w-2/3 grid grid-cols-2 lg:grid-cols-4 gap-3 text-center">
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Realizada</span>
+                  <strong class="font-mono text-base block">{{ perfilEquipo.horometros?.hOficial || 0 }}h</strong>
+                </div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Proyección (Hoy)</span>
+                  <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong>
+                  <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin datos de uso' }}</span>
+                </div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Meta a Cumplir</span>
+                  <strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }}h</strong>
+                </div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Estimada</span>
+                  <strong class="font-mono text-sm text-amber-300 block mt-1">{{ perfilEquipo.horometros?.fechaEstimada || '-' }}</strong>
+                </div>
               </div>
             </div>
 
-            <div class="space-y-2">
-              <h4 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-truck-moving text-amber-500"></i> Historial de Traslados ({{ getHistorialMovimientosAFI(equipoDetalle.afi).length }})
-              </h4>
-              <div class="border rounded-xl overflow-x-auto max-h-48 bg-white">
-                <table class="w-full text-left text-xs whitespace-nowrap">
-                  <thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[10px]">
-                    <tr>
-                      <th class="p-2.5">Fecha</th>
-                      <th class="p-2.5">Origen</th>
-                      <th class="p-2.5">Destino</th>
-                      <th class="p-2.5">Camión</th>
-                      <th class="p-2.5">Conductor</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y bg-white">
-                    <tr v-for="m in getHistorialMovimientosAFI(equipoDetalle.afi)" :key="m.id" class="hover:bg-slate-50">
-                      <td class="p-2.5 font-mono font-bold text-slate-800">{{ m.fecha }}</td>
-                      <td class="p-2.5">{{ m.origen }}</td>
-                      <td class="p-2.5 font-bold text-emerald-700">{{ m.destino }}</td>
-                      <td class="p-2.5">{{ m.camion }}</td>
-                      <td class="p-2.5">{{ m.conductor }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
+                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3">
+                  <i class="fa-solid fa-wrench text-blue-600"></i> Historial de Mantenciones
+                  <span class="ml-auto bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{{ getHistorialIntervencionesAFI(perfilEquipo.afi).length }} registros</span>
+                </h4>
+                <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
+                  <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]">
+                      <tr>
+                        <th class="p-2">Fecha</th>
+                        <th class="p-2">Horómetro</th>
+                        <th class="p-2">Tipo</th>
+                        <th class="p-2">Causa</th>
+                        <th class="p-2">Aceites</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y bg-white">
+                      <tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id" class="hover:bg-amber-50">
+                        <td class="p-2 font-mono font-bold text-slate-800">{{ i.fecha }}</td>
+                        <td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td>
+                        <td class="p-2 font-semibold text-[10px]">{{ i.tipoMant }}</td>
+                        <td class="p-2 font-bold text-[10px] truncate max-w-[100px]" :title="i.causa">{{ i.causa }}</td>
+                        <td class="p-2 text-amber-800 text-[10px] truncate max-w-[120px]" :title="i.aceites">{{ i.aceites }}</td>
+                      </tr>
+                      <tr v-if="getHistorialIntervencionesAFI(perfilEquipo.afi).length === 0">
+                        <td colspan="5" class="p-4 text-center text-slate-400 font-bold">Sin mantenciones registradas.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
+                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3">
+                  <i class="fa-solid fa-truck-moving text-amber-500"></i> Historial de Traslados
+                  <span class="ml-auto bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{{ getHistorialMovimientosAFI(perfilEquipo.afi).length }} registros</span>
+                </h4>
+                <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
+                  <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b">
+                      <tr>
+                        <th class="p-2">Fecha</th>
+                        <th class="p-2">Origen</th>
+                        <th class="p-2">Destino</th>
+                        <th class="p-2">Conductor</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y bg-white text-[11px]">
+                      <tr v-for="m in getHistorialMovimientosAFI(perfilEquipo.afi)" :key="m.id" class="hover:bg-emerald-50">
+                        <td class="p-2 font-mono font-bold text-slate-800">{{ m.fecha }}</td>
+                        <td class="p-2 truncate max-w-[100px]" :title="m.origen">{{ m.origen }}</td>
+                        <td class="p-2 font-bold text-emerald-700 truncate max-w-[100px]" :title="m.destino">{{ m.destino }}</td>
+                        <td class="p-2">{{ m.conductor }}</td>
+                      </tr>
+                      <tr v-if="getHistorialMovimientosAFI(perfilEquipo.afi).length === 0">
+                        <td colspan="4" class="p-4 text-center text-slate-400 font-bold">Sin movimientos registrados.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
+
           </div>
 
-          <div class="px-6 py-3 border-t bg-slate-50 flex justify-end">
-            <button @click="showDetalleAfiModal = false" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow">
-              Cerrar Ventana
-            </button>
+          <div class="px-6 py-4 border-t bg-white flex justify-between items-center">
+            <span class="text-[10px] text-slate-400 font-bold uppercase"><i class="fa-solid fa-cloud"></i> Sincronizado en tiempo real</span>
+            <div class="flex items-center gap-2">
+              <button @click="showPerfilEquipoModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-lg transition text-xs">
+                Cerrar Ventana
+              </button>
+              <button v-if="isAdmin" @click="guardarPerfilEquipo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow flex items-center gap-1.5 transition text-xs">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios del Perfil
+              </button>
+            </div>
           </div>
 
         </div>
@@ -1129,11 +1151,9 @@
         const dbUsuarios = ref([]);
         const nuevoUsuario = ref({ usuario: "", clave: "", rol: "lectura" });
 
-        const showDetalleAfiModal = ref(false);
-        const equipoDetalle = ref({});
-
-        const showFormEquipoModal = ref(false);
-        const formEquipo = ref({});
+        // Unificado Modal Perfil
+        const showPerfilEquipoModal = ref(false);
+        const perfilEquipo = ref({});
 
         const showFormMantencionModal = ref(false);
         const isEditingMantencion = ref(false);
@@ -1264,7 +1284,6 @@
           currentTab.value = 'inventario';
         };
 
-
         const normalizarFecha = (val) => {
           try {
             if (val === null || val === undefined || val === '') return null;
@@ -1317,7 +1336,6 @@
             return 0;
           }
         };
-
 
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 
@@ -1438,7 +1456,7 @@
                     break;
                 }
             }
-            eq.tipoHorasMantencion = tipoHoras; // Esto es visual de texto extraído
+            eq.tipoHorasMantencion = tipoHoras;
 
             const histHorometros = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             const freq = Number(eq.frecuenciaMantencion) || 250;
@@ -1448,7 +1466,6 @@
             let dUltima = new Date();
             let rateHrsDia = 0;
             
-            // Si tiene historial, la base para calcular la meta siempre es el último registro
             if (histHorometros.length > 0) {
               const laUltima = histHorometros[histHorometros.length - 1];
               hUltimaMantencion = Number(laUltima.horometro) || 0;
@@ -1456,7 +1473,6 @@
               if (valFecha !== 0) dUltima = new Date(valFecha);
             }
             
-            // Lógica para Tasa de Uso Diario (Horas/Día)
             if (histHorometros.length >= 2) {
               const deltaH = Number(histHorometros[histHorometros.length - 1].horometro) - Number(histHorometros[histHorometros.length - 2].horometro);
               const t1 = parseIsoDate(histHorometros[histHorometros.length - 1].fecha);
@@ -1472,14 +1488,9 @@
             const hoy = new Date();
             const diasDesdeUltima = Math.max(0, Math.floor((hoy - dUltima) / (1000 * 60 * 60 * 24)));
             
-            // 1. Meta (Target)
             const hTarget = hUltimaMantencion + freq;
-            
-            // 2. Horómetro Aproximado hoy
             const hAproxCalculado = hUltimaMantencion + (diasDesdeUltima * rateHrsDia);
             const hAprox = Math.max(hManualActual, hAproxCalculado);
-            
-            // 3. Faltantes y días restantes
             const horasFaltantes = hTarget - hAprox;
 
             let diasFaltantes = rateHrsDia > 0 ? Math.ceil(horasFaltantes / rateHrsDia) : 30;
@@ -1498,7 +1509,7 @@
             else if (horasFaltantes <= 50) estadoTexto = "PRÓXIMO";
 
             eq.horometros = {
-              hOficial: Math.round(hManualActual), // Lo que se guardó en el perfil a mano
+              hOficial: Math.round(hManualActual),
               hAprox: Math.round(hAprox * 10) / 10,
               hTarget: Math.round(hTarget),
               horasFaltantes: Math.round(horasFaltantes * 10) / 10,
@@ -1535,39 +1546,36 @@
           return dbIntervenciones.value.filter(i => String(i.afi).trim().toUpperCase() === query).sort((a,b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
         };
 
-        const verDetalleCompletoAFI = (equipo) => {
-          equipoDetalle.value = equipo;
-          showDetalleAfiModal.value = true;
+        const abrirPerfilEquipo = (equipo) => {
+          perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
+          showPerfilEquipoModal.value = true;
         };
 
         const verDetallePorAfiString = (afiStr) => {
           const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(afiStr).trim().toUpperCase());
-          if (eq) verDetalleCompletoAFI(eq);
+          if (eq) abrirPerfilEquipo(eq);
         };
 
-        const abrirEditarEquipo = (equipo) => {
-          formEquipo.value = JSON.parse(JSON.stringify(equipo));
-          showFormEquipoModal.value = true;
-        };
-
-        const guardarEquipoForm = async () => {
+        const guardarPerfilEquipo = async () => {
           const payload = {
-            tipo: formEquipo.value.tipo,
-            marca: formEquipo.value.marca,
-            modelo: formEquipo.value.modelo,
-            ubicacion: formEquipo.value.ubicacion,
-            disponibilidad: formEquipo.value.disponibilidad,
-            horometroactual: parseNum(formEquipo.value.horometroActual) || 0,
-            frecuencia_mantencion: parseNum(formEquipo.value.frecuenciaMantencion) || 250
+            tipo: perfilEquipo.value.tipo,
+            marca: perfilEquipo.value.marca,
+            modelo: perfilEquipo.value.modelo,
+            ubicacion: perfilEquipo.value.ubicacion,
+            disponibilidad: perfilEquipo.value.disponibilidad,
+            gps: perfilEquipo.value.gps,
+            imei_gps: perfilEquipo.value.imei_gps,
+            horometroactual: parseNum(perfilEquipo.value.horometroActual) || 0,
+            frecuencia_mantencion: parseNum(perfilEquipo.value.frecuenciaMantencion) || 250
           };
           
-          const { error } = await supabaseClient.from('BD_INVENTARIO').update(payload).eq('id', formEquipo.value.id);
+          const { error } = await supabaseClient.from('BD_INVENTARIO').update(payload).eq('id', perfilEquipo.value.id);
           if (error) {
-            alert("Error al guardar: " + error.message + "\n\nAsegúrate de haber creado la columna 'frecuencia_mantencion' en tu tabla BD_INVENTARIO en Supabase.");
+            alert("Error al guardar en Supabase: " + error.message);
           } else {
             await cargarDatosDesdeSupabase();
-            showFormEquipoModal.value = false;
-            alert("Perfil del equipo actualizado correctamente.");
+            showPerfilEquipoModal.value = false;
+            alert("¡Perfil de equipo y configuraciones guardados correctamente!");
           }
         };
 
@@ -1656,6 +1664,8 @@
                 anio: item.anio || 2023,
                 horometroActual: Number(item.horometroactual || 0),
                 frecuenciaMantencion: Number(item.frecuencia_mantencion) || 250,
+                gps: item.gps || 'Sin GPS',
+                imei_gps: item.imei_gps || '',
                 foto: item.foto || '',
                 horometros: null,
                 tipoHorasMantencion: "250 hrs"
@@ -1846,10 +1856,10 @@
                   contrato: parseStr(getVal(item, "contrato")),
                   empresa: parseStr(getVal(item, "empresa")),
                   disponibilidad: normalizarClave(getVal(item, "disponibilidad", "estado") || "Operativo"),
-                  gps: parseStr(getVal(item, "gps")),
+                  gps: parseStr(getVal(item, "gps")) || "Sin GPS",
                   imei_gps: parseStr(getVal(item, "imei gps", "imei_gps", "imeigps")),
                   horometroactual: parseNum(getVal(item, "hor", "horometro", "horometro actual", "horometroactual")) || 0,
-                  frecuencia_mantencion: 250 // defecto en importacion masiva
+                  frecuencia_mantencion: 250
                 });
               }
             }
@@ -2065,7 +2075,7 @@
               const matchSearch = !filterInv.value.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion].join(" ").toLowerCase().includes(filterInv.value.search.toLowerCase());
               const matchUbi = !filterInv.value.ubicacion || String(e.ubicacion).toLowerCase().includes(filterInv.value.ubicacion.toLowerCase());
               const matchEst = filterInv.value.estado === "ALL" || normalizarClave(e.disponibilidad) === normalizarClave(filterInv.value.estado);
-              const matchGps = filterInv.value.gps === "ALL" || (filterInv.value.gps === "Instalado" ? Boolean(e.gps) : !e.gps);
+              const matchGps = filterInv.value.gps === "ALL" || (filterInv.value.gps === "Instalado" ? Boolean(e.gps && e.gps !== 'Sin GPS') : (e.gps === 'Sin GPS' || !e.gps));
               return matchSearch && matchUbi && matchEst && matchGps;
             });
             arr.sort((a, b) => sortInventarioOrder.value === 'desc' ? b.id - a.id : a.id - b.id);
@@ -2169,8 +2179,7 @@
           listaTiposAceitesDisponibles, sumaTotalCantidadAceites, costoTotalAceitesFiltrados, exportarCSV,
           importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
           getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
-          showDetalleAfiModal, equipoDetalle, verDetalleCompletoAFI,
-          showFormEquipoModal, formEquipo, abrirEditarEquipo, guardarEquipoForm,
+          showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion,
           agregarFilaAceiteForm, eliminarFilaAceiteForm, guardarMantencionForm,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts
