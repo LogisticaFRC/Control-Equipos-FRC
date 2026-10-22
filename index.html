@@ -281,14 +281,13 @@
           </div>
         </section>
 
-        <!-- SECCIÓN PROGRAMAS (3 BOTONES CLAROS Y SEPARADOS) -->
+        <!-- SECCIÓN PROGRAMAS -->
         <section v-if="currentTab === 'programas'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
               <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt</h2>
               <p class="text-xs text-slate-500 mt-1">Sigue el orden: 1. Crear Carpeta -> 2. Crear Programa (Mes) -> 3. Asignar Equipo.</p>
             </div>
-            <!-- LOS 3 BOTONES EXACTOS Y SEPARADOS -->
             <div class="flex flex-wrap items-center gap-2.5" v-if="isAdmin">
               <button @click="abrirModalCrearCarpeta" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
                 <i class="fa-solid fa-folder-plus text-sm"></i> 1. Crear Carpeta
@@ -303,7 +302,6 @@
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Sidebar: Árbol de Carpetas y Meses -->
             <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[600px] overflow-y-auto">
               <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 mb-3"><i class="fa-solid fa-folder-tree text-amber-500"></i> Carpetas de Programas</h3>
               <div v-if="listaCarpetasProgramas.length === 0" class="text-center text-[10px] text-slate-400 font-bold p-4">No hay programas creados.</div>
@@ -311,7 +309,10 @@
                 <div v-for="carpeta in listaCarpetasProgramas" :key="carpeta" class="space-y-1">
                   <div @click="toggleFolder(carpeta)" class="font-bold text-xs text-slate-700 bg-slate-100 p-2 rounded cursor-pointer hover:bg-slate-200 flex justify-between items-center">
                     <span class="truncate"><i class="fa-solid fa-folder-open text-amber-500 mr-1.5"></i> {{ carpeta }}</span>
-                    <i :class="['fa-solid text-slate-400 text-[10px]', openFolders[carpeta] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                    <div class="flex items-center gap-1">
+                      <button v-if="isAdmin" @click.stop="eliminarCarpetaProg(carpeta)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar Carpeta"><i class="fa-solid fa-trash text-[10px]"></i></button>
+                      <i :class="['fa-solid text-slate-400 text-[10px]', openFolders[carpeta] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                    </div>
                   </div>
                   <div v-show="openFolders[carpeta]" class="pl-4 pr-1 space-y-1 border-l-2 border-slate-200 ml-2 pt-1 pb-2">
                     <button v-for="mes in obtenerMesesDeCarpeta(carpeta)" :key="mes" @click="seleccionarPrograma(carpeta, mes)" :class="['text-[11px] font-semibold w-full text-left p-1.5 rounded flex items-center justify-between', (progSelect.carpeta === carpeta && progSelect.mes === mes) ? 'bg-rose-50 text-rose-700 font-bold border border-rose-200' : 'text-slate-600 hover:bg-slate-50']">
@@ -324,7 +325,6 @@
               </div>
             </div>
 
-            <!-- Main Panel: Detalles de la Carta Gantt -->
             <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[600px] flex flex-col">
               <template v-if="progSelect.carpeta && progSelect.mes">
                 <div class="border-b pb-4 mb-4 flex flex-wrap items-end justify-between gap-4">
@@ -449,7 +449,7 @@
           </div>
         </section>
 
-        <!-- HISTORIAL (CON ÚLTIMO HORÓMETRO TOMADO Y FECHA) -->
+        <!-- HISTORIAL COMPLETO Y DETALLADO -->
         <section v-if="currentTab === 'hojaVida'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-2">
@@ -515,21 +515,20 @@
                     <th class="p-2">CAUSA</th>
                     <th class="p-2">TIPO MANT.</th>
                     <th class="p-2 text-amber-300">TIPO EN HORAS (H)</th>
-                    <!-- COLUMNAS EXPLICITAS DE ÚLTIMO HORÓMETRO TOMADO Y SU FECHA -->
-                    <th class="p-2 bg-amber-900 text-amber-200 font-bold">ÚLTIMO HORÓMETRO TOMADO</th>
+                    <th class="p-2 bg-amber-900 text-amber-200 font-bold">ÚLTIMO HORÓMETRO</th>
                     <th class="p-2 bg-amber-900 text-amber-200 font-bold">FECHA HORÓMETRO</th>
                     <th class="p-2">MECÁNICOS</th>
                     <th class="p-2 text-sky-300">INICIO HORA</th>
                     <th class="p-2 text-sky-300">TÉRMINO HORA</th>
                     <th class="p-2 text-amber-300">TOTAL HORAS</th>
                     <th class="p-2">CAUSA DETALLADA</th>
-                    <th class="p-2">DESCRIPCIÓN</th>
-                    <th class="p-2">INTERFERENCIA</th>
+                    <th class="p-2 font-bold text-amber-300">DESCRIPCIÓN</th>
+                    <th class="p-2 font-bold text-rose-300">INTERFERENCIA</th>
                     <th class="p-2">EMPRESA</th>
                     <th class="p-2">COSTO</th>
                     <th class="p-2">N° OC</th>
                     <th class="p-2">N° OT</th>
-                    <th class="p-2 text-amber-300">CONSUMO ACEITES</th>
+                    <th class="p-2 text-amber-300 font-bold bg-amber-900">CONSUMO ACEITES</th>
                     <th class="p-2 text-center">LINK</th>
                   </tr>
                 </thead>
@@ -546,7 +545,6 @@
                     <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
                     <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
                     <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
-                    <!-- DATOS DE HORÓMETRO Y FECHA ASOCIADA EN CADA FILA -->
                     <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
                     <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.fecha || '-' }}</td>
                     <td class="p-2">{{ getMecanicosText(i) }}</td>
@@ -554,13 +552,13 @@
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
                     <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ calcularRestaHoras(i.horaInicio, i.horaTermino) }}</td>
                     <td class="p-2 max-w-xs truncate">{{ i.causaDetallada || '-' }}</td>
-                    <td class="p-2 max-w-xs truncate">{{ i.descripcion || '-' }}</td>
-                    <td class="p-2">{{ i.interferencia || '-' }}</td>
+                    <td class="p-2 font-semibold text-slate-800 max-w-xs truncate bg-amber-50/30" :title="i.descripcion">{{ i.descripcion || '-' }}</td>
+                    <td class="p-2 font-semibold text-rose-700 max-w-xs truncate bg-rose-50/30" :title="i.interferencia">{{ i.interferencia || '-' }}</td>
                     <td class="p-2">{{ i.empresaArriendo || '-' }}</td>
                     <td class="p-2 font-bold text-emerald-700">${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
                     <td class="p-2 font-mono">{{ i.numeroOC || '-' }}</td>
                     <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
-                    <td class="p-2 text-amber-300 font-bold bg-amber-50">{{ i.aceites }}</td>
+                    <td class="p-2 text-amber-900 font-bold bg-amber-50">{{ i.aceites }}</td>
                     <td class="p-2 text-center">
                       <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-link"></i> Drive</a>
                       <span v-else class="text-slate-400 italic">-</span>
@@ -875,35 +873,95 @@
         </div>
       </div>
 
-      <!-- MODAL FORMULARIO MANTENCIÓN -->
+      <!-- MODAL FORMULARIO MANTENCIÓN COMPLETO Y ADAPTATIVO -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
-            <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-wrench text-amber-400"></i> {{ isEditingMantencion ? 'Editar Mantención' : 'Registrar Nueva Mantención' }}</h3>
+            <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-wrench text-amber-400"></i> {{ isEditingMantencion ? 'Editar Mantención / Intervención' : 'Registrar Nueva Mantención e Intervención' }}</h3>
             <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
-          <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
-            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <h4 class="font-bold text-slate-800 uppercase">Informes Principales</h4>
+          <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow bg-slate-50">
+            <div class="bg-white p-4 rounded-xl border space-y-3 shadow-sm">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-circle-info text-amber-600"></i> Información Principal</h4>
               <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 <div><label class="block font-bold mb-1">AFI</label><select v-model="formMant.afi" class="w-full p-2 border rounded-lg bg-white font-bold"><option value="">-- AFI --</option><option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option></select></div>
-                <div><label class="block font-bold mb-1">Fecha</label><input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Horómetro</label><input type="number" step="any" v-model="formMant.horometro" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1">Fecha</label><input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" placeholder="Ej: Obra / Taller" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Horómetro (h)</label><input type="number" step="any" v-model="formMant.horometro" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
               </div>
             </div>
-            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <h4 class="font-bold text-slate-800 uppercase">Clasificación</h4>
+
+            <div class="bg-white p-4 rounded-xl border space-y-3 shadow-sm">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-tags text-blue-600"></i> Clasificación y Tipos de Horas</h4>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div><label class="block font-bold mb-1">Causa</label><select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold"><option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option></select></div>
-                <div><label class="block font-bold mb-1">Tipo</label><select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white"><option value="PREVENTIVA">PREVENTIVA</option><option value="PREDICTIVA">PREDICTIVA</option><option value="CORRECTIVA">CORRECTIVA</option></select></div>
-                <div><label class="block font-bold mb-1">Tipo Horas</label><input type="text" v-model="formMant.tipoHorasMant" placeholder="Ej: 250" class="w-full p-2 border rounded-lg bg-white font-bold"></div>
+                <div>
+                  <label class="block font-bold mb-1">Causa</label>
+                  <select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold">
+                    <option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Tipo de Mantenimiento</label>
+                  <select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white font-bold text-blue-700">
+                    <option value="PREVENTIVA">PREVENTIVA</option>
+                    <option value="CORRECTIVA">CORRECTIVA</option>
+                    <option value="PREDICTIVA">PREDICTIVA</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Tipo Horas / Kilometraje</label>
+                  <select v-model="formMant.tipoHorasMant" class="w-full p-2 border rounded-lg bg-white font-bold text-amber-800">
+                    <option v-for="opt in opcionesHorasMantencion" :key="opt" :value="opt">{{ opt }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border space-y-3 shadow-sm">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-align-left text-indigo-600"></i> Descripción e Interferencia</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold mb-1">Descripción del Trabajo</label>
+                  <textarea v-model="formMant.descripcion" rows="3" placeholder="Detalle de trabajos realizados..." class="w-full p-2 border rounded-lg bg-white"></textarea>
+                </div>
+                <div>
+                  <label class="block font-bold mb-1">Interferencia Operacional / Observaciones</label>
+                  <textarea v-model="formMant.interferencia" rows="3" placeholder="Motivos de detención o interferencia..." class="w-full p-2 border rounded-lg bg-white"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- MÓDULO DE ACEITES E INSUMOS CON LITROS -->
+            <div class="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3 shadow-sm">
+              <h4 class="font-bold text-amber-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-oil-can"></i> Consumo de Aceites e Insumos (Litros)</h4>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div><label class="block font-bold mb-1">15W40 CI-4 (L)</label><input type="number" step="any" v-model="formMant.aceite_15w40_ci4" class="w-full p-2 border rounded bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">15W40 CK-4 (L)</label><input type="number" step="any" v-model="formMant.aceite_15w40_ck4" class="w-full p-2 border rounded bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">Refrigerante 50/50 (L)</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_5050" class="w-full p-2 border rounded bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">80W90 (L)</label><input type="number" step="any" v-model="formMant.aceite_80w90" class="w-full p-2 border rounded bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">Dacnis 68 (L)</label><input type="number" step="any" v-model="formMant.aceite_dacnis_68" class="w-full p-2 border rounded bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">Dacnis 46 (L)</label><input type="number" step="any" v-model="formMant.aceite_dacnis_46" class="w-full p-2 border rounded bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">5W30 (L)</label><input type="number" step="any" v-model="formMant.aceite_5w30" class="w-full p-2 border rounded bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">Hydra 46 (L)</label><input type="number" step="any" v-model="formMant.hydra46" class="w-full p-2 border rounded bg-white font-mono"></div>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border space-y-3 shadow-sm">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar text-emerald-600"></i> Costos, Mecánicos y Órdenes</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" class="w-full p-2 border rounded bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" class="w-full p-2 border rounded bg-white"></div>
+                <div><label class="block font-bold mb-1">N° OT</label><input type="text" v-model="formMant.numeroOT" class="w-full p-2 border rounded bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">N° OC</label><input type="text" v-model="formMant.numeroOC" class="w-full p-2 border rounded bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" step="any" v-model="formMant.costo" class="w-full p-2 border rounded bg-white font-bold text-emerald-700"></div>
+                <div class="sm:col-span-3"><label class="block font-bold mb-1">Link Drive / Documento</label><input type="text" v-model="formMant.link" placeholder="https://..." class="w-full p-2 border rounded bg-white"></div>
               </div>
             </div>
           </div>
+
           <div class="px-6 py-3 border-t bg-slate-100 flex justify-end gap-2">
             <button @click="showFormMantencionModal = false" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded-lg">Cancelar</button>
-            <button @click="guardarMantencionForm" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg shadow"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+            <button @click="guardarMantencionForm" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg shadow"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar Intervención</button>
           </div>
         </div>
       </div>
@@ -1054,9 +1112,21 @@
         const perfilEquipo = ref({});
         const showFormMantencionModal = ref(false);
         const isEditingMantencion = ref(false);
+        
         const formMant = ref({
           id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
-          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: ""
+          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "", link: "",
+          aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "", aceite_dacnis_68: "", aceite_dacnis_46: "", aceite_5w30: "", hydra46: ""
+        });
+
+        // Opciones dinámicas para Horas / Kilometraje según el tipo de equipo
+        const opcionesHorasMantencion = computed(() => {
+          const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase());
+          const tipoStr = eq ? `${eq.tipo} ${eq.marca} ${eq.modelo}`.toLowerCase() : "";
+          if (tipoStr.includes('camioneta') || tipoStr.includes('camion') || tipoStr.includes('furgon')) {
+            return ['10000 km', 'Intermedia', 'Otra'];
+          }
+          return ['Intermedia', '250 hrs', '500 hrs', '1000 hrs', 'Otra'];
         });
 
         const listaCausas = [
@@ -1123,12 +1193,24 @@
 
         // LÓGICA PROGRAMAS JERÁRQUICOS
         const listaCarpetasProgramas = computed(() => {
-          const carpetas = new Set(dbProgramas.value.map(p => p.carpeta).filter(Boolean));
+          const carpetas = new Set();
+          dbProgramas.value.forEach(p => { if(p.carpeta) carpetas.add(p.carpeta); });
+          try {
+            const localCarps = JSON.parse(localStorage.getItem('afi_carpetas_extras') || '[]');
+            localCarps.forEach(c => carpetas.add(c));
+          } catch(e) {}
           return Array.from(carpetas).sort();
         });
 
         const obtenerMesesDeCarpeta = (carpeta) => {
-          const meses = new Set(dbProgramas.value.filter(p => p.carpeta === carpeta).map(p => p.mes).filter(Boolean));
+          const meses = new Set();
+          dbProgramas.value.filter(p => p.carpeta === carpeta).forEach(p => { if(p.mes && p.mes !== 'GENERAL') meses.add(p.mes); });
+          try {
+            const localMesesMap = JSON.parse(localStorage.getItem('afi_meses_extras') || '{}');
+            if (localMesesMap[carpeta]) {
+              localMesesMap[carpeta].forEach(m => meses.add(m));
+            }
+          } catch(e) {}
           return Array.from(meses).sort();
         };
 
@@ -1148,16 +1230,45 @@
         const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
         const seleccionarPrograma = (carpeta, mes) => { progSelect.value = { carpeta, mes }; };
 
-        // 3 Botones de Creación Jerárquicos
         const abrirModalCrearCarpeta = () => { formCarpetaNombre.value = ''; showModalCarpeta.value = true; };
         const guardarNuevaCarpeta = async () => {
           const cName = formCarpetaNombre.value.trim().toUpperCase();
           if (!cName) return;
-          await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cName, mes: 'GENERAL', realizado: false }]);
+          try {
+            let localCarps = JSON.parse(localStorage.getItem('afi_carpetas_extras') || '[]');
+            if (!localCarps.includes(cName)) {
+              localCarps.push(cName);
+              localStorage.setItem('afi_carpetas_extras', JSON.stringify(localCarps));
+            }
+          } catch(e) {}
+          
+          try {
+            await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cName, mes: 'GENERAL', realizado: false }]);
+          } catch(err) {}
+
           await cargarDatosDesdeSupabase();
           showModalCarpeta.value = false;
           openFolders.value[cName] = true;
           alert(`¡Carpeta "${cName}" creada con éxito!`);
+        };
+
+        const eliminarCarpetaProg = async (carpeta) => {
+          if (confirm(`¿Estás seguro de eliminar la carpeta "${carpeta}" y todos sus programas?`)) {
+            try {
+              let localCarps = JSON.parse(localStorage.getItem('afi_carpetas_extras') || '[]');
+              localCarps = localCarps.filter(c => c !== carpeta);
+              localStorage.setItem('afi_carpetas_extras', JSON.stringify(localCarps));
+              
+              let localMesesMap = JSON.parse(localStorage.getItem('afi_meses_extras') || '{}');
+              delete localMesesMap[carpeta];
+              localStorage.setItem('afi_meses_extras', JSON.stringify(localMesesMap));
+            } catch(e) {}
+
+            await supabaseClient.from('BD_PROGRAMAS').delete().eq('carpeta', carpeta);
+            await cargarDatosDesdeSupabase();
+            if (progSelect.value.carpeta === carpeta) progSelect.value = { carpeta: '', mes: '' };
+            alert("Carpeta eliminada.");
+          }
         };
 
         const abrirModalCrearPrograma = () => { formProgMes.value = { carpeta: listaCarpetasProgramas.value[0] || '', mes: '' }; showModalPrograma.value = true; };
@@ -1167,9 +1278,23 @@
           const cp = formProgMes.value.carpeta;
           const ms = formProgMes.value.mes.trim().toUpperCase();
           if (!cp || !ms) return;
-          await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cp, mes: ms, realizado: false }]);
+          
+          try {
+            let localMesesMap = JSON.parse(localStorage.getItem('afi_meses_extras') || '{}');
+            if (!localMesesMap[cp]) localMesesMap[cp] = [];
+            if (!localMesesMap[cp].includes(ms)) {
+              localMesesMap[cp].push(ms);
+              localStorage.setItem('afi_meses_extras', JSON.stringify(localMesesMap));
+            }
+          } catch(e) {}
+
+          try {
+            await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cp, mes: ms, realizado: false }]);
+          } catch(err) {}
+
           await cargarDatosDesdeSupabase();
           showModalPrograma.value = false;
+          openFolders.value[cp] = true;
           seleccionarPrograma(cp, ms);
           alert(`¡Programa "${ms}" creado en la carpeta "${cp}"!`);
         };
@@ -1190,7 +1315,7 @@
             fecha_programada: formAsignar.value.fecha, realizado: false
           };
           const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
-          if (error) alert("Error al asignar equipo.");
+          if (error) alert("Error al asignar equipo: " + error.message);
           else {
             await cargarDatosDesdeSupabase();
             showModalAsignarEquipo.value = false;
@@ -1354,6 +1479,7 @@
           } catch (err) { console.error("Error cargando datos:", err); }
         };
 
+        // LÓGICA DE HORÓMETROS MEJORADA (EVALÚA PENÚLTIMO SI EL ÚLTIMO COINCIDE CON LA MANTENCIÓN)
         const actualizarHorometrosDesdeHistorial = () => {
           const intervencionesPorAFI = {};
           dbIntervenciones.value.forEach(i => {
@@ -1380,26 +1506,38 @@
             let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : 0;
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : '-';
 
+            // Tasa de uso diario: Si el último horómetro y la mantención son iguales, compara el penúltimo con el último
             let rateHrsDia = 0;
             if (histConHorometro.length >= 2) {
-              const ultimo = histConHorometro[histConHorometro.length - 1];
-              const penultimo = histConHorometro[histConHorometro.length - 2];
-              const dH = Number(ultimo.horometro) - Number(penultimo.horometro);
+              let idxUltimo = histConHorometro.length - 1;
+              let idxPenultimo = histConHorometro.length - 2;
+              
+              let ultimo = histConHorometro[idxUltimo];
+              let penultimo = histConHorometro[idxPenultimo];
+
+              let dH = Number(ultimo.horometro) - Number(penultimo.horometro);
+              if (dH === 0 && histConHorometro.length >= 3) {
+                idxPenultimo = histConHorometro.length - 3;
+                penultimo = histConHorometro[idxPenultimo];
+                dH = Number(ultimo.horometro) - Number(penultimo.horometro);
+              }
+
               const dias = Math.max(1, Math.floor((parseIsoDate(ultimo.fecha) - parseIsoDate(penultimo.fecha)) / 86400000));
               if (dH > 0) rateHrsDia = dH / dias;
             }
 
-            const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
-            const hAprox = Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
+            const hAprox = hUltimoTomado;
             const hTarget = hUltimaMant > 0 ? hUltimaMant + (Number(eq.frecuenciaMantencion) || 250) : hUltimoTomado + (Number(eq.frecuenciaMantencion) || 250);
             const faltan = hTarget - hAprox;
 
-            let diasFaltantes = rateHrsDia > 0 ? Math.ceil(faltan / rateHrsDia) : 30;
-            let fechaEstimadaStr = "-";
-            try {
-              const fEst = new Date(); fEst.setDate(new Date().getDate() + diasFaltantes);
-              fechaEstimadaStr = fEst.toISOString().substring(0, 10);
-            } catch(e) {}
+            let fechaEstimadaStr = "Sin uso diario";
+            if (rateHrsDia > 0) {
+              let diasFaltantes = Math.ceil(faltan / rateHrsDia);
+              try {
+                const fEst = new Date(); fEst.setDate(new Date().getDate() + diasFaltantes);
+                fechaEstimadaStr = fEst.toISOString().substring(0, 10);
+              } catch(e) {}
+            }
 
             let estadoTexto = faltan <= 0 ? "¡PASADO!" : faltan <= 50 ? "PRÓXIMO" : "AL DÍA";
 
@@ -1498,7 +1636,8 @@
           formMant.value = {
             id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
             fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
-            mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: ""
+            mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "", link: "",
+            aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "", aceite_dacnis_68: "", aceite_dacnis_46: "", aceite_5w30: "", hydra46: ""
           };
           showFormMantencionModal.value = true;
         };
@@ -1521,8 +1660,13 @@
             afi: formMant.value.afi, fecha: formatIsoDateForSupabase(formMant.value.fecha), lugar: formMant.value.lugar, causa: formMant.value.causa,
             tipo_mantencion: formMant.value.tipoMant, tipo_horas_mantencion: formMant.value.tipoHorasMant, horometro: parseNum(formMant.value.horometro),
             mecanico_1: formMant.value.mec1, mecanico_2: formMant.value.mec2, mecanico_3: formMant.value.mec3, mecanico_4: formMant.value.mec4,
-            hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino, causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
-            costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT
+            hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino, causa_intervencion: formMant.value.causaDetallada,
+            descripcion: formMant.value.descripcion, interferencia: formMant.value.interferencia,
+            costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT, link: formMant.value.link,
+            aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4), aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4),
+            aceite_refrigerante_5050: parseNum(formMant.value.aceite_refrigerante_5050), aceite_80w90: parseNum(formMant.value.aceite_80w90),
+            aceite_dacnis_68: parseNum(formMant.value.aceite_dacnis_68), aceite_dacnis_46: parseNum(formMant.value.aceite_dacnis_46),
+            aceite_5w30: parseNum(formMant.value.aceite_5w30), hydra46: parseNum(formMant.value.hydra46)
           };
           if (isEditingMantencion.value && formMant.value.id) await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
           else await supabaseClient.from('BD_HISTORIAL').insert([payload]);
@@ -1730,7 +1874,7 @@
           showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes,
           showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoEnProgreso, guardarAsignacionEquipo,
           listaCarpetasProgramas, obtenerMesesDeCarpeta, obtenerItemsPrograma, getProgreso, openFolders, toggleFolder, progSelect, seleccionarPrograma, marcarProgramaRealizado, eliminarItemPrograma,
-          perfilAsignacionProg, guardarAsignacionDesdePerfil, toggleFiltroCriticos
+          perfilAsignacionProg, guardarAsignacionDesdePerfil, toggleFiltroCriticos, eliminarCarpetaProg, opcionesHorasMantencion
         };
       }
     }).mount('#app');
