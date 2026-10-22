@@ -1201,51 +1201,15 @@
           currentTab.value = 'inventario';
         };
 
-        const parseIsoDate = (val) => {
+        // --- TRADUCTOR UNIVERSAL DE FECHAS (INDESCTRUCTIBLE) ---
+        const normalizarFechaUniversal = (val, forDisplay = false) => {
           try {
-            if (!val || val === '-' || val === 'N/A') return 0;
+            if (val === null || val === undefined) return forDisplay ? '-' : null;
             let str = String(val).trim();
-            if (str.includes('T')) str = str.split('T')[0];
-            if (str.includes(' ')) str = str.split(' ')[0];
-            
-            if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(str)) {
-              const parts = str.split(/[-/]/);
-              if (parts.length >= 3) return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
-            }
+            if (str === "" || str === "null" || str === "undefined" || str === "-" || str === "N/A") return forDisplay ? '-' : null;
 
-            if (str.includes('-')) {
-              const parts = str.split('-');
-              if (parts.length >= 3) {
-                if (parts[0].length === 4) {
-                  return new Date(`${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}T00:00:00`).getTime();
-                } else if (parts[2].length === 4) {
-                  return new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}T00:00:00`).getTime();
-                }
-              }
-            }
-            const d = new Date(str);
-            return isNaN(d.getTime()) ? 0 : d.getTime();
-          } catch (e) {
-            return 0;
-          }
-        };
-
-        const formatExcelDate = (val) => {
-          try {
-            if (val === null || val === undefined) return '-';
-            let str = String(val).trim();
-            if (str === "null" || str === "undefined" || str === "") return '-';
-            if (str.includes('T')) str = str.split('T')[0];
-            if (str.includes(' ')) str = str.split(' ')[0];
-            
-            if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(str)) {
-              const parts = str.split(/[-/]/);
-              if (parts.length >= 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-            }
-
-            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-            
-            if (typeof val === 'number' || (!isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
+            // Detectar número serial de Excel (ej: 45210)
+            if (!isNaN(val) && !str.includes('-') && !str.includes('/') && !str.includes('.')) {
               const num = Number(val);
               if (num > 20000 && num < 80000) {
                 const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
@@ -1255,47 +1219,48 @@
                 return `${yyyy}-${mm}-${dd}`;
               }
             }
-            return str || '-';
-          } catch(e) {
-            return '-';
+
+            // Limpiar horas (ej: 15-10-2026 14:30:00 -> 15-10-2026)
+            let datePart = str;
+            if (datePart.includes('T')) datePart = datePart.split('T')[0];
+            else if (datePart.includes(' ')) datePart = datePart.split(' ')[0];
+
+            // Formato DD/MM/YYYY o DD-MM-YYYY o DD.MM.YYYY
+            if (/^\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}$/.test(datePart)) {
+              const parts = datePart.split(/[-/\.]/);
+              return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+
+            // Formato YYYY/MM/DD o YYYY-MM-DD
+            if (/^\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}$/.test(datePart)) {
+              const parts = datePart.split(/[-/\.]/);
+              return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            }
+
+            // Si no reconoce el formato, lo devuelve como texto puro para no borrarlo.
+            return str;
+          } catch (e) {
+            return forDisplay ? '-' : null;
           }
         };
 
-        const formatIsoDateForSupabase = (val) => {
+        const formatExcelDate = (val) => normalizarFechaUniversal(val, true);
+        const formatIsoDateForSupabase = (val) => normalizarFechaUniversal(val, false);
+
+        const parseIsoDate = (val) => {
           try {
-            if (val === null || val === undefined || val === '') return null;
-            if (val instanceof Date) {
-              if (isNaN(val.getTime())) return null;
-              return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
+            const fmt = normalizarFechaUniversal(val, false);
+            if (!fmt) return 0;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(fmt)) {
+              return new Date(`${fmt}T00:00:00`).getTime();
             }
-            let strVal = String(val).trim();
-            if (strVal === "" || strVal === "-" || strVal === "null" || strVal === "undefined" || strVal === "N/A") return null;
-
-            if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/') && !strVal.includes(' '))) {
-              const num = Number(val);
-              if (num > 20000 && num < 80000) {
-                const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
-                return `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth() + 1).padStart(2, '0')}-${String(dateObj.getUTCDate()).padStart(2, '0')}`;
-              }
-            }
-
-            if (strVal.includes('T')) strVal = strVal.split('T')[0];
-            if (strVal.includes(' ')) strVal = strVal.split(' ')[0];
-
-            if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
-              const parts = strVal.split(/[-/]/);
-              if (parts.length >= 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-            }
-
-            if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(strVal)) {
-              const parts = strVal.split(/[-/]/);
-              if (parts.length >= 3) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-            }
-            return null;
-          } catch(e) {
-            return null;
+            const d = new Date(fmt);
+            return isNaN(d.getTime()) ? 0 : d.getTime();
+          } catch (e) {
+            return 0;
           }
         };
+        // ---------------------------------------------------------
 
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 
@@ -1392,10 +1357,7 @@
 
         const costoTotalAceitesFiltrados = computed(() => filteredAceitesRecords.value.reduce((acc, curr) => acc + Number(curr.costo || 0), 0));
 
-        // OPTIMIZACIÓN EXTREMA: Calcular todo de golpe una sola vez y guardarlo en el objeto del equipo.
         const actualizarHorometrosDesdeHistorial = () => {
-          
-          // Agrupar intervenciones por AFI en un mapa (Ultra-rápido)
           const intervencionesPorAFI = {};
           dbIntervenciones.value.forEach(i => {
             if (!i.afi) return;
@@ -1404,7 +1366,6 @@
             intervencionesPorAFI[cleanAFI].push(i);
           });
 
-          // Ordenar cronológicamente una sola vez por cada AFI
           for (const afi in intervencionesPorAFI) {
              intervencionesPorAFI[afi].sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
           }
@@ -1413,7 +1374,6 @@
             const userAfi = String(eq.afi).trim().toUpperCase();
             const histFull = intervencionesPorAFI[userAfi] || [];
             
-            // 1. EXTRAER TIPO DE HORAS (El más reciente con dato)
             let tipoHoras = '250 hrs';
             for (let i = histFull.length - 1; i >= 0; i--) {
                 if (histFull[i].tipoHorasMant) {
@@ -1423,7 +1383,6 @@
             }
             eq.tipoHorasMantencion = tipoHoras;
 
-            // 2. CALCULAR HOROMETROS Y PROYECCIÓN
             const histHorometros = histFull.filter(i => Number(i.horometro) > 0 && i.fecha);
             const freq = Number(eq.frecuenciaMantencion) || 250;
             let hOficial = Number(eq.horometroActual) || 0;
@@ -1432,8 +1391,11 @@
             if (histHorometros.length > 0) {
               const laUltima = histHorometros[histHorometros.length - 1];
               hOficial = Number(laUltima.horometro) || hOficial;
-              dUltima = new Date(parseIsoDate(laUltima.fecha));
-              eq.horometroActual = hOficial; // Actualizar oficial base
+              
+              const valFecha = parseIsoDate(laUltima.fecha);
+              if (valFecha !== 0) dUltima = new Date(valFecha);
+              
+              eq.horometroActual = hOficial;
             }
             
             const hoy = new Date();
@@ -1442,8 +1404,10 @@
             let rateHrsDia = 0;
             if (histHorometros.length >= 2) {
               const deltaH = Number(histHorometros[histHorometros.length - 1].horometro) - Number(histHorometros[histHorometros.length - 2].horometro);
-              const diasEntre = Math.max(1, Math.floor((parseIsoDate(histHorometros[histHorometros.length - 1].fecha) - parseIsoDate(histHorometros[histHorometros.length - 2].fecha)) / (1000 * 60 * 60 * 24)));
-              if (deltaH > 0) rateHrsDia = deltaH / diasEntre;
+              const t1 = parseIsoDate(histHorometros[histHorometros.length - 1].fecha);
+              const t2 = parseIsoDate(histHorometros[histHorometros.length - 2].fecha);
+              const diasEntre = Math.max(1, Math.floor((t1 - t2) / (1000 * 60 * 60 * 24)));
+              if (deltaH > 0 && !isNaN(diasEntre)) rateHrsDia = deltaH / diasEntre;
             }
             
             const hAprox = hOficial + (diasDesdeUltima * rateHrsDia);
@@ -1465,7 +1429,6 @@
             if (horasFaltantes <= 0) estadoTexto = "¡PASADO!";
             else if (horasFaltantes <= 50) estadoTexto = "PRÓXIMO";
 
-            // Guardarlo directamente en el objeto del equipo para consumo instantáneo en HTML
             eq.horometros = {
               hOficial: Math.round(hOficial),
               hAprox: Math.round(hAprox * 10) / 10,
@@ -1494,7 +1457,7 @@
         const getHistorialMovimientosAFI = (afi) => {
           if(!afi) return [];
           const query = String(afi).trim().toUpperCase();
-          return dbMovimientos.value.filter(m => String(m.afi).trim().toUpperCase() === query);
+          return dbMovimientos.value.filter(m => String(m.afi).trim().toUpperCase() === query).sort((a,b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
         };
         
         const getHistorialIntervencionesAFI = (afi) => {
@@ -1599,7 +1562,7 @@
                 horometroActual: Number(item.horometroactual || 0),
                 frecuenciaMantencion: 250,
                 foto: item.foto || '',
-                horometros: null, // Se calculará después masivamente
+                horometros: null,
                 tipoHorasMantencion: "250 hrs"
               }));
             }
@@ -1623,7 +1586,10 @@
               const listaProcesada = [];
 
               intData.forEach(item => {
-                const fechaFmt = formatExcelDate(item.fecha);
+                // Buscamos todas las posibles columnas de fecha en caso de variaciones
+                const rawFecha = item.fecha || item.fecha_mantencion || item.created_at;
+                const fechaFmt = formatExcelDate(rawFecha);
+                
                 const afiFmt = String(item.afi || '').trim();
                 const horoFmt = Number(item.horometro || 0);
                 const descFmt = String(item.descripcion || '').trim();
@@ -1720,7 +1686,7 @@
         const guardarMantencionForm = async () => {
           const payload = {
             afi: formMant.value.afi,
-            fecha: formMant.value.fecha,
+            fecha: formatIsoDateForSupabase(formMant.value.fecha),
             lugar: formMant.value.lugar,
             causa: formMant.value.causa,
             tipo_mantencion: formMant.value.tipoMant,
@@ -1851,7 +1817,7 @@
               if (rawAfi && String(rawAfi).trim() !== "") {
                 payloads.push({
                   afi: String(rawAfi).trim(),
-                  fecha: formatIsoDateForSupabase(getVal(item, "fecha", "fecha mantencion")),
+                  fecha: formatIsoDateForSupabase(getVal(item, "fecha", "fecha mantencion", "fecha_mantencion")),
                   equipo: parseStr(getVal(item, "equipo", "tipo equipo")),
                   lugar: parseStr(getVal(item, "lugar", "ubicacion")),
                   tipo_documento: parseStr(getVal(item, "tipo documento", "tipo_documento")),
@@ -2043,8 +2009,8 @@
               if (filterInt.value.causa !== "ALL" && String(i.causa).trim().toUpperCase() !== String(filterInt.value.causa).trim().toUpperCase()) return false;
               
               const fStr = formatExcelDate(i.fecha);
-              if (filterInt.value.dateStart && fStr < filterInt.value.dateStart) return false;
-              if (filterInt.value.dateEnd && fStr > filterInt.value.dateEnd) return false;
+              if (filterInt.value.dateStart && fStr !== '-' && fStr < filterInt.value.dateStart) return false;
+              if (filterInt.value.dateEnd && fStr !== '-' && fStr > filterInt.value.dateEnd) return false;
 
               if (filterInt.value.mecText && filterInt.value.mecText.trim() !== "") {
                 const mecQuery = filterInt.value.mecText.trim().toLowerCase();
