@@ -902,7 +902,7 @@
         </div>
       </div>
 
-      <!-- MODAL FORMULARIO MANTENCIÓN COMPLETADO (HORAS, MECÁNICOS, FILTROS Y DESCRIPCIÓN) -->
+      <!-- MODAL FORMULARIO MANTENCIÓN COMPLETADO -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
@@ -959,13 +959,13 @@
               </div>
             </div>
 
-            <!-- NUEVA SECCIÓN: REGISTRO DE FILTROS -->
-            <div class="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-3">
+            <!-- SECCIÓN CONDICIONAL DE FILTROS (EXCLUSIVO MANTENCIÓN) -->
+            <div v-if="esMantencionTipo" class="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-3">
               <div class="flex justify-between items-center">
-                <h4 class="font-bold text-emerald-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-filter"></i> Registro de Filtros Utilizados</h4>
+                <h4 class="font-bold text-emerald-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-filter"></i> Registro de Filtros (Exclusivo Mantención)</h4>
                 <button @click="agregarFilaFiltro" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-[11px] font-bold shadow"><i class="fa-solid fa-plus"></i> Añadir Filtro</button>
               </div>
-              <div v-if="formMant.filtrosLista.length === 0" class="text-xs text-slate-500 italic text-center py-2">No se han agregado filtros en este registro. Haz clic en "+ Añadir Filtro".</div>
+              <div v-if="formMant.filtrosLista.length === 0" class="text-xs text-slate-500 italic text-center py-2">No se han agregado filtros. Haz clic en "+ Añadir Filtro".</div>
               <div v-for="(f, index) in formMant.filtrosLista" :key="index" class="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center bg-white p-2.5 rounded-lg border">
                 <div>
                   <label class="block text-[10px] font-bold text-slate-600">Tipo de Filtro</label>
@@ -1185,6 +1185,12 @@
           hydra46: "", hydra_68: "", adblue: ""
         });
 
+        const esMantencionTipo = computed(() => {
+          const t = String(formMant.value.tipoMant || '').toUpperCase();
+          const c = String(formMant.value.causa || '').toUpperCase();
+          return t.includes('PREVENT') || t.includes('PREDICT') || c.includes('MANTENCION') || c.includes('SERVICIO');
+        });
+
         const agregarFilaFiltro = () => {
           formMant.value.filtrosLista.push({ tipo: "", marca: "", codigo: "", cantidad: 1 });
         };
@@ -1293,18 +1299,21 @@
         };
 
         const abrirModalCrearCarpeta = () => { formCarpetaNombre.value = ''; showModalCarpeta.value = true; };
+        
         const guardarNuevaCarpeta = async () => {
           const cName = formCarpetaNombre.value.trim().toUpperCase();
           if (!cName) return;
+          
+          if (!dbProgramasCalendarios.value.some(p => p.carpeta === cName)) {
+            dbProgramasCalendarios.value.push({ id: Date.now(), carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' });
+          }
+
           try {
             await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
               carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30'
             }]);
-          } catch(e) {
-            if (!dbProgramasCalendarios.value.some(p => p.carpeta === cName)) {
-              dbProgramasCalendarios.value.push({ id: Date.now(), carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' });
-            }
-          }
+          } catch(e) {}
+
           showModalCarpeta.value = false;
           openFolders.value[cName] = true;
           alert(`¡Carpeta "${cName}" creada con éxito!`);
@@ -1327,14 +1336,15 @@
           if (!cp || !ms || !f_ini || !f_fin) return;
 
           let newId = Date.now();
+          dbProgramasCalendarios.value.push({ id: newId, carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin });
+
           try {
             const { data } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
               carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin
             }]).select();
             if(data && data[0]) newId = data[0].id;
-          } catch(e) {
-            dbProgramasCalendarios.value.push({ id: newId, carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin });
-          }
+          } catch(e) {}
+
           await cargarDatosDesdeSupabase();
           showModalPrograma.value = false;
           seleccionarProgramaObj({ id: newId, carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin });
@@ -1383,11 +1393,10 @@
             fecha_fin: formAsignar.value.fecha_fin,
             realizado: false
           };
+          dbProgramasItems.value.push(payload);
           try {
             await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
-          } catch(e) {
-            dbProgramasItems.value.push(payload);
-          }
+          } catch(e) {}
           showModalAsignarEquipo.value = false;
           const prog = dbProgramasCalendarios.value.find(p => String(p.id) === String(formAsignar.value.programa_id));
           if (prog) seleccionarProgramaObj(prog);
@@ -1421,11 +1430,10 @@
             fecha_fin: perfilAsignacionFechaFin.value || perfilAsignacionFechaInicio.value,
             realizado: false
           };
+          dbProgramasItems.value.push(payload);
           try {
             await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
-          } catch(e) {
-            dbProgramasItems.value.push(payload);
-          }
+          } catch(e) {}
           alert("¡Equipo asignado al programa con éxito!");
           perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
         };
@@ -1775,6 +1783,7 @@
         };
 
         const guardarMantencionForm = async () => {
+          const filtrosAGuardar = esMantencionTipo.value ? (formMant.value.filtrosLista || []) : [];
           const payload = {
             afi: formMant.value.afi, fecha: formatIsoDateForSupabase(formMant.value.fecha), lugar: formMant.value.lugar, causa: formMant.value.causa,
             tipo_mantencion: formMant.value.tipoMant, tipo_horas_mantencion: formMant.value.tipoHorasMant, horometro: parseNum(formMant.value.horometro),
@@ -1782,7 +1791,7 @@
             hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino,
             mecanico_1: formMant.value.mec1, mecanico_2: formMant.value.mec2, mecanico_3: formMant.value.mec3, mecanico_4: formMant.value.mec4,
             causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
-            filtros_json: JSON.stringify(formMant.value.filtrosLista || []),
+            filtros_json: JSON.stringify(filtrosAGuardar),
             costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT,
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
@@ -1973,7 +1982,12 @@
           });
         };
 
-        const switchTab = (tab) => { currentTab.value = tab; if (tab === 'dashboard') renderCharts(); };
+        const switchTab = (tab) => { 
+          currentTab.value = tab; 
+          if (tab === 'dashboard') {
+            renderCharts();
+          }
+        };
         const countEstado = (st) => dbEquipos.value.filter(e => normalizarClave(e.disponibilidad) === normalizarClave(st)).length;
         const getEstadoText = (est) => {
           const norm = normalizarClave(est);
@@ -1993,11 +2007,18 @@
         onMounted(async () => {
           const cfgSaved = localStorage.getItem('afi_config_custom'); if (cfgSaved) config.value = JSON.parse(cfgSaved);
           await cargarUsuariosDesdeSupabase(); await cargarDatosDesdeSupabase();
+          renderCharts();
         });
 
         const login = () => {
           const userEncontrado = dbUsuarios.value.find(u => u.usuario.toLowerCase() === loginUser.value.trim().toLowerCase() && u.clave === loginPass.value.trim());
-          if (userEncontrado) { usuarioActivo.value = userEncontrado; authError.value = false; loginUser.value = ""; loginPass.value = ""; nextTick(() => renderCharts()); }
+          if (userEncontrado) { 
+            usuarioActivo.value = userEncontrado; 
+            authError.value = false; 
+            loginUser.value = ""; 
+            loginPass.value = ""; 
+            nextTick(() => renderCharts()); 
+          }
           else authError.value = true;
         };
         const logout = () => { usuarioActivo.value = null; };
@@ -2012,7 +2033,7 @@
           getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
-          agregarFilaFiltro, eliminarFilaFiltro,
+          esMantencionTipo, agregarFilaFiltro, eliminarFilaFiltro,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
           showModalCarpeta, formCarpetaNombre, abrirModalCrearCarpeta, guardarNuevaCarpeta,
           showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes, eliminarProgramaCompleto,
