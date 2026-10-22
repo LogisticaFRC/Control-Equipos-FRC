@@ -281,22 +281,23 @@
           </div>
         </section>
 
-        <!-- SECCIÓN PROGRAMAS (CON FLUJO POR PASOS JERÁRQUICO) -->
+        <!-- SECCIÓN PROGRAMAS (3 BOTONES CLAROS Y SEPARADOS) -->
         <section v-if="currentTab === 'programas'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
               <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt</h2>
-              <p class="text-xs text-slate-500 mt-1">Crea carpetas, luego sus programas mensuales y asigna equipos para tener un control estricto.</p>
+              <p class="text-xs text-slate-500 mt-1">Sigue el orden: 1. Crear Carpeta -> 2. Crear Programa (Mes) -> 3. Asignar Equipo.</p>
             </div>
-            <div class="flex items-center gap-2" v-if="isAdmin">
-              <button @click="abrirModalCrearCarpeta" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5">
-                <i class="fa-solid fa-folder-plus"></i> + Crear Carpeta
+            <!-- LOS 3 BOTONES EXACTOS Y SEPARADOS -->
+            <div class="flex flex-wrap items-center gap-2.5" v-if="isAdmin">
+              <button @click="abrirModalCrearCarpeta" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-folder-plus text-sm"></i> 1. Crear Carpeta
               </button>
-              <button @click="abrirModalCrearPrograma" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5">
-                <i class="fa-solid fa-calendar-plus"></i> + Crear Programa (Mes)
+              <button @click="abrirModalCrearPrograma" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-calendar-plus text-sm"></i> 2. Crear Programa (Mes)
               </button>
-              <button @click="abrirModalAsignarEquipo" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5">
-                <i class="fa-solid fa-truck-monster"></i> + Asignar Equipo
+              <button @click="abrirModalAsignarEquipo" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-truck-monster text-sm"></i> 3. Asignar Equipo
               </button>
             </div>
           </div>
@@ -448,7 +449,7 @@
           </div>
         </section>
 
-        <!-- HISTORIAL -->
+        <!-- HISTORIAL (CON ÚLTIMO HORÓMETRO TOMADO Y FECHA) -->
         <section v-if="currentTab === 'hojaVida'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-2">
@@ -508,13 +509,15 @@
                   <tr>
                     <th v-if="isAdmin" class="p-2 text-center">ACCIONES</th>
                     <th class="p-2">AFI</th>
-                    <th class="p-2">FECHA</th>
+                    <th class="p-2">FECHA MANT.</th>
                     <th class="p-2">EQUIPO</th>
                     <th class="p-2">LUGAR</th>
                     <th class="p-2">CAUSA</th>
                     <th class="p-2">TIPO MANT.</th>
                     <th class="p-2 text-amber-300">TIPO EN HORAS (H)</th>
-                    <th class="p-2">HORÓMETRO</th>
+                    <!-- COLUMNAS EXPLICITAS DE ÚLTIMO HORÓMETRO TOMADO Y SU FECHA -->
+                    <th class="p-2 bg-amber-900 text-amber-200 font-bold">ÚLTIMO HORÓMETRO TOMADO</th>
+                    <th class="p-2 bg-amber-900 text-amber-200 font-bold">FECHA HORÓMETRO</th>
                     <th class="p-2">MECÁNICOS</th>
                     <th class="p-2 text-sky-300">INICIO HORA</th>
                     <th class="p-2 text-sky-300">TÉRMINO HORA</th>
@@ -543,7 +546,9 @@
                     <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
                     <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
                     <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
-                    <td class="p-2 font-mono font-bold">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
+                    <!-- DATOS DE HORÓMETRO Y FECHA ASOCIADA EN CADA FILA -->
+                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
+                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.fecha || '-' }}</td>
                     <td class="p-2">{{ getMecanicosText(i) }}</td>
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
@@ -561,7 +566,7 @@
                       <span v-else class="text-slate-400 italic">-</span>
                     </td>
                   </tr>
-                  <tr v-if="filteredIntervenciones.length === 0"><td colspan="22" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
+                  <tr v-if="filteredIntervenciones.length === 0"><td colspan="23" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -774,7 +779,7 @@
               </div>
             </div>
 
-            <!-- SECCIÓN HORÓMETROS DETALLADA CON ÚLTIMO TOMADO Y ÚLTIMA MANTENCIÓN -->
+            <!-- SECCIÓN HORÓMETROS -->
             <div :class="['p-5 rounded-xl shadow-sm border flex flex-col lg:flex-row gap-6 items-center', perfilEquipo.horometros?.horasFaltantes <= 0 ? 'bg-pasado-blink' : 'bg-normal-horometro']">
               <div class="w-full lg:w-1/3 space-y-3">
                 <div class="flex items-center justify-between border-b border-white/20 pb-2">
@@ -782,7 +787,7 @@
                   <span v-if="perfilEquipo.horometros?.horasFaltantes <= 0" class="bg-white text-rose-600 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase animate-pulse">¡PASADO!</span>
                 </div>
                 <div>
-                  <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase" title="Modificable manualmente">Último Horómetro Tomado (Manual)</label>
+                  <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Último Horómetro Tomado (Manual)</label>
                   <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
                 </div>
                 <div>
@@ -792,34 +797,25 @@
               </div>
 
               <div class="w-full lg:w-2/3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
-                <!-- Último Horómetro Tomado -->
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Último Horómetro Tomado</span>
                   <strong class="font-mono text-base text-amber-300 block">{{ perfilEquipo.horometros?.hTomado || 0 }}h</strong>
                   <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ perfilEquipo.horometros?.fechaUltimoHorometro || '-' }}</span>
                 </div>
-
-                <!-- Horómetro de Última Mantención -->
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Mantención</span>
                   <strong class="font-mono text-base text-blue-300 block">{{ perfilEquipo.horometros?.hUltimaMant || 0 }}h</strong>
                   <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ perfilEquipo.horometros?.ultimaMantFecha || '-' }}</span>
                 </div>
-
-                <!-- Horómetro Actual Aprox -->
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Horómetro Actual Aprox.</span>
                   <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong>
                   <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin uso diario' }}</span>
                 </div>
-
-                <!-- Próxima Mantención (Meta) -->
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Próxima Mantención (Meta)</span>
                   <strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }}h</strong>
                 </div>
-
-                <!-- Fecha Próxima Mantención Aprox -->
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20 col-span-2 sm:col-span-2">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Próxima Mantención (Aprox.)</span>
                   <strong class="font-mono text-sm text-amber-300 block mt-1"><i class="fa-solid fa-calendar-days mr-1"></i> {{ perfilEquipo.horometros?.fechaEstimada || '-' }}</strong>
@@ -1152,12 +1148,11 @@
         const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
         const seleccionarPrograma = (carpeta, mes) => { progSelect.value = { carpeta, mes }; };
 
-        // Botones de Creación Jerárquicos
+        // 3 Botones de Creación Jerárquicos
         const abrirModalCrearCarpeta = () => { formCarpetaNombre.value = ''; showModalCarpeta.value = true; };
         const guardarNuevaCarpeta = async () => {
           const cName = formCarpetaNombre.value.trim().toUpperCase();
           if (!cName) return;
-          // Guardamos un registro comodín para fijar la carpeta en BD si no existe
           await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cName, mes: 'GENERAL', realizado: false }]);
           await cargarDatosDesdeSupabase();
           showModalCarpeta.value = false;
@@ -1372,9 +1367,7 @@
           dbEquipos.value.forEach(eq => {
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
             
-            // Historial con horómetro
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
-            // Historial de mantenciones (Preventivas u otras)
             const histMantenciones = histConHorometro.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT') || String(i.causa).toUpperCase().includes('MANTENCION'));
 
             let ultimaMant = histMantenciones.length > 0 ? histMantenciones[histMantenciones.length - 1] : (histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : null);
@@ -1387,7 +1380,6 @@
             let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : 0;
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : '-';
 
-            // Cálculo tasa de uso diario y proyección
             let rateHrsDia = 0;
             if (histConHorometro.length >= 2) {
               const ultimo = histConHorometro[histConHorometro.length - 1];
