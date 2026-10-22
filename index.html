@@ -277,21 +277,28 @@
                 </button>
               </div>
             </div>
-            
             <div v-if="filteredEquipos.length === 0" class="col-span-3 text-center p-10 text-slate-500 font-bold">No se encontraron equipos con los filtros actuales.</div>
           </div>
         </section>
 
-        <!-- SECCIÓN PROGRAMAS -->
+        <!-- SECCIÓN PROGRAMAS (CON FLUJO POR PASOS JERÁRQUICO) -->
         <section v-if="currentTab === 'programas'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
               <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt</h2>
-              <p class="text-xs text-slate-500 mt-1">Crea carpetas, programas mensuales y asigna equipos para tener un control estricto de fechas y cumplimiento automático.</p>
+              <p class="text-xs text-slate-500 mt-1">Crea carpetas, luego sus programas mensuales y asigna equipos para tener un control estricto.</p>
             </div>
-            <button v-if="isAdmin" @click="abrirFormularioPrograma()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-md flex items-center gap-1.5">
-              <i class="fa-solid fa-plus"></i> Nuevo Programa / Asignar Equipo
-            </button>
+            <div class="flex items-center gap-2" v-if="isAdmin">
+              <button @click="abrirModalCrearCarpeta" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5">
+                <i class="fa-solid fa-folder-plus"></i> + Crear Carpeta
+              </button>
+              <button @click="abrirModalCrearPrograma" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5">
+                <i class="fa-solid fa-calendar-plus"></i> + Crear Programa (Mes)
+              </button>
+              <button @click="abrirModalAsignarEquipo" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5">
+                <i class="fa-solid fa-truck-monster"></i> + Asignar Equipo
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -310,6 +317,7 @@
                       <span><i class="fa-solid fa-calendar-days opacity-50 mr-1"></i> {{ mes }}</span>
                       <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(carpeta, mes).length }}</span>
                     </button>
+                    <button v-if="isAdmin" @click="abrirModalCrearProgramaConCarpeta(carpeta)" class="text-[10px] text-indigo-600 hover:underline block pt-1 font-bold">+ Añadir Programa en {{ carpeta }}</button>
                   </div>
                 </div>
               </div>
@@ -360,7 +368,7 @@
                         </td>
                       </tr>
                       <tr v-if="obtenerItemsPrograma(progSelect.carpeta, progSelect.mes).length === 0">
-                        <td colspan="6" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa.</td>
+                        <td colspan="6" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa. <button @click="abrirModalAsignarEquipoEnProgreso(progSelect.carpeta, progSelect.mes)" class="text-rose-600 underline font-bold">Añadir equipo ahora</button></td>
                       </tr>
                     </tbody>
                   </table>
@@ -766,45 +774,55 @@
               </div>
             </div>
 
-            <!-- SECCIÓN HORÓMETROS Y DATOS COMPLETOS -->
-            <div :class="['p-5 rounded-xl shadow-sm border flex flex-col md:flex-row gap-6 items-center', perfilEquipo.horometros?.horasFaltantes <= 0 ? 'bg-pasado-blink' : 'bg-normal-horometro']">
-              <div class="w-full md:w-1/3 space-y-3">
+            <!-- SECCIÓN HORÓMETROS DETALLADA CON ÚLTIMO TOMADO Y ÚLTIMA MANTENCIÓN -->
+            <div :class="['p-5 rounded-xl shadow-sm border flex flex-col lg:flex-row gap-6 items-center', perfilEquipo.horometros?.horasFaltantes <= 0 ? 'bg-pasado-blink' : 'bg-normal-horometro']">
+              <div class="w-full lg:w-1/3 space-y-3">
                 <div class="flex items-center justify-between border-b border-white/20 pb-2">
                   <h4 class="font-bold text-sm flex items-center gap-2 uppercase"><i class="fa-solid fa-stopwatch"></i> Horómetros y Frecuencia</h4>
                   <span v-if="perfilEquipo.horometros?.horasFaltantes <= 0" class="bg-white text-rose-600 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase animate-pulse">¡PASADO!</span>
                 </div>
                 <div>
                   <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase" title="Modificable manualmente">Último Horómetro Tomado (Manual)</label>
-                  <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
+                  <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
                 </div>
                 <div>
                   <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención</label>
-                  <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2 border-none rounded-lg bg-white/10 font-mono font-bold text-white text-sm outline-none">
+                  <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 font-mono font-bold text-white text-sm outline-none">
                 </div>
               </div>
 
-              <div class="w-full md:w-2/3 grid grid-cols-2 lg:grid-cols-3 gap-3 text-center">
+              <div class="w-full lg:w-2/3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+                <!-- Último Horómetro Tomado -->
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Mantención (Historial)</span>
-                  <strong class="font-mono text-sm block">{{ perfilEquipo.horometros?.ultimaMantTipo || 'Sin reg.' }}</strong>
-                  <span class="text-[9px] opacity-70 block mt-0.5">{{ perfilEquipo.horometros?.ultimaMantFecha || '-' }}</span>
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Último Horómetro Tomado</span>
+                  <strong class="font-mono text-base text-amber-300 block">{{ perfilEquipo.horometros?.hTomado || 0 }}h</strong>
+                  <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ perfilEquipo.horometros?.fechaUltimoHorometro || '-' }}</span>
                 </div>
+
+                <!-- Horómetro de Última Mantención -->
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Úl. Horómetro Tomado</span>
-                  <strong class="font-mono text-sm text-amber-300 block mt-1">{{ perfilEquipo.horometros?.fechaUltimoHorometro || '-' }}</strong>
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Mantención</span>
+                  <strong class="font-mono text-base text-blue-300 block">{{ perfilEquipo.horometros?.hUltimaMant || 0 }}h</strong>
+                  <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ perfilEquipo.horometros?.ultimaMantFecha || '-' }}</span>
                 </div>
+
+                <!-- Horómetro Actual Aprox -->
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Horómetro Actual Aprox.</span>
                   <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong>
                   <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin uso diario' }}</span>
                 </div>
+
+                <!-- Próxima Mantención (Meta) -->
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Próxima Mantención (Meta)</span>
                   <strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }}h</strong>
                 </div>
-                <div class="bg-white/10 p-3 rounded-xl border border-white/20 col-span-2 lg:col-span-2">
+
+                <!-- Fecha Próxima Mantención Aprox -->
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20 col-span-2 sm:col-span-2">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Próxima Mantención (Aprox.)</span>
-                  <strong class="font-mono text-sm text-amber-300 block mt-1">{{ perfilEquipo.horometros?.fechaEstimada || '-' }}</strong>
+                  <strong class="font-mono text-sm text-amber-300 block mt-1"><i class="fa-solid fa-calendar-days mr-1"></i> {{ perfilEquipo.horometros?.fechaEstimada || '-' }}</strong>
                 </div>
               </div>
             </div>
@@ -894,59 +912,104 @@
         </div>
       </div>
 
-      <!-- MODAL NUEVO PROGRAMA (POR PASOS: CARPETA -> MES -> EQUIPO) -->
-      <div v-if="showNuevoProgramaModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-2xl overflow-hidden flex flex-col">
-          <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
-            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Crear Programa / Asignar Equipo</h3>
-            <button @click="showNuevoProgramaModal=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <!-- MODAL 1: CREAR CARPETA NUEVA -->
+      <div v-if="showModalCarpeta" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-md overflow-hidden flex flex-col">
+          <div class="bg-amber-500 px-6 py-4 flex justify-between items-center text-slate-950">
+            <h3 class="font-extrabold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-folder-plus"></i> Crear Nueva Carpeta</h3>
+            <button @click="showModalCarpeta=false" class="text-slate-950/80 hover:text-slate-950"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 space-y-4 text-xs bg-slate-50">
-            <!-- PASO 1: CARPETA -->
-            <div class="space-y-1">
-              <label class="block font-bold text-slate-700 uppercase text-[11px]">1. Selecciona o Crea la Carpeta Principal</label>
-              <input type="text" v-model="formPrograma.carpeta" list="listCarpetas" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: PROGRAMA MANTENCION ANUAL">
-              <datalist id="listCarpetas"><option v-for="c in listaCarpetasProgramas" :key="c" :value="c"></option></datalist>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre de la Carpeta</label>
+              <input type="text" v-model="formCarpetaNombre" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: PROGRAMA MANTENCION 2026">
             </div>
+          </div>
+          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
+            <button @click="showModalCarpeta=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
+            <button @click="guardarNuevaCarpeta" :disabled="!formCarpetaNombre.trim()" class="px-5 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 shadow-md text-xs">Crear Carpeta</button>
+          </div>
+        </div>
+      </div>
 
-            <!-- PASO 2: MES / SUBPROGRAMA -->
-            <div class="space-y-1">
-              <label class="block font-bold text-slate-700 uppercase text-[11px]">2. Selecciona o Crea el Mes / Subprograma</label>
-              <input type="text" v-model="formPrograma.mes" list="listMeses" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: ENERO 2026">
-              <datalist id="listMeses"><option v-for="m in mesesSugeridosPrograma" :key="m" :value="m"></option></datalist>
+      <!-- MODAL 2: CREAR PROGRAMA (MES) -->
+      <div v-if="showModalPrograma" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-md overflow-hidden flex flex-col">
+          <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Crear Programa / Mes</h3>
+            <button @click="showModalPrograma=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+          </div>
+          <div class="p-6 space-y-4 text-xs bg-slate-50">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Seleccionar Carpeta</label>
+              <select v-model="formProgMes.carpeta" class="w-full p-2.5 border rounded-lg bg-white font-bold">
+                <option value="">-- Elige Carpeta --</option>
+                <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
+              </select>
             </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa / Mes</label>
+              <input type="text" v-model="formProgMes.mes" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: ENERO 2026">
+            </div>
+          </div>
+          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
+            <button @click="showModalPrograma=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
+            <button @click="guardarNuevoProgramaMes" :disabled="!formProgMes.carpeta || !formProgMes.mes.trim()" class="px-5 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-md text-xs">Crear Programa</button>
+          </div>
+        </div>
+      </div>
 
-            <!-- PASO 3: EQUIPO Y DATOS -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">3. Selecciona el Equipo (AFI)</label>
-                <select v-model="formPrograma.afi" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
-                  <option value="">-- Seleccionar Equipo --</option>
-                  <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
-                </select>
-              </div>
+      <!-- MODAL 3: ASIGNAR EQUIPO A PROGRAMA -->
+      <div v-if="showModalAsignarEquipo" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
+          <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Asignar Equipo a Programa</h3>
+            <button @click="showModalAsignarEquipo=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+          </div>
+          <div class="p-6 space-y-4 text-xs bg-slate-50">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Carpeta</label>
+              <select v-model="formAsignar.carpeta" @change="formAsignar.mes = ''" class="w-full p-2.5 border rounded-lg bg-white font-bold">
+                <option value="">-- Elige Carpeta --</option>
+                <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Programa / Mes</label>
+              <select v-model="formAsignar.mes" :disabled="!formAsignar.carpeta" class="w-full p-2.5 border rounded-lg bg-white font-bold">
+                <option value="">-- Elige Programa --</option>
+                <option v-for="m in obtenerMesesDeCarpeta(formAsignar.carpeta)" :key="m" :value="m">{{ m }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Equipo (AFI)</label>
+              <select v-model="formAsignar.afi" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
+                <option value="">-- Seleccionar Equipo --</option>
+                <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Tipo de Trabajo</label>
-                <select v-model="formPrograma.tipo" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
+                <select v-model="formAsignar.tipo" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
                   <option value="Mantención">Mantención</option><option value="Reparación">Reparación</option>
                 </select>
               </div>
-              <div v-if="formPrograma.tipo === 'Mantención'">
-                <label class="block font-bold text-slate-700 mb-1">Horas de Mantención</label>
-                <select v-model="formPrograma.horas" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
+              <div v-if="formAsignar.tipo === 'Mantención'">
+                <label class="block font-bold text-slate-700 mb-1">Horas</label>
+                <select v-model="formAsignar.horas" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
                   <option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option>
                 </select>
               </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Fecha Programada (Plan)</label>
-                <input type="date" v-model="formPrograma.fecha" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold text-slate-800">
-              </div>
             </div>
-            <p class="text-[10px] text-slate-500 italic"><i class="fa-solid fa-circle-info"></i> Puedes crear carpetas o meses nuevos simplemente escribiendo su nombre.</p>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Fecha Programada (Plan)</label>
+              <input type="date" v-model="formAsignar.fecha" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+            </div>
           </div>
           <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
-            <button @click="showNuevoProgramaModal=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-            <button @click="guardarNuevoPrograma" :disabled="!formPrograma.carpeta || !formPrograma.mes || !formPrograma.afi || !formPrograma.fecha" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md flex items-center gap-1.5 text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar en Programa</button>
+            <button @click="showModalAsignarEquipo=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
+            <button @click="guardarAsignacionEquipo" :disabled="!formAsignar.carpeta || !formAsignar.mes || !formAsignar.afi || !formAsignar.fecha" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md text-xs">Guardar en Programa</button>
           </div>
         </div>
       </div>
@@ -990,15 +1053,14 @@
         const dbIntervenciones = ref([]);
         const dbProgramas = ref([]); 
 
-        // Modales
+        // Modales Perfil e Historial
         const showPerfilEquipoModal = ref(false);
         const perfilEquipo = ref({});
-        
         const showFormMantencionModal = ref(false);
         const isEditingMantencion = ref(false);
         const formMant = ref({
           id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
-          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "", aceiteDetallesArray: []
+          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: ""
         });
 
         const listaCausas = [
@@ -1008,12 +1070,18 @@
           "RETIRO", "CONEXIÓN/DESCONEXION", "FALLA OPERACIONAL", "INSPECCION (ELECTRICA)"
         ];
 
-        // Estado Programas
-        const showNuevoProgramaModal = ref(false);
-        const formPrograma = ref({ carpeta: '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
+        // Modales Programas Jerárquicos
+        const showModalCarpeta = ref(false);
+        const formCarpetaNombre = ref('');
+
+        const showModalPrograma = ref(false);
+        const formProgMes = ref({ carpeta: '', mes: '' });
+
+        const showModalAsignarEquipo = ref(false);
+        const formAsignar = ref({ carpeta: '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) });
+
         const openFolders = ref({});
         const progSelect = ref({ carpeta: '', mes: '' });
-
         const perfilAsignacionProg = ref({ carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
 
         // Filtros
@@ -1057,7 +1125,7 @@
           reader.readAsDataURL(file);
         };
 
-        // LÓGICA PROGRAMAS
+        // LÓGICA PROGRAMAS JERÁRQUICOS
         const listaCarpetasProgramas = computed(() => {
           const carpetas = new Set(dbProgramas.value.map(p => p.carpeta).filter(Boolean));
           return Array.from(carpetas).sort();
@@ -1067,11 +1135,6 @@
           const meses = new Set(dbProgramas.value.filter(p => p.carpeta === carpeta).map(p => p.mes).filter(Boolean));
           return Array.from(meses).sort();
         };
-
-        const mesesSugeridosPrograma = computed(() => {
-          if (!formPrograma.value.carpeta) return [];
-          return obtenerMesesDeCarpeta(formPrograma.value.carpeta);
-        });
 
         const obtenerItemsPrograma = (carpeta, mes) => {
           return dbProgramas.value
@@ -1089,29 +1152,55 @@
         const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
         const seleccionarPrograma = (carpeta, mes) => { progSelect.value = { carpeta, mes }; };
 
-        const abrirFormularioPrograma = () => {
-          formPrograma.value = { carpeta: listaCarpetasProgramas.value[0] || '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
-          showNuevoProgramaModal.value = true;
+        // Botones de Creación Jerárquicos
+        const abrirModalCrearCarpeta = () => { formCarpetaNombre.value = ''; showModalCarpeta.value = true; };
+        const guardarNuevaCarpeta = async () => {
+          const cName = formCarpetaNombre.value.trim().toUpperCase();
+          if (!cName) return;
+          // Guardamos un registro comodín para fijar la carpeta en BD si no existe
+          await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cName, mes: 'GENERAL', realizado: false }]);
+          await cargarDatosDesdeSupabase();
+          showModalCarpeta.value = false;
+          openFolders.value[cName] = true;
+          alert(`¡Carpeta "${cName}" creada con éxito!`);
         };
 
-        const guardarNuevoPrograma = async () => {
-          const cp = String(formPrograma.value.carpeta).trim().toUpperCase();
-          const ms = String(formPrograma.value.mes).trim().toUpperCase();
-          if (!cp || !ms || !formPrograma.value.afi || !formPrograma.value.fecha) return alert("Completa todos los campos obligatorios.");
+        const abrirModalCrearPrograma = () => { formProgMes.value = { carpeta: listaCarpetasProgramas.value[0] || '', mes: '' }; showModalPrograma.value = true; };
+        const abrirModalCrearProgramaConCarpeta = (carpeta) => { formProgMes.value = { carpeta, mes: '' }; showModalPrograma.value = true; };
+        
+        const guardarNuevoProgramaMes = async () => {
+          const cp = formProgMes.value.carpeta;
+          const ms = formProgMes.value.mes.trim().toUpperCase();
+          if (!cp || !ms) return;
+          await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cp, mes: ms, realizado: false }]);
+          await cargarDatosDesdeSupabase();
+          showModalPrograma.value = false;
+          seleccionarPrograma(cp, ms);
+          alert(`¡Programa "${ms}" creado en la carpeta "${cp}"!`);
+        };
 
+        const abrirModalAsignarEquipo = () => {
+          formAsignar.value = { carpeta: progSelect.value.carpeta || listaCarpetasProgramas.value[0] || '', mes: progSelect.value.mes || '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
+          showModalAsignarEquipo.value = true;
+        };
+        const abrirModalAsignarEquipoEnProgreso = (carpeta, mes) => {
+          formAsignar.value = { carpeta, mes, afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
+          showModalAsignarEquipo.value = true;
+        };
+
+        const guardarAsignacionEquipo = async () => {
           const payload = {
-            carpeta: cp, mes: ms, afi: formPrograma.value.afi, tipo: formPrograma.value.tipo,
-            horas: formPrograma.value.tipo === 'Mantención' ? formPrograma.value.horas : null,
-            fecha_programada: formPrograma.value.fecha, realizado: false
+            carpeta: formAsignar.value.carpeta, mes: formAsignar.value.mes, afi: formAsignar.value.afi,
+            tipo: formAsignar.value.tipo, horas: formAsignar.value.tipo === 'Mantención' ? formAsignar.value.horas : null,
+            fecha_programada: formAsignar.value.fecha, realizado: false
           };
-
           const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
-          if (error) alert("Error al guardar en Supabase. Verifica la tabla BD_PROGRAMAS.");
+          if (error) alert("Error al asignar equipo.");
           else {
             await cargarDatosDesdeSupabase();
-            showNuevoProgramaModal.value = false;
-            openFolders.value[cp] = true;
-            seleccionarPrograma(cp, ms);
+            showModalAsignarEquipo.value = false;
+            seleccionarPrograma(formAsignar.value.carpeta, formAsignar.value.mes);
+            alert("¡Equipo asignado al programa con éxito!");
           }
         };
 
@@ -1129,11 +1218,9 @@
         };
 
         const guardarAsignacionDesdePerfil = async () => {
-          const cp = String(perfilAsignacionProg.value.carpeta).trim().toUpperCase();
-          const ms = String(perfilAsignacionProg.value.mes).trim().toUpperCase();
           const payload = {
-            carpeta: cp, mes: ms, afi: perfilEquipo.value.afi, tipo: perfilAsignacionProg.value.tipo,
-            horas: perfilAsignacionProg.value.tipo === 'Mantención' ? perfilAsignacionProg.value.horas : null,
+            carpeta: perfilAsignacionProg.value.carpeta, mes: perfilAsignacionProg.value.mes, afi: perfilEquipo.value.afi,
+            tipo: perfilAsignacionProg.value.tipo, horas: perfilAsignacionProg.value.tipo === 'Mantención' ? perfilAsignacionProg.value.horas : null,
             fecha_programada: perfilAsignacionProg.value.fecha, realizado: false
           };
           const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
@@ -1145,7 +1232,7 @@
           }
         };
 
-        // CORE UTILS
+        // CORE UTILS & DATA LOAD
         const normalizarClave = (str) => {
           if (!str) return 'Disponible';
           const eLower = String(str).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -1285,15 +1372,19 @@
           dbEquipos.value.forEach(eq => {
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
             
-            // Filtrar mantenciones o registros con horómetro válido para sacar última mantención
+            // Historial con horómetro
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
-            
-            let ultimaMant = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : null;
-            let hTomadoManual = Number(eq.horometroActual) || (ultimaMant ? Number(ultimaMant.horometro) : 0);
-            
-            let fechaUltimoHorometro = ultimaMant ? ultimaMant.fecha : '-';
+            // Historial de mantenciones (Preventivas u otras)
+            const histMantenciones = histConHorometro.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT') || String(i.causa).toUpperCase().includes('MANTENCION'));
+
+            let ultimaMant = histMantenciones.length > 0 ? histMantenciones[histMantenciones.length - 1] : (histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : null);
+            let ultimoReg = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : null;
+
+            let hTomadoManual = Number(eq.horometroActual) || (ultimoReg ? Number(ultimoReg.horometro) : 0);
+            let fechaUltimoHorometro = ultimoReg ? ultimoReg.fecha : '-';
             let hUltimoTomado = hTomadoManual;
-            let ultimaMantTipo = ultimaMant ? (ultimaMant.tipoMant || ultimaMant.causa || 'MANTENCIÓN') : 'Sin registro';
+
+            let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : 0;
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : '-';
 
             // Cálculo tasa de uso diario y proyección
@@ -1308,7 +1399,7 @@
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
             const hAprox = Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
-            const hTarget = hUltimoTomado + (Number(eq.frecuenciaMantencion) || 250);
+            const hTarget = hUltimaMant > 0 ? hUltimaMant + (Number(eq.frecuenciaMantencion) || 250) : hUltimoTomado + (Number(eq.frecuenciaMantencion) || 250);
             const faltan = hTarget - hAprox;
 
             let diasFaltantes = rateHrsDia > 0 ? Math.ceil(faltan / rateHrsDia) : 30;
@@ -1321,7 +1412,7 @@
             let estadoTexto = faltan <= 0 ? "¡PASADO!" : faltan <= 50 ? "PRÓXIMO" : "AL DÍA";
 
             eq.horometros = {
-              hTomado: hUltimoTomado, fechaUltimoHorometro, ultimaMantTipo, ultimaMantFecha,
+              hTomado: hUltimoTomado, fechaUltimoHorometro, hUltimaMant, ultimaMantFecha,
               hAprox, hTarget, horasFaltantes: Math.round(faltan * 10) / 10,
               estadoTexto, rateHrsDia, fechaEstimada: fechaEstimadaStr
             };
@@ -1643,7 +1734,10 @@
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
-          showNuevoProgramaModal, formPrograma, abrirFormularioPrograma, guardarNuevoPrograma, listaCarpetasProgramas, mesesSugeridosPrograma, obtenerMesesDeCarpeta, obtenerItemsPrograma, getProgreso, openFolders, toggleFolder, progSelect, seleccionarPrograma, marcarProgramaRealizado, eliminarItemPrograma,
+          showModalCarpeta, formCarpetaNombre, abrirModalCrearCarpeta, guardarNuevaCarpeta,
+          showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes,
+          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoEnProgreso, guardarAsignacionEquipo,
+          listaCarpetasProgramas, obtenerMesesDeCarpeta, obtenerItemsPrograma, getProgreso, openFolders, toggleFolder, progSelect, seleccionarPrograma, marcarProgramaRealizado, eliminarItemPrograma,
           perfilAsignacionProg, guardarAsignacionDesdePerfil, toggleFiltroCriticos
         };
       }
