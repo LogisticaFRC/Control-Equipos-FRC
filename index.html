@@ -33,6 +33,12 @@
       border-color: #334155; /* slate-700 */
       color: white;
     }
+    
+    /* Scrollbar minimalista para tablas y paneles */
+    ::-webkit-scrollbar { height: 8px; width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 </head>
 <body :style="bodyStyle" class="font-sans min-h-screen flex flex-col transition-colors duration-300">
@@ -95,7 +101,7 @@
     <template v-else>
 
       <header :style="headerStyle" class="text-white shadow-lg sticky top-0 z-40 transition-colors duration-300">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+        <div class="max-w-[1400px] mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
           
           <div class="flex items-center gap-3">
             <div class="bg-white p-1 rounded-lg w-12 h-12 flex items-center justify-center overflow-hidden border border-slate-700 shadow-sm">
@@ -114,11 +120,14 @@
             <button @click="switchTab('inventario')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'inventario' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-boxes-stacked"></i> Inventario AFI ({{ dbEquipos.length }})
             </button>
+            <button @click="switchTab('programas')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'programas' ? 'bg-rose-500 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
+              <i class="fa-solid fa-calendar-check"></i> Programas
+            </button>
             <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-truck-ramp-box"></i> Movimientos ({{ dbMovimientos.length }})
             </button>
             <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-file-medical"></i> Hojas de Vida ({{ dbIntervenciones.length }})
+              <i class="fa-solid fa-file-medical"></i> Historial ({{ dbIntervenciones.length }})
             </button>
             <button @click="switchTab('aceites')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'aceites' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-oil-can"></i> Control Aceites
@@ -147,7 +156,7 @@
         </div>
       </header>
 
-      <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+      <main class="max-w-[1400px] mx-auto px-4 py-6 flex-grow w-full">
 
         <!-- DASHBOARD -->
         <section v-if="currentTab === 'dashboard'" class="space-y-6">
@@ -239,6 +248,9 @@
             <div class="flex flex-wrap items-center justify-between gap-3">
               <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Inventario General</h2>
               <div class="flex flex-wrap items-center gap-2">
+                <button @click="toggleFiltroCriticos" :class="['text-xs font-extrabold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow', filterInv.mostrarCriticos ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-100 text-rose-600 border border-rose-200 hover:bg-rose-50']">
+                  <i class="fa-solid fa-triangle-exclamation"></i> {{ filterInv.mostrarCriticos ? 'Viendo Críticos' : 'Ver Equipos Críticos / Pasados' }}
+                </button>
                 <label class="text-xs font-bold text-slate-700 ml-2">Orden:</label>
                 <select v-model="sortInventarioOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
                   <option value="desc">Más Recientes primero</option>
@@ -307,6 +319,7 @@
                   </div>
 
                   <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.horometros)]">
+                    
                     <div class="flex justify-between items-center text-[10px] text-slate-500 font-bold border-b pb-1">
                       <span class="text-amber-700"><i class="fa-solid fa-stopwatch"></i> FRECUENCIA: {{ e.frecuenciaMantencion }}h</span>
                       <span class="text-blue-700"><i class="fa-solid fa-chart-line"></i> USO DIARIO: {{ e.horometros?.rateHrsDia > 0 ? e.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin datos' }}</span>
@@ -339,18 +352,111 @@
                 </div>
               </div>
               <div class="p-3 bg-slate-50 border-t flex items-center justify-between gap-2">
-                <button @click="abrirPerfilEquipo(e)" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm transition">
+                <button @click="abrirPerfilEquipo(e)" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm transition w-full justify-center">
                   <i class="fa-solid fa-id-card text-blue-300"></i> Perfil Equipo
                 </button>
-                <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion(e.afi)" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow">
-                  <i class="fa-solid fa-plus-circle"></i> + Mantención
-                </button>
+              </div>
+            </div>
+            
+            <div v-if="filteredEquipos.length === 0" class="col-span-3 text-center p-10 text-slate-500 font-bold">
+              No se encontraron equipos con los filtros actuales.
+            </div>
+          </div>
+        </section>
+
+        <!-- SECCIÓN PROGRAMAS -->
+        <section v-if="currentTab === 'programas'" class="space-y-4">
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+            <div>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> Planificación y Programación de Equipos</h2>
+              <p class="text-xs text-slate-500 mt-1">Crea carpetas, programas mensuales y asigna equipos para tener un calendario de mantenciones o reparaciones.</p>
+            </div>
+            <button v-if="isAdmin" @click="abrirFormularioPrograma()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-md flex items-center gap-1.5">
+              <i class="fa-solid fa-plus"></i> Programar Equipo
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Sidebar: Árbol de Carpetas y Meses -->
+            <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[600px] overflow-y-auto">
+              <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 mb-3"><i class="fa-solid fa-folder-tree text-amber-500"></i> Carpetas de Programas</h3>
+              <div v-if="listaCarpetasProgramas.length === 0" class="text-center text-[10px] text-slate-400 font-bold p-4">No hay programas creados.</div>
+              <div class="space-y-3">
+                <div v-for="carpeta in listaCarpetasProgramas" :key="carpeta" class="space-y-1">
+                  <div @click="toggleFolder(carpeta)" class="font-bold text-xs text-slate-700 bg-slate-100 p-2 rounded cursor-pointer hover:bg-slate-200 flex justify-between items-center">
+                    <span class="truncate"><i class="fa-solid fa-folder-open text-amber-500 mr-1.5"></i> {{ carpeta }}</span>
+                    <i :class="['fa-solid text-slate-400 text-[10px]', openFolders[carpeta] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                  </div>
+                  <div v-show="openFolders[carpeta]" class="pl-4 pr-1 space-y-1 border-l-2 border-slate-200 ml-2 pt-1 pb-2">
+                    <button v-for="mes in obtenerMesesDeCarpeta(carpeta)" :key="mes" @click="seleccionarPrograma(carpeta, mes)" :class="['text-[11px] font-semibold w-full text-left p-1.5 rounded flex items-center justify-between', (progSelect.carpeta === carpeta && progSelect.mes === mes) ? 'bg-rose-50 text-rose-700 font-bold border border-rose-200' : 'text-slate-600 hover:bg-slate-50']">
+                      <span><i class="fa-solid fa-calendar-days opacity-50 mr-1"></i> {{ mes }}</span>
+                      <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(carpeta, mes).length }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Main Panel: Detalles del Programa Seleccionado -->
+            <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[600px] flex flex-col">
+              <template v-if="progSelect.carpeta && progSelect.mes">
+                <div class="border-b pb-4 mb-4 flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-folder text-amber-400"></i> {{ progSelect.carpeta }}</span>
+                    <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-regular fa-calendar text-rose-500"></i> Programa: {{ progSelect.mes }}</h3>
+                  </div>
+                  <div class="flex-grow max-w-xs space-y-1 text-right">
+                    <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento:</span> <span>{{ getProgreso(progSelect.carpeta, progSelect.mes).pct }}%</span></div>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5 shadow-inner overflow-hidden">
+                      <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" :style="{ width: getProgreso(progSelect.carpeta, progSelect.mes).pct + '%' }"></div>
+                    </div>
+                    <div class="text-[9px] text-slate-500 font-semibold">{{ getProgreso(progSelect.carpeta, progSelect.mes).done }} de {{ getProgreso(progSelect.carpeta, progSelect.mes).total }} equipos realizados</div>
+                  </div>
+                </div>
+
+                <div class="flex-grow overflow-y-auto">
+                  <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
+                      <tr>
+                        <th class="p-2.5">EQUIPO AFI</th>
+                        <th class="p-2.5">TIPO TRABAJO</th>
+                        <th class="p-2.5">DETALLE HORAS</th>
+                        <th class="p-2.5">FECHA PROGRAMADA</th>
+                        <th class="p-2.5">ESTADO</th>
+                        <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y bg-white text-[11px]">
+                      <tr v-for="item in obtenerItemsPrograma(progSelect.carpeta, progSelect.mes)" :key="item.id" :class="item.realizado ? 'bg-emerald-50/50' : 'hover:bg-slate-50'">
+                        <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
+                        <td class="p-2.5 font-semibold text-slate-700">{{ item.tipo }}</td>
+                        <td class="p-2.5"><span v-if="item.tipo==='Mantención'" class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono font-bold">{{ item.horas }}</span><span v-else class="text-slate-400">-</span></td>
+                        <td class="p-2.5 font-mono font-bold">{{ item.fecha_programada }}</td>
+                        <td class="p-2.5">
+                          <span v-if="item.realizado" class="text-emerald-700 font-bold bg-emerald-100 px-2 py-1 rounded text-[10px]"><i class="fa-solid fa-check-circle"></i> Realizado ({{ item.fecha_realizada }})</span>
+                          <span v-else class="text-rose-600 font-bold bg-rose-50 px-2 py-1 rounded text-[10px]"><i class="fa-solid fa-clock"></i> Pendiente</span>
+                        </td>
+                        <td v-if="isAdmin" class="p-2.5 text-center space-x-2">
+                          <button v-if="!item.realizado" @click="marcarProgramaRealizado(item)" class="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded shadow-sm font-bold transition">Marcar Listo</button>
+                          <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar del Programa"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                      </tr>
+                      <tr v-if="obtenerItemsPrograma(progSelect.carpeta, progSelect.mes).length === 0">
+                        <td colspan="6" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+              <div v-else class="flex-grow flex flex-col items-center justify-center text-slate-400 space-y-4">
+                <i class="fa-solid fa-calendar-days text-6xl opacity-20"></i>
+                <p class="font-bold">Selecciona un Programa desde el menú lateral para ver sus detalles.</p>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- (Secciones Movimientos, Hoja Vida, Aceites, Config quedan igual) -->
+        <!-- MOVIMIENTOS -->
         <section v-if="currentTab === 'movimientos'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap justify-between items-center gap-3">
@@ -409,7 +515,7 @@
                 <tbody class="divide-y bg-white">
                   <tr v-for="m in filteredMovimientos" :key="m.id" class="hover:bg-slate-50">
                     <td class="p-2.5 font-mono font-bold text-slate-800 bg-amber-50/30">{{ m.fecha }}</td>
-                    <td class="p-2.5 font-bold text-amber-700">{{ m.afi }}</td>
+                    <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(m.afi)">{{ m.afi }}</td>
                     <td class="p-2.5 font-semibold">{{ m.tipo }}</td>
                     <td class="p-2.5 text-slate-600">{{ m.origen || '-' }}</td>
                     <td class="p-2.5 font-bold text-emerald-700 bg-emerald-50/50">{{ m.destino || '-' }}</td>
@@ -818,6 +924,116 @@
 
       </main>
 
+      <!-- GRAN MODAL: PERFIL DE EQUIPO -->
+      <div v-if="showPerfilEquipoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden">
+          
+          <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-mono font-bold bg-amber-500 text-slate-900 px-3 py-1.5 rounded-lg shadow-sm">AFI: {{ perfilEquipo.afi }}</span>
+              <h3 class="text-base font-extrabold tracking-wide uppercase"><i class="fa-solid fa-id-card mr-2"></i> Perfil de Equipo y Control Histórico</h3>
+            </div>
+            <button @click="showPerfilEquipoModal = false" class="w-8 h-8 rounded-full bg-slate-700 hover:bg-rose-500 text-white flex items-center justify-center transition shadow"><i class="fa-solid fa-xmark text-base"></i></button>
+          </div>
+
+          <div class="p-6 overflow-y-auto space-y-6 flex-grow bg-slate-100 text-xs">
+            
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-4"><i class="fa-solid fa-truck-monster text-emerald-600"></i> Datos Principales del Equipo</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div><label class="block font-bold text-slate-700 mb-1">Tipo de Equipo</label><input type="text" v-model="perfilEquipo.tipo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-slate-800"></div>
+                <div><label class="block font-bold text-slate-700 mb-1">Marca</label><input type="text" v-model="perfilEquipo.marca" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
+                <div><label class="block font-bold text-slate-700 mb-1">Modelo</label><input type="text" v-model="perfilEquipo.modelo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
+                <div><label class="block font-bold text-slate-700 mb-1">Ubicación Actual</label><input type="text" v-model="perfilEquipo.ubicacion" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Disponibilidad / Estado</label>
+                  <select v-model="perfilEquipo.disponibilidad" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
+                    <option value="Operativo">Trabajando / Operativo</option><option value="Disponible">Disponible</option><option value="En Traslado">En Traslado</option>
+                    <option value="En Mantencion">En Mantención</option><option value="Fuera de Servicio">Fuera de Servicio</option><option value="Venta">En Venta</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Estado de GPS</label>
+                  <select v-model="perfilEquipo.gps" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-blue-700">
+                    <option value="Instalado">Instalado</option><option value="Sin GPS">Sin GPS</option>
+                  </select>
+                </div>
+                <div class="md:col-span-2"><label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label><input type="text" v-model="perfilEquipo.imei_gps" :disabled="!isAdmin" placeholder="Ej: 8645..." class="w-full p-2 border rounded-lg bg-slate-50 font-mono"></div>
+              </div>
+            </div>
+
+            <!-- SECCIÓN HORÓMETROS Y ALERTA VISUAL -->
+            <div :class="['p-5 rounded-xl shadow-sm border flex flex-col md:flex-row gap-6 items-center', perfilEquipo.horometros?.horasFaltantes <= 0 ? 'bg-pasado-blink' : 'bg-normal-horometro']">
+              <div class="w-full md:w-1/3 space-y-4">
+                <div class="flex items-center justify-between border-b border-white/20 pb-2">
+                  <h4 class="font-bold text-sm flex items-center gap-2 uppercase"><i class="fa-solid fa-stopwatch"></i> Control & Frecuencia</h4>
+                  <span v-if="perfilEquipo.horometros?.horasFaltantes <= 0" class="bg-white text-rose-600 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase animate-pulse">¡PASADO!</span>
+                  <span v-else-if="perfilEquipo.horometros?.horasFaltantes <= 50" class="bg-amber-400 text-slate-900 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase">PRÓXIMO</span>
+                  <span v-else class="bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px] font-extrabold uppercase">AL DÍA</span>
+                </div>
+                <div><label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Horómetro Actual (Manual)</label><input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 focus:bg-white/20 font-mono font-bold text-white text-sm outline-none transition"></div>
+                <div><label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención (Ej: 250)</label><input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 focus:bg-white/20 font-mono font-bold text-white text-sm outline-none transition"></div>
+              </div>
+              <div class="w-full md:w-2/3 grid grid-cols-2 lg:grid-cols-4 gap-3 text-center">
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20"><span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Realizada</span><strong class="font-mono text-base block">{{ perfilEquipo.horometros?.hOficial || 0 }}h</strong></div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20"><span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Proyección (Hoy)</span><strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong><span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin datos de uso' }}</span></div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20"><span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Meta a Cumplir</span><strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }}h</strong></div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20"><span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Estimada</span><strong class="font-mono text-sm text-amber-300 block mt-1">{{ perfilEquipo.horometros?.fechaEstimada || '-' }}</strong></div>
+              </div>
+            </div>
+
+            <!-- SECCIÓN ASIGNACIÓN A PROGRAMAS DENTRO DEL PERFIL -->
+            <div v-if="isAdmin" class="bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm">
+              <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar rápidamente a un Programa de Mantención</h4>
+              <div class="flex flex-wrap items-end gap-3">
+                <div class="flex-grow">
+                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Selecciona Carpeta de Programa existente</label>
+                  <select v-model="perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold text-slate-800" @change="perfilAsignacionProg.mes = ''">
+                    <option value="">-- Elige Carpeta --</option>
+                    <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
+                  </select>
+                </div>
+                <div class="flex-grow">
+                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Selecciona Mes/Subprograma</label>
+                  <select v-model="perfilAsignacionProg.mes" :disabled="!perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold text-slate-800">
+                    <option value="">-- Elige Mes --</option>
+                    <option v-for="m in obtenerMesesDeCarpeta(perfilAsignacionProg.carpeta)" :key="m" :value="m">{{ m }}</option>
+                  </select>
+                </div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Tipo</label><select v-model="perfilAsignacionProg.tipo" class="p-2 border rounded-lg bg-white font-semibold"><option value="Mantención">Mantención</option><option value="Reparación">Reparación</option></select></div>
+                <div v-if="perfilAsignacionProg.tipo === 'Mantención'"><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Horas</label><select v-model="perfilAsignacionProg.horas" class="p-2 border rounded-lg bg-white font-semibold"><option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option></select></div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha</label><input type="date" v-model="perfilAsignacionProg.fecha" class="p-2 border rounded-lg bg-white font-mono"></div>
+                <button @click="guardarAsignacionDesdePerfil" :disabled="!perfilAsignacionProg.carpeta || !perfilAsignacionProg.mes || !perfilAsignacionProg.fecha" class="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg transition shadow-md h-[36px] flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Añadir a Programa</button>
+              </div>
+            </div>
+
+            <!-- Tablas Historial y Traslados -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
+                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-wrench text-blue-600"></i> Historial de Mantenciones<span class="ml-auto bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{{ getHistorialIntervencionesAFI(perfilEquipo.afi).length }} reg</span></h4>
+                <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
+                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]"><tr><th class="p-2">Fecha</th><th class="p-2">Horómetro</th><th class="p-2">Tipo</th><th class="p-2">Causa</th><th class="p-2">Aceites</th></tr></thead><tbody class="divide-y bg-white"><tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id" class="hover:bg-amber-50"><td class="p-2 font-mono font-bold text-slate-800">{{ i.fecha }}</td><td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td><td class="p-2 font-semibold text-[10px]">{{ i.tipoMant }}</td><td class="p-2 font-bold text-[10px] truncate max-w-[100px]" :title="i.causa">{{ i.causa }}</td><td class="p-2 text-amber-800 text-[10px] truncate max-w-[120px]" :title="i.aceites">{{ i.aceites }}</td></tr><tr v-if="getHistorialIntervencionesAFI(perfilEquipo.afi).length === 0"><td colspan="5" class="p-4 text-center text-slate-400 font-bold">Sin mantenciones registradas.</td></tr></tbody></table>
+                </div>
+              </div>
+              <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
+                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-truck-moving text-amber-500"></i> Historial de Traslados<span class="ml-auto bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{{ getHistorialMovimientosAFI(perfilEquipo.afi).length }} reg</span></h4>
+                <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
+                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b"><tr><th class="p-2">Fecha</th><th class="p-2">Origen</th><th class="p-2">Destino</th><th class="p-2">Conductor</th></tr></thead><tbody class="divide-y bg-white text-[11px]"><tr v-for="m in getHistorialMovimientosAFI(perfilEquipo.afi)" :key="m.id" class="hover:bg-emerald-50"><td class="p-2 font-mono font-bold text-slate-800">{{ m.fecha }}</td><td class="p-2 truncate max-w-[100px]" :title="m.origen">{{ m.origen }}</td><td class="p-2 font-bold text-emerald-700 truncate max-w-[100px]" :title="m.destino">{{ m.destino }}</td><td class="p-2">{{ m.conductor }}</td></tr><tr v-if="getHistorialMovimientosAFI(perfilEquipo.afi).length === 0"><td colspan="4" class="p-4 text-center text-slate-400 font-bold">Sin movimientos registrados.</td></tr></tbody></table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 py-4 border-t bg-white flex justify-between items-center">
+            <span class="text-[10px] text-slate-400 font-bold uppercase"><i class="fa-solid fa-cloud"></i> Sincronizado en tiempo real</span>
+            <div class="flex items-center gap-2">
+              <button @click="showPerfilEquipoModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-lg transition text-xs">Cerrar Ventana</button>
+              <button v-if="isAdmin" @click="guardarPerfilEquipo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow flex items-center gap-1.5 transition text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios del Perfil</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- MODAL FORMULARIO MANTENCIÓN -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
@@ -951,184 +1167,59 @@
         </div>
       </div>
 
-      <!-- NUEVO GRAN MODAL: PERFIL DE EQUIPO E HISTORIAL -->
-      <div v-if="showPerfilEquipoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden">
-          
-          <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
-            <div class="flex items-center gap-3">
-              <span class="text-xs font-mono font-bold bg-amber-500 text-slate-900 px-3 py-1.5 rounded-lg shadow-sm">AFI: {{ perfilEquipo.afi }}</span>
-              <h3 class="text-base font-extrabold tracking-wide uppercase"><i class="fa-solid fa-id-card mr-2"></i> Perfil de Equipo y Control Histórico</h3>
-            </div>
-            <button @click="showPerfilEquipoModal = false" class="w-8 h-8 rounded-full bg-slate-700 hover:bg-rose-500 text-white flex items-center justify-center transition shadow">
-              <i class="fa-solid fa-xmark text-base"></i>
-            </button>
+      <!-- MODAL NUEVO PROGRAMA -->
+      <div v-if="showNuevoProgramaModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-2xl overflow-hidden flex flex-col">
+          <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Programar Equipo</h3>
+            <button @click="showNuevoProgramaModal=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
-
-          <div class="p-6 overflow-y-auto space-y-6 flex-grow bg-slate-100 text-xs">
-            
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-4">
-                <i class="fa-solid fa-truck-monster text-emerald-600"></i> Datos Principales del Equipo
-              </h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div><label class="block font-bold text-slate-700 mb-1">Tipo de Equipo</label><input type="text" v-model="perfilEquipo.tipo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-slate-800"></div>
-                <div><label class="block font-bold text-slate-700 mb-1">Marca</label><input type="text" v-model="perfilEquipo.marca" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
-                <div><label class="block font-bold text-slate-700 mb-1">Modelo</label><input type="text" v-model="perfilEquipo.modelo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
-                <div><label class="block font-bold text-slate-700 mb-1">Ubicación Actual</label><input type="text" v-model="perfilEquipo.ubicacion" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
-                
-                <div>
-                  <label class="block font-bold text-slate-700 mb-1">Disponibilidad / Estado</label>
-                  <select v-model="perfilEquipo.disponibilidad" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
-                    <option value="Operativo">Trabajando / Operativo</option>
-                    <option value="Disponible">Disponible</option>
-                    <option value="En Traslado">En Traslado</option>
-                    <option value="En Mantencion">En Mantención</option>
-                    <option value="Fuera de Servicio">Fuera de Servicio</option>
-                    <option value="Venta">En Venta</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block font-bold text-slate-700 mb-1">Estado de GPS</label>
-                  <select v-model="perfilEquipo.gps" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-blue-700">
-                    <option value="Instalado">Instalado</option>
-                    <option value="Sin GPS">Sin GPS</option>
-                  </select>
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label>
-                  <input type="text" v-model="perfilEquipo.imei_gps" :disabled="!isAdmin" placeholder="Ej: 8645..." class="w-full p-2 border rounded-lg bg-slate-50 font-mono">
-                </div>
+          <div class="p-6 space-y-4 text-xs bg-slate-50">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Carpeta Principal (Ej: PROGRAMA MANTENCION CRTG)</label>
+                <input type="text" v-model="formPrograma.carpeta" list="listCarpetas" class="w-full p-2 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Escribe o selecciona...">
+                <datalist id="listCarpetas"><option v-for="c in listaCarpetasProgramas" :key="c" :value="c"></option></datalist>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Mes / Subprograma (Ej: ENERO 2026)</label>
+                <input type="text" v-model="formPrograma.mes" list="listMeses" class="w-full p-2 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Escribe o selecciona...">
+                <datalist id="listMeses"><option v-for="m in mesesSugeridos" :key="m" :value="m"></option></datalist>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">AFI de Equipo</label>
+                <select v-model="formPrograma.afi" class="w-full p-2 border rounded-lg bg-white font-bold text-amber-900">
+                  <option value="">-- Seleccionar Equipo --</option>
+                  <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Tipo de Trabajo</label>
+                <select v-model="formPrograma.tipo" class="w-full p-2 border rounded-lg bg-white font-semibold">
+                  <option value="Mantención">Mantención</option><option value="Reparación">Reparación</option>
+                </select>
+              </div>
+              <div v-if="formPrograma.tipo === 'Mantención'">
+                <label class="block font-bold text-slate-700 mb-1">Horas de Mantención</label>
+                <select v-model="formPrograma.horas" class="w-full p-2 border rounded-lg bg-white font-semibold">
+                  <option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Fecha Programada</label>
+                <input type="date" v-model="formPrograma.fecha" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-slate-800">
               </div>
             </div>
-
-            <!-- SECCIÓN HORÓMETROS CON PARPADEO ROJO SI ESTÁ PASADO -->
-            <div :class="['p-5 rounded-xl shadow-sm border flex flex-col md:flex-row gap-6 items-center', perfilEquipo.horometros?.horasFaltantes <= 0 ? 'bg-pasado-blink' : 'bg-normal-horometro']">
-              
-              <div class="w-full md:w-1/3 space-y-4">
-                <div class="flex items-center justify-between border-b border-white/20 pb-2">
-                  <h4 class="font-bold text-sm flex items-center gap-2 uppercase">
-                    <i class="fa-solid fa-stopwatch"></i> Control & Frecuencia
-                  </h4>
-                  <span v-if="perfilEquipo.horometros?.horasFaltantes <= 0" class="bg-white text-rose-600 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase animate-pulse">¡PASADO!</span>
-                  <span v-else class="bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px] font-extrabold uppercase">AL DÍA</span>
-                </div>
-                
-                <div>
-                  <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Horómetro Actual (Manual)</label>
-                  <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 focus:bg-white/20 font-mono font-bold text-white text-sm outline-none transition">
-                </div>
-                <div>
-                  <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención (Ej: 250)</label>
-                  <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 focus:bg-white/20 font-mono font-bold text-white text-sm outline-none transition">
-                </div>
-              </div>
-
-              <div class="w-full md:w-2/3 grid grid-cols-2 lg:grid-cols-4 gap-3 text-center">
-                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Realizada</span>
-                  <strong class="font-mono text-base block">{{ perfilEquipo.horometros?.hOficial || 0 }}h</strong>
-                </div>
-                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Proyección (Hoy)</span>
-                  <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong>
-                  <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin datos de uso' }}</span>
-                </div>
-                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Meta a Cumplir</span>
-                  <strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }}h</strong>
-                </div>
-                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
-                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Estimada</span>
-                  <strong class="font-mono text-sm text-amber-300 block mt-1">{{ perfilEquipo.horometros?.fechaEstimada || '-' }}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
-                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3">
-                  <i class="fa-solid fa-wrench text-blue-600"></i> Historial de Mantenciones
-                  <span class="ml-auto bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{{ getHistorialIntervencionesAFI(perfilEquipo.afi).length }} registros</span>
-                </h4>
-                <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
-                  <table class="w-full text-left whitespace-nowrap">
-                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]">
-                      <tr>
-                        <th class="p-2">Fecha</th>
-                        <th class="p-2">Horómetro</th>
-                        <th class="p-2">Tipo</th>
-                        <th class="p-2">Causa</th>
-                        <th class="p-2">Aceites</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y bg-white">
-                      <tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id" class="hover:bg-amber-50">
-                        <td class="p-2 font-mono font-bold text-slate-800">{{ i.fecha }}</td>
-                        <td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td>
-                        <td class="p-2 font-semibold text-[10px]">{{ i.tipoMant }}</td>
-                        <td class="p-2 font-bold text-[10px] truncate max-w-[100px]" :title="i.causa">{{ i.causa }}</td>
-                        <td class="p-2 text-amber-800 text-[10px] truncate max-w-[120px]" :title="i.aceites">{{ i.aceites }}</td>
-                      </tr>
-                      <tr v-if="getHistorialIntervencionesAFI(perfilEquipo.afi).length === 0">
-                        <td colspan="5" class="p-4 text-center text-slate-400 font-bold">Sin mantenciones registradas.</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
-                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3">
-                  <i class="fa-solid fa-truck-moving text-amber-500"></i> Historial de Traslados
-                  <span class="ml-auto bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{{ getHistorialMovimientosAFI(perfilEquipo.afi).length }} registros</span>
-                </h4>
-                <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
-                  <table class="w-full text-left whitespace-nowrap">
-                    <thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b">
-                      <tr>
-                        <th class="p-2">Fecha</th>
-                        <th class="p-2">Origen</th>
-                        <th class="p-2">Destino</th>
-                        <th class="p-2">Conductor</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y bg-white text-[11px]">
-                      <tr v-for="m in getHistorialMovimientosAFI(perfilEquipo.afi)" :key="m.id" class="hover:bg-emerald-50">
-                        <td class="p-2 font-mono font-bold text-slate-800">{{ m.fecha }}</td>
-                        <td class="p-2 truncate max-w-[100px]" :title="m.origen">{{ m.origen }}</td>
-                        <td class="p-2 font-bold text-emerald-700 truncate max-w-[100px]" :title="m.destino">{{ m.destino }}</td>
-                        <td class="p-2">{{ m.conductor }}</td>
-                      </tr>
-                      <tr v-if="getHistorialMovimientosAFI(perfilEquipo.afi).length === 0">
-                        <td colspan="4" class="p-4 text-center text-slate-400 font-bold">Sin movimientos registrados.</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
+            <p class="text-[10px] text-slate-500 italic"><i class="fa-solid fa-circle-info"></i> Si la carpeta o mes ingresados no existen, se crearán automáticamente al guardar.</p>
           </div>
-
-          <div class="px-6 py-4 border-t bg-white flex justify-between items-center">
-            <span class="text-[10px] text-slate-400 font-bold uppercase"><i class="fa-solid fa-cloud"></i> Sincronizado en tiempo real</span>
-            <div class="flex items-center gap-2">
-              <button @click="showPerfilEquipoModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-lg transition text-xs">
-                Cerrar Ventana
-              </button>
-              <button v-if="isAdmin" @click="guardarPerfilEquipo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow flex items-center gap-1.5 transition text-xs">
-                <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios del Perfil
-              </button>
-            </div>
+          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
+            <button @click="showNuevoProgramaModal=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
+            <button @click="guardarNuevoPrograma" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md flex items-center gap-1.5 text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar en Programa</button>
           </div>
-
         </div>
       </div>
 
     </template>
-
   </div>
 
   <script>
@@ -1148,13 +1239,29 @@
         const authError = ref(false);
         const currentTab = ref("dashboard");
 
+        const config = ref({
+          title: "Control AFI & Programación",
+          subtitle: "Maquinarias, Traslados y Mantenciones - FRC",
+          logo: "https://via.placeholder.com/150/0f172a/ffffff?text=FRC",
+          customHeaderBg: "#0f172a", customBodyBg: "#f1f5f9", customPrimaryBg: "#f59e0b", customPrimaryText: "#0f172a"
+        });
+
+        const headerStyle = computed(() => ({ backgroundColor: config.value.customHeaderBg || '#0f172a' }));
+        const bodyStyle = computed(() => ({ backgroundColor: config.value.customBodyBg || '#f1f5f9' }));
+        const primaryBtnStyle = computed(() => ({ backgroundColor: config.value.customPrimaryBg || '#f59e0b', color: config.value.customPrimaryText || '#0f172a' }));
+
         const dbUsuarios = ref([]);
         const nuevoUsuario = ref({ usuario: "", clave: "", rol: "lectura" });
 
-        // Unificado Modal Perfil
+        const dbEquipos = ref([]);
+        const dbMovimientos = ref([]);
+        const dbIntervenciones = ref([]);
+        const dbProgramas = ref([]); 
+
+        // Modales
         const showPerfilEquipoModal = ref(false);
         const perfilEquipo = ref({});
-
+        
         const showFormMantencionModal = ref(false);
         const isEditingMantencion = ref(false);
         const formMant = ref({
@@ -1164,19 +1271,46 @@
           aceiteDetallesArray: [], documentoAdjunto: null
         });
 
-        const config = ref({
-          title: "Control de Equipos AFI, Movimientos & Mantención",
-          subtitle: "Maquinarias y Traslados Camiones Pluma - FRC",
-          logo: "https://via.placeholder.com/150/0f172a/ffffff?text=FRC",
-          customHeaderBg: "#0f172a",
-          customBodyBg: "#f1f5f9",
-          customPrimaryBg: "#f59e0b",
-          customPrimaryText: "#0f172a"
-        });
+        const listaCausas = [
+          "FALLA MECANICA", "FALLA ELECTRICA", "INSPECCION", "REPARACION", "ESTANDARIZACION",
+          "DAÑO OPERACIÓN", "PUESTA EN MARCHA", "IMPLEMENTACION", "PRUEBAS MEDICIONES", "CHECK LIST",
+          "FALLA CONDICION", "MANTENCION", "MANTENCION INTERMEDIA", "SERVICIO", "COMPRA",
+          "RETIRO", "CONEXIÓN/DESCONEXION", "FALLA OPERACIONAL", "INSPECCION (ELECTRICA)"
+        ];
 
-        const headerStyle = computed(() => ({ backgroundColor: config.value.customHeaderBg || '#0f172a' }));
-        const bodyStyle = computed(() => ({ backgroundColor: config.value.customBodyBg || '#f1f5f9' }));
-        const primaryBtnStyle = computed(() => ({ backgroundColor: config.value.customPrimaryBg || '#f59e0b', color: config.value.customPrimaryText || '#0f172a' }));
+        const listaAceitesEstandar = ref([
+          "ACEITE 15W40 CI-4", "ACEITE 15W40 CK4", "ACEITE REFRIGERANTE 50/50", "ACEITE 80W90",
+          "ACEITE DACNIS 68", "ACEITE DACNIS 46", "PAROIL M EXTREME", "PAROIL S EXTREME",
+          "5W30", "LIQUIDO DE FRENO DOT-4", "TRACTOFLUID (10W30)", "SAE 30", "HYDRA46",
+          "HYDRA 68", "ADBLUE", "ACEITE 75W", "ACEITE 10W", "MULTIPROPOSITO", "DESEGRANSANTE", "ACIDO MURIATICO"
+        ]);
+
+        // Estado Programas
+        const showNuevoProgramaModal = ref(false);
+        const formPrograma = ref({ carpeta: '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
+        const openFolders = ref({});
+        const progSelect = ref({ carpeta: '', mes: '' });
+
+        // Asignación rápida desde perfil
+        const perfilAsignacionProg = ref({ carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
+
+        // Filtros
+        const filterInv = ref({ search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false });
+        const sortInventarioOrder = ref("desc");
+        
+        const filterMov = ref({ dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" });
+        const sortMovimientosOrder = ref("desc");
+
+        const filterInt = ref({ searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" });
+        const sortHistorialOrder = ref("desc");
+        
+        const filterOil = ref({ dateStart: "", dateEnd: "", afi: "ALL", tipoAceite: "ALL" });
+        const sortAceitesOrder = ref("desc");
+
+        const toggleFiltroCriticos = () => { filterInv.value.mostrarCriticos = !filterInv.value.mostrarCriticos; };
+        const resetFiltrosInventario = () => { filterInv.value = { search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false }; };
+        const limpiarFiltrosHistorial = () => { filterInt.value = { searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" }; };
+        const limpiarFiltrosMovimientos = () => { filterMov.value = { dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" }; };
 
         const guardarConfiguracionPersonalizada = () => {
           localStorage.setItem('afi_config_custom', JSON.stringify(config.value));
@@ -1187,10 +1321,7 @@
           const file = e.target.files[0];
           if (!file) return;
           const reader = new FileReader();
-          reader.onload = (evt) => {
-            config.value.logo = evt.target.result;
-            guardarConfiguracionPersonalizada();
-          };
+          reader.onload = (evt) => { config.value.logo = evt.target.result; guardarConfiguracionPersonalizada(); };
           reader.readAsDataURL(file);
         };
 
@@ -1208,40 +1339,96 @@
           reader.readAsDataURL(file);
         };
 
-        const listaCausas = [
-          "FALLA MECANICA", "FALLA ELECTRICA", "INSPECCION", "REPARACION", "ESTANDARIZACION",
-          "DAÑO OPERACIÓN", "PUESTA EN MARCHA", "IMPLEMENTACION", "PRUEBAS MEDICIONES", "CHECK LIST",
-          "FALLA CONDICION", "MANTENCION", "MANTENCION INTERMEDIA", "SERVICIO", "COMPRA",
-          "RETIRO", "CONEXIÓN/DESCONEXION", "FALLA OPERACIONAL", "INSPECCION (ELECTRICA)"
-        ];
+        // LÓGICA PROGRAMAS
+        const listaCarpetasProgramas = computed(() => {
+          const carpetas = new Set(dbProgramas.value.map(p => p.carpeta).filter(Boolean));
+          return Array.from(carpetas).sort();
+        });
 
-        const listaAceitesEstandar = ref([
-          "ACEITE 15W40 CI-4", "ACEITE 15W40 CK4", "ACEITE REFRIGERANTE 50/50", "ACEITE 80W90",
-          "ACEITE DACNIS 68", "ACEITE DACNIS 46", "PAROIL M EXTREME", "PAROIL S EXTREME",
-          "5W30", "LIQUIDO DE FRENO DOT-4", "TRACTOFLUID (10W30)", "SAE 30", "HYDRA46",
-          "HYDRA 68", "ADBLUE", "ACEITE 75W", "ACEITE 10W", "MULTIPROPOSITO", "DESEGRANSANTE", "ACIDO MURIATICO"
-        ]);
+        const obtenerMesesDeCarpeta = (carpeta) => {
+          const meses = new Set(dbProgramas.value.filter(p => p.carpeta === carpeta).map(p => p.mes).filter(Boolean));
+          return Array.from(meses).sort();
+        };
 
-        const dbEquipos = ref([]);
-        const dbMovimientos = ref([]);
-        const dbIntervenciones = ref([]);
+        const mesesSugeridos = computed(() => {
+          if (!formPrograma.value.carpeta) return [];
+          return obtenerMesesDeCarpeta(formPrograma.value.carpeta);
+        });
 
-        const filterInv = ref({ search: "", ubicacion: "", estado: "ALL", gps: "ALL" });
-        const sortInventarioOrder = ref("desc");
+        const obtenerItemsPrograma = (carpeta, mes) => {
+          return dbProgramas.value
+            .filter(p => p.carpeta === carpeta && p.mes === mes && p.afi)
+            .sort((a,b) => new Date(a.fecha_programada).getTime() - new Date(b.fecha_programada).getTime());
+        };
 
-        const filterMov = ref({ dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" });
-        const sortMovimientosOrder = ref("desc");
+        const getProgreso = (carpeta, mes) => {
+          const items = obtenerItemsPrograma(carpeta, mes);
+          if (items.length === 0) return { total: 0, done: 0, pct: 0 };
+          const done = items.filter(i => i.realizado).length;
+          return { total: items.length, done, pct: Math.round((done / items.length) * 100) };
+        };
 
-        const filterInt = ref({ searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" });
-        const sortHistorialOrder = ref("desc");
+        const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
         
-        const filterOil = ref({ dateStart: "", dateEnd: "", afi: "ALL", tipoAceite: "ALL" });
-        const sortAceitesOrder = ref("desc");
+        const seleccionarPrograma = (carpeta, mes) => { progSelect.value = { carpeta, mes }; };
 
-        const resetFiltrosInventario = () => { filterInv.value = { search: "", ubicacion: "", estado: "ALL", gps: "ALL" }; };
-        const limpiarFiltrosHistorial = () => { filterInt.value = { searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" }; };
-        const limpiarFiltrosMovimientos = () => { filterMov.value = { dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" }; };
+        const abrirFormularioPrograma = () => {
+          formPrograma.value = { carpeta: '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
+          showNuevoProgramaModal.value = true;
+        };
 
+        const guardarNuevoPrograma = async () => {
+          const cp = String(formPrograma.value.carpeta).trim().toUpperCase();
+          const ms = String(formPrograma.value.mes).trim().toUpperCase();
+          if (!cp || !ms || !formPrograma.value.afi || !formPrograma.value.fecha) return alert("Completa todos los campos.");
+
+          const payload = {
+            carpeta: cp, mes: ms, afi: formPrograma.value.afi, tipo: formPrograma.value.tipo,
+            horas: formPrograma.value.tipo === 'Mantención' ? formPrograma.value.horas : null,
+            fecha_programada: formPrograma.value.fecha, realizado: false
+          };
+
+          const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
+          if (error) alert("Asegúrate de haber creado la tabla BD_PROGRAMAS en Supabase.");
+          else {
+            await cargarDatosDesdeSupabase();
+            showNuevoProgramaModal.value = false;
+            openFolders.value[cp] = true;
+            seleccionarPrograma(cp, ms);
+          }
+        };
+
+        const marcarProgramaRealizado = async (item) => {
+          const fechaHoy = new Date().toISOString().substring(0,10);
+          const { error } = await supabaseClient.from('BD_PROGRAMAS').update({ realizado: true, fecha_realizada: fechaHoy }).eq('id', item.id);
+          if(!error) await cargarDatosDesdeSupabase();
+        };
+
+        const eliminarItemPrograma = async (id) => {
+          if (confirm("¿Eliminar este equipo del programa?")) {
+            await supabaseClient.from('BD_PROGRAMAS').delete().eq('id', id);
+            await cargarDatosDesdeSupabase();
+          }
+        };
+
+        const guardarAsignacionDesdePerfil = async () => {
+          const cp = String(perfilAsignacionProg.value.carpeta).trim().toUpperCase();
+          const ms = String(perfilAsignacionProg.value.mes).trim().toUpperCase();
+          const payload = {
+            carpeta: cp, mes: ms, afi: perfilEquipo.value.afi, tipo: perfilAsignacionProg.value.tipo,
+            horas: perfilAsignacionProg.value.tipo === 'Mantención' ? perfilAsignacionProg.value.horas : null,
+            fecha_programada: perfilAsignacionProg.value.fecha, realizado: false
+          };
+          const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
+          if(error) alert("Error guardando asignación. Verifica la tabla BD_PROGRAMAS.");
+          else {
+            alert("Equipo asignado al programa con éxito.");
+            perfilAsignacionProg.value = { carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' };
+            await cargarDatosDesdeSupabase();
+          }
+        };
+
+        // CORE UTILS
         const normalizarClave = (str) => {
           if (!str) return 'Disponible';
           const eLower = String(str).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -1252,36 +1439,6 @@
           if (eLower.includes('fuera') || eLower.includes('servicio')) return 'Fuera de Servicio';
           if (eLower.includes('venta')) return 'Venta';
           return 'Disponible';
-        };
-
-        const countEstado = (st) => {
-          const target = normalizarClave(st);
-          return dbEquipos.value.filter(e => normalizarClave(e.disponibilidad) === target).length;
-        };
-
-        const getEstadoText = (est) => {
-          const norm = normalizarClave(est);
-          if (norm === 'Operativo') return 'Trabajando / Operativo';
-          if (norm === 'Disponible') return 'Disponible';
-          if (norm === 'En Traslado') return 'En Traslado';
-          if (norm === 'En Mantencion') return 'En Mantención';
-          if (norm === 'Fuera de Servicio') return 'Fuera de servicio';
-          if (norm === 'Venta') return 'En Venta';
-          return est || '-';
-        };
-
-        const getBadgeClass = (est) => {
-          const norm = normalizarClave(est);
-          if (norm === 'Operativo') return 'bg-emerald-100 text-emerald-800 border';
-          if (norm === 'Disponible') return 'bg-sky-100 text-sky-800 border';
-          if (norm === 'En Traslado') return 'bg-amber-100 text-amber-800 border';
-          if (norm === 'En Mantencion') return 'bg-rose-100 text-rose-800 border';
-          return 'bg-slate-100 text-slate-700 border';
-        };
-
-        const filtrarYIrAInventario = (estado) => {
-          filterInv.value.estado = estado;
-          currentTab.value = 'inventario';
         };
 
         const normalizarFecha = (val) => {
@@ -1301,23 +1458,18 @@
                 return `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth() + 1).padStart(2, '0')}-${String(dateObj.getUTCDate()).padStart(2, '0')}`;
               }
             }
-
             if (strVal.includes('T')) strVal = strVal.split('T')[0];
             if (strVal.includes(' ')) strVal = strVal.split(' ')[0];
-
             if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
               const parts = strVal.split(/[-/]/);
               if (parts.length >= 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
             }
-
             if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(strVal)) {
               const parts = strVal.split(/[-/]/);
               if (parts.length >= 3) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
             }
             return strVal;
-          } catch(e) {
-            return null;
-          }
+          } catch(e) { return null; }
         };
 
         const formatExcelDate = (val) => normalizarFecha(val) || '-';
@@ -1327,29 +1479,10 @@
           try {
             const fmt = normalizarFecha(val);
             if (!fmt || fmt === '-') return 0;
-            if (/^\d{4}-\d{2}-\d{2}$/.test(fmt)) {
-              return new Date(`${fmt}T00:00:00`).getTime();
-            }
+            if (/^\d{4}-\d{2}-\d{2}$/.test(fmt)) return new Date(`${fmt}T00:00:00`).getTime();
             const d = new Date(fmt);
             return isNaN(d.getTime()) ? 0 : d.getTime();
-          } catch (e) {
-            return 0;
-          }
-        };
-
-        const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
-
-        const getVal = (row, ...keys) => {
-          if (!row) return "";
-          const rowKeys = Object.keys(row);
-          for (const k of keys) {
-            const targetNorm = normalizeKey(k);
-            const foundKey = rowKeys.find(rk => normalizeKey(rk) === targetNorm);
-            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== "") {
-              return row[foundKey];
-            }
-          }
-          return "";
+          } catch (e) { return 0; }
         };
 
         const parseNum = (val) => {
@@ -1362,6 +1495,171 @@
 
         const parseStr = (val) => (val === null || val === undefined) ? "" : String(val).trim();
 
+        // CORE DATA LOAD
+        const fetchAllRowsSupabase = async (tableName) => {
+          let allRows = []; let page = 0; const pageSize = 1000; let keepFetching = true;
+          while (keepFetching) {
+            const { data, error } = await supabaseClient.from(tableName).select('*').range(page * pageSize, (page * pageSize) + pageSize - 1);
+            if (error) break;
+            if (data && data.length > 0) { allRows = allRows.concat(data); if (data.length < pageSize) keepFetching = false; else page++; } else { keepFetching = false; }
+          }
+          return allRows;
+        };
+
+        const cargarDatosDesdeSupabase = async () => {
+          try {
+            const eqData = await fetchAllRowsSupabase('BD_INVENTARIO');
+            if (eqData) {
+              dbEquipos.value = eqData.map(item => ({
+                id: item.id, afi: String(item.afi || ''), tipo: String(item.tipo || ''), marca: String(item.marca || ''),
+                modelo: String(item.modelo || ''), ubicacion: String(item.ubicacion || ''),
+                disponibilidad: normalizarClave(item.disponibilidad), anio: item.anio || 2023,
+                horometroActual: Number(item.horometroactual || 0), frecuenciaMantencion: Number(item.frecuencia_mantencion) || 250,
+                gps: item.gps || 'Sin GPS', imei_gps: item.imei_gps || '', foto: item.foto || '',
+                horometros: null, tipoHorasMantencion: "250 hrs"
+              }));
+            }
+            
+            const movData = await fetchAllRowsSupabase('BD_MOVIMIENTOS');
+            if(movData) {
+              dbMovimientos.value = movData.map(item => ({
+                id: item.id, fecha: formatExcelDate(item.fecha), afi: String(item.afi || ''),
+                tipo: String(item.tipo || ''), origen: String(item.ubicacion_anterior || ''),
+                destino: String(item.ubicacion_actual || ''), camion: String(item.camion_encargado || ''),
+                conductor: String(item.conductor_encargado || '')
+              }));
+            }
+
+            const intData = await fetchAllRowsSupabase('BD_HISTORIAL');
+            if (intData) {
+              dbIntervenciones.value = intData.map(item => {
+                const rawFecha = item.fecha || item.fecha_mantencion || item.created_at;
+                const aceiteDetallesArray = []; const aceitesConsumidos = [];
+                const camposAceites = [ "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90", "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme", "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46", "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico" ];
+                camposAceites.forEach(c => {
+                  if (item[c] && Number(item[c]) > 0) {
+                    const nombreLindo = c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase();
+                    aceitesConsumidos.push(`${nombreLindo}: ${item[c]}L`);
+                    aceiteDetallesArray.push({ nombre: nombreLindo, cantidad: Number(item[c]) });
+                  }
+                });
+                return {
+                  id: item.id, afi: String(item.afi || '').trim(), fecha: formatExcelDate(rawFecha),
+                  equipo: String(item.equipo || ''), lugar: String(item.lugar || ''), causa: String(item.causa || ''),
+                  tipoMant: String(item.tipo_mantencion || ''), tipoHorasMant: String(item.tipo_horas_mantencion || ''),
+                  horometro: Number(item.horometro || 0), mec1: String(item.mecanico_1 || ''), mec2: String(item.mecanico_2 || ''),
+                  mec3: String(item.mecanico_3 || ''), mec4: String(item.mecanico_4 || ''), horaInicio: String(item.hora_inicio || ''),
+                  horaTermino: String(item.hora_termino || ''), causaDetallada: String(item.causa_intervencion || ''),
+                  descripcion: String(item.descripcion || '').trim(), interferencia: String(item.interferencia || ''),
+                  empresaArriendo: String(item.empresa || ''), costo: Number(item.costo || 0), numeroOC: String(item.numero_oc || ''),
+                  numeroOT: String(item.numero_ot || ''), linkDrive: String(item.link || ''),
+                  aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo", aceiteDetallesArray
+                };
+              });
+            }
+
+            try {
+              const progData = await fetchAllRowsSupabase('BD_PROGRAMAS');
+              if (progData) dbProgramas.value = progData;
+            } catch(e) { console.log("Tabla BD_PROGRAMAS no existe aún."); }
+
+            actualizarHorometrosDesdeHistorial();
+            renderCharts();
+          } catch (err) { console.error("Error sincronización:", err); }
+        };
+
+        const actualizarHorometrosDesdeHistorial = () => {
+          const intervencionesPorAFI = {};
+          dbIntervenciones.value.forEach(i => {
+            if (!i.afi) return;
+            const cleanAFI = String(i.afi).trim().toUpperCase();
+            if (!intervencionesPorAFI[cleanAFI]) intervencionesPorAFI[cleanAFI] = [];
+            intervencionesPorAFI[cleanAFI].push(i);
+          });
+          for (const afi in intervencionesPorAFI) { intervencionesPorAFI[afi].sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha)); }
+
+          dbEquipos.value.forEach(eq => {
+            const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
+            let tipoHoras = '250 hrs';
+            for (let i = histFull.length - 1; i >= 0; i--) {
+                if (histFull[i].tipoHorasMant) { tipoHoras = histFull[i].tipoHorasMant; break; }
+            }
+            eq.tipoHorasMantencion = tipoHoras;
+
+            const histHorometros = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
+            let hManualActual = Number(eq.horometroActual) || 0;
+            let hUltima = hManualActual; let dUltima = new Date(); let rateHrsDia = 0;
+            
+            if (histHorometros.length > 0) {
+              const u = histHorometros[histHorometros.length - 1];
+              hUltima = Number(u.horometro); if(parseIsoDate(u.fecha)) dUltima = new Date(parseIsoDate(u.fecha));
+            }
+            
+            if (histHorometros.length >= 2) {
+              const dH = Number(histHorometros[histHorometros.length-1].horometro) - Number(histHorometros[histHorometros.length-2].horometro);
+              const dias = Math.max(1, Math.floor((parseIsoDate(histHorometros[histHorometros.length-1].fecha) - parseIsoDate(histHorometros[histHorometros.length-2].fecha)) / 86400000));
+              if (dH > 0) rateHrsDia = dH / dias;
+            } else if (histHorometros.length === 1 && hManualActual > hUltima) {
+              const diasTemp = Math.floor((new Date() - dUltima) / 86400000);
+              if (diasTemp > 0) rateHrsDia = (hManualActual - hUltima) / diasTemp;
+            }
+
+            const diasDesde = Math.max(0, Math.floor((new Date() - dUltima) / 86400000));
+            const hTarget = hUltima + (Number(eq.frecuenciaMantencion)||250);
+            const hAprox = Math.max(hManualActual, hUltima + (diasDesde * rateHrsDia));
+            const faltan = hTarget - hAprox;
+
+            let diasFaltantes = rateHrsDia > 0 ? Math.ceil(faltan / rateHrsDia) : 30;
+            if (!isFinite(diasFaltantes) || diasFaltantes > 3650) diasFaltantes = 3650; 
+            if (diasFaltantes < -3650) diasFaltantes = -3650;
+
+            let fechaEstimadaStr = "-";
+            try {
+              const fEst = new Date(); fEst.setDate(new Date().getDate() + diasFaltantes);
+              fechaEstimadaStr = fEst.toISOString().substring(0, 10);
+            } catch(e) { }
+
+            let estadoTexto = faltan <= 0 ? "¡PASADO!" : faltan <= 50 ? "PRÓXIMO" : "AL DÍA";
+
+            eq.horometros = {
+              hOficial: Math.round(hManualActual), hAprox: Math.round(hAprox*10)/10, hTarget: Math.round(hTarget),
+              horasFaltantes: Math.round(faltan*10)/10, estadoTexto, rateHrsDia, fechaEstimada: fechaEstimadaStr
+            };
+          });
+        };
+
+        const getHorometroCardBgClass = (h) => h?.horasFaltantes <= 0 ? 'bg-rose-50 border-rose-300' : h?.horasFaltantes <= 50 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200';
+        const getPrediccionStatusBadge = (h) => h?.horasFaltantes <= 0 ? 'bg-rose-600 text-white animate-pulse' : h?.horasFaltantes <= 50 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white';
+
+        const filteredEquipos = computed(() => {
+          let arr = dbEquipos.value.filter(e => {
+            const matchSearch = !filterInv.value.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion].join(" ").toLowerCase().includes(filterInv.value.search.toLowerCase());
+            const matchUbi = !filterInv.value.ubicacion || String(e.ubicacion).toLowerCase().includes(filterInv.value.ubicacion.toLowerCase());
+            const matchEst = filterInv.value.estado === "ALL" || normalizarClave(e.disponibilidad) === normalizarClave(filterInv.value.estado);
+            const matchGps = filterInv.value.gps === "ALL" || (filterInv.value.gps === "Instalado" ? Boolean(e.gps && e.gps !== 'Sin GPS') : (e.gps === 'Sin GPS' || !e.gps));
+            const matchCritico = !filterInv.value.mostrarCriticos || (e.horometros?.horasFaltantes <= 50);
+            return matchSearch && matchUbi && matchEst && matchGps && matchCritico;
+          });
+          arr.sort((a,b) => sortInventarioOrder.value === 'desc' ? b.id - a.id : a.id - b.id);
+          return arr;
+        });
+
+        // Computed & Tables para Movimientos e Intervenciones (Iguales a la versión completa anterior)
+        const filteredMovimientos = computed(() => {
+          let arr = dbMovimientos.value.filter(m => {
+            if (filterMov.value.afi !== "ALL" && String(m.afi).trim().toUpperCase() !== String(filterMov.value.afi).trim().toUpperCase()) return false;
+            const fStr = formatExcelDate(m.fecha);
+            if (filterMov.value.dateStart && fStr < filterMov.value.dateStart) return false;
+            if (filterMov.value.dateEnd && fStr > filterMov.value.dateEnd) return false;
+            if (filterMov.value.queryText && filterMov.value.queryText.trim() !== "") {
+              if (![m.afi, m.tipo, m.origen, m.destino, m.camion, m.conductor].join(" ").toLowerCase().includes(filterMov.value.queryText.trim().toLowerCase())) return false;
+            }
+            return true;
+          });
+          arr.sort((a, b) => sortMovimientosOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
+          return arr;
+        });
+
         const getMecanicosText = (item) => {
           const list = [item.mec1, item.mec2, item.mec3, item.mec4].filter(m => m && String(m).trim() !== "" && String(m).trim() !== "-");
           return list.length > 0 ? list.join(", ") : "-";
@@ -1373,47 +1671,54 @@
             let clean = String(tStr).trim();
             if (clean.includes('.')) {
               const num = parseFloat(clean);
-              if (!isNaN(num) && num < 1) {
-                const totalMins = Math.round(num * 24 * 60);
-                return Math.floor(totalMins / 60) * 60 + (totalMins % 60);
-              }
+              if (!isNaN(num) && num < 1) return Math.floor((Math.round(num * 24 * 60)) / 60) * 60 + ((Math.round(num * 24 * 60)) % 60);
             }
             const parts = clean.split(':');
-            if (parts.length >= 2) return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
-            return 0;
+            return parts.length >= 2 ? (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0) : 0;
           };
           const diffMins = parseTime(termino) - parseTime(inicio);
           const finalMins = diffMins < 0 ? diffMins + 1440 : diffMins;
           return `${Math.floor(finalMins / 60)}h ${finalMins % 60}m`;
         };
 
+        const filteredIntervenciones = computed(() => {
+          let arr = dbIntervenciones.value.filter(i => {
+            if (filterInt.value.afi !== "ALL" && String(i.afi).trim().toUpperCase() !== String(filterInt.value.afi).trim().toUpperCase()) return false;
+            if (filterInt.value.tipoMant !== "ALL" && String(i.tipoMant).trim().toUpperCase() !== String(filterInt.value.tipoMant).trim().toUpperCase()) return false;
+            if (filterInt.value.causa !== "ALL" && String(i.causa).trim().toUpperCase() !== String(filterInt.value.causa).trim().toUpperCase()) return false;
+            const fStr = formatExcelDate(i.fecha);
+            if (filterInt.value.dateStart && fStr !== '-' && fStr < filterInt.value.dateStart) return false;
+            if (filterInt.value.dateEnd && fStr !== '-' && fStr > filterInt.value.dateEnd) return false;
+            if (filterInt.value.mecText && filterInt.value.mecText.trim() !== "" && !getMecanicosText(i).toLowerCase().includes(filterInt.value.mecText.trim().toLowerCase())) return false;
+            if (filterInt.value.searchQuery && filterInt.value.searchQuery.trim() !== "") {
+              const q = filterInt.value.searchQuery.trim().toLowerCase();
+              if (![i.afi, i.equipo, i.lugar, i.causa, i.tipoMant, i.tipoHorasMant, i.causaDetallada, i.descripcion, i.interferencia, i.empresaArriendo, i.numeroOC, i.numeroOT, i.aceites, getMecanicosText(i)].join(" ").toLowerCase().includes(q)) return false;
+            }
+            return true;
+          });
+          arr.sort((a, b) => sortHistorialOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
+          return arr;
+        });
+
+        // Lógica Aceites
         const listaTiposAceitesDisponibles = computed(() => {
           const setAceites = new Set();
-          dbIntervenciones.value.forEach(i => {
-            if (i.aceiteDetallesArray && Array.isArray(i.aceiteDetallesArray)) {
-              i.aceiteDetallesArray.forEach(ad => { if (ad && ad.nombre) setAceites.add(ad.nombre); });
-            }
-          });
+          dbIntervenciones.value.forEach(i => { if (i.aceiteDetallesArray) i.aceiteDetallesArray.forEach(ad => { if (ad && ad.nombre) setAceites.add(ad.nombre); }); });
           return Array.from(setAceites);
         });
 
         const filteredAceitesRecords = computed(() => {
-          try {
-            let arr = dbIntervenciones.value.filter(i => {
-              if (!i.aceites || i.aceites === "Sin consumo" || !i.aceiteDetallesArray || i.aceiteDetallesArray.length === 0) return false;
-              const matchAfi = filterOil.value.afi === "ALL" || String(i.afi).trim().toUpperCase() === String(filterOil.value.afi).trim().toUpperCase();
-              let matchTipoAceite = filterOil.value.tipoAceite === "ALL" || i.aceiteDetallesArray.some(ad => ad.nombre === filterOil.value.tipoAceite);
-              let matchDate = true;
-              const fechaStr = formatExcelDate(i.fecha);
-              if (filterOil.value.dateStart && fechaStr < filterOil.value.dateStart) matchDate = false;
-              if (filterOil.value.dateEnd && fechaStr > filterOil.value.dateEnd) matchDate = false;
-              return matchAfi && matchTipoAceite && matchDate;
-            });
-            arr.sort((a, b) => sortAceitesOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
-            return arr;
-          } catch(err) {
-            return [];
-          }
+          let arr = dbIntervenciones.value.filter(i => {
+            if (!i.aceites || i.aceites === "Sin consumo" || !i.aceiteDetallesArray || i.aceiteDetallesArray.length === 0) return false;
+            if (filterOil.value.afi !== "ALL" && String(i.afi).trim().toUpperCase() !== String(filterOil.value.afi).trim().toUpperCase()) return false;
+            if (filterOil.value.tipoAceite !== "ALL" && !i.aceiteDetallesArray.some(ad => ad.nombre === filterOil.value.tipoAceite)) return false;
+            const fStr = formatExcelDate(i.fecha);
+            if (filterOil.value.dateStart && fStr < filterOil.value.dateStart) return false;
+            if (filterOil.value.dateEnd && fStr > filterOil.value.dateEnd) return false;
+            return true;
+          });
+          arr.sort((a, b) => sortAceitesOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
+          return arr;
         });
 
         const sumaTotalCantidadAceites = computed(() => {
@@ -1421,348 +1726,21 @@
           filteredAceitesRecords.value.forEach(i => {
             if (i.aceiteDetallesArray) {
               i.aceiteDetallesArray.forEach(ad => {
-                if (filterOil.value.tipoAceite === "ALL" || ad.nombre === filterOil.value.tipoAceite) {
-                  suma += Number(ad.cantidad || 0);
-                }
+                if (filterOil.value.tipoAceite === "ALL" || ad.nombre === filterOil.value.tipoAceite) suma += Number(ad.cantidad || 0);
               });
             }
           });
           return suma;
         });
-
         const costoTotalAceitesFiltrados = computed(() => filteredAceitesRecords.value.reduce((acc, curr) => acc + Number(curr.costo || 0), 0));
 
-        const actualizarHorometrosDesdeHistorial = () => {
-          const intervencionesPorAFI = {};
-          dbIntervenciones.value.forEach(i => {
-            if (!i.afi) return;
-            const cleanAFI = String(i.afi).trim().toUpperCase();
-            if (!intervencionesPorAFI[cleanAFI]) intervencionesPorAFI[cleanAFI] = [];
-            intervencionesPorAFI[cleanAFI].push(i);
-          });
-
-          for (const afi in intervencionesPorAFI) {
-             intervencionesPorAFI[afi].sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
-          }
-
-          dbEquipos.value.forEach(eq => {
-            const userAfi = String(eq.afi).trim().toUpperCase();
-            const histFull = intervencionesPorAFI[userAfi] || [];
-            
-            let tipoHoras = '250 hrs';
-            for (let i = histFull.length - 1; i >= 0; i--) {
-                if (histFull[i].tipoHorasMant) {
-                    tipoHoras = histFull[i].tipoHorasMant;
-                    break;
-                }
-            }
-            eq.tipoHorasMantencion = tipoHoras;
-
-            const histHorometros = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
-            const freq = Number(eq.frecuenciaMantencion) || 250;
-            
-            let hManualActual = Number(eq.horometroActual) || 0;
-            let hUltimaMantencion = hManualActual;
-            let dUltima = new Date();
-            let rateHrsDia = 0;
-            
-            if (histHorometros.length > 0) {
-              const laUltima = histHorometros[histHorometros.length - 1];
-              hUltimaMantencion = Number(laUltima.horometro) || 0;
-              const valFecha = parseIsoDate(laUltima.fecha);
-              if (valFecha !== 0) dUltima = new Date(valFecha);
-            }
-            
-            if (histHorometros.length >= 2) {
-              const deltaH = Number(histHorometros[histHorometros.length - 1].horometro) - Number(histHorometros[histHorometros.length - 2].horometro);
-              const t1 = parseIsoDate(histHorometros[histHorometros.length - 1].fecha);
-              const t2 = parseIsoDate(histHorometros[histHorometros.length - 2].fecha);
-              const diasEntre = Math.max(1, Math.floor((t1 - t2) / (1000 * 60 * 60 * 24)));
-              if (deltaH > 0 && !isNaN(diasEntre)) rateHrsDia = deltaH / diasEntre;
-            } else if (histHorometros.length === 1 && hManualActual > hUltimaMantencion) {
-              const hoyTemp = new Date();
-              const diasTemp = Math.floor((hoyTemp - dUltima) / 86400000);
-              if (diasTemp > 0) rateHrsDia = (hManualActual - hUltimaMantencion) / diasTemp;
-            }
-
-            const hoy = new Date();
-            const diasDesdeUltima = Math.max(0, Math.floor((hoy - dUltima) / (1000 * 60 * 60 * 24)));
-            
-            const hTarget = hUltimaMantencion + freq;
-            const hAproxCalculado = hUltimaMantencion + (diasDesdeUltima * rateHrsDia);
-            const hAprox = Math.max(hManualActual, hAproxCalculado);
-            const horasFaltantes = hTarget - hAprox;
-
-            let diasFaltantes = rateHrsDia > 0 ? Math.ceil(horasFaltantes / rateHrsDia) : 30;
-            if (!isFinite(diasFaltantes) || diasFaltantes > 3650) diasFaltantes = 3650; 
-            if (diasFaltantes < -3650) diasFaltantes = -3650;
-
-            let fechaEstimadaStr = "-";
-            try {
-              const fechaEst = new Date();
-              fechaEst.setDate(hoy.getDate() + diasFaltantes);
-              fechaEstimadaStr = fechaEst.toISOString().substring(0, 10);
-            } catch(e) { }
-
-            let estadoTexto = "OPERATIVO";
-            if (horasFaltantes <= 0) estadoTexto = "¡PASADO!";
-            else if (horasFaltantes <= 50) estadoTexto = "PRÓXIMO";
-
-            eq.horometros = {
-              hOficial: Math.round(hManualActual),
-              hAprox: Math.round(hAprox * 10) / 10,
-              hTarget: Math.round(hTarget),
-              horasFaltantes: Math.round(horasFaltantes * 10) / 10,
-              fechaEstimada: fechaEstimadaStr,
-              estadoTexto,
-              rateHrsDia
-            };
-          });
-        };
-
-        const getHorometroCardBgClass = (h) => {
-          if (!h) return 'bg-slate-50 border-slate-200';
-          if (h.horasFaltantes <= 0) return 'bg-rose-50 border-rose-300';
-          if (h.horasFaltantes <= 50) return 'bg-amber-50 border-amber-300';
-          return 'bg-slate-50 border-slate-200';
-        };
-        
-        const getPrediccionStatusBadge = (h) => {
-          if (!h) return 'bg-emerald-600 text-white';
-          if (h.horasFaltantes <= 0) return 'bg-rose-600 text-white animate-pulse';
-          if (h.horasFaltantes <= 50) return 'bg-amber-500 text-white';
-          return 'bg-emerald-600 text-white';
-        };
-
-        const getHistorialMovimientosAFI = (afi) => {
-          if(!afi) return [];
-          const query = String(afi).trim().toUpperCase();
-          return dbMovimientos.value.filter(m => String(m.afi).trim().toUpperCase() === query).sort((a,b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
-        };
-        
-        const getHistorialIntervencionesAFI = (afi) => {
-          if(!afi) return [];
-          const query = String(afi).trim().toUpperCase();
-          return dbIntervenciones.value.filter(i => String(i.afi).trim().toUpperCase() === query).sort((a,b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
-        };
-
-        const abrirPerfilEquipo = (equipo) => {
-          perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
-          showPerfilEquipoModal.value = true;
-        };
-
-        const verDetallePorAfiString = (afiStr) => {
-          const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(afiStr).trim().toUpperCase());
-          if (eq) abrirPerfilEquipo(eq);
-        };
-
-        const guardarPerfilEquipo = async () => {
-          const payload = {
-            tipo: perfilEquipo.value.tipo,
-            marca: perfilEquipo.value.marca,
-            modelo: perfilEquipo.value.modelo,
-            ubicacion: perfilEquipo.value.ubicacion,
-            disponibilidad: perfilEquipo.value.disponibilidad,
-            gps: perfilEquipo.value.gps,
-            imei_gps: perfilEquipo.value.imei_gps,
-            horometroactual: parseNum(perfilEquipo.value.horometroActual) || 0,
-            frecuencia_mantencion: parseNum(perfilEquipo.value.frecuenciaMantencion) || 250
-          };
-          
-          const { error } = await supabaseClient.from('BD_INVENTARIO').update(payload).eq('id', perfilEquipo.value.id);
-          if (error) {
-            alert("Error al guardar en Supabase: " + error.message);
-          } else {
-            await cargarDatosDesdeSupabase();
-            showPerfilEquipoModal.value = false;
-            alert("¡Perfil de equipo y configuraciones guardados correctamente!");
-          }
-        };
-
-        const cargarUsuariosDesdeSupabase = async () => {
-          try {
-            const { data } = await supabaseClient.from('usuarios').select('*');
-            if (data && data.length > 0) {
-              dbUsuarios.value = data;
-            } else {
-              dbUsuarios.value = [{ usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística FRC" }];
-            }
-          } catch (err) {
-            console.error("Error usuarios:", err);
-          }
-        };
-
-        const crearNuevoUsuario = async () => {
-          if (!nuevoUsuario.value.usuario || !nuevoUsuario.value.clave) return alert("Completa usuario y clave.");
-          const payload = {
-            usuario: nuevoUsuario.value.usuario.trim(),
-            clave: nuevoUsuario.value.clave.trim(),
-            rol: nuevoUsuario.value.rol,
-            nombre: nuevoUsuario.value.usuario.trim()
-          };
-          const { error } = await supabaseClient.from('usuarios').insert([payload]);
-          if (!error) {
-            await cargarUsuariosDesdeSupabase();
-            nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" };
-            alert("¡Usuario guardado en Supabase con éxito!");
-          } else {
-            alert("Error al guardar usuario.");
-          }
-        };
-
-        const eliminarUsuario = async (username) => {
-          if (confirm(`¿Eliminar al usuario ${username}?`)) {
-            const { error } = await supabaseClient.from('usuarios').delete().eq('usuario', username);
-            if (!error) {
-              await cargarUsuariosDesdeSupabase();
-              alert("Usuario eliminado correctamente.");
-            } else {
-              alert("Error al eliminar usuario.");
-            }
-          }
-        };
-
-        const fetchAllRowsSupabase = async (tableName) => {
-          let allRows = [];
-          let page = 0;
-          const pageSize = 1000;
-          let keepFetching = true;
-
-          while (keepFetching) {
-            const from = page * pageSize;
-            const to = from + pageSize - 1;
-            const { data, error } = await supabaseClient.from(tableName).select('*').range(from, to);
-
-            if (error) {
-              console.error(`Error consultando ${tableName}:`, error);
-              break;
-            }
-
-            if (data && data.length > 0) {
-              allRows = allRows.concat(data);
-              if (data.length < pageSize) keepFetching = false;
-              else page++;
-            } else {
-              keepFetching = false;
-            }
-          }
-          return allRows;
-        };
-
-        const cargarDatosDesdeSupabase = async () => {
-          try {
-            const eqData = await fetchAllRowsSupabase('BD_INVENTARIO');
-            if (eqData && eqData.length > 0) {
-              dbEquipos.value = eqData.map(item => ({
-                id: item.id,
-                afi: String(item.afi || ''),
-                tipo: String(item.tipo || ''),
-                marca: String(item.marca || ''),
-                modelo: String(item.modelo || ''),
-                ubicacion: String(item.ubicacion || ''),
-                disponibilidad: normalizarClave(item.disponibilidad),
-                anio: item.anio || 2023,
-                horometroActual: Number(item.horometroactual || 0),
-                frecuenciaMantencion: Number(item.frecuencia_mantencion) || 250,
-                gps: item.gps || 'Sin GPS',
-                imei_gps: item.imei_gps || '',
-                foto: item.foto || '',
-                horometros: null,
-                tipoHorasMantencion: "250 hrs"
-              }));
-            }
-
-            const movData = await fetchAllRowsSupabase('BD_MOVIMIENTOS');
-            if (movData && movData.length > 0) {
-              dbMovimientos.value = movData.map(item => ({
-                id: item.id,
-                fecha: formatExcelDate(item.fecha),
-                afi: String(item.afi || ''),
-                tipo: String(item.tipo || ''),
-                origen: String(item.ubicacion_anterior || ''),
-                destino: String(item.ubicacion_actual || ''),
-                camion: String(item.camion_encargado || ''),
-                conductor: String(item.conductor_encargado || '')
-              }));
-            }
-
-            const intData = await fetchAllRowsSupabase('BD_HISTORIAL');
-            if (intData && intData.length > 0) {
-              const listaProcesada = [];
-
-              intData.forEach(item => {
-                const rawFecha = item.fecha || item.fecha_mantencion || item.created_at;
-                const fechaFmt = formatExcelDate(rawFecha);
-                
-                const afiFmt = String(item.afi || '').trim();
-                const horoFmt = Number(item.horometro || 0);
-                const descFmt = String(item.descripcion || '').trim();
-
-                const aceiteDetallesArray = [];
-                const aceitesConsumidos = [];
-                const camposAceites = [
-                  "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90",
-                  "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme",
-                  "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46",
-                  "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico"
-                ];
-                
-                camposAceites.forEach(c => {
-                  if (item[c] && Number(item[c]) > 0) {
-                    const nombreLindo = c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase();
-                    aceitesConsumidos.push(`${nombreLindo}: ${item[c]}L`);
-                    aceiteDetallesArray.push({ nombre: nombreLindo, cantidad: Number(item[c]) });
-                  }
-                });
-
-                listaProcesada.push({
-                  id: item.id,
-                  afi: afiFmt,
-                  fecha: fechaFmt,
-                  equipo: String(item.equipo || ''),
-                  lugar: String(item.lugar || ''),
-                  causa: String(item.causa || ''),
-                  tipoMant: String(item.tipo_mantencion || ''),
-                  tipoHorasMant: String(item.tipo_horas_mantencion || ''),
-                  horometro: horoFmt,
-                  mec1: String(item.mecanico_1 || ''),
-                  mec2: String(item.mecanico_2 || ''),
-                  mec3: String(item.mecanico_3 || ''),
-                  mec4: String(item.mecanico_4 || ''),
-                  horaInicio: String(item.hora_inicio || ''),
-                  horaTermino: String(item.hora_termino || ''),
-                  causaDetallada: String(item.causa_intervencion || ''),
-                  descripcion: descFmt,
-                  interferencia: String(item.interferencia || ''),
-                  empresaArriendo: String(item.empresa || ''),
-                  costo: Number(item.costo || 0),
-                  numeroOC: String(item.numero_oc || ''),
-                  numeroOT: String(item.numero_ot || ''),
-                  linkDrive: String(item.link || ''),
-                  aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo",
-                  aceiteDetallesArray
-                });
-              });
-
-              dbIntervenciones.value = listaProcesada;
-            }
-
-            actualizarHorometrosDesdeHistorial();
-            renderCharts();
-          } catch (err) {
-            console.error("Error sincronización:", err);
-          }
-        };
-
+        // CRUD y Formularios Mantenimiento
         const abrirFormularioNuevaMantencion = (afiInicial = "") => {
           isEditingMantencion.value = false;
           formMant.value = {
-            id: null,
-            afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
-            fecha: new Date().toISOString().substring(0, 10),
-            lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs",
-            horometro: "", mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "",
-            causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "",
+            id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
+            fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs",
+            horometro: "", mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "",
             costo: 0, numeroOC: "", numeroOT: "", aceiteDetallesArray: [], documentoAdjunto: null
           };
           showFormMantencionModal.value = true;
@@ -1776,11 +1754,9 @@
         };
 
         const eliminarMantencion = async (id) => {
-          if (confirm("¿Estás seguro de que deseas eliminar este registro de mantención?")) {
+          if (confirm("¿Eliminar registro de mantención?")) {
             await supabaseClient.from('BD_HISTORIAL').delete().eq('id', id);
-            dbIntervenciones.value = dbIntervenciones.value.filter(i => i.id !== id);
-            actualizarHorometrosDesdeHistorial();
-            renderCharts();
+            await cargarDatosDesdeSupabase();
           }
         };
 
@@ -1789,29 +1765,55 @@
 
         const guardarMantencionForm = async () => {
           const payload = {
-            afi: formMant.value.afi,
-            fecha: formatIsoDateForSupabase(formMant.value.fecha),
-            lugar: formMant.value.lugar,
-            causa: formMant.value.causa,
-            tipo_mantencion: formMant.value.tipoMant,
-            tipo_horas_mantencion: formMant.value.tipoHorasMant,
-            horometro: parseNum(formMant.value.horometro),
+            afi: formMant.value.afi, fecha: formatIsoDateForSupabase(formMant.value.fecha), lugar: formMant.value.lugar, causa: formMant.value.causa,
+            tipo_mantencion: formMant.value.tipoMant, tipo_horas_mantencion: formMant.value.tipoHorasMant, horometro: parseNum(formMant.value.horometro),
             mecanico_1: formMant.value.mec1, mecanico_2: formMant.value.mec2, mecanico_3: formMant.value.mec3, mecanico_4: formMant.value.mec4,
-            hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino,
-            causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
-            interferencia: formMant.value.interferencia, empresa: formMant.value.empresaArriendo,
-            costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT
+            hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino, causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
+            interferencia: formMant.value.interferencia, empresa: formMant.value.empresaArriendo, costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT
           };
-
-          if (isEditingMantencion.value && formMant.value.id) {
-            await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
-          } else {
-            await supabaseClient.from('BD_HISTORIAL').insert([payload]);
-          }
-
+          if (isEditingMantencion.value && formMant.value.id) await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
+          else await supabaseClient.from('BD_HISTORIAL').insert([payload]);
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("Mantención guardada en Supabase con éxito.");
+          alert("Mantención guardada en Supabase.");
+        };
+
+        // Utilidades de Perfil de Equipo
+        const abrirPerfilEquipo = (equipo) => {
+          perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
+          showPerfilEquipoModal.value = true;
+        };
+
+        const verDetallePorAfiString = (afiStr) => {
+          const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(afiStr).trim().toUpperCase());
+          if (eq) abrirPerfilEquipo(eq);
+        };
+
+        const guardarPerfilEquipo = async () => {
+          const payload = {
+            tipo: perfilEquipo.value.tipo, marca: perfilEquipo.value.marca, modelo: perfilEquipo.value.modelo, ubicacion: perfilEquipo.value.ubicacion,
+            disponibilidad: perfilEquipo.value.disponibilidad, gps: perfilEquipo.value.gps, imei_gps: perfilEquipo.value.imei_gps,
+            horometroactual: parseNum(perfilEquipo.value.horometroActual) || 0, frecuencia_mantencion: parseNum(perfilEquipo.value.frecuenciaMantencion) || 250
+          };
+          const { error } = await supabaseClient.from('BD_INVENTARIO').update(payload).eq('id', perfilEquipo.value.id);
+          if (error) alert("Error al guardar en Supabase: " + error.message);
+          else { await cargarDatosDesdeSupabase(); showPerfilEquipoModal.value = false; alert("¡Perfil guardado correctamente!"); }
+        };
+
+        const getHistorialIntervencionesAFI = (afi) => dbIntervenciones.value.filter(i=>String(i.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
+        const getHistorialMovimientosAFI = (afi) => dbMovimientos.value.filter(m=>String(m.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
+
+        // Importación Masiva Excel (Igual al anterior)
+        const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+        const getVal = (row, ...keys) => {
+          if (!row) return "";
+          const rowKeys = Object.keys(row);
+          for (const k of keys) {
+            const tk = normalizeKey(k);
+            const fk = rowKeys.find(rk => normalizeKey(rk) === tk);
+            if (fk && row[fk] !== undefined && row[fk] !== null && String(row[fk]).trim() !== "") return row[fk];
+          }
+          return "";
         };
 
         const parseFileAnyFormat = (file) => {
@@ -1826,8 +1828,7 @@
                 try {
                   const data = new Uint8Array(evt.target.result);
                   const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                  resolve(XLSX.utils.sheet_to_json(firstSheet, { defval: "", raw: false }));
+                  resolve(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "", raw: false }));
                 } catch (e) { reject("Excel error"); }
               };
               reader.readAsArrayBuffer(file);
@@ -1836,156 +1837,75 @@
         };
 
         const importarInventarioFile = async (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
+          const file = e.target.files[0]; if (!file) return;
           try {
             const rows = await parseFileAnyFormat(file);
-            const payloads = [];
-
-            for (const item of rows) {
+            const payloads = rows.map(item => {
               const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
-              if (rawAfi && String(rawAfi).trim() !== "") {
-                payloads.push({
-                  afi: String(rawAfi).trim(),
-                  tipo: parseStr(getVal(item, "tipo", "equipo")),
-                  marca: parseStr(getVal(item, "marca")),
-                  modelo: parseStr(getVal(item, "modelo")),
-                  n_serie: parseStr(getVal(item, "n° serie", "n_serie", "serie", "nserie")),
-                  anio: parseNum(getVal(item, "año", "ano", "anio")),
-                  ubicacion: parseStr(getVal(item, "ubicación", "ubicacion", "planta")),
-                  contrato: parseStr(getVal(item, "contrato")),
-                  empresa: parseStr(getVal(item, "empresa")),
-                  disponibilidad: normalizarClave(getVal(item, "disponibilidad", "estado") || "Operativo"),
-                  gps: parseStr(getVal(item, "gps")) || "Sin GPS",
-                  imei_gps: parseStr(getVal(item, "imei gps", "imei_gps", "imeigps")),
-                  horometroactual: parseNum(getVal(item, "hor", "horometro", "horometro actual", "horometroactual")) || 0,
-                  frecuencia_mantencion: 250
-                });
-              }
-            }
-
+              if (!rawAfi) return null;
+              return {
+                afi: String(rawAfi).trim(), tipo: parseStr(getVal(item, "tipo", "equipo")), marca: parseStr(getVal(item, "marca")), modelo: parseStr(getVal(item, "modelo")),
+                n_serie: parseStr(getVal(item, "n° serie", "n_serie", "serie", "nserie")), anio: parseNum(getVal(item, "año", "ano", "anio")), ubicacion: parseStr(getVal(item, "ubicación", "ubicacion", "planta")),
+                contrato: parseStr(getVal(item, "contrato")), empresa: parseStr(getVal(item, "empresa")), disponibilidad: normalizarClave(getVal(item, "disponibilidad", "estado") || "Operativo"),
+                gps: parseStr(getVal(item, "gps")) || "Sin GPS", imei_gps: parseStr(getVal(item, "imei gps", "imei_gps", "imeigps")),
+                horometroactual: parseNum(getVal(item, "hor", "horometro", "horometro actual", "horometroactual")) || 0, frecuencia_mantencion: 250
+              };
+            }).filter(Boolean);
             if (payloads.length === 0) return alert("No se encontraron filas válidas.");
-
             const { error } = await supabaseClient.from('BD_INVENTARIO').upsert(payloads, { onConflict: 'afi' });
             if (error) return alert("Error Supabase: " + error.message);
-
-            await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron ${payloads.length} equipos en Supabase.`);
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} equipos!`);
           } catch (err) { alert("Error al procesar el archivo."); }
         };
 
         const importarMovimientosFile = async (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
+          const file = e.target.files[0]; if (!file) return;
           try {
             const rows = await parseFileAnyFormat(file);
-            const payloads = [];
-
-            for (const item of rows) {
+            const payloads = rows.map(item => {
               const rawAfi = getVal(item, "afi", "codigo afi");
-              if (rawAfi && String(rawAfi).trim() !== "") {
-                payloads.push({
-                  afi: String(rawAfi).trim(),
-                  fecha: formatIsoDateForSupabase(getVal(item, "fecha")),
-                  tipo: parseStr(getVal(item, "tipo")),
-                  marca: parseStr(getVal(item, "marca")),
-                  modelo: parseStr(getVal(item, "modelo")),
-                  ubicacion_anterior: parseStr(getVal(item, "ubicación anterior", "origen")),
-                  empresa_arriendo: parseStr(getVal(item, "empresa arriendo")),
-                  estado: parseStr(getVal(item, "estado")),
-                  ubicacion_actual: parseStr(getVal(item, "ubicación actual", "destino")),
-                  camion_encargado: parseStr(getVal(item, "camión encargado", "camion")),
-                  conductor_encargado: parseStr(getVal(item, "conductor encargado", "conductor"))
-                });
-              }
-            }
-
+              if (!rawAfi) return null;
+              return {
+                afi: String(rawAfi).trim(), fecha: formatIsoDateForSupabase(getVal(item, "fecha")), tipo: parseStr(getVal(item, "tipo")), marca: parseStr(getVal(item, "marca")),
+                modelo: parseStr(getVal(item, "modelo")), ubicacion_anterior: parseStr(getVal(item, "ubicación anterior", "origen")), empresa_arriendo: parseStr(getVal(item, "empresa arriendo")),
+                estado: parseStr(getVal(item, "estado")), ubicacion_actual: parseStr(getVal(item, "ubicación actual", "destino")), camion_encargado: parseStr(getVal(item, "camión encargado", "camion")),
+                conductor_encargado: parseStr(getVal(item, "conductor encargado", "conductor"))
+              };
+            }).filter(Boolean);
             if (payloads.length === 0) return alert("Sin registros válidos.");
-
-            const { error } = await supabaseClient.from('BD_MOVIMIENTOS').insert(payloads);
-            if (error) return alert("Error Supabase: " + error.message);
-
-            await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron ${payloads.length} movimientos.`);
+            await supabaseClient.from('BD_MOVIMIENTOS').insert(payloads);
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} movimientos!`);
           } catch (err) { alert("Error al importar movimientos."); }
         };
 
         const importarIntervencionesFile = async (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
+          const file = e.target.files[0]; if (!file) return;
           try {
             const rows = await parseFileAnyFormat(file);
-            const payloads = [];
-
-            for (const item of rows) {
+            const payloads = rows.map(item => {
               const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
-              if (rawAfi && String(rawAfi).trim() !== "") {
-                payloads.push({
-                  afi: String(rawAfi).trim(),
-                  fecha: formatIsoDateForSupabase(getVal(item, "fecha")),
-                  equipo: parseStr(getVal(item, "equipo", "tipo equipo")),
-                  lugar: parseStr(getVal(item, "lugar", "ubicacion")),
-                  tipo_documento: parseStr(getVal(item, "tipo documento", "tipo_documento")),
-                  causa: parseStr(getVal(item, "causa")),
-                  tipo_mantencion: parseStr(getVal(item, "tipo mantencion", "tipo_mantencion")),
-                  tipo_horas_mantencion: parseStr(getVal(item, "tipo en horas mantencion", "tipo_horas_mantencion", "tipo horas")),
-                  horometro: parseNum(getVal(item, "horometro")),
-                  mecanico_1: parseStr(getVal(item, "mecanico 1", "mecanico_1")),
-                  mecanico_2: parseStr(getVal(item, "mecanico 2", "mecanico_2")),
-                  mecanico_3: parseStr(getVal(item, "mecanico 3", "mecanico_3")),
-                  mecanico_4: parseStr(getVal(item, "mecanico 4", "mecanico_4")),
-                  uso_de_art: parseStr(getVal(item, "uso de art", "uso_de_art")),
-                  bloqueo_de_equipo: parseStr(getVal(item, "bloqueo de equipo", "bloqueo_de_equipo")),
-                  hora_falla: parseStr(getVal(item, "hora falla", "hora_falla")),
-                  hora_inicio: parseStr(getVal(item, "hora inicio", "hora_inicio")),
-                  hora_termino: parseStr(getVal(item, "hora termino", "hora_termino")),
-                  hora_total: parseStr(getVal(item, "hora total", "hora_total")),
-                  causa_intervencion: parseStr(getVal(item, "causa de la intervencion", "causa_intervencion", "causa detallada")),
-                  descripcion: parseStr(getVal(item, "descripcion")),
-                  interferencia: parseStr(getVal(item, "interferencia")),
-                  empresa: parseStr(getVal(item, "empresa")),
-                  link: parseStr(getVal(item, "link")),
-                  kit_bodega: parseStr(getVal(item, "kit bodega", "kit_bodega")),
-                  costo: parseNum(getVal(item, "costo")),
-                  numero_oc: parseStr(getVal(item, "n° oc", "numero_oc", "oc")),
-                  numero_ot: parseStr(getVal(item, "n° ot", "numero_ot", "ot")),
-                  aceite_15w40_ci4: parseNum(getVal(item, "aceite 15w40 ci-4", "aceite_15w40_ci4")),
-                  aceite_15w40_ck4: parseNum(getVal(item, "aceite 15w40 ck4", "aceite_15w40_ck4")),
-                  aceite_refrigerante_5050: parseNum(getVal(item, "aceite refrigerante 50/50", "aceite_refrigerante_5050")),
-                  aceite_80w90: parseNum(getVal(item, "aceite 80w90", "aceite_80w90")),
-                  aceite_dacnis_68: parseNum(getVal(item, "aceite dacnis 68", "aceite_dacnis_68")),
-                  aceite_dacnis_46: parseNum(getVal(item, "aceite dacnis 46", "aceite  dacnis 46", "aceite_dacnis_46")),
-                  paroil_m_extreme: parseNum(getVal(item, "paroil m extreme", "paroil_m_extreme")),
-                  paroil_s_extreme: parseNum(getVal(item, "paroil s extreme", "paroil_s_extreme")),
-                  aceite_5w30: parseNum(getVal(item, "5w30", "aceite_5w30")),
-                  liquido_freno_dot4: parseNum(getVal(item, "liquido de freno dot-4", "liquido_freno_dot4")),
-                  tractofluid_10w30: parseNum(getVal(item, "tractofluid (10w30)", "tractofluid_10w30")),
-                  sae_30: parseNum(getVal(item, "sae 30", "sae_30")),
-                  hydra46: parseNum(getVal(item, "hydra46")),
-                  hydra_68: parseNum(getVal(item, "hydra 68", "hydra_68")),
-                  adblue: parseNum(getVal(item, "adblue")),
-                  aceite_75w90: parseNum(getVal(item, "aceite 75w90", "aceite_75w90")),
-                  aceite_10w40: parseNum(getVal(item, "aceite 10w40", "aceite_10w40")),
-                  multiproposito: parseNum(getVal(item, "multiproposito")),
-                  desegransante: parseNum(getVal(item, "desegransante")),
-                  acido_muriatico: parseNum(getVal(item, "acido muriatico", "acido_muriatico"))
-                });
-              }
-            }
-
+              if (!rawAfi) return null;
+              return {
+                afi: String(rawAfi).trim(), fecha: formatIsoDateForSupabase(getVal(item, "fecha")), equipo: parseStr(getVal(item, "equipo", "tipo equipo")), lugar: parseStr(getVal(item, "lugar", "ubicacion")),
+                tipo_documento: parseStr(getVal(item, "tipo documento", "tipo_documento")), causa: parseStr(getVal(item, "causa")), tipo_mantencion: parseStr(getVal(item, "tipo mantencion", "tipo_mantencion")),
+                tipo_horas_mantencion: parseStr(getVal(item, "tipo en horas mantencion", "tipo_horas_mantencion", "tipo horas")), horometro: parseNum(getVal(item, "horometro")),
+                mecanico_1: parseStr(getVal(item, "mecanico 1", "mecanico_1")), mecanico_2: parseStr(getVal(item, "mecanico 2", "mecanico_2")), mecanico_3: parseStr(getVal(item, "mecanico 3", "mecanico_3")), mecanico_4: parseStr(getVal(item, "mecanico 4", "mecanico_4")),
+                uso_de_art: parseStr(getVal(item, "uso de art", "uso_de_art")), bloqueo_de_equipo: parseStr(getVal(item, "bloqueo de equipo", "bloqueo_de_equipo")),
+                hora_falla: parseStr(getVal(item, "hora falla", "hora_falla")), hora_inicio: parseStr(getVal(item, "hora inicio", "hora_inicio")), hora_termino: parseStr(getVal(item, "hora termino", "hora_termino")), hora_total: parseStr(getVal(item, "hora total", "hora_total")),
+                causa_intervencion: parseStr(getVal(item, "causa de la intervencion", "causa_intervencion", "causa detallada")), descripcion: parseStr(getVal(item, "descripcion")), interferencia: parseStr(getVal(item, "interferencia")),
+                empresa: parseStr(getVal(item, "empresa")), link: parseStr(getVal(item, "link")), kit_bodega: parseStr(getVal(item, "kit bodega", "kit_bodega")), costo: parseNum(getVal(item, "costo")), numero_oc: parseStr(getVal(item, "n° oc", "numero_oc", "oc")), numero_ot: parseStr(getVal(item, "n° ot", "numero_ot", "ot")),
+                aceite_15w40_ci4: parseNum(getVal(item, "aceite 15w40 ci-4", "aceite_15w40_ci4")), aceite_15w40_ck4: parseNum(getVal(item, "aceite 15w40 ck4", "aceite_15w40_ck4")), aceite_refrigerante_5050: parseNum(getVal(item, "aceite refrigerante 50/50", "aceite_refrigerante_5050")),
+                aceite_80w90: parseNum(getVal(item, "aceite 80w90", "aceite_80w90")), aceite_dacnis_68: parseNum(getVal(item, "aceite dacnis 68", "aceite_dacnis_68")), aceite_dacnis_46: parseNum(getVal(item, "aceite dacnis 46", "aceite_dacnis_46")),
+                paroil_m_extreme: parseNum(getVal(item, "paroil m extreme", "paroil_m_extreme")), paroil_s_extreme: parseNum(getVal(item, "paroil s extreme", "paroil_s_extreme")), aceite_5w30: parseNum(getVal(item, "5w30", "aceite_5w30")),
+                liquido_freno_dot4: parseNum(getVal(item, "liquido de freno dot-4", "liquido_freno_dot4")), tractofluid_10w30: parseNum(getVal(item, "tractofluid (10w30)", "tractofluid_10w30")), sae_30: parseNum(getVal(item, "sae 30", "sae_30")),
+                hydra46: parseNum(getVal(item, "hydra46")), hydra_68: parseNum(getVal(item, "hydra 68", "hydra_68")), adblue: parseNum(getVal(item, "adblue")), aceite_75w90: parseNum(getVal(item, "aceite 75w90", "aceite_75w90")),
+                aceite_10w40: parseNum(getVal(item, "aceite 10w40", "aceite_10w40")), multiproposito: parseNum(getVal(item, "multiproposito")), desegransante: parseNum(getVal(item, "desegransante")), acido_muriatico: parseNum(getVal(item, "acido muriatico", "acido_muriatico"))
+              };
+            }).filter(Boolean);
             if (payloads.length === 0) return alert("No se encontraron registros válidos.");
-
-            const BATCH_SIZE = 200;
-            let totalInsertados = 0;
-            for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
-              const chunk = payloads.slice(i, i + BATCH_SIZE);
-              const { error } = await supabaseClient.from('BD_HISTORIAL').insert(chunk);
-              if (error) return alert(`Error en lote: ${error.message}`);
-              totalInsertados += chunk.length;
-            }
-
-            await cargarDatosDesdeSupabase();
-            alert(`¡Éxito! Se importaron ${totalInsertados} registros.`);
+            const BATCH = 200;
+            for (let i=0; i<payloads.length; i+=BATCH) await supabaseClient.from('BD_HISTORIAL').insert(payloads.slice(i, i+BATCH));
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} registros!`);
           } catch (err) { alert("Error al procesar el archivo Excel."); }
         };
 
@@ -1994,17 +1914,32 @@
           const headers = Object.keys(dataArray[0]);
           const csvRows = [headers.join(';')];
           for (const row of dataArray) {
-            const values = headers.map(h => `"${('' + (row[h] ?? '')).replace(/"/g, '""')}"`);
-            csvRows.push(values.join(';'));
+            csvRows.push(headers.map(h => `"${('' + (row[h] ?? '')).replace(/"/g, '""')}"`).join(';'));
           }
           const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = `${filename}_${new Date().toISOString().substring(0,10)}.csv`;
-          link.click();
+          const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${filename}_${new Date().toISOString().substring(0,10)}.csv`; link.click();
         };
 
-        let chartEstadoInst = null, chartTiposInst = null, chartCausasInst = null;
+        const cargarUsuariosDesdeSupabase = async () => {
+          try {
+            const { data } = await supabaseClient.from('usuarios').select('*');
+            if (data && data.length > 0) dbUsuarios.value = data;
+            else dbUsuarios.value = [{ usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística FRC" }];
+          } catch (err) { console.error("Error usuarios:", err); }
+        };
+        const crearNuevoUsuario = async () => {
+          if (!nuevoUsuario.value.usuario || !nuevoUsuario.value.clave) return alert("Completa usuario y clave.");
+          const { error } = await supabaseClient.from('usuarios').insert([{ usuario: nuevoUsuario.value.usuario.trim(), clave: nuevoUsuario.value.clave.trim(), rol: nuevoUsuario.value.rol, nombre: nuevoUsuario.value.usuario.trim() }]);
+          if (!error) { await cargarUsuariosDesdeSupabase(); nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" }; alert("¡Usuario guardado!"); }
+        };
+        const eliminarUsuario = async (username) => {
+          if (confirm(`¿Eliminar al usuario ${username}?`)) {
+            const { error } = await supabaseClient.from('usuarios').delete().eq('usuario', username);
+            if (!error) { await cargarUsuariosDesdeSupabase(); alert("Usuario eliminado correctamente."); }
+          }
+        };
+
+        let chartEstadoInst=null, chartTiposInst=null, chartCausasInst=null;
         const renderCharts = () => {
           if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
           nextTick(() => {
@@ -2012,177 +1947,70 @@
             if (ctx1) {
               if (chartEstadoInst) chartEstadoInst.destroy();
               chartEstadoInst = new Chart(ctx1, {
-                type: 'doughnut',
-                data: {
-                  labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Mantención', 'Fuera de Servicio', 'Venta'],
-                  datasets: [{ data: [countEstado('Operativo'), countEstado('Disponible'), countEstado('En Traslado'), countEstado('En Mantencion'), countEstado('Fuera de Servicio'), countEstado('Venta')], backgroundColor: ['#10b981', '#0284c7', '#f59e0b', '#f43f5e', '#64748b', '#a855f7'] }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
+                type: 'doughnut', data: { labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Mantención', 'Fuera de Servicio', 'Venta'], datasets: [{ data: [countEstado('Operativo'), countEstado('Disponible'), countEstado('En Traslado'), countEstado('En Mantencion'), countEstado('Fuera de Servicio'), countEstado('Venta')], backgroundColor: ['#10b981', '#0284c7', '#f59e0b', '#f43f5e', '#64748b', '#a855f7'] }] }, options: { responsive: true, maintainAspectRatio: false }
               });
             }
-
             const ctx2 = document.getElementById('chartTiposMant');
             if (ctx2) {
               if (chartTiposInst) chartTiposInst.destroy();
               chartTiposInst = new Chart(ctx2, {
-                type: 'bar',
-                data: {
-                  labels: ['Preventiva', 'Predictiva', 'Correctiva'],
-                  datasets: [{
-                    data: [
-                      dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT')).length,
-                      dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREDICT')).length,
-                      dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('CORRECT')).length
-                    ],
-                    backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626']
-                  }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                type: 'bar', data: { labels: ['Preventiva', 'Predictiva', 'Correctiva'], datasets: [{ data: [ dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT')).length, dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREDICT')).length, dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('CORRECT')).length ], backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
               });
             }
-
             const ctx3 = document.getElementById('chartCausas');
             if (ctx3) {
               if (chartCausasInst) chartCausasInst.destroy();
-              const causasMap = {};
-              dbIntervenciones.value.forEach(i => { if (i.causa) causasMap[i.causa] = (causasMap[i.causa] || 0) + 1; });
+              const causasMap = {}; dbIntervenciones.value.forEach(i => { if (i.causa) causasMap[i.causa] = (causasMap[i.causa] || 0) + 1; });
               chartCausasInst = new Chart(ctx3, {
-                type: 'bar',
-                data: {
-                  labels: Object.keys(causasMap).slice(0, 6),
-                  datasets: [{ data: Object.values(causasMap).slice(0, 6), backgroundColor: '#f59e0b' }]
-                },
-                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                type: 'bar', data: { labels: Object.keys(causasMap).slice(0, 6), datasets: [{ data: Object.values(causasMap).slice(0, 6), backgroundColor: '#f59e0b' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
               });
             }
           });
         };
 
-        const switchTab = (tab) => {
-          currentTab.value = tab;
-          if (tab === 'dashboard') renderCharts();
+        const switchTab = (tab) => { currentTab.value = tab; if (tab === 'dashboard') renderCharts(); };
+        const countEstado = (st) => dbEquipos.value.filter(e => normalizarClave(e.disponibilidad) === normalizarClave(st)).length;
+        const getEstadoText = (est) => {
+          const norm = normalizarClave(est);
+          if (norm === 'Operativo') return 'Trabajando / Operativo'; if (norm === 'Disponible') return 'Disponible';
+          if (norm === 'En Traslado') return 'En Traslado'; if (norm === 'En Mantencion') return 'En Mantención';
+          if (norm === 'Fuera de Servicio') return 'Fuera de servicio'; if (norm === 'Venta') return 'En Venta';
+          return est || '-';
         };
-
-        const resumenKPIs = computed(() => [
-          { Metrica: "Total Flota AFI", Valor: dbEquipos.value.length },
-          { Metrica: "Operativos", Valor: countEstado('Operativo') },
-          { Metrica: "Disponibles", Valor: countEstado('Disponible') }
-        ]);
-
-        const filteredEquipos = computed(() => {
-          try {
-            let arr = dbEquipos.value.filter(e => {
-              const matchSearch = !filterInv.value.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion].join(" ").toLowerCase().includes(filterInv.value.search.toLowerCase());
-              const matchUbi = !filterInv.value.ubicacion || String(e.ubicacion).toLowerCase().includes(filterInv.value.ubicacion.toLowerCase());
-              const matchEst = filterInv.value.estado === "ALL" || normalizarClave(e.disponibilidad) === normalizarClave(filterInv.value.estado);
-              const matchGps = filterInv.value.gps === "ALL" || (filterInv.value.gps === "Instalado" ? Boolean(e.gps && e.gps !== 'Sin GPS') : (e.gps === 'Sin GPS' || !e.gps));
-              return matchSearch && matchUbi && matchEst && matchGps;
-            });
-            arr.sort((a, b) => sortInventarioOrder.value === 'desc' ? b.id - a.id : a.id - b.id);
-            return arr;
-          } catch(err) {
-            return [];
-          }
-        });
-
-        const filteredMovimientos = computed(() => {
-          try {
-            let arr = dbMovimientos.value.filter(m => {
-              if (filterMov.value.afi !== "ALL" && String(m.afi).trim().toUpperCase() !== String(filterMov.value.afi).trim().toUpperCase()) return false;
-              const fStr = formatExcelDate(m.fecha);
-              if (filterMov.value.dateStart && fStr < filterMov.value.dateStart) return false;
-              if (filterMov.value.dateEnd && fStr > filterMov.value.dateEnd) return false;
-              if (filterMov.value.queryText && filterMov.value.queryText.trim() !== "") {
-                const q = filterMov.value.queryText.trim().toLowerCase();
-                const matchAll = [m.afi, m.tipo, m.origen, m.destino, m.camion, m.conductor].join(" ").toLowerCase();
-                if (!matchAll.includes(q)) return false;
-              }
-              return true;
-            });
-            arr.sort((a, b) => sortMovimientosOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
-            return arr;
-          } catch(err) {
-            return [];
-          }
-        });
-
-        const filteredIntervenciones = computed(() => {
-          try {
-            let arr = dbIntervenciones.value.filter(i => {
-              if (filterInt.value.afi !== "ALL" && String(i.afi).trim().toUpperCase() !== String(filterInt.value.afi).trim().toUpperCase()) return false;
-              if (filterInt.value.tipoMant !== "ALL" && String(i.tipoMant).trim().toUpperCase() !== String(filterInt.value.tipoMant).trim().toUpperCase()) return false;
-              if (filterInt.value.causa !== "ALL" && String(i.causa).trim().toUpperCase() !== String(filterInt.value.causa).trim().toUpperCase()) return false;
-              
-              const fStr = formatExcelDate(i.fecha);
-              if (filterInt.value.dateStart && fStr !== '-' && fStr < filterInt.value.dateStart) return false;
-              if (filterInt.value.dateEnd && fStr !== '-' && fStr > filterInt.value.dateEnd) return false;
-
-              if (filterInt.value.mecText && filterInt.value.mecText.trim() !== "") {
-                const mecQuery = filterInt.value.mecText.trim().toLowerCase();
-                const mecs = getMecanicosText(i).toLowerCase();
-                if (!mecs.includes(mecQuery)) return false;
-              }
-
-              if (filterInt.value.searchQuery && filterInt.value.searchQuery.trim() !== "") {
-                const q = filterInt.value.searchQuery.trim().toLowerCase();
-                const matchAll = [
-                  i.afi, i.equipo, i.lugar, i.causa, i.tipoMant, i.tipoHorasMant,
-                  i.causaDetallada, i.descripcion, i.interferencia, i.empresaArriendo,
-                  i.numeroOC, i.numeroOT, i.aceites, getMecanicosText(i)
-                ].join(" ").toLowerCase();
-                if (!matchAll.includes(q)) return false;
-              }
-
-              return true;
-            });
-
-            arr.sort((a, b) => sortHistorialOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
-            return arr;
-          } catch (err) {
-            return [];
-          }
-        });
+        const getBadgeClass = (est) => {
+          const norm = normalizarClave(est);
+          if (norm === 'Operativo') return 'bg-emerald-100 text-emerald-800 border'; if (norm === 'Disponible') return 'bg-sky-100 text-sky-800 border';
+          if (norm === 'En Traslado') return 'bg-amber-100 text-amber-800 border'; if (norm === 'En Mantencion') return 'bg-rose-100 text-rose-800 border';
+          return 'bg-slate-100 text-slate-700 border';
+        };
+        const filtrarYIrAInventario = (estado) => { filterInv.value.estado = estado; currentTab.value = 'inventario'; };
+        const resumenKPIs = computed(() => [ { Metrica: "Total Flota AFI", Valor: dbEquipos.value.length }, { Metrica: "Operativos", Valor: countEstado('Operativo') }, { Metrica: "Disponibles", Valor: countEstado('Disponible') } ]);
 
         onMounted(async () => {
-          const cfgSaved = localStorage.getItem('afi_config_custom');
-          if (cfgSaved) config.value = JSON.parse(cfgSaved);
-
-          await cargarUsuariosDesdeSupabase();
-          await cargarDatosDesdeSupabase();
+          const cfgSaved = localStorage.getItem('afi_config_custom'); if (cfgSaved) config.value = JSON.parse(cfgSaved);
+          await cargarUsuariosDesdeSupabase(); await cargarDatosDesdeSupabase();
         });
 
         const login = () => {
           const userEncontrado = dbUsuarios.value.find(u => u.usuario.toLowerCase() === loginUser.value.trim().toLowerCase() && u.clave === loginPass.value.trim());
-          if (userEncontrado) {
-            usuarioActivo.value = userEncontrado;
-            authError.value = false;
-            loginUser.value = "";
-            loginPass.value = "";
-            nextTick(() => renderCharts());
-          } else {
-            authError.value = true;
-          }
+          if (userEncontrado) { usuarioActivo.value = userEncontrado; authError.value = false; loginUser.value = ""; loginPass.value = ""; nextTick(() => renderCharts()); }
+          else authError.value = true;
         };
-
         const logout = () => { usuarioActivo.value = null; };
 
         return {
-          usuarioActivo, isAdmin, loginUser, loginPass, authError, currentTab, switchTab,
-          dbUsuarios, nuevoUsuario, crearNuevoUsuario, eliminarUsuario,
+          usuarioActivo, isAdmin, loginUser, loginPass, authError, currentTab, switchTab, dbUsuarios, nuevoUsuario, crearNuevoUsuario, eliminarUsuario,
           config, headerStyle, bodyStyle, primaryBtnStyle, guardarConfiguracionPersonalizada, subirNuevaFotoLogo, uploadFotoEquipo,
-          listaCausas, listaAceitesEstandar, dbEquipos, dbMovimientos, dbIntervenciones,
-          countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
-          sortInventarioOrder, sortMovimientosOrder, sortHistorialOrder, sortAceitesOrder,
-          resetFiltrosInventario, limpiarFiltrosHistorial, limpiarFiltrosMovimientos,
-          filtrarYIrAInventario, verDetallePorAfiString, getEstadoText, getBadgeClass,
-          filteredEquipos, filteredMovimientos, filteredIntervenciones, filteredAceitesRecords,
-          listaTiposAceitesDisponibles, sumaTotalCantidadAceites, costoTotalAceitesFiltrados, exportarCSV,
-          importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
+          listaCausas, listaAceitesEstandar, dbEquipos, dbMovimientos, dbIntervenciones, dbProgramas, countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
+          sortInventarioOrder, sortMovimientosOrder, sortHistorialOrder, sortAceitesOrder, resetFiltrosInventario, limpiarFiltrosHistorial, limpiarFiltrosMovimientos,
+          filtrarYIrAInventario, verDetallePorAfiString, getEstadoText, getBadgeClass, filteredEquipos, filteredMovimientos, filteredIntervenciones, filteredAceitesRecords,
+          listaTiposAceitesDisponibles, sumaTotalCantidadAceites, costoTotalAceitesFiltrados, exportarCSV, importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
           getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
-          showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion,
-          agregarFilaAceiteForm, eliminarFilaAceiteForm, guardarMantencionForm,
-          getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts
+          showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, agregarFilaAceiteForm, eliminarFilaAceiteForm, guardarMantencionForm,
+          getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
+          showNuevoProgramaModal, formPrograma, abrirFormularioPrograma, guardarNuevoPrograma, listaCarpetasProgramas, mesesSugeridos, obtenerMesesDeCarpeta, obtenerItemsPrograma, getProgreso, openFolders, toggleFolder, progSelect, seleccionarPrograma, marcarProgramaRealizado, eliminarItemPrograma,
+          perfilAsignacionProg, guardarAsignacionDesdePerfil, toggleFiltroCriticos
         };
       }
     }).mount('#app');
