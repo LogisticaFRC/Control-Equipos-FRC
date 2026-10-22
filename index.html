@@ -891,9 +891,9 @@
         </div>
       </div>
 
-      <!-- MODAL FORMULARIO MANTENCIÓN CON CAMPOS DE ACEITES -->
+      <!-- MODAL FORMULARIO MANTENCIÓN CON TODOS LOS ACEITES E INSUMOS -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
             <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-wrench text-amber-400"></i> {{ isEditingMantencion ? 'Editar Mantención' : 'Registrar Nueva Mantención' }}</h3>
             <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -916,15 +916,26 @@
                 <div><label class="block font-bold mb-1">Tipo Horas</label><input type="text" v-model="formMant.tipoHorasMant" placeholder="Ej: 250" class="w-full p-2 border rounded-lg bg-white font-bold"></div>
               </div>
             </div>
-            <!-- Sección de Consumo de Aceites (5 principales) -->
+            
+            <!-- Sección Completa de Consumo de Aceites e Insumos -->
             <div class="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3">
               <h4 class="font-bold text-amber-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-oil-can"></i> Consumo de Aceites e Insumos (Litros)</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 15W40 CI-4 (L)</label><input type="number" step="any" v-model="formMant.aceite_15w40_ci4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 15W40 CK-4 (L)</label><input type="number" step="any" v-model="formMant.aceite_15w40_ck4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Refrigerante 50/50 (L)</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_5050" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 46 (L)</label><input type="number" step="any" v-model="formMant.hydra46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 80W90 (L)</label><input type="number" step="any" v-model="formMant.aceite_80w90" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CI-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ci4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CK-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ck4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Refrigerante 50/50</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_5050" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 80W90</label><input type="number" step="any" v-model="formMant.aceite_80w90" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 68</label><input type="number" step="any" v-model="formMant.aceite_dacnis_68" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 46</label><input type="number" step="any" v-model="formMant.aceite_dacnis_46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil M Extreme</label><input type="number" step="any" v-model="formMant.paroil_m_extreme" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil S Extreme</label><input type="number" step="any" v-model="formMant.paroil_s_extreme" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 5W30</label><input type="number" step="any" v-model="formMant.aceite_5w30" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Líquido Freno DOT-4</label><input type="number" step="any" v-model="formMant.liquido_freno_dot4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Tractofluid (10W30)</label><input type="number" step="any" v-model="formMant.tractofluid_10w30" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">SAE 30</label><input type="number" step="any" v-model="formMant.sae_30" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 46</label><input type="number" step="any" v-model="formMant.hydra46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 68</label><input type="number" step="any" v-model="formMant.hydra_68" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Adblue</label><input type="number" step="any" v-model="formMant.adblue" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
               </div>
             </div>
           </div>
@@ -1084,11 +1095,9 @@
         const dbMovimientos = ref([]);
         const dbIntervenciones = ref([]);
         
-        // Estructuras para Programas y Calendarios Nuevos
-        const dbProgramasCalendarios = ref([]); // Tabla BD_PROGRAMAS_CALENDARIOS
-        const dbProgramasItems = ref([]); // Tabla BD_PROGRAMAS_ITEMS
+        const dbProgramasCalendarios = ref([]);
+        const dbProgramasItems = ref([]);
 
-        // Modales Perfil e Historial
         const showPerfilEquipoModal = ref(false);
         const perfilEquipo = ref({});
         const showFormMantencionModal = ref(false);
@@ -1096,7 +1105,10 @@
         const formMant = ref({
           id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
           mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
-          aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", hydra46: "", aceite_80w90: ""
+          aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "",
+          aceite_dacnis_68: "", aceite_dacnis_46: "", paroil_m_extreme: "", paroil_s_extreme: "",
+          aceite_5w30: "", liquido_freno_dot4: "", tractofluid_10w30: "", sae_30: "",
+          hydra46: "", hydra_68: "", adblue: ""
         });
 
         const listaCausas = [
@@ -1106,7 +1118,6 @@
           "RETIRO", "CONEXIÓN/DESCONEXION", "FALLA OPERACIONAL", "INSPECCION (ELECTRICA)"
         ];
 
-        // Modales Programas Jerárquicos
         const showModalCarpeta = ref(false);
         const formCarpetaNombre = ref('');
 
@@ -1125,7 +1136,6 @@
         const perfilAsignacionFechaInicio = ref('');
         const perfilAsignacionFechaFin = ref('');
 
-        // Filtros
         const filterInv = ref({ search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false });
         const sortInventarioOrder = ref("desc");
         const filterMov = ref({ dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" });
@@ -1166,7 +1176,6 @@
           reader.readAsDataURL(file);
         };
 
-        // LÓGICA PROGRAMAS Y CALENDARIOS NUEVOS
         const listaCarpetasProgramas = computed(() => {
           const carpetas = new Set(dbProgramasCalendarios.value.map(p => p.carpeta).filter(Boolean));
           return Array.from(carpetas).sort();
@@ -1202,14 +1211,13 @@
           progSelect.value = { id: prog.id, carpeta: prog.carpeta, mes: prog.mes, fecha_inicio: prog.fecha_inicio, fecha_fin: prog.fecha_fin };
         };
 
-        // 1. Crear Carpeta
         const abrirModalCrearCarpeta = () => { formCarpetaNombre.value = ''; showModalCarpeta.value = true; };
         const guardarNuevaCarpeta = async () => {
           const cName = formCarpetaNombre.value.trim().toUpperCase();
           if (!cName) return;
-          const { data, error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
-            carpeta: cName, mes: 'PROGRAMA GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30'
-          }]).select();
+          const { error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
+            carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30'
+          }]);
           if(error) { alert("Error al crear carpeta: " + error.message); return; }
           await cargarDatosDesdeSupabase();
           showModalCarpeta.value = false;
@@ -1217,7 +1225,6 @@
           alert(`¡Carpeta "${cName}" creada con éxito!`);
         };
 
-        // 2. Crear Programa con Rango de Fechas
         const abrirModalCrearPrograma = () => {
           formProgMes.value = { carpeta: listaCarpetasProgramas.value[0] || 'PROGRAMA REPARACION', mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' };
           showModalPrograma.value = true;
@@ -1326,7 +1333,6 @@
           }
         };
 
-        // CORE UTILS & DATA LOAD
         const normalizarClave = (str) => {
           if (!str) return 'Disponible';
           const eLower = String(str).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -1441,8 +1447,18 @@
                   aceite_15w40_ci4: item.aceite_15w40_ci4 || 0,
                   aceite_15w40_ck4: item.aceite_15w40_ck4 || 0,
                   aceite_refrigerante_5050: item.aceite_refrigerante_5050 || 0,
-                  hydra46: item.hydra46 || 0,
                   aceite_80w90: item.aceite_80w90 || 0,
+                  aceite_dacnis_68: item.aceite_dacnis_68 || 0,
+                  aceite_dacnis_46: item.aceite_dacnis_46 || 0,
+                  paroil_m_extreme: item.paroil_m_extreme || 0,
+                  paroil_s_extreme: item.paroil_s_extreme || 0,
+                  aceite_5w30: item.aceite_5w30 || 0,
+                  liquido_freno_dot4: item.liquido_freno_dot4 || 0,
+                  tractofluid_10w30: item.tractofluid_10w30 || 0,
+                  sae_30: item.sae_30 || 0,
+                  hydra46: item.hydra46 || 0,
+                  hydra_68: item.hydra_68 || 0,
+                  adblue: item.adblue || 0,
                   aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo"
                 };
               });
@@ -1581,8 +1597,12 @@
 
         const listaTiposAceitesDisponibles = computed(() => {
           const setAceites = new Set();
-          dbIntervenciones.value.forEach(i => { if(i.aceites && i.aceites !== 'Sin consumo') { i.aceites.split('; ').forEach(a => setAceites.add(a.split(':')[0].trim())); } });
-          return Array.from(setAceites);
+          dbIntervenciones.value.forEach(i => {
+            if(i.aceites && i.aceites !== 'Sin consumo') {
+              i.aceites.split('; ').forEach(a => setAceites.add(a.split(':')[0].trim()));
+            }
+          });
+          return Array.from(setAceites).sort();
         });
 
         const filteredAceitesRecords = computed(() => {
@@ -1620,7 +1640,10 @@
             id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
             fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
             mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
-            aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", hydra46: "", aceite_80w90: ""
+            aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "",
+            aceite_dacnis_68: "", aceite_dacnis_46: "", paroil_m_extreme: "", paroil_s_extreme: "",
+            aceite_5w30: "", liquido_freno_dot4: "", tractofluid_10w30: "", sae_30: "",
+            hydra46: "", hydra_68: "", adblue: ""
           };
           showFormMantencionModal.value = true;
         };
@@ -1648,8 +1671,18 @@
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
             aceite_refrigerante_5050: parseNum(formMant.value.aceite_refrigerante_5050) || 0,
+            aceite_80w90: parseNum(formMant.value.aceite_80w90) || 0,
+            aceite_dacnis_68: parseNum(formMant.value.aceite_dacnis_68) || 0,
+            aceite_dacnis_46: parseNum(formMant.value.aceite_dacnis_46) || 0,
+            paroil_m_extreme: parseNum(formMant.value.paroil_m_extreme) || 0,
+            paroil_s_extreme: parseNum(formMant.value.paroil_s_extreme) || 0,
+            aceite_5w30: parseNum(formMant.value.aceite_5w30) || 0,
+            liquido_freno_dot4: parseNum(formMant.value.liquido_freno_dot4) || 0,
+            tractofluid_10w30: parseNum(formMant.value.tractofluid_10w30) || 0,
+            sae_30: parseNum(formMant.value.sae_30) || 0,
             hydra46: parseNum(formMant.value.hydra46) || 0,
-            aceite_80w90: parseNum(formMant.value.aceite_80w90) || 0
+            hydra_68: parseNum(formMant.value.hydra_68) || 0,
+            adblue: parseNum(formMant.value.adblue) || 0
           };
           if (isEditingMantencion.value && formMant.value.id) await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
           else await supabaseClient.from('BD_HISTORIAL').insert([payload]);
@@ -1682,7 +1715,6 @@
         const getHistorialIntervencionesAFI = (afi) => dbIntervenciones.value.filter(i=>String(i.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
         const getHistorialMovimientosAFI = (afi) => dbMovimientos.value.filter(m=>String(m.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
 
-        // Importación Excel
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
         const getVal = (row, ...keys) => {
           if (!row) return "";
