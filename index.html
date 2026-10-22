@@ -11,7 +11,7 @@
   <!-- Vue 3 CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/Chart.js"></script>
   <!-- SheetJS CDN (Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- Supabase JS Client -->
@@ -285,15 +285,15 @@
         <section v-if="currentTab === 'programas'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt</h2>
-              <p class="text-xs text-slate-500 mt-1">Sigue el orden: 1. Crear Carpeta -> 2. Crear Programa (Mes) -> 3. Asignar Equipo.</p>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt con Fechas Reales</h2>
+              <p class="text-xs text-slate-500 mt-1">Sigue el orden: 1. Crear Carpeta -> 2. Crear Programa (con rango de fechas reales) -> 3. Asignar Equipo.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2.5" v-if="isAdmin">
               <button @click="abrirModalCrearCarpeta" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
                 <i class="fa-solid fa-folder-plus text-sm"></i> 1. Crear Carpeta
               </button>
               <button @click="abrirModalCrearPrograma" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-calendar-plus text-sm"></i> 2. Crear Programa (Mes)
+                <i class="fa-solid fa-calendar-plus text-sm"></i> 2. Crear Programa (Rango Fechas)
               </button>
               <button @click="abrirModalAsignarEquipo" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
                 <i class="fa-solid fa-truck-monster text-sm"></i> 3. Asignar Equipo
@@ -302,9 +302,12 @@
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Sidebar: Árbol de Carpetas y Meses -->
-            <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[600px] overflow-y-auto">
-              <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 mb-3"><i class="fa-solid fa-folder-tree text-amber-500"></i> Carpetas de Programas</h3>
+            <!-- Sidebar: Árbol de Carpetas y Programas -->
+            <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[650px] overflow-y-auto">
+              <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 mb-3 flex items-center justify-between">
+                <span><i class="fa-solid fa-folder-tree text-amber-500"></i> Carpetas & Programas</span>
+                <span class="text-[10px] text-slate-400 font-mono">Global: {{ cumplimientoGlobalTotal }}%</span>
+              </h3>
               <div v-if="listaCarpetasProgramas.length === 0" class="text-center text-[10px] text-slate-400 font-bold p-4">No hay programas creados.</div>
               <div class="space-y-3">
                 <div v-for="carpeta in listaCarpetasProgramas" :key="carpeta" class="space-y-1">
@@ -312,63 +315,85 @@
                     <span class="truncate"><i class="fa-solid fa-folder-open text-amber-500 mr-1.5"></i> {{ carpeta }}</span>
                     <i :class="['fa-solid text-slate-400 text-[10px]', openFolders[carpeta] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
                   </div>
-                  <div v-show="openFolders[carpeta]" class="pl-4 pr-1 space-y-1 border-l-2 border-slate-200 ml-2 pt-1 pb-2">
-                    <button v-for="mes in obtenerMesesDeCarpeta(carpeta)" :key="mes" @click="seleccionarPrograma(carpeta, mes)" :class="['text-[11px] font-semibold w-full text-left p-1.5 rounded flex items-center justify-between', (progSelect.carpeta === carpeta && progSelect.mes === mes) ? 'bg-rose-50 text-rose-700 font-bold border border-rose-200' : 'text-slate-600 hover:bg-slate-50']">
-                      <span><i class="fa-solid fa-calendar-days opacity-50 mr-1"></i> {{ mes }}</span>
-                      <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(carpeta, mes).length }}</span>
-                    </button>
+                  <div v-show="openFolders[carpeta]" class="pl-3 pr-1 space-y-1.5 border-l-2 border-slate-200 ml-2 pt-1 pb-2">
+                    <div v-for="prog in obtenerProgramasDeCarpeta(carpeta)" :key="prog.id" :class="['p-2 rounded border transition text-[11px] space-y-1', (progSelect.id === prog.id) ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100']">
+                      <div @click="seleccionarProgramaObj(prog)" class="cursor-pointer flex items-center justify-between font-bold">
+                        <span class="truncate"><i class="fa-solid fa-calendar-days opacity-70 mr-1 text-indigo-600"></i> {{ prog.mes }}</span>
+                        <div class="flex items-center gap-1">
+                          <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
+                          <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar este programa"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                      </div>
+                      <div class="text-[9px] font-mono text-slate-500 flex justify-between">
+                        <span>Inicio: {{ prog.fecha_inicio || '-' }}</span>
+                        <span>Fin: {{ prog.fecha_fin || '-' }}</span>
+                      </div>
+                    </div>
                     <button v-if="isAdmin" @click="abrirModalCrearProgramaConCarpeta(carpeta)" class="text-[10px] text-indigo-600 hover:underline block pt-1 font-bold">+ Añadir Programa en {{ carpeta }}</button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Main Panel: Detalles de la Carta Gantt -->
-            <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[600px] flex flex-col">
-              <template v-if="progSelect.carpeta && progSelect.mes">
+            <!-- Main Panel: Detalles de la Carta Gantt y Calendario -->
+            <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[650px] flex flex-col">
+              <template v-if="progSelect.id">
                 <div class="border-b pb-4 mb-4 flex flex-wrap items-end justify-between gap-4">
                   <div>
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-folder text-amber-400"></i> {{ progSelect.carpeta }}</span>
                     <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-regular fa-calendar text-rose-500"></i> Programa: {{ progSelect.mes }}</h3>
+                    <p class="text-xs font-mono font-bold text-indigo-700 mt-0.5"><i class="fa-solid fa-calendar-range mr-1"></i> Rango Oficial: {{ progSelect.fecha_inicio }} al {{ progSelect.fecha_fin }}</p>
                   </div>
                   <div class="flex-grow max-w-xs space-y-1 text-right">
-                    <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento Global:</span> <span>{{ getProgreso(progSelect.carpeta, progSelect.mes).pct }}%</span></div>
+                    <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento Programa:</span> <span>{{ getProgreso(progSelect.id).pct }}%</span></div>
                     <div class="w-full bg-slate-200 rounded-full h-2.5 shadow-inner overflow-hidden">
-                      <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" :style="{ width: getProgreso(progSelect.carpeta, progSelect.mes).pct + '%' }"></div>
+                      <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" :style="{ width: getProgreso(progSelect.id).pct + '%' }"></div>
                     </div>
-                    <div class="text-[9px] text-slate-500 font-semibold">{{ getProgreso(progSelect.carpeta, progSelect.mes).done }} de {{ getProgreso(progSelect.carpeta, progSelect.mes).total }} equipos realizados</div>
+                    <div class="text-[9px] text-slate-500 font-semibold">{{ getProgreso(progSelect.id).done }} de {{ getProgreso(progSelect.id).total }} equipos realizados</div>
                   </div>
                 </div>
 
-                <div class="flex-grow overflow-y-auto">
+                <div class="flex-grow overflow-y-auto space-y-4">
                   <table class="w-full text-left text-xs whitespace-nowrap">
-                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
+                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px] z-10">
                       <tr>
                         <th class="p-2.5">EQUIPO AFI</th>
                         <th class="p-2.5">TIPO TRABAJO</th>
-                        <th class="p-2.5">DETALLE HORAS</th>
-                        <th class="p-2.5">FECHA PROGRAMADA (PLAN)</th>
-                        <th class="p-2.5">ESTADO / CARTA GANTT</th>
+                        <th class="p-2.5">CONDICIÓN</th>
+                        <th class="p-2.5">FECHA INICIO</th>
+                        <th class="p-2.5">FECHA FIN</th>
+                        <th class="p-2.5">ESTADO / REPARACIÓN (ON/OFF)</th>
                         <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
                       </tr>
                     </thead>
                     <tbody class="divide-y bg-white text-[11px]">
-                      <tr v-for="item in obtenerItemsPrograma(progSelect.carpeta, progSelect.mes)" :key="item.id" :class="item.realizado ? 'bg-emerald-50/50' : 'hover:bg-slate-50'">
+                      <tr v-for="item in obtenerItemsPrograma(progSelect.id)" :key="item.id" :class="item.realizado ? 'bg-emerald-50/50' : 'hover:bg-slate-50'">
                         <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
                         <td class="p-2.5 font-semibold text-slate-700">{{ item.tipo }}</td>
-                        <td class="p-2.5"><span v-if="item.tipo==='Mantención'" class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono font-bold">{{ item.horas }}</span><span v-else class="text-slate-400">-</span></td>
-                        <td class="p-2.5 font-mono font-bold">{{ item.fecha_programada }}</td>
                         <td class="p-2.5">
-                          <span v-if="item.realizado" class="text-emerald-700 font-bold bg-emerald-100 px-2.5 py-1 rounded text-[10px] inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-check-circle"></i> Realizado ({{ item.fecha_realizada }})</span>
-                          <span v-else class="text-blue-700 font-bold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-clock"></i> Planificado (Pendiente)</span>
+                          <span :class="['px-2 py-0.5 rounded font-bold text-[10px]', item.condicion === 'Venta' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-blue-100 text-blue-800 border border-blue-200']">
+                            <i :class="['fa-solid mr-1', item.condicion === 'Venta' ? 'fa-hand-holding-dollar' : 'fa-file-contract']"></i> {{ item.condicion || 'Arriendo' }}
+                          </span>
                         </td>
-                        <td v-if="isAdmin" class="p-2.5 text-center space-x-2">
-                          <button v-if="!item.realizado" @click="marcarProgramaRealizado(item)" class="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded shadow-sm font-bold transition">Marcar Listo</button>
+                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ item.fecha_programada }}</td>
+                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ item.fecha_fin || '-' }}</td>
+                        <td class="p-2.5">
+                          <div class="flex items-center gap-3">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" v-model="item.realizado" @change="cambiarEstadoRealizadoItem(item)" class="sr-only peer">
+                              <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                            <span :class="['text-[10px] font-bold px-2 py-0.5 rounded', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600']">
+                              {{ item.realizado ? 'REPARADO (ON)' : 'PENDIENTE (OFF)' }}
+                            </span>
+                          </div>
+                        </td>
+                        <td v-if="isAdmin" class="p-2.5 text-center">
                           <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar del Programa"><i class="fa-solid fa-trash"></i></button>
                         </td>
                       </tr>
-                      <tr v-if="obtenerItemsPrograma(progSelect.carpeta, progSelect.mes).length === 0">
-                        <td colspan="6" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa. <button @click="abrirModalAsignarEquipoEnProgreso(progSelect.carpeta, progSelect.mes)" class="text-rose-600 underline font-bold">Añadir equipo ahora</button></td>
+                      <tr v-if="obtenerItemsPrograma(progSelect.id).length === 0">
+                        <td colspan="7" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa. <button @click="abrirModalAsignarEquipoEnProgresoEspecifico(progSelect.id)" class="text-rose-600 underline font-bold">Añadir equipo ahora</button></td>
                       </tr>
                     </tbody>
                   </table>
@@ -376,7 +401,7 @@
               </template>
               <div v-else class="flex-grow flex flex-col items-center justify-center text-slate-400 space-y-4">
                 <i class="fa-solid fa-calendar-days text-6xl opacity-20"></i>
-                <p class="font-bold">Selecciona una Carpeta y un Mes de Programa desde el menú lateral para ver su Carta Gantt y cumplimiento.</p>
+                <p class="font-bold">Selecciona una Carpeta y un Programa desde el menú lateral para ver su Carta Gantt, rango de fechas y barras de reparación ON/OFF.</p>
               </div>
             </div>
           </div>
@@ -825,23 +850,17 @@
               <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar rápidamente a un Programa</h4>
               <div class="flex flex-wrap items-end gap-3">
                 <div class="flex-grow">
-                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Carpeta</label>
-                  <select v-model="perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold" @change="perfilAsignacionProg.mes = ''">
-                    <option value="">-- Elige Carpeta --</option>
-                    <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
+                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Programa (Calendario)</label>
+                  <select v-model="perfilAsignacionProgId" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold">
+                    <option value="">-- Elige Programa / Calendario --</option>
+                    <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.mes }} ({{ p.fecha_inicio }} a {{ p.fecha_fin }})</option>
                   </select>
                 </div>
-                <div class="flex-grow">
-                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Mes / Programa</label>
-                  <select v-model="perfilAsignacionProg.mes" :disabled="!perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold">
-                    <option value="">-- Elige Mes --</option>
-                    <option v-for="m in obtenerMesesDeCarpeta(perfilAsignacionProg.carpeta)" :key="m" :value="m">{{ m }}</option>
-                  </select>
-                </div>
-                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Tipo</label><select v-model="perfilAsignacionProg.tipo" class="p-2 border rounded-lg bg-white font-semibold"><option value="Mantención">Mantención</option><option value="Reparación">Reparación</option></select></div>
-                <div v-if="perfilAsignacionProg.tipo === 'Mantención'"><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Horas</label><select v-model="perfilAsignacionProg.horas" class="p-2 border rounded-lg bg-white font-semibold"><option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option></select></div>
-                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Plan</label><input type="date" v-model="perfilAsignacionProg.fecha" class="p-2 border rounded-lg bg-white font-mono"></div>
-                <button @click="guardarAsignacionDesdePerfil" :disabled="!perfilAsignacionProg.carpeta || !perfilAsignacionProg.mes || !perfilAsignacionProg.fecha" class="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg transition shadow-md h-[36px] flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Añadir</button>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Tipo</label><select v-model="perfilAsignacionTipo" class="p-2 border rounded-lg bg-white font-semibold"><option value="Mantención">Mantención</option><option value="Reparación">Reparación</option></select></div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Condición</label><select v-model="perfilAsignacionCondicion" class="p-2 border rounded-lg bg-white font-semibold"><option value="Arriendo">Arriendo</option><option value="Venta">Venta</option></select></div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Inicio</label><input type="date" v-model="perfilAsignacionFechaInicio" class="p-2 border rounded-lg bg-white font-mono"></div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Fin</label><input type="date" v-model="perfilAsignacionFechaFin" class="p-2 border rounded-lg bg-white font-mono"></div>
+                <button @click="guardarAsignacionDesdePerfil" :disabled="!perfilAsignacionProgId || !perfilAsignacionFechaInicio" class="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg transition shadow-md h-[36px] flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Añadir</button>
               </div>
             </div>
 
@@ -915,7 +934,7 @@
           <div class="p-6 space-y-4 text-xs bg-slate-50">
             <div>
               <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre de la Carpeta</label>
-              <input type="text" v-model="formCarpetaNombre" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: PROGRAMA MANTENCION 2026">
+              <input type="text" v-model="formCarpetaNombre" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: PROGRAMA REPARACION">
             </div>
           </div>
           <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
@@ -925,11 +944,11 @@
         </div>
       </div>
 
-      <!-- MODAL 2: CREAR PROGRAMA (MES) -->
+      <!-- MODAL 2: CREAR PROGRAMA CON RANGO DE FECHAS -->
       <div v-if="showModalPrograma" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-md overflow-hidden flex flex-col">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
           <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
-            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Crear Programa / Mes</h3>
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Crear Programa / Calendario con Fechas</h3>
             <button @click="showModalPrograma=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 space-y-4 text-xs bg-slate-50">
@@ -941,37 +960,40 @@
               </select>
             </div>
             <div>
-              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa / Mes</label>
-              <input type="text" v-model="formProgMes.mes" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: ENERO 2026">
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa</label>
+              <input type="text" v-model="formProgMes.mes" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: AGOSTO/SEPTIEMBRE 2026">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Fecha Inicio Real</label>
+                <input type="date" v-model="formProgMes.fecha_inicio" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Fecha Fin Real</label>
+                <input type="date" v-model="formProgMes.fecha_fin" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
             </div>
           </div>
           <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
             <button @click="showModalPrograma=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-            <button @click="guardarNuevoProgramaMes" :disabled="!formProgMes.carpeta || !formProgMes.mes.trim()" class="px-5 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-md text-xs">Crear Programa</button>
+            <button @click="guardarNuevoProgramaMes" :disabled="!formProgMes.carpeta || !formProgMes.mes.trim() || !formProgMes.fecha_inicio || !formProgMes.fecha_fin" class="px-5 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-md text-xs">Crear Calendario del Programa</button>
           </div>
         </div>
       </div>
 
-      <!-- MODAL 3: ASIGNAR EQUIPO A PROGRAMA -->
+      <!-- MODAL 3: ASIGNAR EQUIPO A PROGRAMA CON CONDICIÓN Y FECHAS -->
       <div v-if="showModalAsignarEquipo" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
           <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
-            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Asignar Equipo a Programa</h3>
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Asignar Equipo al Calendario del Programa</h3>
             <button @click="showModalAsignarEquipo=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 space-y-4 text-xs bg-slate-50">
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Carpeta</label>
-              <select v-model="formAsignar.carpeta" @change="formAsignar.mes = ''" class="w-full p-2.5 border rounded-lg bg-white font-bold">
-                <option value="">-- Elige Carpeta --</option>
-                <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Programa / Mes</label>
-              <select v-model="formAsignar.mes" :disabled="!formAsignar.carpeta" class="w-full p-2.5 border rounded-lg bg-white font-bold">
+              <label class="block font-bold text-slate-700 mb-1">Seleccionar Programa / Calendario</label>
+              <select v-model="formAsignar.programa_id" class="w-full p-2.5 border rounded-lg bg-white font-bold">
                 <option value="">-- Elige Programa --</option>
-                <option v-for="m in obtenerMesesDeCarpeta(formAsignar.carpeta)" :key="m" :value="m">{{ m }}</option>
+                <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.mes }} ({{ p.fecha_inicio }} al {{ p.fecha_fin }})</option>
               </select>
             </div>
             <div>
@@ -988,21 +1010,27 @@
                   <option value="Mantención">Mantención</option><option value="Reparación">Reparación</option>
                 </select>
               </div>
-              <div v-if="formAsignar.tipo === 'Mantención'">
-                <label class="block font-bold text-slate-700 mb-1">Horas</label>
-                <select v-model="formAsignar.horas" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
-                  <option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Condición</label>
+                <select v-model="formAsignar.condicion" class="w-full p-2.5 border rounded-lg bg-white font-semibold text-blue-700">
+                  <option value="Arriendo">Arriendo</option><option value="Venta">Venta</option>
                 </select>
               </div>
             </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Fecha Programada (Plan)</label>
-              <input type="date" v-model="formAsignar.fecha" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Fecha Inicio (Trabajo)</label>
+                <input type="date" v-model="formAsignar.fecha_programada" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Fecha Fin (Trabajo)</label>
+                <input type="date" v-model="formAsignar.fecha_fin" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
             </div>
           </div>
           <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
             <button @click="showModalAsignarEquipo=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-            <button @click="guardarAsignacionEquipo" :disabled="!formAsignar.carpeta || !formAsignar.mes || !formAsignar.afi || !formAsignar.fecha" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md text-xs">Guardar en Programa</button>
+            <button @click="guardarAsignacionEquipo" :disabled="!formAsignar.programa_id || !formAsignar.afi || !formAsignar.fecha_programada" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md text-xs">Guardar en Calendario</button>
           </div>
         </div>
       </div>
@@ -1044,7 +1072,10 @@
         const dbEquipos = ref([]);
         const dbMovimientos = ref([]);
         const dbIntervenciones = ref([]);
-        const dbProgramas = ref([]); 
+        
+        // Estructuras para Programas y Calendarios Nuevos
+        const dbProgramasCalendarios = ref([]); // Tabla BD_PROGRAMAS_CALENDARIOS
+        const dbProgramasItems = ref([]); // Tabla BD_PROGRAMAS_ITEMS
 
         // Modales Perfil e Historial
         const showPerfilEquipoModal = ref(false);
@@ -1068,14 +1099,19 @@
         const formCarpetaNombre = ref('');
 
         const showModalPrograma = ref(false);
-        const formProgMes = ref({ carpeta: '', mes: '' });
+        const formProgMes = ref({ carpeta: '', mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' });
 
         const showModalAsignarEquipo = ref(false);
-        const formAsignar = ref({ carpeta: '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) });
+        const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', condicion: 'Arriendo', fecha_programada: '2026-08-01', fecha_fin: '2026-08-31' });
 
         const openFolders = ref({});
-        const progSelect = ref({ carpeta: '', mes: '' });
-        const perfilAsignacionProg = ref({ carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
+        const progSelect = ref({ id: null, carpeta: '', mes: '', fecha_inicio: '', fecha_fin: '' });
+        
+        const perfilAsignacionProgId = ref('');
+        const perfilAsignacionTipo = ref('Reparación');
+        const perfilAsignacionCondicion = ref('Arriendo');
+        const perfilAsignacionFechaInicio = ref('');
+        const perfilAsignacionFechaFin = ref('');
 
         // Filtros
         const filterInv = ref({ search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false });
@@ -1118,108 +1154,164 @@
           reader.readAsDataURL(file);
         };
 
-        // LÓGICA PROGRAMAS JERÁRQUICOS
+        // LÓGICA PROGRAMAS Y CALENDARIOS NUEVOS
         const listaCarpetasProgramas = computed(() => {
-          const carpetas = new Set(dbProgramas.value.map(p => p.carpeta).filter(Boolean));
+          const carpetas = new Set(dbProgramasCalendarios.value.map(p => p.carpeta).filter(Boolean));
           return Array.from(carpetas).sort();
         });
 
-        const obtenerMesesDeCarpeta = (carpeta) => {
-          const meses = new Set(dbProgramas.value.filter(p => p.carpeta === carpeta).map(p => p.mes).filter(Boolean));
-          return Array.from(meses).sort();
+        const obtenerProgramasDeCarpeta = (carpeta) => {
+          return dbProgramasCalendarios.value.filter(p => p.carpeta === carpeta).sort((a,b) => a.mes.localeCompare(b.mes));
         };
 
-        const obtenerItemsPrograma = (carpeta, mes) => {
-          return dbProgramas.value
-            .filter(p => p.carpeta === carpeta && p.mes === mes && p.afi)
+        const obtenerItemsPrograma = (programaId) => {
+          return dbProgramasItems.value
+            .filter(i => String(i.programa_id) === String(programaId))
             .sort((a,b) => new Date(a.fecha_programada).getTime() - new Date(b.fecha_programada).getTime());
         };
 
-        const getProgreso = (carpeta, mes) => {
-          const items = obtenerItemsPrograma(carpeta, mes);
+        const getProgreso = (programaId) => {
+          const items = obtenerItemsPrograma(programaId);
           if (items.length === 0) return { total: 0, done: 0, pct: 0 };
           const done = items.filter(i => i.realizado).length;
           return { total: items.length, done, pct: Math.round((done / items.length) * 100) };
         };
 
-        const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
-        const seleccionarPrograma = (carpeta, mes) => { progSelect.value = { carpeta, mes }; };
+        // Cumplimiento Global total de todos los programas
+        const cumplimientoGlobalTotal = computed(() => {
+          if (dbProgramasItems.value.length === 0) return 0;
+          const total = dbProgramasItems.value.length;
+          const done = dbProgramasItems.value.filter(i => i.realizado).length;
+          return Math.round((done / total) * 100);
+        });
 
-        // 3 Botones de Creación Jerárquicos
+        const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
+        
+        const seleccionarProgramaObj = (prog) => {
+          progSelect.value = { id: prog.id, carpeta: prog.carpeta, mes: prog.mes, fecha_inicio: prog.fecha_inicio, fecha_fin: prog.fecha_fin };
+        };
+
+        // 1. Crear Carpeta
         const abrirModalCrearCarpeta = () => { formCarpetaNombre.value = ''; showModalCarpeta.value = true; };
         const guardarNuevaCarpeta = async () => {
           const cName = formCarpetaNombre.value.trim().toUpperCase();
           if (!cName) return;
-          await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cName, mes: 'GENERAL', realizado: false }]);
+          // Creamos una carpeta por defecto guardando un calendario fantasma o registrando en memoria local / tabla
+          const { data, error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
+            carpeta: cName, mes: 'PROGRAMA GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30'
+          }]).select();
           await cargarDatosDesdeSupabase();
           showModalCarpeta.value = false;
           openFolders.value[cName] = true;
           alert(`¡Carpeta "${cName}" creada con éxito!`);
         };
 
-        const abrirModalCrearPrograma = () => { formProgMes.value = { carpeta: listaCarpetasProgramas.value[0] || '', mes: '' }; showModalPrograma.value = true; };
-        const abrirModalCrearProgramaConCarpeta = (carpeta) => { formProgMes.value = { carpeta, mes: '' }; showModalPrograma.value = true; };
-        
+        // 2. Crear Programa con Rango de Fechas
+        const abrirModalCrearPrograma = () => {
+          formProgMes.value = { carpeta: listaCarpetasProgramas.value[0] || 'PROGRAMA REPARACION', mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' };
+          showModalPrograma.value = true;
+        };
+        const abrirModalCrearProgramaConCarpeta = (carpeta) => {
+          formProgMes.value = { carpeta, mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' };
+          showModalPrograma.value = true;
+        };
+
         const guardarNuevoProgramaMes = async () => {
           const cp = formProgMes.value.carpeta;
           const ms = formProgMes.value.mes.trim().toUpperCase();
-          if (!cp || !ms) return;
-          await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cp, mes: ms, realizado: false }]);
+          const f_ini = formProgMes.value.fecha_inicio;
+          const f_fin = formProgMes.value.fecha_fin;
+          if (!cp || !ms || !f_ini || !f_fin) return;
+
+          const { data, error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
+            carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin
+          }]).select();
+
           await cargarDatosDesdeSupabase();
           showModalPrograma.value = false;
-          seleccionarPrograma(cp, ms);
-          alert(`¡Programa "${ms}" creado en la carpeta "${cp}"!`);
+          if (data && data[0]) seleccionarProgramaObj(data[0]);
+          alert(`¡Programa "${ms}" creado con rango ${f_ini} al ${f_fin}!`);
         };
 
+        // Eliminar Programa Completo
+        const eliminarProgramaCompleto = async (progId) => {
+          if (confirm("¿Estás seguro de eliminar este programa completo junto con sus equipos asignados?")) {
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('programa_id', progId);
+            await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').delete().eq('id', progId);
+            if (progSelect.value.id === progId) progSelect.value = { id: null, carpeta: '', mes: '', fecha_inicio: '', fecha_fin: '' };
+            await cargarDatosDesdeSupabase();
+            alert("¡Programa eliminado con éxito!");
+          }
+        };
+
+        // 3. Asignar Equipo con Condición y Fechas
         const abrirModalAsignarEquipo = () => {
-          formAsignar.value = { carpeta: progSelect.value.carpeta || listaCarpetasProgramas.value[0] || '', mes: progSelect.value.mes || '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
+          formAsignar.value = {
+            programa_id: progSelect.value.id || (dbProgramasCalendarios.value[0] ? dbProgramasCalendarios.value[0].id : ''),
+            afi: '', tipo: 'Reparación', condicion: 'Arriendo',
+            fecha_programada: progSelect.value.fecha_inicio || '2026-08-01', fecha_fin: progSelect.value.fecha_fin || '2026-09-30'
+          };
           showModalAsignarEquipo.value = true;
         };
-        const abrirModalAsignarEquipoEnProgreso = (carpeta, mes) => {
-          formAsignar.value = { carpeta, mes, afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
+
+        const abrirModalAsignarEquipoEnProgresoEspecifico = (progId) => {
+          const prog = dbProgramasCalendarios.value.find(p => p.id === progId);
+          formAsignar.value = {
+            programa_id: progId, afi: '', tipo: 'Reparación', condicion: 'Arriendo',
+            fecha_programada: prog?.fecha_inicio || '2026-08-01', fecha_fin: prog?.fecha_fin || '2026-09-30'
+          };
           showModalAsignarEquipo.value = true;
         };
 
         const guardarAsignacionEquipo = async () => {
           const payload = {
-            carpeta: formAsignar.value.carpeta, mes: formAsignar.value.mes, afi: formAsignar.value.afi,
-            tipo: formAsignar.value.tipo, horas: formAsignar.value.tipo === 'Mantención' ? formAsignar.value.horas : null,
-            fecha_programada: formAsignar.value.fecha, realizado: false
+            programa_id: formAsignar.value.programa_id,
+            afi: formAsignar.value.afi,
+            tipo: formAsignar.value.tipo,
+            condicion: formAsignar.value.condicion,
+            fecha_programada: formAsignar.value.fecha_programada,
+            fecha_fin: formAsignar.value.fecha_fin,
+            realizado: false
           };
-          const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
-          if (error) alert("Error al asignar equipo.");
+          const { error } = await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
+          if (error) alert("Error al asignar equipo: " + error.message);
           else {
             await cargarDatosDesdeSupabase();
             showModalAsignarEquipo.value = false;
-            seleccionarPrograma(formAsignar.value.carpeta, formAsignar.value.mes);
-            alert("¡Equipo asignado al programa con éxito!");
+            const prog = dbProgramasCalendarios.value.find(p => String(p.id) === String(formAsignar.value.programa_id));
+            if (prog) seleccionarProgramaObj(prog);
+            alert("¡Equipo asignado al calendario del programa con éxito!");
           }
         };
 
-        const marcarProgramaRealizado = async (item) => {
-          const fechaHoy = new Date().toISOString().substring(0,10);
-          await supabaseClient.from('BD_PROGRAMAS').update({ realizado: true, fecha_realizada: fechaHoy }).eq('id', item.id);
+        const cambiarEstadoRealizadoItem = async (item) => {
+          await supabaseClient.from('BD_PROGRAMAS_ITEMS').update({ realizado: item.realizado }).eq('id', item.id);
           await cargarDatosDesdeSupabase();
         };
 
-        const eliminarItemPrograma = async (id) => {
+        const eliminarItemPrograma = async (itemId) => {
           if (confirm("¿Eliminar este equipo del programa?")) {
-            await supabaseClient.from('BD_PROGRAMAS').delete().eq('id', id);
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('id', itemId);
             await cargarDatosDesdeSupabase();
           }
         };
 
         const guardarAsignacionDesdePerfil = async () => {
+          if (!perfilAsignacionProgId.value || !perfilAsignacionFechaInicio.value) return alert("Selecciona programa y fecha de inicio.");
           const payload = {
-            carpeta: perfilAsignacionProg.value.carpeta, mes: perfilAsignacionProg.value.mes, afi: perfilEquipo.value.afi,
-            tipo: perfilAsignacionProg.value.tipo, horas: perfilAsignacionProg.value.tipo === 'Mantención' ? perfilAsignacionProg.value.horas : null,
-            fecha_programada: perfilAsignacionProg.value.fecha, realizado: false
+            programa_id: perfilAsignacionProgId.value,
+            afi: perfilEquipo.value.afi,
+            tipo: perfilAsignacionTipo.value,
+            condicion: perfilAsignacionCondicion.value,
+            fecha_programada: perfilAsignacionFechaInicio.value,
+            fecha_fin: perfilAsignacionFechaFin.value || perfilAsignacionFechaInicio.value,
+            realizado: false
           };
-          const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
+          const { error } = await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
           if(error) alert("Error guardando asignación.");
           else {
             alert("¡Equipo asignado al programa con éxito!");
-            perfilAsignacionProg.value = { carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' };
+            perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
             await cargarDatosDesdeSupabase();
           }
         };
@@ -1342,8 +1434,13 @@
             }
 
             try {
-              const progData = await fetchAllRowsSupabase('BD_PROGRAMAS');
-              if (progData) dbProgramas.value = progData;
+              const calData = await fetchAllRowsSupabase('BD_PROGRAMAS_CALENDARIOS');
+              if (calData) dbProgramasCalendarios.value = calData;
+            } catch(e) {}
+
+            try {
+              const itemData = await fetchAllRowsSupabase('BD_PROGRAMAS_ITEMS');
+              if (itemData) dbProgramasItems.value = itemData;
             } catch(e) {}
 
             actualizarHorometrosDesdeHistorial();
@@ -1715,7 +1812,7 @@
         return {
           usuarioActivo, isAdmin, loginUser, loginPass, authError, currentTab, switchTab, dbUsuarios, nuevoUsuario, crearNuevoUsuario, eliminarUsuario,
           config, headerStyle, bodyStyle, primaryBtnStyle, guardarConfiguracionPersonalizada, subirNuevaFotoLogo, uploadFotoEquipo,
-          listaCausas, dbEquipos, dbMovimientos, dbIntervenciones, dbProgramas, countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
+          listaCausas, dbEquipos, dbMovimientos, dbIntervenciones, countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
           sortInventarioOrder, sortMovimientosOrder, sortHistorialOrder, sortAceitesOrder, resetFiltrosInventario, limpiarFiltrosHistorial, limpiarFiltrosMovimientos,
           filtrarYIrAInventario, verDetallePorAfiString, getEstadoText, getBadgeClass, filteredEquipos, filteredMovimientos, filteredIntervenciones, filteredAceitesRecords,
           listaTiposAceitesDisponibles, sumaTotalCantidadAceites, costoTotalAceitesFiltrados, exportarCSV, importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
@@ -1724,10 +1821,10 @@
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
           showModalCarpeta, formCarpetaNombre, abrirModalCrearCarpeta, guardarNuevaCarpeta,
-          showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes,
-          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoEnProgreso, guardarAsignacionEquipo,
-          listaCarpetasProgramas, obtenerMesesDeCarpeta, obtenerItemsPrograma, getProgreso, openFolders, toggleFolder, progSelect, seleccionarPrograma, marcarProgramaRealizado, eliminarItemPrograma,
-          perfilAsignacionProg, guardarAsignacionDesdePerfil, toggleFiltroCriticos
+          showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes, eliminarProgramaCompleto,
+          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoEnProgresoEspecifico, guardarAsignacionEquipo,
+          dbProgramasCalendarios, dbProgramasItems, listaCarpetasProgramas, obtenerProgramasDeCarpeta, obtenerItemsPrograma, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
+          perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos
         };
       }
     }).mount('#app');
