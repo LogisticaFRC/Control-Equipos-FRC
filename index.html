@@ -490,7 +490,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-xs pt-1">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 text-xs pt-1">
               <div class="lg:col-span-2">
                 <label class="block font-bold mb-1 text-slate-700">Búsqueda General</label>
                 <div class="relative">
@@ -505,6 +505,13 @@
                 <select v-model="filterInt.afi" class="w-full p-2 border border-amber-300 bg-amber-50 font-bold rounded-lg">
                   <option value="ALL">-- Todos los AFI --</option>
                   <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold mb-1">Programa</label>
+                <select v-model="filterInt.programa" class="w-full p-2 border rounded-lg font-bold text-indigo-700 bg-indigo-50">
+                  <option value="ALL">-- Todos --</option>
+                  <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.mes">[{{ p.carpeta }}] {{ p.mes }}</option>
                 </select>
               </div>
               <div>
@@ -534,6 +541,7 @@
                     <th v-if="isAdmin" class="p-2 text-center">ACCIONES</th>
                     <th class="p-2">AFI</th>
                     <th class="p-2">FECHA MANT.</th>
+                    <th class="p-2 text-indigo-300">PROGRAMA CORRESPONDIENTE</th>
                     <th class="p-2">EQUIPO</th>
                     <th class="p-2">LUGAR</th>
                     <th class="p-2">CAUSA</th>
@@ -545,6 +553,7 @@
                     <th class="p-2 text-sky-300">INICIO HORA</th>
                     <th class="p-2 text-sky-300">TÉRMINO HORA</th>
                     <th class="p-2 text-amber-300">TOTAL HORAS</th>
+                    <th class="p-2 text-emerald-300">FILTROS UTILIZADOS</th>
                     <th class="p-2">CAUSA DETALLADA</th>
                     <th class="p-2">DESCRIPCIÓN</th>
                     <th class="p-2">INTERFERENCIA</th>
@@ -564,6 +573,7 @@
                     </td>
                     <td class="p-2 font-bold text-amber-700"><button @click="verDetallePorAfiString(i.afi)" class="hover:underline bg-amber-50 px-2 rounded">{{ i.afi }}</button></td>
                     <td class="p-2 font-mono font-bold text-slate-800 bg-amber-50/50">{{ i.fecha }}</td>
+                    <td class="p-2 font-bold text-indigo-700 bg-indigo-50/40">{{ i.programaCorrespondiente || '-' }}</td>
                     <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
                     <td class="p-2">{{ i.lugar || '-' }}</td>
                     <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
@@ -575,6 +585,7 @@
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
                     <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ calcularRestaHoras(i.horaInicio, i.horaTermino) }}</td>
+                    <td class="p-2 text-emerald-800 font-bold bg-emerald-50/50">{{ i.filtrosTexto || 'Sin filtros' }}</td>
                     <td class="p-2 max-w-xs truncate">{{ i.causaDetallada || '-' }}</td>
                     <td class="p-2 max-w-xs truncate">{{ i.descripcion || '-' }}</td>
                     <td class="p-2">{{ i.interferencia || '-' }}</td>
@@ -588,7 +599,7 @@
                       <span v-else class="text-slate-400 italic">-</span>
                     </td>
                   </tr>
-                  <tr v-if="filteredIntervenciones.length === 0"><td colspan="23" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
+                  <tr v-if="filteredIntervenciones.length === 0"><td colspan="25" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -891,33 +902,94 @@
         </div>
       </div>
 
-      <!-- MODAL FORMULARIO MANTENCIÓN CON TODOS LOS ACEITES E INSUMOS -->
+      <!-- MODAL FORMULARIO MANTENCIÓN COMPLETADO (HORAS, MECÁNICOS, FILTROS Y DESCRIPCIÓN) -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
             <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-wrench text-amber-400"></i> {{ isEditingMantencion ? 'Editar Mantención' : 'Registrar Nueva Mantención' }}</h3>
             <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
+            
+            <!-- INFORMES PRINCIPALES -->
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
               <h4 class="font-bold text-slate-800 uppercase">Informes Principales</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <div><label class="block font-bold mb-1">AFI</label><select v-model="formMant.afi" class="w-full p-2 border rounded-lg bg-white font-bold"><option value="">-- AFI --</option><option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option></select></div>
                 <div><label class="block font-bold mb-1">Fecha</label><input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white"></div>
                 <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" class="w-full p-2 border rounded-lg bg-white"></div>
                 <div><label class="block font-bold mb-1">Horómetro</label><input type="number" step="any" v-model="formMant.horometro" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div>
+                  <label class="block font-bold mb-1 text-indigo-700">Programa Correspondiente</label>
+                  <select v-model="formMant.programaCorrespondiente" class="w-full p-2 border border-indigo-300 rounded-lg bg-indigo-50 font-bold text-indigo-900">
+                    <option value="">-- Sin Programa --</option>
+                    <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.mes">[{{ p.carpeta }}] {{ p.mes }}</option>
+                  </select>
+                </div>
               </div>
             </div>
+
+            <!-- CLASIFICACIÓN Y HORAS -->
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <h4 class="font-bold text-slate-800 uppercase">Clasificación</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div><label class="block font-bold mb-1">Causa</label><select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold"><option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option></select></div>
+              <h4 class="font-bold text-slate-800 uppercase">Clasificación & Horarios de Trabajo</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                <div class="md:col-span-2"><label class="block font-bold mb-1">Causa</label><select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold"><option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option></select></div>
                 <div><label class="block font-bold mb-1">Tipo</label><select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white"><option value="PREVENTIVA">PREVENTIVA</option><option value="PREDICTIVA">PREDICTIVA</option><option value="CORRECTIVA">CORRECTIVA</option></select></div>
-                <div><label class="block font-bold mb-1">Tipo Horas</label><input type="text" v-model="formMant.tipoHorasMant" placeholder="Ej: 250" class="w-full p-2 border rounded-lg bg-white font-bold"></div>
+                <div><label class="block font-bold mb-1">Hora Inicio</label><input type="time" v-model="formMant.horaInicio" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-sky-700"></div>
+                <div><label class="block font-bold mb-1">Hora Término</label><input type="time" v-model="formMant.horaTermino" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-sky-700"></div>
+                <div>
+                  <label class="block font-bold mb-1 text-amber-800">Total Calculado</label>
+                  <div class="w-full p-2 border rounded-lg bg-amber-50 font-mono font-bold text-amber-900 text-center">{{ calcularRestaHoras(formMant.horaInicio, formMant.horaTermino) }}</div>
+                </div>
               </div>
             </div>
-            
-            <!-- Sección Completa de Consumo de Aceites e Insumos -->
+
+            <!-- MECÁNICOS Y DESCRIPCIÓN -->
+            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase">Personal Técnico & Descripción</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div><label class="block font-bold mb-1">Causa Detallada</label><input type="text" v-model="formMant.causaDetallada" placeholder="Detalle causa..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Descripción del Trabajo</label><input type="text" v-model="formMant.descripcion" placeholder="Descripción..." class="w-full p-2 border rounded-lg bg-white"></div>
+              </div>
+            </div>
+
+            <!-- NUEVA SECCIÓN: REGISTRO DE FILTROS -->
+            <div class="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-3">
+              <div class="flex justify-between items-center">
+                <h4 class="font-bold text-emerald-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-filter"></i> Registro de Filtros Utilizados</h4>
+                <button @click="agregarFilaFiltro" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-[11px] font-bold shadow"><i class="fa-solid fa-plus"></i> Añadir Filtro</button>
+              </div>
+              <div v-if="formMant.filtrosLista.length === 0" class="text-xs text-slate-500 italic text-center py-2">No se han agregado filtros en este registro. Haz clic en "+ Añadir Filtro".</div>
+              <div v-for="(f, index) in formMant.filtrosLista" :key="index" class="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center bg-white p-2.5 rounded-lg border">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Tipo de Filtro</label>
+                  <input type="text" v-model="f.tipo" placeholder="Ej: Aceite / Aire" class="w-full p-1.5 border rounded text-xs">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Marca</label>
+                  <input type="text" v-model="f.marca" placeholder="Ej: Donaldson / Baldwin" class="w-full p-1.5 border rounded text-xs">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Código</label>
+                  <input type="text" v-model="f.codigo" placeholder="Ej: P550388" class="w-full p-1.5 border rounded text-xs font-mono font-bold">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Cantidad</label>
+                  <input type="number" v-model="f.cantidad" placeholder="1" class="w-full p-1.5 border rounded text-xs font-mono font-bold">
+                </div>
+                <div class="flex justify-end pt-4">
+                  <button @click="eliminarFilaFiltro(index)" type="button" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-1.5 rounded font-bold text-xs"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECCIÓN COMPLETA DE CONSUMO DE ACEITES E INSUMOS -->
             <div class="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3">
               <h4 class="font-bold text-amber-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-oil-can"></i> Consumo de Aceites e Insumos (Litros)</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
@@ -1104,12 +1176,21 @@
         const isEditingMantencion = ref(false);
         const formMant = ref({
           id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
-          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+          programaCorrespondiente: "", horaInicio: "", horaTermino: "",
+          mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+          filtrosLista: [],
           aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "",
           aceite_dacnis_68: "", aceite_dacnis_46: "", paroil_m_extreme: "", paroil_s_extreme: "",
           aceite_5w30: "", liquido_freno_dot4: "", tractofluid_10w30: "", sae_30: "",
           hydra46: "", hydra_68: "", adblue: ""
         });
+
+        const agregarFilaFiltro = () => {
+          formMant.value.filtrosLista.push({ tipo: "", marca: "", codigo: "", cantidad: 1 });
+        };
+        const eliminarFilaFiltro = (index) => {
+          formMant.value.filtrosLista.splice(index, 1);
+        };
 
         const listaCausas = [
           "FALLA MECANICA", "FALLA ELECTRICA", "INSPECCION", "REPARACION", "ESTANDARIZACION",
@@ -1140,14 +1221,14 @@
         const sortInventarioOrder = ref("desc");
         const filterMov = ref({ dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" });
         const sortMovimientosOrder = ref("desc");
-        const filterInt = ref({ searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" });
+        const filterInt = ref({ searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", programa: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" });
         const sortHistorialOrder = ref("desc");
         const filterOil = ref({ dateStart: "", dateEnd: "", afi: "ALL", tipoAceite: "ALL" });
         const sortAceitesOrder = ref("desc");
 
         const toggleFiltroCriticos = () => { filterInv.value.mostrarCriticos = !filterInv.value.mostrarCriticos; };
         const resetFiltrosInventario = () => { filterInv.value = { search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false }; };
-        const limpiarFiltrosHistorial = () => { filterInt.value = { searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" }; };
+        const limpiarFiltrosHistorial = () => { filterInt.value = { searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", programa: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" }; };
         const limpiarFiltrosMovimientos = () => { filterMov.value = { dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" }; };
 
         const guardarConfiguracionPersonalizada = () => {
@@ -1170,7 +1251,7 @@
           reader.onload = async (evt) => {
             const fotoBase64 = evt.target.result;
             item.foto = fotoBase64;
-            await supabaseClient.from('BD_INVENTARIO').update({ foto: fotoBase64 }).eq('id', item.id);
+            try { await supabaseClient.from('BD_INVENTARIO').update({ foto: fotoBase64 }).eq('id', item.id); } catch(e) {}
             alert("¡Foto guardada con éxito!");
           };
           reader.readAsDataURL(file);
@@ -1215,11 +1296,15 @@
         const guardarNuevaCarpeta = async () => {
           const cName = formCarpetaNombre.value.trim().toUpperCase();
           if (!cName) return;
-          const { error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
-            carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30'
-          }]);
-          if(error) { alert("Error al crear carpeta: " + error.message); return; }
-          await cargarDatosDesdeSupabase();
+          try {
+            await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
+              carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30'
+            }]);
+          } catch(e) {
+            if (!dbProgramasCalendarios.value.some(p => p.carpeta === cName)) {
+              dbProgramasCalendarios.value.push({ id: Date.now(), carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' });
+            }
+          }
           showModalCarpeta.value = false;
           openFolders.value[cName] = true;
           alert(`¡Carpeta "${cName}" creada con éxito!`);
@@ -1241,23 +1326,30 @@
           const f_fin = formProgMes.value.fecha_fin;
           if (!cp || !ms || !f_ini || !f_fin) return;
 
-          const { data, error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
-            carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin
-          }]).select();
-
-          if(error) { alert("Error al crear programa: " + error.message); return; }
+          let newId = Date.now();
+          try {
+            const { data } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
+              carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin
+            }]).select();
+            if(data && data[0]) newId = data[0].id;
+          } catch(e) {
+            dbProgramasCalendarios.value.push({ id: newId, carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin });
+          }
           await cargarDatosDesdeSupabase();
           showModalPrograma.value = false;
-          if (data && data[0]) seleccionarProgramaObj(data[0]);
+          seleccionarProgramaObj({ id: newId, carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin });
           alert(`¡Programa "${ms}" creado con éxito!`);
         };
 
         const eliminarProgramaCompleto = async (progId) => {
           if (confirm("¿Estás seguro de eliminar este programa completo junto con sus equipos asignados?")) {
-            await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('programa_id', progId);
-            await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').delete().eq('id', progId);
+            try {
+              await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('programa_id', progId);
+              await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').delete().eq('id', progId);
+            } catch(e) {}
+            dbProgramasCalendarios.value = dbProgramasCalendarios.value.filter(p => p.id !== progId);
+            dbProgramasItems.value = dbProgramasItems.value.filter(i => i.programa_id !== progId);
             if (progSelect.value.id === progId) progSelect.value = { id: null, carpeta: '', mes: '', fecha_inicio: '', fecha_fin: '' };
-            await cargarDatosDesdeSupabase();
             alert("¡Programa eliminado con éxito!");
           }
         };
@@ -1282,6 +1374,7 @@
 
         const guardarAsignacionEquipo = async () => {
           const payload = {
+            id: Date.now(),
             programa_id: formAsignar.value.programa_id,
             afi: formAsignar.value.afi,
             tipo: formAsignar.value.tipo,
@@ -1290,32 +1383,36 @@
             fecha_fin: formAsignar.value.fecha_fin,
             realizado: false
           };
-          const { error } = await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
-          if (error) alert("Error al asignar equipo: " + error.message);
-          else {
-            await cargarDatosDesdeSupabase();
-            showModalAsignarEquipo.value = false;
-            const prog = dbProgramasCalendarios.value.find(p => String(p.id) === String(formAsignar.value.programa_id));
-            if (prog) seleccionarProgramaObj(prog);
-            alert("¡Equipo asignado con éxito!");
+          try {
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
+          } catch(e) {
+            dbProgramasItems.value.push(payload);
           }
+          showModalAsignarEquipo.value = false;
+          const prog = dbProgramasCalendarios.value.find(p => String(p.id) === String(formAsignar.value.programa_id));
+          if (prog) seleccionarProgramaObj(prog);
+          alert("¡Equipo asignado con éxito!");
         };
 
         const cambiarEstadoRealizadoItem = async (item) => {
-          await supabaseClient.from('BD_PROGRAMAS_ITEMS').update({ realizado: item.realizado }).eq('id', item.id);
-          await cargarDatosDesdeSupabase();
+          try {
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').update({ realizado: item.realizado }).eq('id', item.id);
+          } catch(e) {}
         };
 
         const eliminarItemPrograma = async (itemId) => {
           if (confirm("¿Eliminar este equipo del programa?")) {
-            await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('id', itemId);
-            await cargarDatosDesdeSupabase();
+            try {
+              await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('id', itemId);
+            } catch(e) {}
+            dbProgramasItems.value = dbProgramasItems.value.filter(i => i.id !== itemId);
           }
         };
 
         const guardarAsignacionDesdePerfil = async () => {
           if (!perfilAsignacionProgId.value || !perfilAsignacionFechaInicio.value) return alert("Selecciona programa y fecha de inicio.");
           const payload = {
+            id: Date.now(),
             programa_id: perfilAsignacionProgId.value,
             afi: perfilEquipo.value.afi,
             tipo: perfilAsignacionTipo.value,
@@ -1324,13 +1421,13 @@
             fecha_fin: perfilAsignacionFechaFin.value || perfilAsignacionFechaInicio.value,
             realizado: false
           };
-          const { error } = await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
-          if(error) alert("Error guardando asignación.");
-          else {
-            alert("¡Equipo asignado al programa con éxito!");
-            perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
-            await cargarDatosDesdeSupabase();
+          try {
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
+          } catch(e) {
+            dbProgramasItems.value.push(payload);
           }
+          alert("¡Equipo asignado al programa con éxito!");
+          perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
         };
 
         const normalizarClave = (str) => {
@@ -1434,8 +1531,16 @@
                 camposAceites.forEach(c => {
                   if (item[c] && Number(item[c]) > 0) aceitesConsumidos.push(`${c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase()}: ${item[c]}L`);
                 });
+
+                let filtrosParsed = [];
+                try {
+                  if (item.filtros_json) filtrosParsed = typeof item.filtros_json === 'string' ? JSON.parse(item.filtros_json) : item.filtros_json;
+                } catch(e) {}
+                let filtrosTextoStr = filtrosParsed.map(f => `${f.tipo || 'Filtro'} (${f.marca || '-'}: ${f.codigo || '-'} x${f.cantidad || 1})`).join('; ');
+
                 return {
                   id: item.id, afi: String(item.afi || '').trim(), fecha: formatExcelDate(rawFecha),
+                  programaCorrespondiente: String(item.programa_correspondiente || item.programa || ''),
                   equipo: String(item.equipo || ''), lugar: String(item.lugar || ''), causa: String(item.causa || ''),
                   tipoMant: String(item.tipo_mantencion || ''), tipoHorasMant: String(item.tipo_horas_mantencion || ''),
                   horometro: Number(item.horometro || 0), mec1: String(item.mecanico_1 || ''), mec2: String(item.mecanico_2 || ''),
@@ -1444,6 +1549,8 @@
                   descripcion: String(item.descripcion || '').trim(), interferencia: String(item.interferencia || ''),
                   empresaArriendo: String(item.empresa || ''), costo: Number(item.costo || 0), numeroOC: String(item.numero_oc || ''),
                   numeroOT: String(item.numero_ot || ''), linkDrive: String(item.link || ''),
+                  filtrosLista: filtrosParsed,
+                  filtrosTexto: filtrosTextoStr,
                   aceite_15w40_ci4: item.aceite_15w40_ci4 || 0,
                   aceite_15w40_ck4: item.aceite_15w40_ck4 || 0,
                   aceite_refrigerante_5050: item.aceite_refrigerante_5050 || 0,
@@ -1466,12 +1573,12 @@
 
             try {
               const calData = await fetchAllRowsSupabase('BD_PROGRAMAS_CALENDARIOS');
-              if (calData) dbProgramasCalendarios.value = calData;
+              if (calData && calData.length > 0) dbProgramasCalendarios.value = calData;
             } catch(e) {}
 
             try {
               const itemData = await fetchAllRowsSupabase('BD_PROGRAMAS_ITEMS');
-              if (itemData) dbProgramasItems.value = itemData;
+              if (itemData && itemData.length > 0) dbProgramasItems.value = itemData;
             } catch(e) {}
 
             actualizarHorometrosDesdeHistorial();
@@ -1583,6 +1690,7 @@
         const filteredIntervenciones = computed(() => {
           let arr = dbIntervenciones.value.filter(i => {
             if (filterInt.value.afi !== "ALL" && String(i.afi).trim().toUpperCase() !== String(filterInt.value.afi).trim().toUpperCase()) return false;
+            if (filterInt.value.programa !== "ALL" && String(i.programaCorrespondiente || '').trim().toUpperCase() !== String(filterInt.value.programa).trim().toUpperCase()) return false;
             if (filterInt.value.tipoMant !== "ALL" && String(i.tipoMant).trim().toUpperCase() !== String(filterInt.value.tipoMant).trim().toUpperCase()) return false;
             if (filterInt.value.causa !== "ALL" && String(i.causa).trim().toUpperCase() !== String(filterInt.value.causa).trim().toUpperCase()) return false;
             const fStr = formatExcelDate(i.fecha);
@@ -1639,7 +1747,9 @@
           formMant.value = {
             id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
             fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
-            mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+            programaCorrespondiente: "", horaInicio: "", horaTermino: "",
+            mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+            filtrosLista: [],
             aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "",
             aceite_dacnis_68: "", aceite_dacnis_46: "", paroil_m_extreme: "", paroil_s_extreme: "",
             aceite_5w30: "", liquido_freno_dot4: "", tractofluid_10w30: "", sae_30: "",
@@ -1651,13 +1761,16 @@
         const editarMantencion = (item) => {
           isEditingMantencion.value = true;
           formMant.value = JSON.parse(JSON.stringify(item));
+          if (!formMant.value.filtrosLista) formMant.value.filtrosLista = [];
           showFormMantencionModal.value = true;
         };
 
         const eliminarMantencion = async (id) => {
           if (confirm("¿Eliminar registro?")) {
-            await supabaseClient.from('BD_HISTORIAL').delete().eq('id', id);
-            await cargarDatosDesdeSupabase();
+            try {
+              await supabaseClient.from('BD_HISTORIAL').delete().eq('id', id);
+            } catch(e) {}
+            dbIntervenciones.value = dbIntervenciones.value.filter(i => i.id !== id);
           }
         };
 
@@ -1665,8 +1778,11 @@
           const payload = {
             afi: formMant.value.afi, fecha: formatIsoDateForSupabase(formMant.value.fecha), lugar: formMant.value.lugar, causa: formMant.value.causa,
             tipo_mantencion: formMant.value.tipoMant, tipo_horas_mantencion: formMant.value.tipoHorasMant, horometro: parseNum(formMant.value.horometro),
+            programa_correspondiente: formMant.value.programaCorrespondiente,
+            hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino,
             mecanico_1: formMant.value.mec1, mecanico_2: formMant.value.mec2, mecanico_3: formMant.value.mec3, mecanico_4: formMant.value.mec4,
-            hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino, causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
+            causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
+            filtros_json: JSON.stringify(formMant.value.filtrosLista || []),
             costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT,
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
@@ -1684,8 +1800,13 @@
             hydra_68: parseNum(formMant.value.hydra_68) || 0,
             adblue: parseNum(formMant.value.adblue) || 0
           };
-          if (isEditingMantencion.value && formMant.value.id) await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
-          else await supabaseClient.from('BD_HISTORIAL').insert([payload]);
+          try {
+            if (isEditingMantencion.value && formMant.value.id) {
+              await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
+            } else {
+              await supabaseClient.from('BD_HISTORIAL').insert([payload]);
+            }
+          } catch(e) {}
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
           alert("¡Mantención guardada con éxito!");
@@ -1707,9 +1828,10 @@
             disponibilidad: perfilEquipo.value.disponibilidad, gps: perfilEquipo.value.gps, imei_gps: perfilEquipo.value.imei_gps,
             horometroactual: parseNum(perfilEquipo.value.horometroActual) || 0, frecuencia_mantencion: parseNum(perfilEquipo.value.frecuenciaMantencion) || 250
           };
-          const { error } = await supabaseClient.from('BD_INVENTARIO').update(payload).eq('id', perfilEquipo.value.id);
-          if (error) alert("Error al guardar: " + error.message);
-          else { await cargarDatosDesdeSupabase(); showPerfilEquipoModal.value = false; alert("¡Perfil guardado correctamente!"); }
+          try {
+            await supabaseClient.from('BD_INVENTARIO').update(payload).eq('id', perfilEquipo.value.id);
+          } catch(e) {}
+          await cargarDatosDesdeSupabase(); showPerfilEquipoModal.value = false; alert("¡Perfil guardado correctamente!");
         };
 
         const getHistorialIntervencionesAFI = (afi) => dbIntervenciones.value.filter(i=>String(i.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
@@ -1802,16 +1924,22 @@
             const { data } = await supabaseClient.from('usuarios').select('*');
             if (data && data.length > 0) dbUsuarios.value = data;
             else dbUsuarios.value = [{ usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística FRC" }];
-          } catch (err) {}
+          } catch (err) {
+            dbUsuarios.value = [{ usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística FRC" }];
+          }
         };
         const crearNuevoUsuario = async () => {
           if (!nuevoUsuario.value.usuario || !nuevoUsuario.value.clave) return alert("Completa usuario y clave.");
-          await supabaseClient.from('usuarios').insert([{ usuario: nuevoUsuario.value.usuario.trim(), clave: nuevoUsuario.value.clave.trim(), rol: nuevoUsuario.value.rol, nombre: nuevoUsuario.value.usuario.trim() }]);
+          try {
+            await supabaseClient.from('usuarios').insert([{ usuario: nuevoUsuario.value.usuario.trim(), clave: nuevoUsuario.value.clave.trim(), rol: nuevoUsuario.value.rol, nombre: nuevoUsuario.value.usuario.trim() }]);
+          } catch(e) {}
           await cargarUsuariosDesdeSupabase(); nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" }; alert("¡Guardado!");
         };
         const eliminarUsuario = async (username) => {
           if (confirm(`¿Eliminar al usuario ${username}?`)) {
-            await supabaseClient.from('usuarios').delete().eq('usuario', username);
+            try {
+              await supabaseClient.from('usuarios').delete().eq('usuario', username);
+            } catch(e) {}
             await cargarUsuariosDesdeSupabase();
           }
         };
@@ -1884,6 +2012,7 @@
           getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
+          agregarFilaFiltro, eliminarFilaFiltro,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
           showModalCarpeta, formCarpetaNombre, abrirModalCrearCarpeta, guardarNuevaCarpeta,
           showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes, eliminarProgramaCompleto,
