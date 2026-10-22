@@ -638,7 +638,7 @@
                 <div class="w-10 h-10 rounded-full bg-amber-200/60 text-amber-700 flex items-center justify-center text-lg"><i class="fa-solid fa-clipboard-list"></i></div>
               </div>
               <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
-                <div><p class="text-[11px] font-bold uppercase text-blue-800">Suma Total Cantidad</p><h3 class="text-xl font-bold text-blue-900 mt-1 font-mono">{{ sumaTotalCantidadAceites.toLocaleString('es-CL', { maximumFractionDigits: 2 }) }} L</h3></div>
+                <div><p class="text-[11px] font-bold uppercase text-blue-800">Suma Total Cantidad</p><h3 class="text-xl font-bold text-blue-900 mt-1 font-mono">{{ sumaTotalLitrosAceites.toLocaleString('es-CL', { maximumFractionDigits: 2 }) }} L</h3></div>
                 <div class="w-10 h-10 rounded-full bg-blue-200/60 text-blue-700 flex items-center justify-center text-lg"><i class="fa-solid fa-calculator"></i></div>
               </div>
               <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
@@ -891,7 +891,7 @@
         </div>
       </div>
 
-      <!-- MODAL FORMULARIO MANTENCIÓN -->
+      <!-- MODAL FORMULARIO MANTENCIÓN CON CAMPOS DE ACEITES -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
@@ -914,6 +914,17 @@
                 <div><label class="block font-bold mb-1">Causa</label><select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold"><option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option></select></div>
                 <div><label class="block font-bold mb-1">Tipo</label><select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white"><option value="PREVENTIVA">PREVENTIVA</option><option value="PREDICTIVA">PREDICTIVA</option><option value="CORRECTIVA">CORRECTIVA</option></select></div>
                 <div><label class="block font-bold mb-1">Tipo Horas</label><input type="text" v-model="formMant.tipoHorasMant" placeholder="Ej: 250" class="w-full p-2 border rounded-lg bg-white font-bold"></div>
+              </div>
+            </div>
+            <!-- Sección de Consumo de Aceites (5 principales) -->
+            <div class="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3">
+              <h4 class="font-bold text-amber-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-oil-can"></i> Consumo de Aceites e Insumos (Litros)</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 15W40 CI-4 (L)</label><input type="number" step="any" v-model="formMant.aceite_15w40_ci4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 15W40 CK-4 (L)</label><input type="number" step="any" v-model="formMant.aceite_15w40_ck4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Refrigerante 50/50 (L)</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_5050" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 46 (L)</label><input type="number" step="any" v-model="formMant.hydra46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 80W90 (L)</label><input type="number" step="any" v-model="formMant.aceite_80w90" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
               </div>
             </div>
           </div>
@@ -1084,7 +1095,8 @@
         const isEditingMantencion = ref(false);
         const formMant = ref({
           id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
-          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: ""
+          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+          aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", hydra46: "", aceite_80w90: ""
         });
 
         const listaCausas = [
@@ -1177,7 +1189,6 @@
           return { total: items.length, done, pct: Math.round((done / items.length) * 100) };
         };
 
-        // Cumplimiento Global total de todos los programas
         const cumplimientoGlobalTotal = computed(() => {
           if (dbProgramasItems.value.length === 0) return 0;
           const total = dbProgramasItems.value.length;
@@ -1196,10 +1207,10 @@
         const guardarNuevaCarpeta = async () => {
           const cName = formCarpetaNombre.value.trim().toUpperCase();
           if (!cName) return;
-          // Creamos una carpeta por defecto guardando un calendario fantasma o registrando en memoria local / tabla
           const { data, error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
             carpeta: cName, mes: 'PROGRAMA GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30'
           }]).select();
+          if(error) { alert("Error al crear carpeta: " + error.message); return; }
           await cargarDatosDesdeSupabase();
           showModalCarpeta.value = false;
           openFolders.value[cName] = true;
@@ -1227,13 +1238,13 @@
             carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin
           }]).select();
 
+          if(error) { alert("Error al crear programa: " + error.message); return; }
           await cargarDatosDesdeSupabase();
           showModalPrograma.value = false;
           if (data && data[0]) seleccionarProgramaObj(data[0]);
-          alert(`¡Programa "${ms}" creado con rango ${f_ini} al ${f_fin}!`);
+          alert(`¡Programa "${ms}" creado con éxito!`);
         };
 
-        // Eliminar Programa Completo
         const eliminarProgramaCompleto = async (progId) => {
           if (confirm("¿Estás seguro de eliminar este programa completo junto con sus equipos asignados?")) {
             await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('programa_id', progId);
@@ -1244,12 +1255,11 @@
           }
         };
 
-        // 3. Asignar Equipo con Condición y Fechas
         const abrirModalAsignarEquipo = () => {
           formAsignar.value = {
             programa_id: progSelect.value.id || (dbProgramasCalendarios.value[0] ? dbProgramasCalendarios.value[0].id : ''),
             afi: '', tipo: 'Reparación', condicion: 'Arriendo',
-            fecha_programada: progSelect.value.fecha_inicio || '2026-08-01', fecha_fin: progSelect.value.fecha_fin || '2026-09-30'
+            fecha_programada: progSelect.value.fecha_inicio || '2026-08-01', fecha_fin: progSelect.value.fecha_fin || '2026-08-31'
           };
           showModalAsignarEquipo.value = true;
         };
@@ -1280,7 +1290,7 @@
             showModalAsignarEquipo.value = false;
             const prog = dbProgramasCalendarios.value.find(p => String(p.id) === String(formAsignar.value.programa_id));
             if (prog) seleccionarProgramaObj(prog);
-            alert("¡Equipo asignado al calendario del programa con éxito!");
+            alert("¡Equipo asignado con éxito!");
           }
         };
 
@@ -1428,6 +1438,11 @@
                   descripcion: String(item.descripcion || '').trim(), interferencia: String(item.interferencia || ''),
                   empresaArriendo: String(item.empresa || ''), costo: Number(item.costo || 0), numeroOC: String(item.numero_oc || ''),
                   numeroOT: String(item.numero_ot || ''), linkDrive: String(item.link || ''),
+                  aceite_15w40_ci4: item.aceite_15w40_ci4 || 0,
+                  aceite_15w40_ck4: item.aceite_15w40_ck4 || 0,
+                  aceite_refrigerante_5050: item.aceite_refrigerante_5050 || 0,
+                  hydra46: item.hydra46 || 0,
+                  aceite_80w90: item.aceite_80w90 || 0,
                   aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo"
                 };
               });
@@ -1460,7 +1475,6 @@
 
           dbEquipos.value.forEach(eq => {
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
-            
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             const histMantenciones = histConHorometro.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT') || String(i.causa).toUpperCase().includes('MANTENCION'));
 
@@ -1567,7 +1581,7 @@
 
         const listaTiposAceitesDisponibles = computed(() => {
           const setAceites = new Set();
-          dbIntervenciones.value.forEach(i => { if(i.aceites && i.aceites !== 'Sin consumo') setAceites.add(i.aceites); });
+          dbIntervenciones.value.forEach(i => { if(i.aceites && i.aceites !== 'Sin consumo') { i.aceites.split('; ').forEach(a => setAceites.add(a.split(':')[0].trim())); } });
           return Array.from(setAceites);
         });
 
@@ -1578,13 +1592,26 @@
             const fStr = formatExcelDate(i.fecha);
             if (filterOil.value.dateStart && fStr < filterOil.value.dateStart) return false;
             if (filterOil.value.dateEnd && fStr > filterOil.value.dateEnd) return false;
+            if (filterOil.value.tipoAceite !== "ALL" && !i.aceites.toUpperCase().includes(filterOil.value.tipoAceite.toUpperCase())) return false;
             return true;
           });
           arr.sort((a, b) => sortAceitesOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
           return arr;
         });
 
-        const sumaTotalCantidadAceites = computed(() => filteredAceitesRecords.value.length);
+        const sumaTotalLitrosAceites = computed(() => {
+          let total = 0;
+          filteredAceitesRecords.value.forEach(i => {
+            if(i.aceites && i.aceites !== 'Sin consumo') {
+              i.aceites.split('; ').forEach(part => {
+                const match = part.match(/: ([\d\.]+)L/);
+                if(match && match[1]) total += Number(match[1]) || 0;
+              });
+            }
+          });
+          return total;
+        });
+
         const costoTotalAceitesFiltrados = computed(() => filteredAceitesRecords.value.reduce((acc, curr) => acc + Number(curr.costo || 0), 0));
 
         const abrirFormularioNuevaMantencion = (afiInicial = "") => {
@@ -1592,7 +1619,8 @@
           formMant.value = {
             id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
             fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
-            mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: ""
+            mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+            aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", hydra46: "", aceite_80w90: ""
           };
           showFormMantencionModal.value = true;
         };
@@ -1616,7 +1644,12 @@
             tipo_mantencion: formMant.value.tipoMant, tipo_horas_mantencion: formMant.value.tipoHorasMant, horometro: parseNum(formMant.value.horometro),
             mecanico_1: formMant.value.mec1, mecanico_2: formMant.value.mec2, mecanico_3: formMant.value.mec3, mecanico_4: formMant.value.mec4,
             hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino, causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
-            costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT
+            costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT,
+            aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
+            aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
+            aceite_refrigerante_5050: parseNum(formMant.value.aceite_refrigerante_5050) || 0,
+            hydra46: parseNum(formMant.value.hydra46) || 0,
+            aceite_80w90: parseNum(formMant.value.aceite_80w90) || 0
           };
           if (isEditingMantencion.value && formMant.value.id) await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
           else await supabaseClient.from('BD_HISTORIAL').insert([payload]);
@@ -1815,7 +1848,7 @@
           listaCausas, dbEquipos, dbMovimientos, dbIntervenciones, countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
           sortInventarioOrder, sortMovimientosOrder, sortHistorialOrder, sortAceitesOrder, resetFiltrosInventario, limpiarFiltrosHistorial, limpiarFiltrosMovimientos,
           filtrarYIrAInventario, verDetallePorAfiString, getEstadoText, getBadgeClass, filteredEquipos, filteredMovimientos, filteredIntervenciones, filteredAceitesRecords,
-          listaTiposAceitesDisponibles, sumaTotalCantidadAceites, costoTotalAceitesFiltrados, exportarCSV, importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
+          listaTiposAceitesDisponibles, sumaTotalLitrosAceites, costoTotalAceitesFiltrados, exportarCSV, importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
           getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
