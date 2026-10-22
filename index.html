@@ -121,7 +121,7 @@
               <i class="fa-solid fa-boxes-stacked"></i> Inventario AFI ({{ dbEquipos.length }})
             </button>
             <button @click="switchTab('programas')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'programas' ? 'bg-rose-500 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-calendar-check"></i> Programas
+              <i class="fa-solid fa-calendar-check"></i> Programas CRTG
             </button>
             <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
               <i class="fa-solid fa-truck-ramp-box"></i> Movimientos ({{ dbMovimientos.length }})
@@ -364,15 +364,15 @@
           </div>
         </section>
 
-        <!-- SECCIÓN PROGRAMAS -->
+        <!-- SECCIÓN PROGRAMAS CRTG (INTEGRADO COMPLETO) -->
         <section v-if="currentTab === 'programas'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> Planificación y Programación de Equipos</h2>
-              <p class="text-xs text-slate-500 mt-1">Crea carpetas, programas mensuales y asigna equipos para tener un calendario de mantenciones o reparaciones.</p>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMA MANTENCION CRTG - Planificación y Carta Gantt</h2>
+              <p class="text-xs text-slate-500 mt-1">Crea carpetas, programas mensuales y asigna equipos para tener un control estricto de fechas y cumplimiento automático.</p>
             </div>
             <button v-if="isAdmin" @click="abrirFormularioPrograma()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-md flex items-center gap-1.5">
-              <i class="fa-solid fa-plus"></i> Programar Equipo
+              <i class="fa-solid fa-plus"></i> Programar Equipo / Nuevo Programa
             </button>
           </div>
 
@@ -397,7 +397,7 @@
               </div>
             </div>
 
-            <!-- Main Panel: Detalles del Programa Seleccionado -->
+            <!-- Main Panel: Detalles de la Carta Gantt del Programa Seleccionado -->
             <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[600px] flex flex-col">
               <template v-if="progSelect.carpeta && progSelect.mes">
                 <div class="border-b pb-4 mb-4 flex flex-wrap items-end justify-between gap-4">
@@ -406,7 +406,7 @@
                     <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-regular fa-calendar text-rose-500"></i> Programa: {{ progSelect.mes }}</h3>
                   </div>
                   <div class="flex-grow max-w-xs space-y-1 text-right">
-                    <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento:</span> <span>{{ getProgreso(progSelect.carpeta, progSelect.mes).pct }}%</span></div>
+                    <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento Global:</span> <span>{{ getProgreso(progSelect.carpeta, progSelect.mes).pct }}%</span></div>
                     <div class="w-full bg-slate-200 rounded-full h-2.5 shadow-inner overflow-hidden">
                       <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" :style="{ width: getProgreso(progSelect.carpeta, progSelect.mes).pct + '%' }"></div>
                     </div>
@@ -421,8 +421,8 @@
                         <th class="p-2.5">EQUIPO AFI</th>
                         <th class="p-2.5">TIPO TRABAJO</th>
                         <th class="p-2.5">DETALLE HORAS</th>
-                        <th class="p-2.5">FECHA PROGRAMADA</th>
-                        <th class="p-2.5">ESTADO</th>
+                        <th class="p-2.5">FECHA PROGRAMADA (PLAN)</th>
+                        <th class="p-2.5">ESTADO / CARTA GANTT</th>
                         <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
                       </tr>
                     </thead>
@@ -433,11 +433,11 @@
                         <td class="p-2.5"><span v-if="item.tipo==='Mantención'" class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono font-bold">{{ item.horas }}</span><span v-else class="text-slate-400">-</span></td>
                         <td class="p-2.5 font-mono font-bold">{{ item.fecha_programada }}</td>
                         <td class="p-2.5">
-                          <span v-if="item.realizado" class="text-emerald-700 font-bold bg-emerald-100 px-2 py-1 rounded text-[10px]"><i class="fa-solid fa-check-circle"></i> Realizado ({{ item.fecha_realizada }})</span>
-                          <span v-else class="text-rose-600 font-bold bg-rose-50 px-2 py-1 rounded text-[10px]"><i class="fa-solid fa-clock"></i> Pendiente</span>
+                          <span v-if="item.realizado" class="text-emerald-700 font-bold bg-emerald-100 px-2.5 py-1 rounded text-[10px] inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-check-circle"></i> Realizado ({{ item.fecha_realizada }})</span>
+                          <span v-else class="text-blue-700 font-bold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-clock"></i> Planificado (Pendiente)</span>
                         </td>
                         <td v-if="isAdmin" class="p-2.5 text-center space-x-2">
-                          <button v-if="!item.realizado" @click="marcarProgramaRealizado(item)" class="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded shadow-sm font-bold transition">Marcar Listo</button>
+                          <button v-if="!item.realizado" @click="marcarProgramaRealizado(item)" class="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded shadow-sm font-bold transition">Marcar Listo</button>
                           <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar del Programa"><i class="fa-solid fa-trash"></i></button>
                         </td>
                       </tr>
@@ -450,7 +450,7 @@
               </template>
               <div v-else class="flex-grow flex flex-col items-center justify-center text-slate-400 space-y-4">
                 <i class="fa-solid fa-calendar-days text-6xl opacity-20"></i>
-                <p class="font-bold">Selecciona un Programa desde el menú lateral para ver sus detalles.</p>
+                <p class="font-bold">Selecciona una Carpeta y un Mes de Programa desde el menú lateral para ver su Carta Gantt y cumplimiento.</p>
               </div>
             </div>
           </div>
@@ -984,17 +984,17 @@
 
             <!-- SECCIÓN ASIGNACIÓN A PROGRAMAS DENTRO DEL PERFIL -->
             <div v-if="isAdmin" class="bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm">
-              <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar rápidamente a un Programa de Mantención</h4>
+              <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar rápidamente a un Programa de Mantención CRTG</h4>
               <div class="flex flex-wrap items-end gap-3">
                 <div class="flex-grow">
-                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Selecciona Carpeta de Programa existente</label>
+                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Carpeta de Programa</label>
                   <select v-model="perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold text-slate-800" @change="perfilAsignacionProg.mes = ''">
                     <option value="">-- Elige Carpeta --</option>
                     <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
                   </select>
                 </div>
                 <div class="flex-grow">
-                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Selecciona Mes/Subprograma</label>
+                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Mes / Subprograma</label>
                   <select v-model="perfilAsignacionProg.mes" :disabled="!perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold text-slate-800">
                     <option value="">-- Elige Mes --</option>
                     <option v-for="m in obtenerMesesDeCarpeta(perfilAsignacionProg.carpeta)" :key="m" :value="m">{{ m }}</option>
@@ -1002,7 +1002,7 @@
                 </div>
                 <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Tipo</label><select v-model="perfilAsignacionProg.tipo" class="p-2 border rounded-lg bg-white font-semibold"><option value="Mantención">Mantención</option><option value="Reparación">Reparación</option></select></div>
                 <div v-if="perfilAsignacionProg.tipo === 'Mantención'"><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Horas</label><select v-model="perfilAsignacionProg.horas" class="p-2 border rounded-lg bg-white font-semibold"><option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option></select></div>
-                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha</label><input type="date" v-model="perfilAsignacionProg.fecha" class="p-2 border rounded-lg bg-white font-mono"></div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Plan</label><input type="date" v-model="perfilAsignacionProg.fecha" class="p-2 border rounded-lg bg-white font-mono"></div>
                 <button @click="guardarAsignacionDesdePerfil" :disabled="!perfilAsignacionProg.carpeta || !perfilAsignacionProg.mes || !perfilAsignacionProg.fecha" class="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg transition shadow-md h-[36px] flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Añadir a Programa</button>
               </div>
             </div>
@@ -1171,7 +1171,7 @@
       <div v-if="showNuevoProgramaModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl border w-full max-w-2xl overflow-hidden flex flex-col">
           <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
-            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Programar Equipo</h3>
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Programar Equipo en CRTG</h3>
             <button @click="showNuevoProgramaModal=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 space-y-4 text-xs bg-slate-50">
@@ -1206,7 +1206,7 @@
                 </select>
               </div>
               <div>
-                <label class="block font-bold text-slate-700 mb-1">Fecha Programada</label>
+                <label class="block font-bold text-slate-700 mb-1">Fecha Programada (Plan)</label>
                 <input type="date" v-model="formPrograma.fecha" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-slate-800">
               </div>
             </div>
@@ -1285,14 +1285,14 @@
           "HYDRA 68", "ADBLUE", "ACEITE 75W", "ACEITE 10W", "MULTIPROPOSITO", "DESEGRANSANTE", "ACIDO MURIATICO"
         ]);
 
-        // Estado Programas
+        // Estado Programas CRTG
         const showNuevoProgramaModal = ref(false);
-        const formPrograma = ref({ carpeta: '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
-        const openFolders = ref({});
+        const formPrograma = ref({ carpeta: 'PROGRAMA MANTENCION CRTG', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
+        const openFolders = ref({ 'PROGRAMA MANTENCION CRTG': true });
         const progSelect = ref({ carpeta: '', mes: '' });
 
         // Asignación rápida desde perfil
-        const perfilAsignacionProg = ref({ carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
+        const perfilAsignacionProg = ref({ carpeta: 'PROGRAMA MANTENCION CRTG', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
 
         // Filtros
         const filterInv = ref({ search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false });
@@ -1339,7 +1339,7 @@
           reader.readAsDataURL(file);
         };
 
-        // LÓGICA PROGRAMAS
+        // LÓGICA PROGRAMAS CRTG
         const listaCarpetasProgramas = computed(() => {
           const carpetas = new Set(dbProgramas.value.map(p => p.carpeta).filter(Boolean));
           return Array.from(carpetas).sort();
@@ -1373,14 +1373,14 @@
         const seleccionarPrograma = (carpeta, mes) => { progSelect.value = { carpeta, mes }; };
 
         const abrirFormularioPrograma = () => {
-          formPrograma.value = { carpeta: '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
+          formPrograma.value = { carpeta: 'PROGRAMA MANTENCION CRTG', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
           showNuevoProgramaModal.value = true;
         };
 
         const guardarNuevoPrograma = async () => {
           const cp = String(formPrograma.value.carpeta).trim().toUpperCase();
           const ms = String(formPrograma.value.mes).trim().toUpperCase();
-          if (!cp || !ms || !formPrograma.value.afi || !formPrograma.value.fecha) return alert("Completa todos los campos.");
+          if (!cp || !ms || !formPrograma.value.afi || !formPrograma.value.fecha) return alert("Completa todos los campos obligatorios.");
 
           const payload = {
             carpeta: cp, mes: ms, afi: formPrograma.value.afi, tipo: formPrograma.value.tipo,
@@ -1420,10 +1420,10 @@
             fecha_programada: perfilAsignacionProg.value.fecha, realizado: false
           };
           const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
-          if(error) alert("Error guardando asignación. Verifica la tabla BD_PROGRAMAS.");
+          if(error) alert("Error guardando asignación. Verifica la tabla BD_PROGRAMAS en Supabase.");
           else {
-            alert("Equipo asignado al programa con éxito.");
-            perfilAsignacionProg.value = { carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' };
+            alert("¡Equipo asignado al programa con éxito!");
+            perfilAsignacionProg.value = { carpeta: 'PROGRAMA MANTENCION CRTG', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' };
             await cargarDatosDesdeSupabase();
           }
         };
@@ -1561,7 +1561,7 @@
             try {
               const progData = await fetchAllRowsSupabase('BD_PROGRAMAS');
               if (progData) dbProgramas.value = progData;
-            } catch(e) { console.log("Tabla BD_PROGRAMAS no existe aún."); }
+            } catch(e) { console.log("Tabla BD_PROGRAMAS no existe aún en Supabase."); }
 
             actualizarHorometrosDesdeHistorial();
             renderCharts();
@@ -1644,7 +1644,6 @@
           return arr;
         });
 
-        // Computed & Tables para Movimientos e Intervenciones (Iguales a la versión completa anterior)
         const filteredMovimientos = computed(() => {
           let arr = dbMovimientos.value.filter(m => {
             if (filterMov.value.afi !== "ALL" && String(m.afi).trim().toUpperCase() !== String(filterMov.value.afi).trim().toUpperCase()) return false;
@@ -1775,7 +1774,7 @@
           else await supabaseClient.from('BD_HISTORIAL').insert([payload]);
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("Mantención guardada en Supabase.");
+          alert("¡Mantención guardada en Supabase con éxito!");
         };
 
         // Utilidades de Perfil de Equipo
@@ -1803,7 +1802,7 @@
         const getHistorialIntervencionesAFI = (afi) => dbIntervenciones.value.filter(i=>String(i.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
         const getHistorialMovimientosAFI = (afi) => dbMovimientos.value.filter(m=>String(m.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
 
-        // Importación Masiva Excel (Igual al anterior)
+        // Importación Masiva Excel
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
         const getVal = (row, ...keys) => {
           if (!row) return "";
@@ -1854,7 +1853,7 @@
             if (payloads.length === 0) return alert("No se encontraron filas válidas.");
             const { error } = await supabaseClient.from('BD_INVENTARIO').upsert(payloads, { onConflict: 'afi' });
             if (error) return alert("Error Supabase: " + error.message);
-            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} equipos!`);
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} equipos con éxito!`);
           } catch (err) { alert("Error al procesar el archivo."); }
         };
 
@@ -1874,7 +1873,7 @@
             }).filter(Boolean);
             if (payloads.length === 0) return alert("Sin registros válidos.");
             await supabaseClient.from('BD_MOVIMIENTOS').insert(payloads);
-            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} movimientos!`);
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} movimientos con éxito!`);
           } catch (err) { alert("Error al importar movimientos."); }
         };
 
@@ -1905,12 +1904,12 @@
             if (payloads.length === 0) return alert("No se encontraron registros válidos.");
             const BATCH = 200;
             for (let i=0; i<payloads.length; i+=BATCH) await supabaseClient.from('BD_HISTORIAL').insert(payloads.slice(i, i+BATCH));
-            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} registros!`);
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} registros al historial con éxito!`);
           } catch (err) { alert("Error al procesar el archivo Excel."); }
         };
 
         const exportarCSV = (dataArray, filename = 'Export') => {
-          if (!dataArray || !dataArray.length) return alert("Sin datos.");
+          if (!dataArray || !dataArray.length) return alert("Sin datos para exportar.");
           const headers = Object.keys(dataArray[0]);
           const csvRows = [headers.join(';')];
           for (const row of dataArray) {
@@ -1930,7 +1929,7 @@
         const crearNuevoUsuario = async () => {
           if (!nuevoUsuario.value.usuario || !nuevoUsuario.value.clave) return alert("Completa usuario y clave.");
           const { error } = await supabaseClient.from('usuarios').insert([{ usuario: nuevoUsuario.value.usuario.trim(), clave: nuevoUsuario.value.clave.trim(), rol: nuevoUsuario.value.rol, nombre: nuevoUsuario.value.usuario.trim() }]);
-          if (!error) { await cargarUsuariosDesdeSupabase(); nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" }; alert("¡Usuario guardado!"); }
+          if (!error) { await cargarUsuariosDesdeSupabase(); nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" }; alert("¡Usuario guardado con éxito!"); }
         };
         const eliminarUsuario = async (username) => {
           if (confirm(`¿Eliminar al usuario ${username}?`)) {
