@@ -18,7 +18,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
-    /* Efecto parpadeo lento rojo para equipos PASADOS */
     @keyframes blink-red-slow {
       0% { background-color: #450a0a; border-color: #ef4444; }
       50% { background-color: #991b1b; border-color: #fca5a5; }
@@ -29,12 +28,10 @@
       color: white;
     }
     .bg-normal-horometro {
-      background-color: #0f172a; /* slate-900 */
-      border-color: #334155; /* slate-700 */
+      background-color: #0f172a;
+      border-color: #334155;
       color: white;
     }
-    
-    /* Scrollbar minimalista para tablas y paneles */
     ::-webkit-scrollbar { height: 8px; width: 8px; }
     ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -45,67 +42,51 @@
 
   <div id="app" class="flex-grow flex flex-col">
 
-    <!-- MENÚ DE INICIO / ACCESO POR CREDENCIALES -->
+    <!-- MENÚ DE CREDENCIALES -->
     <div v-if="!usuarioActivo" class="min-h-screen flex items-center justify-center bg-slate-900 p-4 w-full flex-grow">
       <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-8 space-y-6 text-center">
-        
         <div class="flex justify-center">
           <div class="bg-slate-900 p-3 rounded-2xl w-28 h-28 flex items-center justify-center border border-slate-700 shadow-xl">
             <img :src="config.logo" alt="Logo Empresa" class="max-h-full max-w-full object-contain">
           </div>
         </div>
-
         <div>
           <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">{{ config.title }}</h2>
           <p class="text-xs text-slate-500 mt-1 font-semibold">{{ config.subtitle }}</p>
         </div>
-
         <form @submit.prevent="login" class="space-y-4 text-left text-xs">
           <div>
             <label class="font-bold text-slate-700 block mb-1">Usuario</label>
             <div class="relative">
-              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                <i class="fa-solid fa-user"></i>
-              </span>
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
               <input type="text" v-model="loginUser" placeholder="Ingresa tu usuario..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
             </div>
           </div>
-
           <div>
             <label class="font-bold text-slate-700 block mb-1">Contraseña</label>
             <div class="relative">
-              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                <i class="fa-solid fa-lock"></i>
-              </span>
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-lock"></i></span>
               <input type="password" v-model="loginPass" placeholder="Ingresa tu contraseña..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
             </div>
           </div>
-          
           <p v-if="authError" class="text-rose-600 font-bold text-center bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs">
             <i class="fa-solid fa-triangle-exclamation mr-1"></i> Usuario o contraseña incorrectos
           </p>
-
           <button type="submit" :style="primaryBtnStyle" class="w-full font-extrabold py-3.5 rounded-xl shadow-lg hover:brightness-110 transition flex items-center justify-center gap-2 text-sm uppercase tracking-wider">
             <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
           </button>
         </form>
-
-        <div class="text-[11px] text-slate-400 font-medium">
-          Acceso protegido - Sistema Operativo FRC
-        </div>
-
+        <div class="text-[11px] text-slate-400 font-medium">Acceso protegido - Sistema Operativo FRC</div>
       </div>
     </div>
 
     <!-- PANEL PRINCIPAL -->
     <template v-else>
-
       <header :style="headerStyle" class="text-white shadow-lg sticky top-0 z-40 transition-colors duration-300">
         <div class="max-w-[1400px] mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
-          
           <div class="flex items-center gap-3">
             <div class="bg-white p-1 rounded-lg w-12 h-12 flex items-center justify-center overflow-hidden border border-slate-700 shadow-sm">
-              <img :src="config.logo" alt="Logo Empresa" class="max-h-full max-w-full object-contain">
+              <img :src="config.logo" alt="Logo" class="max-h-full max-w-full object-contain">
             </div>
             <div>
               <h1 class="font-bold text-lg leading-tight">{{ config.title }}</h1>
@@ -114,27 +95,13 @@
           </div>
 
           <nav class="flex items-center gap-1.5 overflow-x-auto py-1">
-            <button @click="switchTab('dashboard')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'dashboard' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-chart-line"></i> Dashboard
-            </button>
-            <button @click="switchTab('inventario')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'inventario' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-boxes-stacked"></i> Inventario AFI ({{ dbEquipos.length }})
-            </button>
-            <button @click="switchTab('programas')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'programas' ? 'bg-rose-500 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-calendar-check"></i> Programas CRTG
-            </button>
-            <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-truck-ramp-box"></i> Movimientos ({{ dbMovimientos.length }})
-            </button>
-            <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-file-medical"></i> Historial ({{ dbIntervenciones.length }})
-            </button>
-            <button @click="switchTab('aceites')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'aceites' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-oil-can"></i> Control Aceites
-            </button>
-            <button @click="switchTab('configuracion')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'configuracion' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']">
-              <i class="fa-solid fa-gear"></i> Config & Usuarios
-            </button>
+            <button @click="switchTab('dashboard')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'dashboard' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
+            <button @click="switchTab('inventario')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'inventario' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-boxes-stacked"></i> Inventario AFI ({{ dbEquipos.length }})</button>
+            <button @click="switchTab('programas')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'programas' ? 'bg-rose-500 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-calendar-check"></i> Programas</button>
+            <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-truck-ramp-box"></i> Movimientos ({{ dbMovimientos.length }})</button>
+            <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-file-medical"></i> Historial ({{ dbIntervenciones.length }})</button>
+            <button @click="switchTab('aceites')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'aceites' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-oil-can"></i> Control Aceites</button>
+            <button @click="switchTab('configuracion')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'configuracion' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-gear"></i> Config & Usuarios</button>
           </nav>
 
           <div class="flex items-center gap-3">
@@ -142,16 +109,10 @@
               <i class="fa-solid fa-plus-circle text-sm"></i> Agregar Mantención
             </button>
             <div class="text-right text-xs">
-              <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap">
-                <i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin)
-              </span>
-              <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap">
-                <i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)
-              </span>
+              <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin)</span>
+              <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap"><i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)</span>
             </div>
-            <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow">
-              <i class="fa-solid fa-right-from-bracket"></i> Salir
-            </button>
+            <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
           </div>
         </div>
       </header>
@@ -162,66 +123,39 @@
         <section v-if="currentTab === 'dashboard'" class="space-y-6">
           <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
             <div>
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-chart-pie text-emerald-600"></i> Dashboard de Control de Equipos y Estado Operativo
-              </h2>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-emerald-600"></i> Dashboard de Control de Equipos y Estado Operativo</h2>
               <p class="text-xs text-slate-500">Haz clic en cualquiera de los bloques para filtrar los equipos en el inventario.</p>
             </div>
-            <div class="flex items-center gap-2">
-              <button @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
-                <i class="fa-solid fa-file-excel"></i> Exportar KPIs (CSV)
-              </button>
-            </div>
+            <button @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-file-excel"></i> Exportar KPIs (CSV)</button>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <div @click="filtrarYIrAInventario('ALL')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer hover:border-slate-400 transition">
-              <div>
-                <p class="text-[10px] text-slate-500 font-bold uppercase">Total Flota</p>
-                <h3 class="text-xl font-bold text-slate-800">{{ dbEquipos.length }}</h3>
-              </div>
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Total Flota</p><h3 class="text-xl font-bold text-slate-800">{{ dbEquipos.length }}</h3></div>
               <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-monster"></i></div>
             </div>
             <div @click="filtrarYIrAInventario('Operativo')" class="bg-white p-3.5 rounded-xl shadow-sm border border-emerald-200 flex items-center justify-between cursor-pointer hover:border-emerald-500 transition">
-              <div>
-                <p class="text-[10px] text-slate-500 font-bold uppercase">Trabajando</p>
-                <h3 class="text-xl font-bold text-emerald-600">{{ countEstado('Operativo') }}</h3>
-              </div>
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Trabajando</p><h3 class="text-xl font-bold text-emerald-600">{{ countEstado('Operativo') }}</h3></div>
               <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm"><i class="fa-solid fa-circle-check"></i></div>
             </div>
             <div @click="filtrarYIrAInventario('Disponible')" class="bg-white p-3.5 rounded-xl shadow-sm border border-sky-200 flex items-center justify-between cursor-pointer hover:border-sky-500 transition">
-              <div>
-                <p class="text-[10px] text-slate-500 font-bold uppercase">Disponible</p>
-                <h3 class="text-xl font-bold text-sky-600">{{ countEstado('Disponible') }}</h3>
-              </div>
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Disponible</p><h3 class="text-xl font-bold text-sky-600">{{ countEstado('Disponible') }}</h3></div>
               <div class="w-8 h-8 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center text-sm"><i class="fa-solid fa-warehouse"></i></div>
             </div>
             <div @click="filtrarYIrAInventario('En Traslado')" class="bg-white p-3.5 rounded-xl shadow-sm border border-amber-200 flex items-center justify-between cursor-pointer hover:border-amber-500 transition">
-              <div>
-                <p class="text-[10px] text-slate-500 font-bold uppercase">En Traslado</p>
-                <h3 class="text-xl font-bold text-amber-600">{{ countEstado('En Traslado') }}</h3>
-              </div>
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">En Traslado</p><h3 class="text-xl font-bold text-amber-600">{{ countEstado('En Traslado') }}</h3></div>
               <div class="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-moving"></i></div>
             </div>
             <div @click="filtrarYIrAInventario('En Mantencion')" class="bg-white p-3.5 rounded-xl shadow-sm border border-rose-200 flex items-center justify-between cursor-pointer hover:border-rose-500 transition">
-              <div>
-                <p class="text-[10px] text-slate-500 font-bold uppercase">En Mantención</p>
-                <h3 class="text-xl font-bold text-rose-600">{{ countEstado('En Mantencion') }}</h3>
-              </div>
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">En Mantención</p><h3 class="text-xl font-bold text-rose-600">{{ countEstado('En Mantencion') }}</h3></div>
               <div class="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-sm"><i class="fa-solid fa-wrench"></i></div>
             </div>
             <div @click="filtrarYIrAInventario('Fuera de Servicio')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-300 flex items-center justify-between cursor-pointer hover:border-slate-600 transition">
-              <div>
-                <p class="text-[10px] text-slate-500 font-bold uppercase">Fuera Servicio</p>
-                <h3 class="text-xl font-bold text-slate-700">{{ countEstado('Fuera de Servicio') }}</h3>
-              </div>
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Fuera Servicio</p><h3 class="text-xl font-bold text-slate-700">{{ countEstado('Fuera de Servicio') }}</h3></div>
               <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fa-solid fa-ban"></i></div>
             </div>
             <div @click="filtrarYIrAInventario('Venta')" class="bg-white p-3.5 rounded-xl shadow-sm border border-purple-200 flex items-center justify-between cursor-pointer hover:border-purple-500 transition">
-              <div>
-                <p class="text-[10px] text-slate-500 font-bold uppercase">En Venta</p>
-                <h3 class="text-xl font-bold text-purple-600">{{ countEstado('Venta') }}</h3>
-              </div>
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">En Venta</p><h3 class="text-xl font-bold text-purple-600">{{ countEstado('Venta') }}</h3></div>
               <div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center text-sm"><i class="fa-solid fa-hand-holding-dollar"></i></div>
             </div>
           </div>
@@ -262,14 +196,8 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Buscar (AFI / Tipo / Marca)</label>
-                <input type="text" v-model="filterInv.search" placeholder="Ej: Generador..." class="w-full p-2 border border-slate-300 rounded-lg">
-              </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Ubicación</label>
-                <input type="text" v-model="filterInv.ubicacion" placeholder="Ej: Tierras Blancas" class="w-full p-2 border border-slate-300 rounded-lg">
-              </div>
+              <div><label class="block font-bold text-slate-700 mb-1">Buscar (AFI / Tipo / Marca)</label><input type="text" v-model="filterInv.search" placeholder="Ej: Generador..." class="w-full p-2 border border-slate-300 rounded-lg"></div>
+              <div><label class="block font-bold text-slate-700 mb-1">Ubicación</label><input type="text" v-model="filterInv.ubicacion" placeholder="Ej: Tierras Blancas" class="w-full p-2 border border-slate-300 rounded-lg"></div>
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Estado</label>
                 <select v-model="filterInv.estado" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
@@ -298,20 +226,16 @@
               <div>
                 <div class="relative h-44 bg-slate-900 group">
                   <img :src="e.foto || 'https://via.placeholder.com/300x180/0f172a/ffffff?text=' + e.afi" class="w-full h-full object-cover">
-                  <span :class="['absolute top-2 right-2 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-md', getBadgeClass(e.disponibilidad)]">
-                    {{ getEstadoText(e.disponibilidad) }}
-                  </span>
+                  <span :class="['absolute top-2 right-2 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-md', getBadgeClass(e.disponibilidad)]">{{ getEstadoText(e.disponibilidad) }}</span>
                   <label v-if="isAdmin" class="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg text-xs cursor-pointer shadow flex items-center gap-1">
                     <i class="fa-solid fa-camera"></i> <span>Subir Foto</span>
                     <input type="file" @change="uploadFotoEquipo($event, e)" accept="image/*" class="hidden">
                   </label>
                 </div>
                 <div class="p-4 space-y-3">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <span class="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">AFI: {{ e.afi }}</span>
-                      <h3 class="font-bold text-sm text-slate-800 mt-1">{{ e.tipo }}</h3>
-                    </div>
+                  <div>
+                    <span class="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">AFI: {{ e.afi }}</span>
+                    <h3 class="font-bold text-sm text-slate-800 mt-1">{{ e.tipo }}</h3>
                   </div>
                   <div class="text-xs space-y-1 text-slate-600">
                     <p><i class="fa-solid fa-industry w-4 text-slate-400"></i> <strong>Marca/Modelo:</strong> {{ e.marca }} {{ e.modelo }}</p>
@@ -319,34 +243,30 @@
                   </div>
 
                   <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.horometros)]">
-                    
                     <div class="flex justify-between items-center text-[10px] text-slate-500 font-bold border-b pb-1">
                       <span class="text-amber-700"><i class="fa-solid fa-stopwatch"></i> FRECUENCIA: {{ e.frecuenciaMantencion }}h</span>
-                      <span class="text-blue-700"><i class="fa-solid fa-chart-line"></i> USO DIARIO: {{ e.horometros?.rateHrsDia > 0 ? e.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin datos' }}</span>
+                      <span class="text-blue-700"><i class="fa-solid fa-chart-line"></i> USO: {{ e.horometros?.rateHrsDia > 0 ? e.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin datos' }}</span>
                     </div>
-
                     <div class="flex justify-between items-center font-bold">
-                      <span><i class="fa-solid fa-gauge-high text-amber-600"></i> Proyección de Horómetros:</span>
-                      <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', getPrediccionStatusBadge(e.horometros)]">
-                        {{ e.horometros?.estadoTexto || 'OK' }}
-                      </span>
+                      <span><i class="fa-solid fa-gauge-high text-amber-600"></i> Estado Horómetro:</span>
+                      <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', getPrediccionStatusBadge(e.horometros)]">{{ e.horometros?.estadoTexto || 'OK' }}</span>
                     </div>
                     <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
                       <div class="bg-white/80 p-1.5 rounded border">
-                        <span class="text-slate-500 font-bold block" title="Guardado manualmente en el perfil del equipo">MANUAL</span>
-                        <strong class="font-mono text-slate-800">{{ e.horometros?.hOficial || 0 }}h</strong>
+                        <span class="text-slate-500 font-bold block" title="Último horómetro tomado">H. TOMADO</span>
+                        <strong class="font-mono text-slate-800">{{ e.horometros?.hTomado || 0 }}h</strong>
                       </div>
                       <div class="bg-white/80 p-1.5 rounded border">
-                        <span class="text-slate-500 font-bold block" title="Cálculo del horómetro al día de hoy según tasa de uso">APROX HOY</span>
+                        <span class="text-slate-500 font-bold block" title="Horómetro actual aproximado">APROX HOY</span>
                         <strong class="font-mono text-blue-700">{{ e.horometros?.hAprox || 0 }}h</strong>
                       </div>
                       <div class="bg-white/80 p-1.5 rounded border">
-                        <span class="text-slate-500 font-bold block" title="Última mantención + Frecuencia">META / TGT</span>
+                        <span class="text-slate-500 font-bold block" title="Meta o próxima mantención">META / TGT</span>
                         <strong class="font-mono text-emerald-700">{{ e.horometros?.hTarget || 0 }}h</strong>
                       </div>
                     </div>
                     <div class="text-[11px] font-medium text-slate-700 pt-1 text-center bg-white/60 p-1 rounded">
-                      <i class="fa-solid fa-calendar-days text-amber-600 mr-1"></i> Fecha aprox. mantención: <strong>{{ e.horometros?.fechaEstimada || '-' }}</strong>
+                      <i class="fa-solid fa-calendar-days text-amber-600 mr-1"></i> F. aprox. mantención: <strong>{{ e.horometros?.fechaEstimada || '-' }}</strong>
                     </div>
                   </div>
                 </div>
@@ -358,21 +278,19 @@
               </div>
             </div>
             
-            <div v-if="filteredEquipos.length === 0" class="col-span-3 text-center p-10 text-slate-500 font-bold">
-              No se encontraron equipos con los filtros actuales.
-            </div>
+            <div v-if="filteredEquipos.length === 0" class="col-span-3 text-center p-10 text-slate-500 font-bold">No se encontraron equipos con los filtros actuales.</div>
           </div>
         </section>
 
-        <!-- SECCIÓN PROGRAMAS CRTG (INTEGRADO COMPLETO) -->
+        <!-- SECCIÓN PROGRAMAS -->
         <section v-if="currentTab === 'programas'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMA MANTENCION CRTG - Planificación y Carta Gantt</h2>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt</h2>
               <p class="text-xs text-slate-500 mt-1">Crea carpetas, programas mensuales y asigna equipos para tener un control estricto de fechas y cumplimiento automático.</p>
             </div>
             <button v-if="isAdmin" @click="abrirFormularioPrograma()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-md flex items-center gap-1.5">
-              <i class="fa-solid fa-plus"></i> Programar Equipo / Nuevo Programa
+              <i class="fa-solid fa-plus"></i> Nuevo Programa / Asignar Equipo
             </button>
           </div>
 
@@ -397,7 +315,7 @@
               </div>
             </div>
 
-            <!-- Main Panel: Detalles de la Carta Gantt del Programa Seleccionado -->
+            <!-- Main Panel: Detalles de la Carta Gantt -->
             <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[600px] flex flex-col">
               <template v-if="progSelect.carpeta && progSelect.mes">
                 <div class="border-b pb-4 mb-4 flex flex-wrap items-end justify-between gap-4">
@@ -477,10 +395,7 @@
             </div>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 text-xs pt-1">
-              <div class="md:col-span-2">
-                <label class="block font-bold mb-1 text-slate-700">Buscar por Texto (Chofer, Camión, Destino...)</label>
-                <input type="text" v-model="filterMov.queryText" placeholder="Escribe para buscar..." class="w-full p-2 border rounded-lg bg-slate-50 focus:bg-white font-bold">
-              </div>
+              <div class="md:col-span-2"><label class="block font-bold mb-1 text-slate-700">Buscar por Texto</label><input type="text" v-model="filterMov.queryText" placeholder="Escribe para buscar..." class="w-full p-2 border rounded-lg bg-slate-50 font-bold"></div>
               <div><label class="block font-bold mb-1">Fecha Desde</label><input type="date" v-model="filterMov.dateStart" class="w-full p-2 border rounded-lg"></div>
               <div><label class="block font-bold mb-1">Fecha Hasta</label><input type="date" v-model="filterMov.dateEnd" class="w-full p-2 border rounded-lg"></div>
               <div>
@@ -490,11 +405,7 @@
                   <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">{{ e.afi }} - {{ e.tipo }}</option>
                 </select>
               </div>
-              <div class="flex items-end">
-                <button class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold p-2 rounded-lg shadow flex items-center justify-center gap-1.5">
-                  <i class="fa-solid fa-magnifying-glass"></i> Buscar
-                </button>
-              </div>
+              <div class="flex items-end"><button class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold p-2 rounded-lg shadow flex items-center justify-center gap-1.5"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button></div>
             </div>
           </div>
 
@@ -522,24 +433,18 @@
                     <td class="p-2.5">{{ m.camion || '-' }}</td>
                     <td class="p-2.5 font-semibold">{{ m.conductor || '-' }}</td>
                   </tr>
-                  <tr v-if="filteredMovimientos.length === 0">
-                    <td colspan="7" class="p-8 text-center text-slate-500 font-bold">No se encontraron movimientos con los filtros ingresados.</td>
-                  </tr>
+                  <tr v-if="filteredMovimientos.length === 0"><td colspan="7" class="p-8 text-center text-slate-500 font-bold">No se encontraron movimientos.</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
         </section>
 
-        <!-- HOJA DE VIDA E HISTORIAL -->
+        <!-- HISTORIAL -->
         <section v-if="currentTab === 'hojaVida'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-2">
-              <div class="flex items-center gap-3">
-                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <i class="fa-solid fa-filter text-blue-600"></i> Historial Completo (Cargados: {{ dbIntervenciones.length }} registros)
-                </h2>
-              </div>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-blue-600"></i> Historial Completo (Cargados: {{ dbIntervenciones.length }} registros)</h2>
               <div class="flex items-center gap-2">
                 <label class="text-xs font-bold text-slate-700">Orden:</label>
                 <select v-model="sortHistorialOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
@@ -547,16 +452,14 @@
                   <option value="asc">Más Antiguos primero</option>
                 </select>
                 <button @click="limpiarFiltrosHistorial" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Limpiar Filtros</button>
-                <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5">
-                  <i class="fa-solid fa-plus-circle"></i> + Registrar Mantención
-                </button>
+                <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5"><i class="fa-solid fa-plus-circle"></i> + Registrar Mantención</button>
                 <button @click="exportarCSV(filteredIntervenciones, 'HojaVida_Filtrada')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
               </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-xs pt-1">
               <div class="lg:col-span-2">
-                <label class="block font-bold mb-1 text-slate-700">Búsqueda General (OC, OT, Detalle, Insumo...)</label>
+                <label class="block font-bold mb-1 text-slate-700">Búsqueda General</label>
                 <div class="relative">
                   <input type="text" v-model="filterInt.searchQuery" placeholder="Escribe cualquier palabra..." class="w-full p-2 pl-8 border rounded-lg bg-amber-50/50 focus:bg-white font-bold text-slate-800">
                   <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400"></i>
@@ -588,18 +491,6 @@
                 </select>
               </div>
             </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-              <div class="sm:col-span-2">
-                <label class="block font-bold mb-1 text-slate-700">Mecánico</label>
-                <input type="text" v-model="filterInt.mecText" placeholder="Nombre de mecánico..." class="w-full p-2 border rounded-lg">
-              </div>
-              <div class="flex items-end">
-                <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold p-2 rounded-lg shadow flex items-center justify-center gap-2">
-                  <i class="fa-solid fa-magnifying-glass"></i> Aplicar Filtros / Buscar
-                </button>
-              </div>
-            </div>
           </div>
 
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
@@ -628,7 +519,7 @@
                     <th class="p-2">N° OC</th>
                     <th class="p-2">N° OT</th>
                     <th class="p-2 text-amber-300">CONSUMO ACEITES</th>
-                    <th class="p-2 text-center">LINK / ADJUNTO</th>
+                    <th class="p-2 text-center">LINK</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y bg-white">
@@ -637,9 +528,7 @@
                       <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
                       <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                     </td>
-                    <td class="p-2 font-bold text-amber-700">
-                      <button @click="verDetallePorAfiString(i.afi)" class="hover:underline bg-amber-50 px-2 rounded">{{ i.afi }}</button>
-                    </td>
+                    <td class="p-2 font-bold text-amber-700"><button @click="verDetallePorAfiString(i.afi)" class="hover:underline bg-amber-50 px-2 rounded">{{ i.afi }}</button></td>
                     <td class="p-2 font-mono font-bold text-slate-800 bg-amber-50/50">{{ i.fecha }}</td>
                     <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
                     <td class="p-2">{{ i.lugar || '-' }}</td>
@@ -660,15 +549,11 @@
                     <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
                     <td class="p-2 text-amber-300 font-bold bg-amber-50">{{ i.aceites }}</td>
                     <td class="p-2 text-center">
-                      <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1">
-                        <i class="fa-solid fa-link"></i> Ver Drive
-                      </a>
+                      <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-link"></i> Drive</a>
                       <span v-else class="text-slate-400 italic">-</span>
                     </td>
                   </tr>
-                  <tr v-if="filteredIntervenciones.length === 0">
-                    <td colspan="22" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros con los filtros aplicados.</td>
-                  </tr>
+                  <tr v-if="filteredIntervenciones.length === 0"><td colspan="22" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -680,10 +565,8 @@
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-3">
               <div>
-                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <i class="fa-solid fa-oil-can text-amber-600"></i> Control y Filtros Avanzados de Aceites e Insumos
-                </h2>
-                <p class="text-xs text-slate-500">Visualiza el consumo general de aceites y aplica filtros por rangos de fechas, tipo específico y equipo.</p>
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-oil-can text-amber-600"></i> Control y Filtros de Aceites e Insumos</h2>
+                <p class="text-xs text-slate-500">Visualiza el consumo general de aceites y aplica filtros por fechas y equipos.</p>
               </div>
               <div class="flex items-center gap-2">
                 <label class="text-xs font-bold text-slate-700">Orden:</label>
@@ -691,32 +574,24 @@
                   <option value="desc">Más Recientes</option>
                   <option value="asc">Más Antiguos</option>
                 </select>
-                <button @click="exportarCSV(filteredAceitesRecords, 'Reporte_Consumo_Aceites')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5">
-                  <i class="fa-solid fa-file-excel"></i> Exportar (CSV)
-                </button>
+                <button @click="exportarCSV(filteredAceitesRecords, 'Reporte_Consumo_Aceites')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> Exportar (CSV)</button>
               </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-slate-50 p-4 rounded-xl border">
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Fecha Desde</label>
-                <input type="date" v-model="filterOil.dateStart" class="w-full p-2 border rounded-lg bg-white">
-              </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Fecha Hasta</label>
-                <input type="date" v-model="filterOil.dateEnd" class="w-full p-2 border rounded-lg bg-white">
-              </div>
+              <div><label class="block font-bold text-slate-700 mb-1">Fecha Desde</label><input type="date" v-model="filterOil.dateStart" class="w-full p-2 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold text-slate-700 mb-1">Fecha Hasta</label><input type="date" v-model="filterOil.dateEnd" class="w-full p-2 border rounded-lg bg-white"></div>
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Equipo AFI</label>
                 <select v-model="filterOil.afi" class="w-full p-2 border rounded-lg bg-white font-semibold">
-                  <option value="ALL">-- Todos los Equipos --</option>
+                  <option value="ALL">-- Todos --</option>
                   <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
                 </select>
               </div>
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Tipo de Aceite / Insumo</label>
                 <select v-model="filterOil.tipoAceite" class="w-full p-2 border rounded-lg bg-white font-semibold text-amber-800">
-                  <option value="ALL">-- Todos los Aceites e Insumos --</option>
+                  <option value="ALL">-- Todos --</option>
                   <option v-for="t in listaTiposAceitesDisponibles" :key="t" :value="t">{{ t }}</option>
                 </select>
               </div>
@@ -724,34 +599,22 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between">
-                <div>
-                  <p class="text-[11px] font-bold uppercase text-amber-800">Registros con Consumo</p>
-                  <h3 class="text-2xl font-bold text-amber-900 mt-1">{{ filteredAceitesRecords.length }}</h3>
-                </div>
+                <div><p class="text-[11px] font-bold uppercase text-amber-800">Registros con Consumo</p><h3 class="text-2xl font-bold text-amber-900 mt-1">{{ filteredAceitesRecords.length }}</h3></div>
                 <div class="w-10 h-10 rounded-full bg-amber-200/60 text-amber-700 flex items-center justify-center text-lg"><i class="fa-solid fa-clipboard-list"></i></div>
               </div>
               <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
-                <div>
-                  <p class="text-[11px] font-bold uppercase text-blue-800">Suma Total Cantidad</p>
-                  <h3 class="text-xl font-bold text-blue-900 mt-1 font-mono">{{ sumaTotalCantidadAceites.toLocaleString('es-CL', { maximumFractionDigits: 2 }) }} L</h3>
-                </div>
+                <div><p class="text-[11px] font-bold uppercase text-blue-800">Suma Total Cantidad</p><h3 class="text-xl font-bold text-blue-900 mt-1 font-mono">{{ sumaTotalCantidadAceites.toLocaleString('es-CL', { maximumFractionDigits: 2 }) }} L</h3></div>
                 <div class="w-10 h-10 rounded-full bg-blue-200/60 text-blue-700 flex items-center justify-center text-lg"><i class="fa-solid fa-calculator"></i></div>
               </div>
               <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
-                <div>
-                  <p class="text-[11px] font-bold uppercase text-emerald-800">Costo Total Intervenciones</p>
-                  <h3 class="text-xl font-bold text-emerald-900 mt-1">${{ costoTotalAceitesFiltrados.toLocaleString('es-CL') }}</h3>
-                </div>
+                <div><p class="text-[11px] font-bold uppercase text-emerald-800">Costo Total</p><h3 class="text-xl font-bold text-emerald-900 mt-1">${{ costoTotalAceitesFiltrados.toLocaleString('es-CL') }}</h3></div>
                 <div class="w-10 h-10 rounded-full bg-emerald-200/60 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-dollar-sign"></i></div>
               </div>
             </div>
           </div>
 
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-            <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2">
-              <i class="fa-solid fa-list-check text-blue-600"></i> Detalle de Consumos Encontrados ({{ filteredAceitesRecords.length }} Resultados)
-            </h3>
-
+            <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-list-check text-blue-600"></i> Detalle de Consumos</h3>
             <div class="overflow-x-auto border rounded-lg max-h-[500px]">
               <table class="w-full text-left text-xs border-collapse">
                 <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
@@ -761,22 +624,17 @@
                     <th class="p-2.5">EQUIPO</th>
                     <th class="p-2.5">LUGAR</th>
                     <th class="p-2.5">CAUSA / TIPO</th>
-                    <th class="p-2.5 text-amber-300">DETALLE DE ACEITES E INSUMOS CONSUMIDOS</th>
+                    <th class="p-2.5 text-amber-300">DETALLE DE ACEITES E INSUMOS</th>
                     <th class="p-2.5 text-right">COSTO</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y bg-white">
                   <tr v-for="item in filteredAceitesRecords" :key="item.id" class="hover:bg-slate-50">
                     <td class="p-2.5 font-mono text-slate-700 font-bold bg-amber-50/40">{{ item.fecha }}</td>
-                    <td class="p-2.5 font-bold text-amber-700">
-                      <button @click="verDetallePorAfiString(item.afi)" class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200 hover:underline">{{ item.afi }}</button>
-                    </td>
+                    <td class="p-2.5 font-bold text-amber-700"><button @click="verDetallePorAfiString(item.afi)" class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200 hover:underline">{{ item.afi }}</button></td>
                     <td class="p-2.5 font-semibold">{{ item.equipo || '-' }}</td>
                     <td class="p-2.5 text-slate-600">{{ item.lugar || '-' }}</td>
-                    <td class="p-2.5">
-                      <span class="font-bold block text-slate-800">{{ item.causa }}</span>
-                      <span class="text-[10px] text-blue-600">{{ item.tipoMant }}</span>
-                    </td>
+                    <td class="p-2.5"><span class="font-bold block text-slate-800">{{ item.causa }}</span><span class="text-[10px] text-blue-600">{{ item.tipoMant }}</span></td>
                     <td class="p-2.5 font-bold text-amber-900 bg-amber-50/50">{{ item.aceites }}</td>
                     <td class="p-2.5 font-bold text-emerald-700 text-right">${{ Number(item.costo || 0).toLocaleString('es-CL') }}</td>
                   </tr>
@@ -791,10 +649,8 @@
           <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex items-center justify-between border-b pb-3">
               <div>
-                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                  <i class="fa-solid fa-users-gear text-amber-600"></i> Gestión de Usuarios del Sistema (En la Nube)
-                </h3>
-                <p class="text-xs text-slate-500">Crea nuevos usuarios guardados en Supabase para ingresar desde cualquier equipo.</p>
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-users-gear text-amber-600"></i> Gestión de Usuarios</h3>
+                <p class="text-xs text-slate-500">Crea nuevos usuarios guardados en Supabase.</p>
               </div>
               <span v-if="!isAdmin" class="text-xs bg-rose-100 text-rose-800 font-bold px-3 py-1 rounded">Requiere Sesión Admin</span>
             </div>
@@ -802,51 +658,30 @@
             <div v-if="isAdmin" class="bg-slate-50 p-4 rounded-xl border space-y-3 text-xs">
               <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-plus text-emerald-600"></i> Crear Nuevo Usuario</h4>
               <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div><label class="block font-bold mb-1">Usuario</label><input type="text" v-model="nuevoUsuario.usuario" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Contraseña</label><input type="password" v-model="nuevoUsuario.clave" class="w-full p-2 border rounded-lg bg-white"></div>
                 <div>
-                  <label class="block font-bold mb-1">Nombre / Usuario</label>
-                  <input type="text" v-model="nuevoUsuario.usuario" placeholder="Ej: pedro_logistica" class="w-full p-2 border rounded-lg bg-white">
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">Contraseña</label>
-                  <input type="password" v-model="nuevoUsuario.clave" placeholder="****" class="w-full p-2 border rounded-lg bg-white">
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">Rol / Permisos</label>
+                  <label class="block font-bold mb-1">Rol</label>
                   <select v-model="nuevoUsuario.rol" class="w-full p-2 border rounded-lg bg-white font-bold">
-                    <option value="lectura">Solo Lectura (Ver datos)</option>
-                    <option value="admin">Administrador (Control Total)</option>
+                    <option value="lectura">Solo Lectura</option>
+                    <option value="admin">Administrador</option>
                   </select>
                 </div>
-                <div class="flex items-end">
-                  <button @click="crearNuevoUsuario" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2 rounded-lg shadow">
-                    <i class="fa-solid fa-plus-circle"></i> Guardar Usuario
-                  </button>
-                </div>
+                <div class="flex items-end"><button @click="crearNuevoUsuario" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2 rounded-lg shadow"><i class="fa-solid fa-plus-circle"></i> Guardar</button></div>
               </div>
             </div>
 
             <div class="overflow-x-auto border rounded-lg text-xs">
               <table class="w-full text-left border-collapse">
                 <thead class="bg-slate-800 text-white uppercase text-[10px]">
-                  <tr>
-                    <th class="p-2.5">USUARIO</th>
-                    <th class="p-2.5">ROL</th>
-                    <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
-                  </tr>
+                  <tr><th class="p-2.5">USUARIO</th><th class="p-2.5">ROL</th><th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th></tr>
                 </thead>
                 <tbody class="divide-y bg-white">
                   <tr v-for="u in dbUsuarios" :key="u.usuario" class="hover:bg-slate-50">
                     <td class="p-2.5 font-bold text-slate-800">{{ u.usuario }}</td>
-                    <td class="p-2.5">
-                      <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', u.rol === 'admin' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700']">
-                        {{ u.rol === 'admin' ? 'Administrador' : 'Solo Lectura' }}
-                      </span>
-                    </td>
+                    <td class="p-2.5"><span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', u.rol === 'admin' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700']">{{ u.rol }}</span></td>
                     <td v-if="isAdmin" class="p-2.5 text-center">
-                      <button v-if="u.usuario !== 'logistica'" @click="eliminarUsuario(u.usuario)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-1 rounded font-bold" title="Eliminar">
-                        <i class="fa-solid fa-trash"></i>
-                      </button>
-                      <span v-else class="text-slate-400 italic text-[10px]">Principal</span>
+                      <button v-if="u.usuario !== 'logistica'" @click="eliminarUsuario(u.usuario)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-1 rounded font-bold"><i class="fa-solid fa-trash"></i></button>
                     </td>
                   </tr>
                 </tbody>
@@ -855,67 +690,38 @@
           </div>
 
           <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
-            <div class="flex items-center justify-between border-b pb-3">
-              <div>
-                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-palette text-violet-600"></i> Personalización del Sistema</h3>
-                <p class="text-xs text-slate-500">Cambia el título, el logotipo, el color de la cabecera y el fondo general de la página web.</p>
-              </div>
-            </div>
-
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 border-b pb-3"><i class="fa-solid fa-palette text-violet-600"></i> Personalización & Importación</h3>
             <div v-if="isAdmin" class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border">
+              <div><label class="block font-bold text-xs mb-1">Título</label><input type="text" v-model="config.title" class="w-full p-2 border rounded text-xs bg-white"></div>
+              <div><label class="block font-bold text-xs mb-1">Subtítulo</label><input type="text" v-model="config.subtitle" class="w-full p-2 border rounded text-xs bg-white"></div>
               <div>
-                <label class="block font-bold text-xs mb-1">Título Principal del Sistema</label>
-                <input type="text" v-model="config.title" class="w-full p-2 border rounded text-xs bg-white">
-              </div>
-              <div>
-                <label class="block font-bold text-xs mb-1">Subtítulo</label>
-                <input type="text" v-model="config.subtitle" class="w-full p-2 border rounded text-xs bg-white">
-              </div>
-              <div>
-                <label class="block font-bold text-xs mb-1">URL o Cargar Nueva Foto / Logo</label>
-                <input type="text" v-model="config.logo" placeholder="https://..." class="w-full p-2 border rounded text-xs bg-white mb-2">
+                <label class="block font-bold text-xs mb-1">Logo URL o Archivo</label>
+                <input type="text" v-model="config.logo" class="w-full p-2 border rounded text-xs bg-white mb-2">
                 <input type="file" @change="subirNuevaFotoLogo" accept="image/*" class="text-xs">
               </div>
               <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="block font-bold text-xs mb-1">Color Header</label>
-                  <input type="color" v-model="config.customHeaderBg" class="w-full h-10 p-1 border rounded cursor-pointer">
-                </div>
-                <div>
-                  <label class="block font-bold text-xs mb-1">Color de Fondo General (Body)</label>
-                  <input type="color" v-model="config.customBodyBg" class="w-full h-10 p-1 border rounded cursor-pointer">
-                </div>
+                <div><label class="block font-bold text-xs mb-1">Color Header</label><input type="color" v-model="config.customHeaderBg" class="w-full h-10 p-1 border rounded cursor-pointer"></div>
+                <div><label class="block font-bold text-xs mb-1">Color Body</label><input type="color" v-model="config.customBodyBg" class="w-full h-10 p-1 border rounded cursor-pointer"></div>
               </div>
               <div class="md:col-span-2 flex justify-end">
-                <button @click="guardarConfiguracionPersonalizada" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow">
-                  <i class="fa-solid fa-floppy-disk mr-1"></i> Guardar Cambios
-                </button>
+                <button @click="guardarConfiguracionPersonalizada" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar Cambios</button>
               </div>
             </div>
-            
+
             <div class="border-t pt-4">
-              <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-3"><i class="fa-solid fa-file-import text-violet-600"></i> Centro Importador de Bases de Datos</h3>
+              <h4 class="font-bold text-xs text-slate-800 mb-3"><i class="fa-solid fa-file-import text-violet-600"></i> Importador de Bases de Datos</h4>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-                  <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-boxes-stacked text-emerald-600"></i> 1. Inventario AFI</h4>
-                  <label :class="['w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-500']">
-                    <i class="fa-solid fa-file-excel"></i> Seleccionar
-                    <input type="file" :disabled="!isAdmin" @change="importarInventarioFile" accept=".xlsx, .xls, .csv, .json" class="hidden">
-                  </label>
+                  <span class="font-bold text-xs">Inventario AFI</span>
+                  <label :class="['w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-500']"><i class="fa-solid fa-file-excel"></i> Subir Excel<input type="file" :disabled="!isAdmin" @change="importarInventarioFile" accept=".xlsx, .xls, .csv" class="hidden"></label>
                 </div>
                 <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-                  <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-truck-fast text-amber-600"></i> 2. Movimientos</h4>
-                  <label :class="['w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-amber-600 text-white' : 'bg-slate-300 text-slate-500']">
-                    <i class="fa-solid fa-file-excel"></i> Seleccionar
-                    <input type="file" :disabled="!isAdmin" @change="importarMovimientosFile" accept=".xlsx, .xls, .csv, .json" class="hidden">
-                  </label>
+                  <span class="font-bold text-xs">Movimientos</span>
+                  <label :class="['w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-amber-600 text-white' : 'bg-slate-300 text-slate-500']"><i class="fa-solid fa-file-excel"></i> Subir Excel<input type="file" :disabled="!isAdmin" @change="importarMovimientosFile" accept=".xlsx, .xls, .csv" class="hidden"></label>
                 </div>
                 <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-                  <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-wrench text-blue-600"></i> 3. BD HISTORIAL (Aceites & Horas)</h4>
-                  <label :class="['w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-blue-600 text-white' : 'bg-slate-300 text-slate-500']">
-                    <i class="fa-solid fa-file-excel"></i> Seleccionar
-                    <input type="file" :disabled="!isAdmin" @change="importarIntervencionesFile" accept=".xlsx, .xls, .csv, .json" class="hidden">
-                  </label>
+                  <span class="font-bold text-xs">Historial (Mantenciones)</span>
+                  <label :class="['w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-blue-600 text-white' : 'bg-slate-300 text-slate-500']"><i class="fa-solid fa-file-excel"></i> Subir Excel<input type="file" :disabled="!isAdmin" @change="importarIntervencionesFile" accept=".xlsx, .xls, .csv" class="hidden"></label>
                 </div>
               </div>
             </div>
@@ -924,10 +730,9 @@
 
       </main>
 
-      <!-- GRAN MODAL: PERFIL DE EQUIPO -->
+      <!-- MODAL: PERFIL DE EQUIPO -->
       <div v-if="showPerfilEquipoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden">
-          
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
             <div class="flex items-center gap-3">
               <span class="text-xs font-mono font-bold bg-amber-500 text-slate-900 px-3 py-1.5 rounded-lg shadow-sm">AFI: {{ perfilEquipo.afi }}</span>
@@ -937,7 +742,6 @@
           </div>
 
           <div class="p-6 overflow-y-auto space-y-6 flex-grow bg-slate-100 text-xs">
-            
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
               <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-4"><i class="fa-solid fa-truck-monster text-emerald-600"></i> Datos Principales del Equipo</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -946,56 +750,79 @@
                 <div><label class="block font-bold text-slate-700 mb-1">Modelo</label><input type="text" v-model="perfilEquipo.modelo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
                 <div><label class="block font-bold text-slate-700 mb-1">Ubicación Actual</label><input type="text" v-model="perfilEquipo.ubicacion" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
                 <div>
-                  <label class="block font-bold text-slate-700 mb-1">Disponibilidad / Estado</label>
+                  <label class="block font-bold text-slate-700 mb-1">Disponibilidad</label>
                   <select v-model="perfilEquipo.disponibilidad" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
                     <option value="Operativo">Trabajando / Operativo</option><option value="Disponible">Disponible</option><option value="En Traslado">En Traslado</option>
                     <option value="En Mantencion">En Mantención</option><option value="Fuera de Servicio">Fuera de Servicio</option><option value="Venta">En Venta</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block font-bold text-slate-700 mb-1">Estado de GPS</label>
+                  <label class="block font-bold text-slate-700 mb-1">GPS</label>
                   <select v-model="perfilEquipo.gps" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-blue-700">
                     <option value="Instalado">Instalado</option><option value="Sin GPS">Sin GPS</option>
                   </select>
                 </div>
-                <div class="md:col-span-2"><label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label><input type="text" v-model="perfilEquipo.imei_gps" :disabled="!isAdmin" placeholder="Ej: 8645..." class="w-full p-2 border rounded-lg bg-slate-50 font-mono"></div>
+                <div class="md:col-span-2"><label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label><input type="text" v-model="perfilEquipo.imei_gps" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-mono"></div>
               </div>
             </div>
 
-            <!-- SECCIÓN HORÓMETROS Y ALERTA VISUAL -->
+            <!-- SECCIÓN HORÓMETROS Y DATOS COMPLETOS -->
             <div :class="['p-5 rounded-xl shadow-sm border flex flex-col md:flex-row gap-6 items-center', perfilEquipo.horometros?.horasFaltantes <= 0 ? 'bg-pasado-blink' : 'bg-normal-horometro']">
-              <div class="w-full md:w-1/3 space-y-4">
+              <div class="w-full md:w-1/3 space-y-3">
                 <div class="flex items-center justify-between border-b border-white/20 pb-2">
-                  <h4 class="font-bold text-sm flex items-center gap-2 uppercase"><i class="fa-solid fa-stopwatch"></i> Control & Frecuencia</h4>
+                  <h4 class="font-bold text-sm flex items-center gap-2 uppercase"><i class="fa-solid fa-stopwatch"></i> Horómetros y Frecuencia</h4>
                   <span v-if="perfilEquipo.horometros?.horasFaltantes <= 0" class="bg-white text-rose-600 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase animate-pulse">¡PASADO!</span>
-                  <span v-else-if="perfilEquipo.horometros?.horasFaltantes <= 50" class="bg-amber-400 text-slate-900 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase">PRÓXIMO</span>
-                  <span v-else class="bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px] font-extrabold uppercase">AL DÍA</span>
                 </div>
-                <div><label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Horómetro Actual (Manual)</label><input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 focus:bg-white/20 font-mono font-bold text-white text-sm outline-none transition"></div>
-                <div><label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención (Ej: 250)</label><input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 focus:bg-white/20 font-mono font-bold text-white text-sm outline-none transition"></div>
+                <div>
+                  <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase" title="Modificable manualmente">Último Horómetro Tomado (Manual)</label>
+                  <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
+                </div>
+                <div>
+                  <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención</label>
+                  <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2 border-none rounded-lg bg-white/10 font-mono font-bold text-white text-sm outline-none">
+                </div>
               </div>
-              <div class="w-full md:w-2/3 grid grid-cols-2 lg:grid-cols-4 gap-3 text-center">
-                <div class="bg-white/10 p-3 rounded-xl border border-white/20"><span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Realizada</span><strong class="font-mono text-base block">{{ perfilEquipo.horometros?.hOficial || 0 }}h</strong></div>
-                <div class="bg-white/10 p-3 rounded-xl border border-white/20"><span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Proyección (Hoy)</span><strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong><span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin datos de uso' }}</span></div>
-                <div class="bg-white/10 p-3 rounded-xl border border-white/20"><span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Meta a Cumplir</span><strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }}h</strong></div>
-                <div class="bg-white/10 p-3 rounded-xl border border-white/20"><span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Estimada</span><strong class="font-mono text-sm text-amber-300 block mt-1">{{ perfilEquipo.horometros?.fechaEstimada || '-' }}</strong></div>
+
+              <div class="w-full md:w-2/3 grid grid-cols-2 lg:grid-cols-3 gap-3 text-center">
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Mantención (Historial)</span>
+                  <strong class="font-mono text-sm block">{{ perfilEquipo.horometros?.ultimaMantTipo || 'Sin reg.' }}</strong>
+                  <span class="text-[9px] opacity-70 block mt-0.5">{{ perfilEquipo.horometros?.ultimaMantFecha || '-' }}</span>
+                </div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Úl. Horómetro Tomado</span>
+                  <strong class="font-mono text-sm text-amber-300 block mt-1">{{ perfilEquipo.horometros?.fechaUltimoHorometro || '-' }}</strong>
+                </div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Horómetro Actual Aprox.</span>
+                  <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong>
+                  <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin uso diario' }}</span>
+                </div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20">
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Próxima Mantención (Meta)</span>
+                  <strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }}h</strong>
+                </div>
+                <div class="bg-white/10 p-3 rounded-xl border border-white/20 col-span-2 lg:col-span-2">
+                  <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Próxima Mantención (Aprox.)</span>
+                  <strong class="font-mono text-sm text-amber-300 block mt-1">{{ perfilEquipo.horometros?.fechaEstimada || '-' }}</strong>
+                </div>
               </div>
             </div>
 
-            <!-- SECCIÓN ASIGNACIÓN A PROGRAMAS DENTRO DEL PERFIL -->
+            <!-- ASIGNACIÓN A PROGRAMA -->
             <div v-if="isAdmin" class="bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm">
-              <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar rápidamente a un Programa de Mantención CRTG</h4>
+              <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar rápidamente a un Programa</h4>
               <div class="flex flex-wrap items-end gap-3">
                 <div class="flex-grow">
-                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Carpeta de Programa</label>
-                  <select v-model="perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold text-slate-800" @change="perfilAsignacionProg.mes = ''">
+                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Carpeta</label>
+                  <select v-model="perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold" @change="perfilAsignacionProg.mes = ''">
                     <option value="">-- Elige Carpeta --</option>
                     <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
                   </select>
                 </div>
                 <div class="flex-grow">
-                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Mes / Subprograma</label>
-                  <select v-model="perfilAsignacionProg.mes" :disabled="!perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold text-slate-800">
+                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Mes / Programa</label>
+                  <select v-model="perfilAsignacionProg.mes" :disabled="!perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold">
                     <option value="">-- Elige Mes --</option>
                     <option v-for="m in obtenerMesesDeCarpeta(perfilAsignacionProg.carpeta)" :key="m" :value="m">{{ m }}</option>
                   </select>
@@ -1003,32 +830,32 @@
                 <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Tipo</label><select v-model="perfilAsignacionProg.tipo" class="p-2 border rounded-lg bg-white font-semibold"><option value="Mantención">Mantención</option><option value="Reparación">Reparación</option></select></div>
                 <div v-if="perfilAsignacionProg.tipo === 'Mantención'"><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Horas</label><select v-model="perfilAsignacionProg.horas" class="p-2 border rounded-lg bg-white font-semibold"><option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option></select></div>
                 <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Plan</label><input type="date" v-model="perfilAsignacionProg.fecha" class="p-2 border rounded-lg bg-white font-mono"></div>
-                <button @click="guardarAsignacionDesdePerfil" :disabled="!perfilAsignacionProg.carpeta || !perfilAsignacionProg.mes || !perfilAsignacionProg.fecha" class="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg transition shadow-md h-[36px] flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Añadir a Programa</button>
+                <button @click="guardarAsignacionDesdePerfil" :disabled="!perfilAsignacionProg.carpeta || !perfilAsignacionProg.mes || !perfilAsignacionProg.fecha" class="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg transition shadow-md h-[36px] flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Añadir</button>
               </div>
             </div>
 
-            <!-- Tablas Historial y Traslados -->
+            <!-- Historiales en perfil -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
-                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-wrench text-blue-600"></i> Historial de Mantenciones<span class="ml-auto bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{{ getHistorialIntervencionesAFI(perfilEquipo.afi).length }} reg</span></h4>
+                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-wrench text-blue-600"></i> Historial Mantenciones</h4>
                 <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
-                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]"><tr><th class="p-2">Fecha</th><th class="p-2">Horómetro</th><th class="p-2">Tipo</th><th class="p-2">Causa</th><th class="p-2">Aceites</th></tr></thead><tbody class="divide-y bg-white"><tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id" class="hover:bg-amber-50"><td class="p-2 font-mono font-bold text-slate-800">{{ i.fecha }}</td><td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td><td class="p-2 font-semibold text-[10px]">{{ i.tipoMant }}</td><td class="p-2 font-bold text-[10px] truncate max-w-[100px]" :title="i.causa">{{ i.causa }}</td><td class="p-2 text-amber-800 text-[10px] truncate max-w-[120px]" :title="i.aceites">{{ i.aceites }}</td></tr><tr v-if="getHistorialIntervencionesAFI(perfilEquipo.afi).length === 0"><td colspan="5" class="p-4 text-center text-slate-400 font-bold">Sin mantenciones registradas.</td></tr></tbody></table>
+                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]"><tr><th class="p-2">Fecha</th><th class="p-2">Horómetro</th><th class="p-2">Tipo</th><th class="p-2">Causa</th></tr></thead><tbody class="divide-y bg-white"><tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id"><td class="p-2 font-mono font-bold">{{ i.fecha }}</td><td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td><td class="p-2 text-[10px]">{{ i.tipoMant }}</td><td class="p-2 text-[10px] truncate max-w-[120px]">{{ i.causa }}</td></tr><tr v-if="getHistorialIntervencionesAFI(perfilEquipo.afi).length === 0"><td colspan="4" class="p-4 text-center text-slate-400">Sin registros.</td></tr></tbody></table>
                 </div>
               </div>
               <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
-                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-truck-moving text-amber-500"></i> Historial de Traslados<span class="ml-auto bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{{ getHistorialMovimientosAFI(perfilEquipo.afi).length }} reg</span></h4>
+                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-truck-moving text-amber-500"></i> Historial Traslados</h4>
                 <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
-                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b"><tr><th class="p-2">Fecha</th><th class="p-2">Origen</th><th class="p-2">Destino</th><th class="p-2">Conductor</th></tr></thead><tbody class="divide-y bg-white text-[11px]"><tr v-for="m in getHistorialMovimientosAFI(perfilEquipo.afi)" :key="m.id" class="hover:bg-emerald-50"><td class="p-2 font-mono font-bold text-slate-800">{{ m.fecha }}</td><td class="p-2 truncate max-w-[100px]" :title="m.origen">{{ m.origen }}</td><td class="p-2 font-bold text-emerald-700 truncate max-w-[100px]" :title="m.destino">{{ m.destino }}</td><td class="p-2">{{ m.conductor }}</td></tr><tr v-if="getHistorialMovimientosAFI(perfilEquipo.afi).length === 0"><td colspan="4" class="p-4 text-center text-slate-400 font-bold">Sin movimientos registrados.</td></tr></tbody></table>
+                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b"><tr><th class="p-2">Fecha</th><th class="p-2">Origen</th><th class="p-2">Destino</th></tr></thead><tbody class="divide-y bg-white text-[11px]"><tr v-for="m in getHistorialMovimientosAFI(perfilEquipo.afi)" :key="m.id"><td class="p-2 font-mono font-bold">{{ m.fecha }}</td><td class="p-2 truncate max-w-[100px]">{{ m.origen }}</td><td class="p-2 font-bold text-emerald-700 truncate max-w-[100px]">{{ m.destino }}</td></tr><tr v-if="getHistorialMovimientosAFI(perfilEquipo.afi).length === 0"><td colspan="3" class="p-4 text-center text-slate-400">Sin traslados.</td></tr></tbody></table>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="px-6 py-4 border-t bg-white flex justify-between items-center">
-            <span class="text-[10px] text-slate-400 font-bold uppercase"><i class="fa-solid fa-cloud"></i> Sincronizado en tiempo real</span>
+            <span class="text-[10px] text-slate-400 font-bold uppercase"><i class="fa-solid fa-cloud"></i> Sincronizado</span>
             <div class="flex items-center gap-2">
-              <button @click="showPerfilEquipoModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-lg transition text-xs">Cerrar Ventana</button>
-              <button v-if="isAdmin" @click="guardarPerfilEquipo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow flex items-center gap-1.5 transition text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios del Perfil</button>
+              <button @click="showPerfilEquipoModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-lg text-xs">Cerrar</button>
+              <button v-if="isAdmin" @click="guardarPerfilEquipo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
             </div>
           </div>
         </div>
@@ -1037,184 +864,89 @@
       <!-- MODAL FORMULARIO MANTENCIÓN -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
-          
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
-            <h3 class="text-sm font-bold flex items-center gap-2">
-              <i class="fa-solid fa-wrench text-amber-400"></i> 
-              {{ isEditingMantencion ? 'Editar Mantención / Intervención' : 'Registrar Nueva Mantención / Intervención' }}
-            </h3>
-            <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white">
-              <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
+            <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-wrench text-amber-400"></i> {{ isEditingMantencion ? 'Editar Mantención' : 'Registrar Nueva Mantención' }}</h3>
+            <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
-
           <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
-            
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-list-check text-amber-600"></i> Informes Principales</h4>
+              <h4 class="font-bold text-slate-800 uppercase">Informes Principales</h4>
               <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                <div>
-                  <label class="block font-bold mb-1">AFI (Equipo)</label>
-                  <select v-model="formMant.afi" class="w-full p-2 border rounded-lg bg-white font-bold text-amber-900">
-                    <option value="">-- Seleccionar AFI --</option>
-                    <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">Fecha</label>
-                  <input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white">
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">Lugar</label>
-                  <input type="text" v-model="formMant.lugar" placeholder="Ej: Planta Tierras Blancas" class="w-full p-2 border rounded-lg bg-white">
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">Horómetro</label>
-                  <input type="number" step="any" v-model="formMant.horometro" placeholder="Ej: 1250" class="w-full p-2 border rounded-lg bg-white font-mono font-bold">
-                </div>
+                <div><label class="block font-bold mb-1">AFI</label><select v-model="formMant.afi" class="w-full p-2 border rounded-lg bg-white font-bold"><option value="">-- AFI --</option><option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option></select></div>
+                <div><label class="block font-bold mb-1">Fecha</label><input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Horómetro</label><input type="number" step="any" v-model="formMant.horometro" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
               </div>
             </div>
-
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-sliders text-blue-600"></i> Clasificación Técnica</h4>
+              <h4 class="font-bold text-slate-800 uppercase">Clasificación</h4>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label class="block font-bold mb-1">Causa</label>
-                  <select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold">
-                    <option value="">-- Seleccionar Causa --</option>
-                    <option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">Tipo Mantención</label>
-                  <select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white">
-                    <option value="">-- Seleccionar Tipo --</option>
-                    <option value="PREVENTIVA">PREVENTIVA</option>
-                    <option value="PREDICTIVA">PREDICTIVA</option>
-                    <option value="CORRECTIVA">CORRECTIVA</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">Tipo en Horas Mantención</label>
-                  <input type="text" v-model="formMant.tipoHorasMant" placeholder="Ej: 250, 500, 1000..." class="w-full p-2 border rounded-lg bg-white font-bold text-amber-800">
-                </div>
+                <div><label class="block font-bold mb-1">Causa</label><select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold"><option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option></select></div>
+                <div><label class="block font-bold mb-1">Tipo</label><select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white"><option value="PREVENTIVA">PREVENTIVA</option><option value="PREDICTIVA">PREDICTIVA</option><option value="CORRECTIVA">CORRECTIVA</option></select></div>
+                <div><label class="block font-bold mb-1">Tipo Horas</label><input type="text" v-model="formMant.tipoHorasMant" placeholder="Ej: 250" class="w-full p-2 border rounded-lg bg-white font-bold"></div>
               </div>
             </div>
-
-            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-gear text-emerald-600"></i> Personal & Horarios</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" class="w-full p-2 border rounded-lg bg-white"></div>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t">
-                <div><label class="block font-bold mb-1">Hora Inicio</label><input type="time" v-model="formMant.horaInicio" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Hora Término</label><input type="time" v-model="formMant.horaTermino" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div>
-                  <label class="block font-bold mb-1">Total Horas (Calculado)</label>
-                  <div class="p-2 border rounded-lg bg-amber-50 font-bold text-amber-900 font-mono text-center">
-                    {{ calcularRestaHoras(formMant.horaInicio, formMant.horaTermino) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <div class="flex justify-between items-center">
-                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5">
-                  <i class="fa-solid fa-oil-can text-amber-600"></i> Aceites & Insumos Consumidos
-                </h4>
-                <button @click="agregarFilaAceiteForm" class="bg-amber-100 hover:bg-amber-200 text-amber-900 px-2.5 py-1 rounded font-bold text-[11px] flex items-center gap-1">
-                  <i class="fa-solid fa-plus"></i> Añadir Insumo
-                </button>
-              </div>
-              <div v-for="(ac, idx) in formMant.aceiteDetallesArray" :key="idx" class="flex flex-wrap items-center gap-2">
-                <input type="text" v-model="ac.nombre" list="opcionesAceites" placeholder="Selecciona o escribe el aceite/insumo..." class="flex-grow p-2 border rounded-lg bg-white font-bold text-slate-800">
-                <datalist id="opcionesAceites">
-                  <option v-for="opc in listaAceitesEstandar" :key="opc" :value="opc"></option>
-                </datalist>
-                <input type="number" step="any" v-model="ac.cantidad" placeholder="Litros / Cant." class="w-32 p-2 border rounded-lg bg-white font-mono font-bold text-amber-900">
-                <button @click="eliminarFilaAceiteForm(idx)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-2 rounded-lg" title="Eliminar fila"><i class="fa-solid fa-trash"></i></button>
-              </div>
-            </div>
-
-            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar text-violet-600"></i> Costos, Órdenes & Adjuntos</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-bold text-emerald-700"></div>
-                <div><label class="block font-bold mb-1">N° OC</label><input type="text" v-model="formMant.numeroOC" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">N° OT</label><input type="text" v-model="formMant.numeroOT" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Empresa Arriendo</label><input type="text" v-model="formMant.empresaArriendo" class="w-full p-2 border rounded-lg bg-white"></div>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div><label class="block font-bold mb-1">Causa Detallada</label><textarea v-model="formMant.causaDetallada" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
-                <div><label class="block font-bold mb-1">Descripción</label><textarea v-model="formMant.descripcion" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
-                <div><label class="block font-bold mb-1">Interferencia</label><textarea v-model="formMant.interferencia" rows="2" class="w-full p-2 border rounded-lg bg-white"></textarea></div>
-              </div>
-            </div>
-
           </div>
-
           <div class="px-6 py-3 border-t bg-slate-100 flex justify-end gap-2">
             <button @click="showFormMantencionModal = false" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded-lg">Cancelar</button>
-            <button @click="guardarMantencionForm" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg shadow flex items-center gap-1.5">
-              <i class="fa-solid fa-floppy-disk"></i> Guardar Mantención
-            </button>
+            <button @click="guardarMantencionForm" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg shadow"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
           </div>
-
         </div>
       </div>
 
-      <!-- MODAL NUEVO PROGRAMA -->
+      <!-- MODAL NUEVO PROGRAMA (POR PASOS: CARPETA -> MES -> EQUIPO) -->
       <div v-if="showNuevoProgramaModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl border w-full max-w-2xl overflow-hidden flex flex-col">
           <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
-            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Programar Equipo en CRTG</h3>
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Crear Programa / Asignar Equipo</h3>
             <button @click="showNuevoProgramaModal=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 space-y-4 text-xs bg-slate-50">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- PASO 1: CARPETA -->
+            <div class="space-y-1">
+              <label class="block font-bold text-slate-700 uppercase text-[11px]">1. Selecciona o Crea la Carpeta Principal</label>
+              <input type="text" v-model="formPrograma.carpeta" list="listCarpetas" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: PROGRAMA MANTENCION ANUAL">
+              <datalist id="listCarpetas"><option v-for="c in listaCarpetasProgramas" :key="c" :value="c"></option></datalist>
+            </div>
+
+            <!-- PASO 2: MES / SUBPROGRAMA -->
+            <div class="space-y-1">
+              <label class="block font-bold text-slate-700 uppercase text-[11px]">2. Selecciona o Crea el Mes / Subprograma</label>
+              <input type="text" v-model="formPrograma.mes" list="listMeses" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: ENERO 2026">
+              <datalist id="listMeses"><option v-for="m in mesesSugeridosPrograma" :key="m" :value="m"></option></datalist>
+            </div>
+
+            <!-- PASO 3: EQUIPO Y DATOS -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
               <div>
-                <label class="block font-bold text-slate-700 mb-1">Carpeta Principal (Ej: PROGRAMA MANTENCION CRTG)</label>
-                <input type="text" v-model="formPrograma.carpeta" list="listCarpetas" class="w-full p-2 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Escribe o selecciona...">
-                <datalist id="listCarpetas"><option v-for="c in listaCarpetasProgramas" :key="c" :value="c"></option></datalist>
-              </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Mes / Subprograma (Ej: ENERO 2026)</label>
-                <input type="text" v-model="formPrograma.mes" list="listMeses" class="w-full p-2 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Escribe o selecciona...">
-                <datalist id="listMeses"><option v-for="m in mesesSugeridos" :key="m" :value="m"></option></datalist>
-              </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">AFI de Equipo</label>
-                <select v-model="formPrograma.afi" class="w-full p-2 border rounded-lg bg-white font-bold text-amber-900">
+                <label class="block font-bold text-slate-700 mb-1">3. Selecciona el Equipo (AFI)</label>
+                <select v-model="formPrograma.afi" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
                   <option value="">-- Seleccionar Equipo --</option>
                   <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
                 </select>
               </div>
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Tipo de Trabajo</label>
-                <select v-model="formPrograma.tipo" class="w-full p-2 border rounded-lg bg-white font-semibold">
+                <select v-model="formPrograma.tipo" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
                   <option value="Mantención">Mantención</option><option value="Reparación">Reparación</option>
                 </select>
               </div>
               <div v-if="formPrograma.tipo === 'Mantención'">
                 <label class="block font-bold text-slate-700 mb-1">Horas de Mantención</label>
-                <select v-model="formPrograma.horas" class="w-full p-2 border rounded-lg bg-white font-semibold">
+                <select v-model="formPrograma.horas" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
                   <option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option>
                 </select>
               </div>
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Fecha Programada (Plan)</label>
-                <input type="date" v-model="formPrograma.fecha" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-slate-800">
+                <input type="date" v-model="formPrograma.fecha" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold text-slate-800">
               </div>
             </div>
-            <p class="text-[10px] text-slate-500 italic"><i class="fa-solid fa-circle-info"></i> Si la carpeta o mes ingresados no existen, se crearán automáticamente al guardar.</p>
+            <p class="text-[10px] text-slate-500 italic"><i class="fa-solid fa-circle-info"></i> Puedes crear carpetas o meses nuevos simplemente escribiendo su nombre.</p>
           </div>
           <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
             <button @click="showNuevoProgramaModal=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-            <button @click="guardarNuevoPrograma" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md flex items-center gap-1.5 text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar en Programa</button>
+            <button @click="guardarNuevoPrograma" :disabled="!formPrograma.carpeta || !formPrograma.mes || !formPrograma.afi || !formPrograma.fecha" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md flex items-center gap-1.5 text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar en Programa</button>
           </div>
         </div>
       </div>
@@ -1265,10 +997,8 @@
         const showFormMantencionModal = ref(false);
         const isEditingMantencion = ref(false);
         const formMant = ref({
-          id: null, afi: "", fecha: "", lugar: "", causa: "", tipoMant: "", tipoHorasMant: "", horometro: "",
-          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "",
-          descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
-          aceiteDetallesArray: [], documentoAdjunto: null
+          id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
+          mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "", aceiteDetallesArray: []
         });
 
         const listaCausas = [
@@ -1278,32 +1008,21 @@
           "RETIRO", "CONEXIÓN/DESCONEXION", "FALLA OPERACIONAL", "INSPECCION (ELECTRICA)"
         ];
 
-        const listaAceitesEstandar = ref([
-          "ACEITE 15W40 CI-4", "ACEITE 15W40 CK4", "ACEITE REFRIGERANTE 50/50", "ACEITE 80W90",
-          "ACEITE DACNIS 68", "ACEITE DACNIS 46", "PAROIL M EXTREME", "PAROIL S EXTREME",
-          "5W30", "LIQUIDO DE FRENO DOT-4", "TRACTOFLUID (10W30)", "SAE 30", "HYDRA46",
-          "HYDRA 68", "ADBLUE", "ACEITE 75W", "ACEITE 10W", "MULTIPROPOSITO", "DESEGRANSANTE", "ACIDO MURIATICO"
-        ]);
-
-        // Estado Programas CRTG
+        // Estado Programas
         const showNuevoProgramaModal = ref(false);
-        const formPrograma = ref({ carpeta: 'PROGRAMA MANTENCION CRTG', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
-        const openFolders = ref({ 'PROGRAMA MANTENCION CRTG': true });
+        const formPrograma = ref({ carpeta: '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
+        const openFolders = ref({});
         const progSelect = ref({ carpeta: '', mes: '' });
 
-        // Asignación rápida desde perfil
-        const perfilAsignacionProg = ref({ carpeta: 'PROGRAMA MANTENCION CRTG', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
+        const perfilAsignacionProg = ref({ carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
 
         // Filtros
         const filterInv = ref({ search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false });
         const sortInventarioOrder = ref("desc");
-        
         const filterMov = ref({ dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" });
         const sortMovimientosOrder = ref("desc");
-
         const filterInt = ref({ searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" });
         const sortHistorialOrder = ref("desc");
-        
         const filterOil = ref({ dateStart: "", dateEnd: "", afi: "ALL", tipoAceite: "ALL" });
         const sortAceitesOrder = ref("desc");
 
@@ -1332,14 +1051,13 @@
           reader.onload = async (evt) => {
             const fotoBase64 = evt.target.result;
             item.foto = fotoBase64;
-            const { error } = await supabaseClient.from('BD_INVENTARIO').update({ foto: fotoBase64 }).eq('id', item.id);
-            if (!error) alert("¡Foto guardada en Supabase con éxito y disponible para todos!");
-            else alert("Error al guardar la foto.");
+            await supabaseClient.from('BD_INVENTARIO').update({ foto: fotoBase64 }).eq('id', item.id);
+            alert("¡Foto guardada con éxito!");
           };
           reader.readAsDataURL(file);
         };
 
-        // LÓGICA PROGRAMAS CRTG
+        // LÓGICA PROGRAMAS
         const listaCarpetasProgramas = computed(() => {
           const carpetas = new Set(dbProgramas.value.map(p => p.carpeta).filter(Boolean));
           return Array.from(carpetas).sort();
@@ -1350,7 +1068,7 @@
           return Array.from(meses).sort();
         };
 
-        const mesesSugeridos = computed(() => {
+        const mesesSugeridosPrograma = computed(() => {
           if (!formPrograma.value.carpeta) return [];
           return obtenerMesesDeCarpeta(formPrograma.value.carpeta);
         });
@@ -1369,11 +1087,10 @@
         };
 
         const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
-        
         const seleccionarPrograma = (carpeta, mes) => { progSelect.value = { carpeta, mes }; };
 
         const abrirFormularioPrograma = () => {
-          formPrograma.value = { carpeta: 'PROGRAMA MANTENCION CRTG', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
+          formPrograma.value = { carpeta: listaCarpetasProgramas.value[0] || '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
           showNuevoProgramaModal.value = true;
         };
 
@@ -1389,7 +1106,7 @@
           };
 
           const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
-          if (error) alert("Asegúrate de haber creado la tabla BD_PROGRAMAS en Supabase.");
+          if (error) alert("Error al guardar en Supabase. Verifica la tabla BD_PROGRAMAS.");
           else {
             await cargarDatosDesdeSupabase();
             showNuevoProgramaModal.value = false;
@@ -1400,8 +1117,8 @@
 
         const marcarProgramaRealizado = async (item) => {
           const fechaHoy = new Date().toISOString().substring(0,10);
-          const { error } = await supabaseClient.from('BD_PROGRAMAS').update({ realizado: true, fecha_realizada: fechaHoy }).eq('id', item.id);
-          if(!error) await cargarDatosDesdeSupabase();
+          await supabaseClient.from('BD_PROGRAMAS').update({ realizado: true, fecha_realizada: fechaHoy }).eq('id', item.id);
+          await cargarDatosDesdeSupabase();
         };
 
         const eliminarItemPrograma = async (id) => {
@@ -1420,10 +1137,10 @@
             fecha_programada: perfilAsignacionProg.value.fecha, realizado: false
           };
           const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
-          if(error) alert("Error guardando asignación. Verifica la tabla BD_PROGRAMAS en Supabase.");
+          if(error) alert("Error guardando asignación.");
           else {
             alert("¡Equipo asignado al programa con éxito!");
-            perfilAsignacionProg.value = { carpeta: 'PROGRAMA MANTENCION CRTG', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' };
+            perfilAsignacionProg.value = { carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' };
             await cargarDatosDesdeSupabase();
           }
         };
@@ -1449,9 +1166,8 @@
               return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
             }
             let strVal = String(val).trim();
-            if (strVal === "" || strVal === "-" || strVal === "null" || strVal === "undefined" || strVal === "N/A") return null;
-
-            if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/') && !strVal.includes(' '))) {
+            if (strVal === "" || strVal === "-" || strVal === "null") return null;
+            if (typeof val === 'number' || (!isNaN(val) && !strVal.includes('-') && !strVal.includes('/'))) {
               const num = Number(val);
               if (num > 20000 && num < 80000) {
                 const dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
@@ -1462,11 +1178,7 @@
             if (strVal.includes(' ')) strVal = strVal.split(' ')[0];
             if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(strVal)) {
               const parts = strVal.split(/[-/]/);
-              if (parts.length >= 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-            }
-            if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(strVal)) {
-              const parts = strVal.split(/[-/]/);
-              if (parts.length >= 3) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+              return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
             }
             return strVal;
           } catch(e) { return null; }
@@ -1479,23 +1191,20 @@
           try {
             const fmt = normalizarFecha(val);
             if (!fmt || fmt === '-') return 0;
-            if (/^\d{4}-\d{2}-\d{2}$/.test(fmt)) return new Date(`${fmt}T00:00:00`).getTime();
-            const d = new Date(fmt);
-            return isNaN(d.getTime()) ? 0 : d.getTime();
+            return new Date(`${fmt}T00:00:00`).getTime();
           } catch (e) { return 0; }
         };
 
         const parseNum = (val) => {
           if (val === null || val === undefined) return null;
           const s = String(val).trim();
-          if (s === "" || s === "-" || s === "N/A" || s === "null") return null;
+          if (s === "" || s === "-") return null;
           const n = Number(s.replace(',', '.'));
           return isNaN(n) ? null : n;
         };
 
         const parseStr = (val) => (val === null || val === undefined) ? "" : String(val).trim();
 
-        // CORE DATA LOAD
         const fetchAllRowsSupabase = async (tableName) => {
           let allRows = []; let page = 0; const pageSize = 1000; let keepFetching = true;
           while (keepFetching) {
@@ -1515,8 +1224,7 @@
                 modelo: String(item.modelo || ''), ubicacion: String(item.ubicacion || ''),
                 disponibilidad: normalizarClave(item.disponibilidad), anio: item.anio || 2023,
                 horometroActual: Number(item.horometroactual || 0), frecuenciaMantencion: Number(item.frecuencia_mantencion) || 250,
-                gps: item.gps || 'Sin GPS', imei_gps: item.imei_gps || '', foto: item.foto || '',
-                horometros: null, tipoHorasMantencion: "250 hrs"
+                gps: item.gps || 'Sin GPS', imei_gps: item.imei_gps || '', foto: item.foto || '', horometros: null
               }));
             }
             
@@ -1534,14 +1242,10 @@
             if (intData) {
               dbIntervenciones.value = intData.map(item => {
                 const rawFecha = item.fecha || item.fecha_mantencion || item.created_at;
-                const aceiteDetallesArray = []; const aceitesConsumidos = [];
+                const aceitesConsumidos = [];
                 const camposAceites = [ "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90", "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme", "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46", "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico" ];
                 camposAceites.forEach(c => {
-                  if (item[c] && Number(item[c]) > 0) {
-                    const nombreLindo = c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase();
-                    aceitesConsumidos.push(`${nombreLindo}: ${item[c]}L`);
-                    aceiteDetallesArray.push({ nombre: nombreLindo, cantidad: Number(item[c]) });
-                  }
+                  if (item[c] && Number(item[c]) > 0) aceitesConsumidos.push(`${c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase()}: ${item[c]}L`);
                 });
                 return {
                   id: item.id, afi: String(item.afi || '').trim(), fecha: formatExcelDate(rawFecha),
@@ -1553,7 +1257,7 @@
                   descripcion: String(item.descripcion || '').trim(), interferencia: String(item.interferencia || ''),
                   empresaArriendo: String(item.empresa || ''), costo: Number(item.costo || 0), numeroOC: String(item.numero_oc || ''),
                   numeroOT: String(item.numero_ot || ''), linkDrive: String(item.link || ''),
-                  aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo", aceiteDetallesArray
+                  aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo"
                 };
               });
             }
@@ -1561,11 +1265,11 @@
             try {
               const progData = await fetchAllRowsSupabase('BD_PROGRAMAS');
               if (progData) dbProgramas.value = progData;
-            } catch(e) { console.log("Tabla BD_PROGRAMAS no existe aún en Supabase."); }
+            } catch(e) {}
 
             actualizarHorometrosDesdeHistorial();
             renderCharts();
-          } catch (err) { console.error("Error sincronización:", err); }
+          } catch (err) { console.error("Error cargando datos:", err); }
         };
 
         const actualizarHorometrosDesdeHistorial = () => {
@@ -1580,50 +1284,46 @@
 
           dbEquipos.value.forEach(eq => {
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
-            let tipoHoras = '250 hrs';
-            for (let i = histFull.length - 1; i >= 0; i--) {
-                if (histFull[i].tipoHorasMant) { tipoHoras = histFull[i].tipoHorasMant; break; }
-            }
-            eq.tipoHorasMantencion = tipoHoras;
+            
+            // Filtrar mantenciones o registros con horómetro válido para sacar última mantención
+            const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
+            
+            let ultimaMant = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : null;
+            let hTomadoManual = Number(eq.horometroActual) || (ultimaMant ? Number(ultimaMant.horometro) : 0);
+            
+            let fechaUltimoHorometro = ultimaMant ? ultimaMant.fecha : '-';
+            let hUltimoTomado = hTomadoManual;
+            let ultimaMantTipo = ultimaMant ? (ultimaMant.tipoMant || ultimaMant.causa || 'MANTENCIÓN') : 'Sin registro';
+            let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : '-';
 
-            const histHorometros = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
-            let hManualActual = Number(eq.horometroActual) || 0;
-            let hUltima = hManualActual; let dUltima = new Date(); let rateHrsDia = 0;
-            
-            if (histHorometros.length > 0) {
-              const u = histHorometros[histHorometros.length - 1];
-              hUltima = Number(u.horometro); if(parseIsoDate(u.fecha)) dUltima = new Date(parseIsoDate(u.fecha));
-            }
-            
-            if (histHorometros.length >= 2) {
-              const dH = Number(histHorometros[histHorometros.length-1].horometro) - Number(histHorometros[histHorometros.length-2].horometro);
-              const dias = Math.max(1, Math.floor((parseIsoDate(histHorometros[histHorometros.length-1].fecha) - parseIsoDate(histHorometros[histHorometros.length-2].fecha)) / 86400000));
+            // Cálculo tasa de uso diario y proyección
+            let rateHrsDia = 0;
+            if (histConHorometro.length >= 2) {
+              const ultimo = histConHorometro[histConHorometro.length - 1];
+              const penultimo = histConHorometro[histConHorometro.length - 2];
+              const dH = Number(ultimo.horometro) - Number(penultimo.horometro);
+              const dias = Math.max(1, Math.floor((parseIsoDate(ultimo.fecha) - parseIsoDate(penultimo.fecha)) / 86400000));
               if (dH > 0) rateHrsDia = dH / dias;
-            } else if (histHorometros.length === 1 && hManualActual > hUltima) {
-              const diasTemp = Math.floor((new Date() - dUltima) / 86400000);
-              if (diasTemp > 0) rateHrsDia = (hManualActual - hUltima) / diasTemp;
             }
 
-            const diasDesde = Math.max(0, Math.floor((new Date() - dUltima) / 86400000));
-            const hTarget = hUltima + (Number(eq.frecuenciaMantencion)||250);
-            const hAprox = Math.max(hManualActual, hUltima + (diasDesde * rateHrsDia));
+            const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
+            const hAprox = Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
+            const hTarget = hUltimoTomado + (Number(eq.frecuenciaMantencion) || 250);
             const faltan = hTarget - hAprox;
 
             let diasFaltantes = rateHrsDia > 0 ? Math.ceil(faltan / rateHrsDia) : 30;
-            if (!isFinite(diasFaltantes) || diasFaltantes > 3650) diasFaltantes = 3650; 
-            if (diasFaltantes < -3650) diasFaltantes = -3650;
-
             let fechaEstimadaStr = "-";
             try {
               const fEst = new Date(); fEst.setDate(new Date().getDate() + diasFaltantes);
               fechaEstimadaStr = fEst.toISOString().substring(0, 10);
-            } catch(e) { }
+            } catch(e) {}
 
             let estadoTexto = faltan <= 0 ? "¡PASADO!" : faltan <= 50 ? "PRÓXIMO" : "AL DÍA";
 
             eq.horometros = {
-              hOficial: Math.round(hManualActual), hAprox: Math.round(hAprox*10)/10, hTarget: Math.round(hTarget),
-              horasFaltantes: Math.round(faltan*10)/10, estadoTexto, rateHrsDia, fechaEstimada: fechaEstimadaStr
+              hTomado: hUltimoTomado, fechaUltimoHorometro, ultimaMantTipo, ultimaMantFecha,
+              hAprox, hTarget, horasFaltantes: Math.round(faltan * 10) / 10,
+              estadoTexto, rateHrsDia, fechaEstimada: fechaEstimadaStr
             };
           });
         };
@@ -1636,7 +1336,7 @@
             const matchSearch = !filterInv.value.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion].join(" ").toLowerCase().includes(filterInv.value.search.toLowerCase());
             const matchUbi = !filterInv.value.ubicacion || String(e.ubicacion).toLowerCase().includes(filterInv.value.ubicacion.toLowerCase());
             const matchEst = filterInv.value.estado === "ALL" || normalizarClave(e.disponibilidad) === normalizarClave(filterInv.value.estado);
-            const matchGps = filterInv.value.gps === "ALL" || (filterInv.value.gps === "Instalado" ? Boolean(e.gps && e.gps !== 'Sin GPS') : (e.gps === 'Sin GPS' || !e.gps));
+            const matchGps = filterInv.value.gps === "ALL" || (filterInv.value.gps === 'Instalado' ? Boolean(e.gps && e.gps !== 'Sin GPS') : (!e.gps || e.gps === 'Sin GPS'));
             const matchCritico = !filterInv.value.mostrarCriticos || (e.horometros?.horasFaltantes <= 50);
             return matchSearch && matchUbi && matchEst && matchGps && matchCritico;
           });
@@ -1650,9 +1350,7 @@
             const fStr = formatExcelDate(m.fecha);
             if (filterMov.value.dateStart && fStr < filterMov.value.dateStart) return false;
             if (filterMov.value.dateEnd && fStr > filterMov.value.dateEnd) return false;
-            if (filterMov.value.queryText && filterMov.value.queryText.trim() !== "") {
-              if (![m.afi, m.tipo, m.origen, m.destino, m.camion, m.conductor].join(" ").toLowerCase().includes(filterMov.value.queryText.trim().toLowerCase())) return false;
-            }
+            if (filterMov.value.queryText && ! [m.afi, m.tipo, m.origen, m.destino, m.camion, m.conductor].join(" ").toLowerCase().includes(filterMov.value.queryText.toLowerCase())) return false;
             return true;
           });
           arr.sort((a, b) => sortMovimientosOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
@@ -1667,12 +1365,7 @@
         const calcularRestaHoras = (inicio, termino) => {
           if (!inicio || !termino || inicio === '-' || termino === '-') return '-';
           const parseTime = (tStr) => {
-            let clean = String(tStr).trim();
-            if (clean.includes('.')) {
-              const num = parseFloat(clean);
-              if (!isNaN(num) && num < 1) return Math.floor((Math.round(num * 24 * 60)) / 60) * 60 + ((Math.round(num * 24 * 60)) % 60);
-            }
-            const parts = clean.split(':');
+            const parts = String(tStr).trim().split(':');
             return parts.length >= 2 ? (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0) : 0;
           };
           const diffMins = parseTime(termino) - parseTime(inicio);
@@ -1688,29 +1381,23 @@
             const fStr = formatExcelDate(i.fecha);
             if (filterInt.value.dateStart && fStr !== '-' && fStr < filterInt.value.dateStart) return false;
             if (filterInt.value.dateEnd && fStr !== '-' && fStr > filterInt.value.dateEnd) return false;
-            if (filterInt.value.mecText && filterInt.value.mecText.trim() !== "" && !getMecanicosText(i).toLowerCase().includes(filterInt.value.mecText.trim().toLowerCase())) return false;
-            if (filterInt.value.searchQuery && filterInt.value.searchQuery.trim() !== "") {
-              const q = filterInt.value.searchQuery.trim().toLowerCase();
-              if (![i.afi, i.equipo, i.lugar, i.causa, i.tipoMant, i.tipoHorasMant, i.causaDetallada, i.descripcion, i.interferencia, i.empresaArriendo, i.numeroOC, i.numeroOT, i.aceites, getMecanicosText(i)].join(" ").toLowerCase().includes(q)) return false;
-            }
+            if (filterInt.value.searchQuery && ![i.afi, i.equipo, i.lugar, i.causa, i.tipoMant, i.descripcion, i.numeroOC, i.numeroOT].join(" ").toLowerCase().includes(filterInt.value.searchQuery.toLowerCase())) return false;
             return true;
           });
           arr.sort((a, b) => sortHistorialOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
           return arr;
         });
 
-        // Lógica Aceites
         const listaTiposAceitesDisponibles = computed(() => {
           const setAceites = new Set();
-          dbIntervenciones.value.forEach(i => { if (i.aceiteDetallesArray) i.aceiteDetallesArray.forEach(ad => { if (ad && ad.nombre) setAceites.add(ad.nombre); }); });
+          dbIntervenciones.value.forEach(i => { if(i.aceites && i.aceites !== 'Sin consumo') setAceites.add(i.aceites); });
           return Array.from(setAceites);
         });
 
         const filteredAceitesRecords = computed(() => {
           let arr = dbIntervenciones.value.filter(i => {
-            if (!i.aceites || i.aceites === "Sin consumo" || !i.aceiteDetallesArray || i.aceiteDetallesArray.length === 0) return false;
+            if (!i.aceites || i.aceites === "Sin consumo") return false;
             if (filterOil.value.afi !== "ALL" && String(i.afi).trim().toUpperCase() !== String(filterOil.value.afi).trim().toUpperCase()) return false;
-            if (filterOil.value.tipoAceite !== "ALL" && !i.aceiteDetallesArray.some(ad => ad.nombre === filterOil.value.tipoAceite)) return false;
             const fStr = formatExcelDate(i.fecha);
             if (filterOil.value.dateStart && fStr < filterOil.value.dateStart) return false;
             if (filterOil.value.dateEnd && fStr > filterOil.value.dateEnd) return false;
@@ -1720,27 +1407,15 @@
           return arr;
         });
 
-        const sumaTotalCantidadAceites = computed(() => {
-          let suma = 0;
-          filteredAceitesRecords.value.forEach(i => {
-            if (i.aceiteDetallesArray) {
-              i.aceiteDetallesArray.forEach(ad => {
-                if (filterOil.value.tipoAceite === "ALL" || ad.nombre === filterOil.value.tipoAceite) suma += Number(ad.cantidad || 0);
-              });
-            }
-          });
-          return suma;
-        });
+        const sumaTotalCantidadAceites = computed(() => filteredAceitesRecords.value.length);
         const costoTotalAceitesFiltrados = computed(() => filteredAceitesRecords.value.reduce((acc, curr) => acc + Number(curr.costo || 0), 0));
 
-        // CRUD y Formularios Mantenimiento
         const abrirFormularioNuevaMantencion = (afiInicial = "") => {
           isEditingMantencion.value = false;
           formMant.value = {
             id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
-            fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs",
-            horometro: "", mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "",
-            costo: 0, numeroOC: "", numeroOT: "", aceiteDetallesArray: [], documentoAdjunto: null
+            fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
+            mec1: "", mec2: "", mec3: "", mec4: "", horaInicio: "", horaTermino: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: ""
           };
           showFormMantencionModal.value = true;
         };
@@ -1748,19 +1423,15 @@
         const editarMantencion = (item) => {
           isEditingMantencion.value = true;
           formMant.value = JSON.parse(JSON.stringify(item));
-          if (!formMant.value.aceiteDetallesArray) formMant.value.aceiteDetallesArray = [];
           showFormMantencionModal.value = true;
         };
 
         const eliminarMantencion = async (id) => {
-          if (confirm("¿Eliminar registro de mantención?")) {
+          if (confirm("¿Eliminar registro?")) {
             await supabaseClient.from('BD_HISTORIAL').delete().eq('id', id);
             await cargarDatosDesdeSupabase();
           }
         };
-
-        const agregarFilaAceiteForm = () => { formMant.value.aceiteDetallesArray.push({ nombre: "", cantidad: "" }); };
-        const eliminarFilaAceiteForm = (index) => { formMant.value.aceiteDetallesArray.splice(index, 1); };
 
         const guardarMantencionForm = async () => {
           const payload = {
@@ -1768,16 +1439,15 @@
             tipo_mantencion: formMant.value.tipoMant, tipo_horas_mantencion: formMant.value.tipoHorasMant, horometro: parseNum(formMant.value.horometro),
             mecanico_1: formMant.value.mec1, mecanico_2: formMant.value.mec2, mecanico_3: formMant.value.mec3, mecanico_4: formMant.value.mec4,
             hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino, causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
-            interferencia: formMant.value.interferencia, empresa: formMant.value.empresaArriendo, costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT
+            costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT
           };
           if (isEditingMantencion.value && formMant.value.id) await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
           else await supabaseClient.from('BD_HISTORIAL').insert([payload]);
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("¡Mantención guardada en Supabase con éxito!");
+          alert("¡Mantención guardada con éxito!");
         };
 
-        // Utilidades de Perfil de Equipo
         const abrirPerfilEquipo = (equipo) => {
           perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
           showPerfilEquipoModal.value = true;
@@ -1795,14 +1465,14 @@
             horometroactual: parseNum(perfilEquipo.value.horometroActual) || 0, frecuencia_mantencion: parseNum(perfilEquipo.value.frecuenciaMantencion) || 250
           };
           const { error } = await supabaseClient.from('BD_INVENTARIO').update(payload).eq('id', perfilEquipo.value.id);
-          if (error) alert("Error al guardar en Supabase: " + error.message);
+          if (error) alert("Error al guardar: " + error.message);
           else { await cargarDatosDesdeSupabase(); showPerfilEquipoModal.value = false; alert("¡Perfil guardado correctamente!"); }
         };
 
         const getHistorialIntervencionesAFI = (afi) => dbIntervenciones.value.filter(i=>String(i.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
         const getHistorialMovimientosAFI = (afi) => dbMovimientos.value.filter(m=>String(m.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
 
-        // Importación Masiva Excel
+        // Importación Excel
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
         const getVal = (row, ...keys) => {
           if (!row) return "";
@@ -1817,21 +1487,15 @@
 
         const parseFileAnyFormat = (file) => {
           return new Promise((resolve, reject) => {
-            const fileName = file.name.toLowerCase();
             const reader = new FileReader();
-            if (fileName.endsWith('.json')) {
-              reader.onload = (evt) => { try { resolve(JSON.parse(evt.target.result)); } catch (e) { reject("JSON error"); } };
-              reader.readAsText(file);
-            } else {
-              reader.onload = (evt) => {
-                try {
-                  const data = new Uint8Array(evt.target.result);
-                  const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                  resolve(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "", raw: false }));
-                } catch (e) { reject("Excel error"); }
-              };
-              reader.readAsArrayBuffer(file);
-            }
+            reader.onload = (evt) => {
+              try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                resolve(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "", raw: false }));
+              } catch (e) { reject("Excel error"); }
+            };
+            reader.readAsArrayBuffer(file);
           });
         };
 
@@ -1840,83 +1504,55 @@
           try {
             const rows = await parseFileAnyFormat(file);
             const payloads = rows.map(item => {
-              const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
+              const rawAfi = getVal(item, "afi", "codigo afi");
               if (!rawAfi) return null;
               return {
-                afi: String(rawAfi).trim(), tipo: parseStr(getVal(item, "tipo", "equipo")), marca: parseStr(getVal(item, "marca")), modelo: parseStr(getVal(item, "modelo")),
-                n_serie: parseStr(getVal(item, "n° serie", "n_serie", "serie", "nserie")), anio: parseNum(getVal(item, "año", "ano", "anio")), ubicacion: parseStr(getVal(item, "ubicación", "ubicacion", "planta")),
-                contrato: parseStr(getVal(item, "contrato")), empresa: parseStr(getVal(item, "empresa")), disponibilidad: normalizarClave(getVal(item, "disponibilidad", "estado") || "Operativo"),
-                gps: parseStr(getVal(item, "gps")) || "Sin GPS", imei_gps: parseStr(getVal(item, "imei gps", "imei_gps", "imeigps")),
-                horometroactual: parseNum(getVal(item, "hor", "horometro", "horometro actual", "horometroactual")) || 0, frecuencia_mantencion: 250
+                afi: String(rawAfi).trim(), tipo: parseStr(getVal(item, "tipo")), marca: parseStr(getVal(item, "marca")), modelo: parseStr(getVal(item, "modelo")),
+                ubicacion: parseStr(getVal(item, "ubicacion")), disponibilidad: normalizarClave(getVal(item, "disponibilidad") || "Operativo"),
+                horometroactual: parseNum(getVal(item, "horometro", "horometroactual")) || 0, frecuencia_mantencion: 250
               };
             }).filter(Boolean);
-            if (payloads.length === 0) return alert("No se encontraron filas válidas.");
-            const { error } = await supabaseClient.from('BD_INVENTARIO').upsert(payloads, { onConflict: 'afi' });
-            if (error) return alert("Error Supabase: " + error.message);
-            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} equipos con éxito!`);
-          } catch (err) { alert("Error al procesar el archivo."); }
+            await supabaseClient.from('BD_INVENTARIO').upsert(payloads, { onConflict: 'afi' });
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} equipos!`);
+          } catch(err) { alert("Error al importar inventario."); }
         };
 
         const importarMovimientosFile = async (e) => {
           const file = e.target.files[0]; if (!file) return;
           try {
             const rows = await parseFileAnyFormat(file);
-            const payloads = rows.map(item => {
-              const rawAfi = getVal(item, "afi", "codigo afi");
-              if (!rawAfi) return null;
-              return {
-                afi: String(rawAfi).trim(), fecha: formatIsoDateForSupabase(getVal(item, "fecha")), tipo: parseStr(getVal(item, "tipo")), marca: parseStr(getVal(item, "marca")),
-                modelo: parseStr(getVal(item, "modelo")), ubicacion_anterior: parseStr(getVal(item, "ubicación anterior", "origen")), empresa_arriendo: parseStr(getVal(item, "empresa arriendo")),
-                estado: parseStr(getVal(item, "estado")), ubicacion_actual: parseStr(getVal(item, "ubicación actual", "destino")), camion_encargado: parseStr(getVal(item, "camión encargado", "camion")),
-                conductor_encargado: parseStr(getVal(item, "conductor encargado", "conductor"))
-              };
-            }).filter(Boolean);
-            if (payloads.length === 0) return alert("Sin registros válidos.");
+            const payloads = rows.map(item => ({
+              afi: String(getVal(item, "afi")).trim(), fecha: formatIsoDateForSupabase(getVal(item, "fecha")), tipo: parseStr(getVal(item, "tipo")),
+              ubicacion_anterior: parseStr(getVal(item, "origen")), ubicacion_actual: parseStr(getVal(item, "destino")), conductor_encargado: parseStr(getVal(item, "conductor"))
+            })).filter(i => i.afi);
             await supabaseClient.from('BD_MOVIMIENTOS').insert(payloads);
-            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} movimientos con éxito!`);
-          } catch (err) { alert("Error al importar movimientos."); }
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} movimientos!`);
+          } catch(err) { alert("Error al importar movimientos."); }
         };
 
         const importarIntervencionesFile = async (e) => {
           const file = e.target.files[0]; if (!file) return;
           try {
             const rows = await parseFileAnyFormat(file);
-            const payloads = rows.map(item => {
-              const rawAfi = getVal(item, "afi", "codigo afi", "n° afi");
-              if (!rawAfi) return null;
-              return {
-                afi: String(rawAfi).trim(), fecha: formatIsoDateForSupabase(getVal(item, "fecha")), equipo: parseStr(getVal(item, "equipo", "tipo equipo")), lugar: parseStr(getVal(item, "lugar", "ubicacion")),
-                tipo_documento: parseStr(getVal(item, "tipo documento", "tipo_documento")), causa: parseStr(getVal(item, "causa")), tipo_mantencion: parseStr(getVal(item, "tipo mantencion", "tipo_mantencion")),
-                tipo_horas_mantencion: parseStr(getVal(item, "tipo en horas mantencion", "tipo_horas_mantencion", "tipo horas")), horometro: parseNum(getVal(item, "horometro")),
-                mecanico_1: parseStr(getVal(item, "mecanico 1", "mecanico_1")), mecanico_2: parseStr(getVal(item, "mecanico 2", "mecanico_2")), mecanico_3: parseStr(getVal(item, "mecanico 3", "mecanico_3")), mecanico_4: parseStr(getVal(item, "mecanico 4", "mecanico_4")),
-                uso_de_art: parseStr(getVal(item, "uso de art", "uso_de_art")), bloqueo_de_equipo: parseStr(getVal(item, "bloqueo de equipo", "bloqueo_de_equipo")),
-                hora_falla: parseStr(getVal(item, "hora falla", "hora_falla")), hora_inicio: parseStr(getVal(item, "hora inicio", "hora_inicio")), hora_termino: parseStr(getVal(item, "hora termino", "hora_termino")), hora_total: parseStr(getVal(item, "hora total", "hora_total")),
-                causa_intervencion: parseStr(getVal(item, "causa de la intervencion", "causa_intervencion", "causa detallada")), descripcion: parseStr(getVal(item, "descripcion")), interferencia: parseStr(getVal(item, "interferencia")),
-                empresa: parseStr(getVal(item, "empresa")), link: parseStr(getVal(item, "link")), kit_bodega: parseStr(getVal(item, "kit bodega", "kit_bodega")), costo: parseNum(getVal(item, "costo")), numero_oc: parseStr(getVal(item, "n° oc", "numero_oc", "oc")), numero_ot: parseStr(getVal(item, "n° ot", "numero_ot", "ot")),
-                aceite_15w40_ci4: parseNum(getVal(item, "aceite 15w40 ci-4", "aceite_15w40_ci4")), aceite_15w40_ck4: parseNum(getVal(item, "aceite 15w40 ck4", "aceite_15w40_ck4")), aceite_refrigerante_5050: parseNum(getVal(item, "aceite refrigerante 50/50", "aceite_refrigerante_5050")),
-                aceite_80w90: parseNum(getVal(item, "aceite 80w90", "aceite_80w90")), aceite_dacnis_68: parseNum(getVal(item, "aceite dacnis 68", "aceite_dacnis_68")), aceite_dacnis_46: parseNum(getVal(item, "aceite dacnis 46", "aceite_dacnis_46")),
-                paroil_m_extreme: parseNum(getVal(item, "paroil m extreme", "paroil_m_extreme")), paroil_s_extreme: parseNum(getVal(item, "paroil s extreme", "paroil_s_extreme")), aceite_5w30: parseNum(getVal(item, "5w30", "aceite_5w30")),
-                liquido_freno_dot4: parseNum(getVal(item, "liquido de freno dot-4", "liquido_freno_dot4")), tractofluid_10w30: parseNum(getVal(item, "tractofluid (10w30)", "tractofluid_10w30")), sae_30: parseNum(getVal(item, "sae 30", "sae_30")),
-                hydra46: parseNum(getVal(item, "hydra46")), hydra_68: parseNum(getVal(item, "hydra 68", "hydra_68")), adblue: parseNum(getVal(item, "adblue")), aceite_75w90: parseNum(getVal(item, "aceite 75w90", "aceite_75w90")),
-                aceite_10w40: parseNum(getVal(item, "aceite 10w40", "aceite_10w40")), multiproposito: parseNum(getVal(item, "multiproposito")), desegransante: parseNum(getVal(item, "desegransante")), acido_muriatico: parseNum(getVal(item, "acido muriatico", "acido_muriatico"))
-              };
-            }).filter(Boolean);
-            if (payloads.length === 0) return alert("No se encontraron registros válidos.");
-            const BATCH = 200;
-            for (let i=0; i<payloads.length; i+=BATCH) await supabaseClient.from('BD_HISTORIAL').insert(payloads.slice(i, i+BATCH));
-            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} registros al historial con éxito!`);
-          } catch (err) { alert("Error al procesar el archivo Excel."); }
+            const payloads = rows.map(item => ({
+              afi: String(getVal(item, "afi")).trim(), fecha: formatIsoDateForSupabase(getVal(item, "fecha")), equipo: parseStr(getVal(item, "equipo")),
+              lugar: parseStr(getVal(item, "lugar")), causa: parseStr(getVal(item, "causa")), tipo_mantencion: parseStr(getVal(item, "tipo mantencion")),
+              horometro: parseNum(getVal(item, "horometro")), costo: parseNum(getVal(item, "costo")), numero_oc: parseStr(getVal(item, "oc")), numero_ot: parseStr(getVal(item, "ot"))
+            })).filter(i => i.afi);
+            await supabaseClient.from('BD_HISTORIAL').insert(payloads);
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} registros de historial!`);
+          } catch(err) { alert("Error al importar historial."); }
         };
 
         const exportarCSV = (dataArray, filename = 'Export') => {
-          if (!dataArray || !dataArray.length) return alert("Sin datos para exportar.");
+          if (!dataArray || !dataArray.length) return alert("Sin datos.");
           const headers = Object.keys(dataArray[0]);
           const csvRows = [headers.join(';')];
           for (const row of dataArray) {
             csvRows.push(headers.map(h => `"${('' + (row[h] ?? '')).replace(/"/g, '""')}"`).join(';'));
           }
           const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-          const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${filename}_${new Date().toISOString().substring(0,10)}.csv`; link.click();
+          const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${filename}.csv`; link.click();
         };
 
         const cargarUsuariosDesdeSupabase = async () => {
@@ -1924,17 +1560,17 @@
             const { data } = await supabaseClient.from('usuarios').select('*');
             if (data && data.length > 0) dbUsuarios.value = data;
             else dbUsuarios.value = [{ usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística FRC" }];
-          } catch (err) { console.error("Error usuarios:", err); }
+          } catch (err) {}
         };
         const crearNuevoUsuario = async () => {
           if (!nuevoUsuario.value.usuario || !nuevoUsuario.value.clave) return alert("Completa usuario y clave.");
-          const { error } = await supabaseClient.from('usuarios').insert([{ usuario: nuevoUsuario.value.usuario.trim(), clave: nuevoUsuario.value.clave.trim(), rol: nuevoUsuario.value.rol, nombre: nuevoUsuario.value.usuario.trim() }]);
-          if (!error) { await cargarUsuariosDesdeSupabase(); nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" }; alert("¡Usuario guardado con éxito!"); }
+          await supabaseClient.from('usuarios').insert([{ usuario: nuevoUsuario.value.usuario.trim(), clave: nuevoUsuario.value.clave.trim(), rol: nuevoUsuario.value.rol, nombre: nuevoUsuario.value.usuario.trim() }]);
+          await cargarUsuariosDesdeSupabase(); nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" }; alert("¡Guardado!");
         };
         const eliminarUsuario = async (username) => {
           if (confirm(`¿Eliminar al usuario ${username}?`)) {
-            const { error } = await supabaseClient.from('usuarios').delete().eq('usuario', username);
-            if (!error) { await cargarUsuariosDesdeSupabase(); alert("Usuario eliminado correctamente."); }
+            await supabaseClient.from('usuarios').delete().eq('usuario', username);
+            await cargarUsuariosDesdeSupabase();
           }
         };
 
@@ -1973,7 +1609,6 @@
           const norm = normalizarClave(est);
           if (norm === 'Operativo') return 'Trabajando / Operativo'; if (norm === 'Disponible') return 'Disponible';
           if (norm === 'En Traslado') return 'En Traslado'; if (norm === 'En Mantencion') return 'En Mantención';
-          if (norm === 'Fuera de Servicio') return 'Fuera de servicio'; if (norm === 'Venta') return 'En Venta';
           return est || '-';
         };
         const getBadgeClass = (est) => {
@@ -1983,7 +1618,7 @@
           return 'bg-slate-100 text-slate-700 border';
         };
         const filtrarYIrAInventario = (estado) => { filterInv.value.estado = estado; currentTab.value = 'inventario'; };
-        const resumenKPIs = computed(() => [ { Metrica: "Total Flota AFI", Valor: dbEquipos.value.length }, { Metrica: "Operativos", Valor: countEstado('Operativo') }, { Metrica: "Disponibles", Valor: countEstado('Disponible') } ]);
+        const resumenKPIs = computed(() => [ { Metrica: "Total Flota", Valor: dbEquipos.value.length }, { Metrica: "Operativos", Valor: countEstado('Operativo') } ]);
 
         onMounted(async () => {
           const cfgSaved = localStorage.getItem('afi_config_custom'); if (cfgSaved) config.value = JSON.parse(cfgSaved);
@@ -2000,15 +1635,15 @@
         return {
           usuarioActivo, isAdmin, loginUser, loginPass, authError, currentTab, switchTab, dbUsuarios, nuevoUsuario, crearNuevoUsuario, eliminarUsuario,
           config, headerStyle, bodyStyle, primaryBtnStyle, guardarConfiguracionPersonalizada, subirNuevaFotoLogo, uploadFotoEquipo,
-          listaCausas, listaAceitesEstandar, dbEquipos, dbMovimientos, dbIntervenciones, dbProgramas, countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
+          listaCausas, dbEquipos, dbMovimientos, dbIntervenciones, dbProgramas, countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
           sortInventarioOrder, sortMovimientosOrder, sortHistorialOrder, sortAceitesOrder, resetFiltrosInventario, limpiarFiltrosHistorial, limpiarFiltrosMovimientos,
           filtrarYIrAInventario, verDetallePorAfiString, getEstadoText, getBadgeClass, filteredEquipos, filteredMovimientos, filteredIntervenciones, filteredAceitesRecords,
           listaTiposAceitesDisponibles, sumaTotalCantidadAceites, costoTotalAceitesFiltrados, exportarCSV, importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
           getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
-          showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, agregarFilaAceiteForm, eliminarFilaAceiteForm, guardarMantencionForm,
+          showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
-          showNuevoProgramaModal, formPrograma, abrirFormularioPrograma, guardarNuevoPrograma, listaCarpetasProgramas, mesesSugeridos, obtenerMesesDeCarpeta, obtenerItemsPrograma, getProgreso, openFolders, toggleFolder, progSelect, seleccionarPrograma, marcarProgramaRealizado, eliminarItemPrograma,
+          showNuevoProgramaModal, formPrograma, abrirFormularioPrograma, guardarNuevoPrograma, listaCarpetasProgramas, mesesSugeridosPrograma, obtenerMesesDeCarpeta, obtenerItemsPrograma, getProgreso, openFolders, toggleFolder, progSelect, seleccionarPrograma, marcarProgramaRealizado, eliminarItemPrograma,
           perfilAsignacionProg, guardarAsignacionDesdePerfil, toggleFiltroCriticos
         };
       }
