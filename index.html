@@ -253,15 +253,15 @@
                     </div>
                     <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
                       <div class="bg-white/80 p-1.5 rounded border">
-                        <span class="text-slate-500 font-bold block" title="Último horómetro tomado">H. TOMADO</span>
+                        <span class="text-slate-500 font-bold block">H. TOMADO</span>
                         <strong class="font-mono text-slate-800">{{ e.horometros?.hTomado || 0 }}h</strong>
                       </div>
                       <div class="bg-white/80 p-1.5 rounded border">
-                        <span class="text-slate-500 font-bold block" title="Horómetro actual aproximado">APROX HOY</span>
+                        <span class="text-slate-500 font-bold block">APROX HOY</span>
                         <strong class="font-mono text-blue-700">{{ e.horometros?.hAprox || 0 }}h</strong>
                       </div>
                       <div class="bg-white/80 p-1.5 rounded border">
-                        <span class="text-slate-500 font-bold block" title="Meta o próxima mantención">META / TGT</span>
+                        <span class="text-slate-500 font-bold block">META / TGT</span>
                         <strong class="font-mono text-emerald-700">{{ e.horometros?.hTarget || 0 }}h</strong>
                       </div>
                     </div>
@@ -281,103 +281,111 @@
           </div>
         </section>
 
-        <!-- SECCIÓN PROGRAMAS -->
+        <!-- SECCIÓN PROGRAMAS (ESTILO EXCEL CARTA GANTT PROFESIONAL) -->
         <section v-if="currentTab === 'programas'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt</h2>
-              <p class="text-xs text-slate-500 mt-1">Sigue el orden: 1. Crear Carpeta -> 2. Crear Programa (Mes) -> 3. Asignar Equipo.</p>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt (Estilo Master)</h2>
+              <p class="text-xs text-slate-500 mt-1">Organizado por Zonas/Naves con asignación de fechas de inicio, término y visualización Gantt.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2.5" v-if="isAdmin">
               <button @click="abrirModalCrearCarpeta" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-folder-plus text-sm"></i> 1. Crear Carpeta
-              </button>
-              <button @click="abrirModalCrearPrograma" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-calendar-plus text-sm"></i> 2. Crear Programa (Mes)
+                <i class="fa-solid fa-folder-plus text-sm"></i> 1. Crear Carpeta / Programa
               </button>
               <button @click="abrirModalAsignarEquipo" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-truck-monster text-sm"></i> 3. Asignar Equipo
+                <i class="fa-solid fa-truck-monster text-sm"></i> 2. Asignar Fila a Gantt
               </button>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[600px] overflow-y-auto">
-              <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 mb-3"><i class="fa-solid fa-folder-tree text-amber-500"></i> Carpetas de Programas</h3>
-              <div v-if="listaCarpetasProgramas.length === 0" class="text-center text-[10px] text-slate-400 font-bold p-4">No hay programas creados.</div>
-              <div class="space-y-3">
+          <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <!-- Selector de Carpetas y Programas -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[650px] overflow-y-auto">
+              <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 mb-3"><i class="fa-solid fa-folder-tree text-amber-500"></i> Programas Maestros</h3>
+              <div v-if="listaCarpetasProgramas.length === 0" class="text-center text-[11px] text-slate-400 font-bold p-4">No hay programas creados.</div>
+              <div class="space-y-2">
                 <div v-for="carpeta in listaCarpetasProgramas" :key="carpeta" class="space-y-1">
-                  <div @click="toggleFolder(carpeta)" class="font-bold text-xs text-slate-700 bg-slate-100 p-2 rounded cursor-pointer hover:bg-slate-200 flex justify-between items-center">
-                    <span class="truncate"><i class="fa-solid fa-folder-open text-amber-500 mr-1.5"></i> {{ carpeta }}</span>
-                    <div class="flex items-center gap-1">
-                      <button v-if="isAdmin" @click.stop="eliminarCarpetaProg(carpeta)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar Carpeta"><i class="fa-solid fa-trash text-[10px]"></i></button>
-                      <i :class="['fa-solid text-slate-400 text-[10px]', openFolders[carpeta] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
-                    </div>
-                  </div>
-                  <div v-show="openFolders[carpeta]" class="pl-4 pr-1 space-y-1 border-l-2 border-slate-200 ml-2 pt-1 pb-2">
-                    <button v-for="mes in obtenerMesesDeCarpeta(carpeta)" :key="mes" @click="seleccionarPrograma(carpeta, mes)" :class="['text-[11px] font-semibold w-full text-left p-1.5 rounded flex items-center justify-between', (progSelect.carpeta === carpeta && progSelect.mes === mes) ? 'bg-rose-50 text-rose-700 font-bold border border-rose-200' : 'text-slate-600 hover:bg-slate-50']">
-                      <span><i class="fa-solid fa-calendar-days opacity-50 mr-1"></i> {{ mes }}</span>
-                      <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(carpeta, mes).length }}</span>
-                    </button>
-                    <button v-if="isAdmin" @click="abrirModalCrearProgramaConCarpeta(carpeta)" class="text-[10px] text-indigo-600 hover:underline block pt-1 font-bold">+ Añadir Programa en {{ carpeta }}</button>
+                  <div @click="seleccionarCarpetaGantt(carpeta)" :class="['font-bold text-xs p-2.5 rounded-lg cursor-pointer flex justify-between items-center', progSelect.carpeta === carpeta ? 'bg-amber-500 text-slate-950 shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200']">
+                    <span class="truncate"><i class="fa-solid fa-folder-open mr-1.5"></i> {{ carpeta }}</span>
+                    <button v-if="isAdmin" @click.stop="eliminarCarpetaProg(carpeta)" class="text-slate-950 hover:text-rose-700 p-1" title="Eliminar Carpeta"><i class="fa-solid fa-trash text-[10px]"></i></button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[600px] flex flex-col">
-              <template v-if="progSelect.carpeta && progSelect.mes">
-                <div class="border-b pb-4 mb-4 flex flex-wrap items-end justify-between gap-4">
+            <!-- Visor de Carta Gantt Master Estilo Excel -->
+            <div class="lg:col-span-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[650px] flex flex-col">
+              <template v-if="progSelect.carpeta">
+                <div class="border-b pb-3 mb-3 flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-folder text-amber-400"></i> {{ progSelect.carpeta }}</span>
-                    <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-regular fa-calendar text-rose-500"></i> Programa: {{ progSelect.mes }}</h3>
+                    <h3 class="text-base font-extrabold text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-chart-gantt text-rose-500 mr-1.5"></i> {{ progSelect.carpeta }}</h3>
+                    <p class="text-[11px] text-slate-500 font-semibold">FAST RENTAL CHILE - FRC</p>
                   </div>
-                  <div class="flex-grow max-w-xs space-y-1 text-right">
-                    <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento Global:</span> <span>{{ getProgreso(progSelect.carpeta, progSelect.mes).pct }}%</span></div>
-                    <div class="w-full bg-slate-200 rounded-full h-2.5 shadow-inner overflow-hidden">
-                      <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" :style="{ width: getProgreso(progSelect.carpeta, progSelect.mes).pct + '%' }"></div>
-                    </div>
-                    <div class="text-[9px] text-slate-500 font-semibold">{{ getProgreso(progSelect.carpeta, progSelect.mes).done }} de {{ getProgreso(progSelect.carpeta, progSelect.mes).total }} equipos realizados</div>
+                  <div class="flex items-center gap-3">
+                    <button v-if="isAdmin" @click="abrirModalAsignarEquipoEnProgreso(progSelect.carpeta)" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow"><i class="fa-solid fa-plus mr-1"></i> Añadir Fila</button>
+                    <button @click="exportarGanttExcel" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow"><i class="fa-solid fa-file-excel mr-1"></i> Exportar Gantt</button>
                   </div>
                 </div>
 
-                <div class="flex-grow overflow-y-auto">
-                  <table class="w-full text-left text-xs whitespace-nowrap">
-                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px]">
+                <!-- Tabla Estilo Excel con Matriz Gantt -->
+                <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
+                  <table class="w-full text-left text-[11px] border-collapse whitespace-nowrap">
+                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px] z-20">
                       <tr>
-                        <th class="p-2.5">EQUIPO AFI</th>
-                        <th class="p-2.5">TIPO TRABAJO</th>
-                        <th class="p-2.5">DETALLE HORAS</th>
-                        <th class="p-2.5">FECHA PROGRAMADA (PLAN)</th>
-                        <th class="p-2.5">ESTADO / CARTA GANTT</th>
-                        <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
+                        <th class="p-2 border-r border-slate-700">TIPO</th>
+                        <th class="p-2 border-r border-slate-700">AFI</th>
+                        <th class="p-2 border-r border-slate-700">POTENCIA</th>
+                        <th class="p-2 border-r border-slate-700">CONDICIÓN</th>
+                        <th class="p-2 border-r border-slate-700">ASIGNADO A</th>
+                        <th class="p-2 border-r border-slate-700 text-center">PROGRESO</th>
+                        <th class="p-2 border-r border-slate-700">INICIO</th>
+                        <th class="p-2 border-r border-slate-700">FIN</th>
+                        <!-- Cabecera de Días del Mes (Gantt) -->
+                        <th v-for="d in diasMesGantt" :key="d.fechaStr" class="p-1 border-r border-slate-700 text-center w-8 text-[9px]">
+                          <span class="block text-slate-300 font-normal">{{ d.diaSemana }}</span>
+                          <span class="block font-bold text-white">{{ d.diaNum }}</span>
+                        </th>
+                        <th v-if="isAdmin" class="p-2 text-center">ACCIONES</th>
                       </tr>
                     </thead>
-                    <tbody class="divide-y bg-white text-[11px]">
-                      <tr v-for="item in obtenerItemsPrograma(progSelect.carpeta, progSelect.mes)" :key="item.id" :class="item.realizado ? 'bg-emerald-50/50' : 'hover:bg-slate-50'">
-                        <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
-                        <td class="p-2.5 font-semibold text-slate-700">{{ item.tipo }}</td>
-                        <td class="p-2.5"><span v-if="item.tipo==='Mantención'" class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono font-bold">{{ item.horas }}</span><span v-else class="text-slate-400">-</span></td>
-                        <td class="p-2.5 font-mono font-bold">{{ item.fecha_programada }}</td>
-                        <td class="p-2.5">
-                          <span v-if="item.realizado" class="text-emerald-700 font-bold bg-emerald-100 px-2.5 py-1 rounded text-[10px] inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-check-circle"></i> Realizado ({{ item.fecha_realizada }})</span>
-                          <span v-else class="text-blue-700 font-bold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-clock"></i> Planificado (Pendiente)</span>
-                        </td>
-                        <td v-if="isAdmin" class="p-2.5 text-center space-x-2">
-                          <button v-if="!item.realizado" @click="marcarProgramaRealizado(item)" class="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded shadow-sm font-bold transition">Marcar Listo</button>
-                          <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar del Programa"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                      </tr>
-                      <tr v-if="obtenerItemsPrograma(progSelect.carpeta, progSelect.mes).length === 0">
-                        <td colspan="6" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa. <button @click="abrirModalAsignarEquipoEnProgreso(progSelect.carpeta, progSelect.mes)" class="text-rose-600 underline font-bold">Añadir equipo ahora</button></td>
+                    <tbody class="divide-y bg-white">
+                      <template v-for="(itemsNave, naveName) in gruposPorNave" :key="naveName">
+                        <!-- Cabecera de Sección (Ej: NAVE 1) -->
+                        <tr class="bg-slate-200 font-extrabold text-slate-800 text-[11px]">
+                          <td :colspan="8 + diasMesGantt.length + (isAdmin ? 1 : 0)" class="p-2 uppercase tracking-wider text-amber-900 bg-amber-100/70 border-y border-amber-300">
+                            <i class="fa-solid fa-warehouse mr-1.5"></i> {{ naveName }}
+                          </td>
+                        </tr>
+                        <!-- Filas de la Nave -->
+                        <tr v-for="item in itemsNave" :key="item.id" class="hover:bg-slate-50">
+                          <td class="p-2 border-r font-semibold text-slate-700">{{ item.tipo || '-' }}</td>
+                          <td class="p-2 border-r font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">{{ item.afi || '-' }}</td>
+                          <td class="p-2 border-r font-mono">{{ item.potencia || '-' }}</td>
+                          <td class="p-2 border-r font-semibold"><span :class="['px-2 py-0.5 rounded text-[10px]', item.condicion === 'VENTA' ? 'bg-purple-100 text-purple-800' : 'bg-sky-100 text-sky-800']">{{ item.condicion || 'ARRIENDO' }}</span></td>
+                          <td class="p-2 border-r font-semibold text-slate-600">{{ item.asignado_a || '-' }}</td>
+                          <td class="p-2 border-r text-center font-bold text-emerald-700 bg-emerald-50/50">{{ item.progreso !== undefined ? item.progreso + '%' : '0%' }}</td>
+                          <td class="p-2 border-r font-mono font-bold">{{ item.fecha_programada || '-' }}</td>
+                          <td class="p-2 border-r font-mono font-bold">{{ item.fecha_fin || '-' }}</td>
+                          <!-- Celdas Gantt de la Fila -->
+                          <td v-for="d in diasMesGantt" :key="d.fechaStr" :class="['p-0 border-r border-slate-200 h-8 text-center', estaEnRangoGantt(d.fechaStr, item.fecha_programada, item.fecha_fin) ? (item.progreso == 100 ? 'bg-slate-400' : 'bg-purple-400') : '']">
+                            <span v-if="estaEnRangoGantt(d.fechaStr, item.fecha_programada, item.fecha_fin)" class="block w-full h-full" :title="item.afi + ': ' + item.fecha_programada + ' al ' + item.fecha_fin"></span>
+                          </td>
+                          <td v-if="isAdmin" class="p-2 text-center space-x-1">
+                            <button @click="marcarItemGanttRealizado(item)" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 p-1 rounded font-bold text-[10px]" title="Completar 100%"><i class="fa-solid fa-check"></i></button>
+                            <button @click="eliminarItemPrograma(item.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold text-[10px]" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                          </td>
+                        </tr>
+                      </template>
+                      <tr v-if="Object.keys(gruposPorNave).length === 0">
+                        <td :colspan="9 + diasMesGantt.length" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa. Añade filas con el botón superior.</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
               </template>
-              <div v-else class="flex-grow flex flex-col items-center justify-center text-slate-400 space-y-4">
-                <i class="fa-solid fa-calendar-days text-6xl opacity-20"></i>
-                <p class="font-bold">Selecciona una Carpeta y un Mes de Programa desde el menú lateral para ver su Carta Gantt y cumplimiento.</p>
+              <div v-else class="flex-grow flex flex-col items-center justify-center text-slate-400 space-y-3">
+                <i class="fa-solid fa-folder-open text-5xl opacity-30"></i>
+                <p class="font-bold text-sm">Selecciona una Carpeta / Programa maestro en el menú lateral para ver su Carta Gantt.</p>
               </div>
             </div>
           </div>
@@ -821,28 +829,23 @@
               </div>
             </div>
 
-            <!-- ASIGNACIÓN A PROGRAMA -->
+            <!-- ASIGNACIÓN A CARTA GANTT -->
             <div v-if="isAdmin" class="bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm">
-              <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar rápidamente a un Programa</h4>
-              <div class="flex flex-wrap items-end gap-3">
-                <div class="flex-grow">
-                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Carpeta</label>
-                  <select v-model="perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold" @change="perfilAsignacionProg.mes = ''">
-                    <option value="">-- Elige Carpeta --</option>
-                    <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
+              <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar Fila a Carta Gantt</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div><label class="block font-bold mb-1">Programa / Carpeta</label><select v-model="perfilAsignacionProg.carpeta" class="w-full p-2 border rounded bg-white font-bold"><option value="">-- Elige Programa --</option><option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option></select></div>
+                <div><label class="block font-bold mb-1">Zonas / Nave</label><input type="text" v-model="perfilAsignacionProg.nave" placeholder="Ej: NAVE 1" class="w-full p-2 border rounded bg-white"></div>
+                <div><label class="block font-bold mb-1">Potencia</label><input type="text" v-model="perfilAsignacionProg.potencia" placeholder="Ej: 275 KVA" class="w-full p-2 border rounded bg-white"></div>
+                <div>
+                  <label class="block font-bold mb-1">Condición</label>
+                  <select v-model="perfilAsignacionProg.condicion" class="w-full p-2 border rounded bg-white font-semibold">
+                    <option value="ARRIENDO">ARRIENDO</option><option value="VENTA">VENTA</option>
                   </select>
                 </div>
-                <div class="flex-grow">
-                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Mes / Programa</label>
-                  <select v-model="perfilAsignacionProg.mes" :disabled="!perfilAsignacionProg.carpeta" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold">
-                    <option value="">-- Elige Mes --</option>
-                    <option v-for="m in obtenerMesesDeCarpeta(perfilAsignacionProg.carpeta)" :key="m" :value="m">{{ m }}</option>
-                  </select>
-                </div>
-                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Tipo</label><select v-model="perfilAsignacionProg.tipo" class="p-2 border rounded-lg bg-white font-semibold"><option value="Mantención">Mantención</option><option value="Reparación">Reparación</option></select></div>
-                <div v-if="perfilAsignacionProg.tipo === 'Mantención'"><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Horas</label><select v-model="perfilAsignacionProg.horas" class="p-2 border rounded-lg bg-white font-semibold"><option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option></select></div>
-                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Plan</label><input type="date" v-model="perfilAsignacionProg.fecha" class="p-2 border rounded-lg bg-white font-mono"></div>
-                <button @click="guardarAsignacionDesdePerfil" :disabled="!perfilAsignacionProg.carpeta || !perfilAsignacionProg.mes || !perfilAsignacionProg.fecha" class="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg transition shadow-md h-[36px] flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Añadir</button>
+                <div><label class="block font-bold mb-1">Asignado a</label><input type="text" v-model="perfilAsignacionProg.asignado_a" placeholder="Ej: EDUARDO GONZALEZ" class="w-full p-2 border rounded bg-white"></div>
+                <div><label class="block font-bold mb-1">Fecha Inicio</label><input type="date" v-model="perfilAsignacionProg.fecha_programada" class="w-full p-2 border rounded bg-white"></div>
+                <div><label class="block font-bold mb-1">Fecha Fin</label><input type="date" v-model="perfilAsignacionProg.fecha_fin" class="w-full p-2 border rounded bg-white"></div>
+                <div class="flex items-end"><button @click="guardarAsignacionGanttDesdePerfil" :disabled="!perfilAsignacionProg.carpeta" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold p-2 rounded shadow">Añadir a Gantt</button></div>
               </div>
             </div>
 
@@ -966,104 +969,73 @@
         </div>
       </div>
 
-      <!-- MODAL 1: CREAR CARPETA NUEVA -->
+      <!-- MODAL 1: CREAR CARPETA / PROGRAMA GANTT -->
       <div v-if="showModalCarpeta" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl border w-full max-w-md overflow-hidden flex flex-col">
           <div class="bg-amber-500 px-6 py-4 flex justify-between items-center text-slate-950">
-            <h3 class="font-extrabold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-folder-plus"></i> Crear Nueva Carpeta</h3>
+            <h3 class="font-extrabold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-folder-plus"></i> Crear Programa Maestro</h3>
             <button @click="showModalCarpeta=false" class="text-slate-950/80 hover:text-slate-950"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 space-y-4 text-xs bg-slate-50">
             <div>
-              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre de la Carpeta</label>
-              <input type="text" v-model="formCarpetaNombre" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: PROGRAMA MANTENCION 2026">
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa / Carpeta</label>
+              <input type="text" v-model="formCarpetaNombre" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: PROGRAMA REPARACION SEPTIEMBRE">
             </div>
           </div>
           <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
             <button @click="showModalCarpeta=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-            <button @click="guardarNuevaCarpeta" :disabled="!formCarpetaNombre.trim()" class="px-5 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 shadow-md text-xs">Crear Carpeta</button>
+            <button @click="guardarNuevaCarpeta" :disabled="!formCarpetaNombre.trim()" class="px-5 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 shadow-md text-xs">Crear Programa</button>
           </div>
         </div>
       </div>
 
-      <!-- MODAL 2: CREAR PROGRAMA (MES) -->
-      <div v-if="showModalPrograma" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-md overflow-hidden flex flex-col">
-          <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
-            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Crear Programa / Mes</h3>
-            <button @click="showModalPrograma=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-          </div>
-          <div class="p-6 space-y-4 text-xs bg-slate-50">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Seleccionar Carpeta</label>
-              <select v-model="formProgMes.carpeta" class="w-full p-2.5 border rounded-lg bg-white font-bold">
-                <option value="">-- Elige Carpeta --</option>
-                <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa / Mes</label>
-              <input type="text" v-model="formProgMes.mes" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: ENERO 2026">
-            </div>
-          </div>
-          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
-            <button @click="showModalPrograma=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-            <button @click="guardarNuevoProgramaMes" :disabled="!formProgMes.carpeta || !formProgMes.mes.trim()" class="px-5 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-md text-xs">Crear Programa</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- MODAL 3: ASIGNAR EQUIPO A PROGRAMA -->
+      <!-- MODAL 2: ASIGNAR EQUIPO A CARTA GANTT -->
       <div v-if="showModalAsignarEquipo" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
           <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
-            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Asignar Equipo a Programa</h3>
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Añadir Fila a Carta Gantt</h3>
             <button @click="showModalAsignarEquipo=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 space-y-4 text-xs bg-slate-50">
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Carpeta</label>
-              <select v-model="formAsignar.carpeta" @change="formAsignar.mes = ''" class="w-full p-2.5 border rounded-lg bg-white font-bold">
-                <option value="">-- Elige Carpeta --</option>
+              <label class="block font-bold text-slate-700 mb-1">Programa Maestro</label>
+              <select v-model="formAsignar.carpeta" class="w-full p-2.5 border rounded-lg bg-white font-bold">
+                <option value="">-- Elige Programa --</option>
                 <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
               </select>
             </div>
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Programa / Mes</label>
-              <select v-model="formAsignar.mes" :disabled="!formAsignar.carpeta" class="w-full p-2.5 border rounded-lg bg-white font-bold">
-                <option value="">-- Elige Programa --</option>
-                <option v-for="m in obtenerMesesDeCarpeta(formAsignar.carpeta)" :key="m" :value="m">{{ m }}</option>
-              </select>
+              <label class="block font-bold text-slate-700 mb-1">Zona / Nave (Ej: NAVE 1)</label>
+              <input type="text" v-model="formAsignar.nave" placeholder="Ej: NAVE 1" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold">
             </div>
             <div>
               <label class="block font-bold text-slate-700 mb-1">Equipo (AFI)</label>
-              <select v-model="formAsignar.afi" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
+              <select v-model="formAsignar.afi" @change="autocompletarDatosEquipoGantt" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
                 <option value="">-- Seleccionar Equipo --</option>
-                <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
+                <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }} ({{ e.marca }})</option>
               </select>
             </div>
             <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Tipo de Trabajo</label>
-                <select v-model="formAsignar.tipo" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
-                  <option value="Mantención">Mantención</option><option value="Reparación">Reparación</option>
-                </select>
-              </div>
-              <div v-if="formAsignar.tipo === 'Mantención'">
-                <label class="block font-bold text-slate-700 mb-1">Horas</label>
-                <select v-model="formAsignar.horas" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
-                  <option value="250 hrs">250 hrs</option><option value="500 hrs">500 hrs</option><option value="1000 hrs">1000 hrs</option><option value="Otra">Otra</option>
-                </select>
-              </div>
+              <div><label class="block font-bold text-slate-700 mb-1">Tipo</label><input type="text" v-model="formAsignar.tipo" placeholder="Ej: GENERADOR" class="w-full p-2.5 border rounded-lg bg-white"></div>
+              <div><label class="block font-bold text-slate-700 mb-1">Potencia</label><input type="text" v-model="formAsignar.potencia" placeholder="Ej: 275 KVA" class="w-full p-2.5 border rounded-lg bg-white"></div>
             </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Fecha Programada (Plan)</label>
-              <input type="date" v-model="formAsignar.fecha" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Condición</label>
+                <select v-model="formAsignar.condicion" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
+                  <option value="ARRIENDO">ARRIENDO</option><option value="VENTA">VENTA</option>
+                </select>
+              </div>
+              <div><label class="block font-bold text-slate-700 mb-1">Asignado a</label><input type="text" v-model="formAsignar.asignado_a" placeholder="Ej: EDUARDO GONZALEZ" class="w-full p-2.5 border rounded-lg bg-white"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="block font-bold text-slate-700 mb-1">Fecha Inicio</label><input type="date" v-model="formAsignar.fecha_programada" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold"></div>
+              <div><label class="block font-bold text-slate-700 mb-1">Fecha Fin</label><input type="date" v-model="formAsignar.fecha_fin" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold"></div>
             </div>
           </div>
           <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
             <button @click="showModalAsignarEquipo=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-            <button @click="guardarAsignacionEquipo" :disabled="!formAsignar.carpeta || !formAsignar.mes || !formAsignar.afi || !formAsignar.fecha" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md text-xs">Guardar en Programa</button>
+            <button @click="guardarAsignacionGantt" :disabled="!formAsignar.carpeta || !formAsignar.afi || !formAsignar.fecha_programada" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md text-xs">Guardar en Gantt</button>
           </div>
         </div>
       </div>
@@ -1135,19 +1107,15 @@
           "RETIRO", "CONEXIÓN/DESCONEXION", "FALLA OPERACIONAL", "INSPECCION (ELECTRICA)"
         ];
 
-        // Modales Programas Jerárquicos
+        // Modales Carta Gantt
         const showModalCarpeta = ref(false);
         const formCarpetaNombre = ref('');
 
-        const showModalPrograma = ref(false);
-        const formProgMes = ref({ carpeta: '', mes: '' });
-
         const showModalAsignarEquipo = ref(false);
-        const formAsignar = ref({ carpeta: '', mes: '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) });
+        const formAsignar = ref({ carpeta: '', nave: 'NAVE 1', afi: '', tipo: '', potencia: '', condicion: 'ARRIENDO', asignado_a: 'EDUARDO GONZALEZ', fecha_programada: new Date().toISOString().substring(0,10), fecha_fin: new Date().toISOString().substring(0,10) });
 
-        const openFolders = ref({});
-        const progSelect = ref({ carpeta: '', mes: '' });
-        const perfilAsignacionProg = ref({ carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' });
+        const progSelect = ref({ carpeta: '' });
+        const perfilAsignacionProg = ref({ carpeta: '', nave: 'NAVE 1', potencia: '', condicion: 'ARRIENDO', asignado_a: '', fecha_programada: '', fecha_fin: '' });
 
         // Filtros
         const filterInv = ref({ search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false });
@@ -1190,7 +1158,7 @@
           reader.readAsDataURL(file);
         };
 
-        // LÓGICA PROGRAMAS JERÁRQUICOS (CORREGIDA PARA SUPABASE)
+        // LÓGICA CARTA GANTT MAESTRA
         const listaCarpetasProgramas = computed(() => {
           const carpetas = new Set();
           dbProgramas.value.forEach(p => { if(p.carpeta) carpetas.add(p.carpeta); });
@@ -1201,33 +1169,44 @@
           return Array.from(carpetas).sort();
         });
 
-        const obtenerMesesDeCarpeta = (carpeta) => {
-          const meses = new Set();
-          dbProgramas.value.filter(p => p.carpeta === carpeta).forEach(p => { if(p.mes && p.mes !== 'GENERAL') meses.add(p.mes); });
-          try {
-            const localMesesMap = JSON.parse(localStorage.getItem('afi_meses_extras') || '{}');
-            if (localMesesMap[carpeta]) {
-              localMesesMap[carpeta].forEach(m => meses.add(m));
-            }
-          } catch(e) {}
-          return Array.from(meses).sort();
-        };
+        const seleccionarCarpetaGantt = (carpeta) => { progSelect.value = { carpeta }; };
 
-        const obtenerItemsPrograma = (carpeta, mes) => {
-          return dbProgramas.value
-            .filter(p => p.carpeta === carpeta && p.mes === mes && p.afi)
-            .sort((a,b) => new Date(a.fecha_programada).getTime() - new Date(b.fecha_programada).getTime());
-        };
+        // Días para la matriz Gantt (60 días a partir de hoy o mes actual)
+        const diasMesGantt = computed(() => {
+          const dias = [];
+          const diasSemanaMap = ['d', 'l', 'm', 'm', 'j', 'v', 's'];
+          let startDay = new Date();
+          startDay.setDate(startDay.getDate() - 10); // Mostrar 10 días atrás hacia adelante
+          for (let i = 0; i < 45; i++) {
+            let curr = new Date(startDay);
+            curr.setDate(startDay.getDate() + i);
+            let fechaStr = curr.toISOString().substring(0, 10);
+            dias.push({
+              fechaStr,
+              diaNum: curr.getDate(),
+              diaSemana: diasSemanaMap[curr.getDay()]
+            });
+          }
+          return dias;
+        });
 
-        const getProgreso = (carpeta, mes) => {
-          const items = obtenerItemsPrograma(carpeta, mes);
-          if (items.length === 0) return { total: 0, done: 0, pct: 0 };
-          const done = items.filter(i => i.realizado).length;
-          return { total: items.length, done, pct: Math.round((done / items.length) * 100) };
-        };
+        const gruposPorNave = computed(() => {
+          if (!progSelect.value.carpeta) return {};
+          const items = dbProgramas.value.filter(p => p.carpeta === progSelect.value.carpeta && p.afi);
+          const grupos = {};
+          items.forEach(item => {
+            let nave = item.nave || item.mes || 'NAVE 1';
+            if (!grupos[nave]) grupos[nave] = [];
+            grupos[nave].push(item);
+          });
+          return grupos;
+        });
 
-        const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
-        const seleccionarPrograma = (carpeta, mes) => { progSelect.value = { carpeta, mes }; };
+        const estaEnRangoGantt = (fechaCelda, fechaIni, fechaFin) => {
+          if (!fechaIni) return false;
+          let fFin = fechaFin || fechaIni;
+          return fechaCelda >= fechaIni && fechaCelda <= fFin;
+        };
 
         const abrirModalCrearCarpeta = () => { formCarpetaNombre.value = ''; showModalCarpeta.value = true; };
         const guardarNuevaCarpeta = async () => {
@@ -1242,113 +1221,102 @@
           } catch(e) {}
           
           try {
-            await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cName, mes: 'GENERAL', realizado: false }]);
+            await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cName, nave: 'NAVE 1', mes: 'NAVE 1', realizado: false }]);
           } catch(err) {}
 
           await cargarDatosDesdeSupabase();
           showModalCarpeta.value = false;
-          openFolders.value[cName] = true;
-          alert(`¡Carpeta "${cName}" creada con éxito!`);
+          seleccionarCarpetaGantt(cName);
+          alert(`¡Programa "${cName}" creado con éxito!`);
         };
 
         const eliminarCarpetaProg = async (carpeta) => {
-          if (confirm(`¿Estás seguro de eliminar la carpeta "${carpeta}" y todos sus programas?`)) {
+          if (confirm(`¿Estás seguro de eliminar el programa "${carpeta}"?`)) {
             try {
               let localCarps = JSON.parse(localStorage.getItem('afi_carpetas_extras') || '[]');
               localCarps = localCarps.filter(c => c !== carpeta);
               localStorage.setItem('afi_carpetas_extras', JSON.stringify(localCarps));
-              
-              let localMesesMap = JSON.parse(localStorage.getItem('afi_meses_extras') || '{}');
-              delete localMesesMap[carpeta];
-              localStorage.setItem('afi_meses_extras', JSON.stringify(localMesesMap));
             } catch(e) {}
 
             await supabaseClient.from('BD_PROGRAMAS').delete().eq('carpeta', carpeta);
             await cargarDatosDesdeSupabase();
-            if (progSelect.value.carpeta === carpeta) progSelect.value = { carpeta: '', mes: '' };
-            alert("Carpeta eliminada.");
+            if (progSelect.value.carpeta === carpeta) progSelect.value = { carpeta: '' };
+            alert("Programa eliminado.");
           }
-        };
-
-        const abrirModalCrearPrograma = () => { formProgMes.value = { carpeta: listaCarpetasProgramas.value[0] || '', mes: '' }; showModalPrograma.value = true; };
-        const abrirModalCrearProgramaConCarpeta = (carpeta) => { formProgMes.value = { carpeta, mes: '' }; showModalPrograma.value = true; };
-        
-        const guardarNuevoProgramaMes = async () => {
-          const cp = formProgMes.value.carpeta;
-          const ms = formProgMes.value.mes.trim().toUpperCase();
-          if (!cp || !ms) return;
-          
-          try {
-            let localMesesMap = JSON.parse(localStorage.getItem('afi_meses_extras') || '{}');
-            if (!localMesesMap[cp]) localMesesMap[cp] = [];
-            if (!localMesesMap[cp].includes(ms)) {
-              localMesesMap[cp].push(ms);
-              localStorage.setItem('afi_meses_extras', JSON.stringify(localMesesMap));
-            }
-          } catch(e) {}
-
-          try {
-            await supabaseClient.from('BD_PROGRAMAS').insert([{ carpeta: cp, mes: ms, realizado: false }]);
-          } catch(err) {}
-
-          await cargarDatosDesdeSupabase();
-          showModalPrograma.value = false;
-          openFolders.value[cp] = true;
-          seleccionarPrograma(cp, ms);
-          alert(`¡Programa "${ms}" creado en la carpeta "${cp}"!`);
         };
 
         const abrirModalAsignarEquipo = () => {
-          formAsignar.value = { carpeta: progSelect.value.carpeta || listaCarpetasProgramas.value[0] || '', mes: progSelect.value.mes || '', afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
+          formAsignar.value = { carpeta: progSelect.value.carpeta || listaCarpetasProgramas.value[0] || '', nave: 'NAVE 1', afi: '', tipo: '', potencia: '', condicion: 'ARRIENDO', asignado_a: 'EDUARDO GONZALEZ', fecha_programada: new Date().toISOString().substring(0,10), fecha_fin: new Date().toISOString().substring(0,10) };
           showModalAsignarEquipo.value = true;
         };
-        const abrirModalAsignarEquipoEnProgreso = (carpeta, mes) => {
-          formAsignar.value = { carpeta, mes, afi: '', tipo: 'Mantención', horas: '250 hrs', fecha: new Date().toISOString().substring(0,10) };
+        const abrirModalAsignarEquipoEnProgreso = (carpeta) => {
+          formAsignar.value = { carpeta, nave: 'NAVE 1', afi: '', tipo: '', potencia: '', condicion: 'ARRIENDO', asignado_a: 'EDUARDO GONZALEZ', fecha_programada: new Date().toISOString().substring(0,10), fecha_fin: new Date().toISOString().substring(0,10) };
           showModalAsignarEquipo.value = true;
         };
 
-        const guardarAsignacionEquipo = async () => {
-          const payload = {
-            carpeta: formAsignar.value.carpeta, mes: formAsignar.value.mes, afi: formAsignar.value.afi,
-            tipo: formAsignar.value.tipo, horas: formAsignar.value.tipo === 'Mantención' ? formAsignar.value.horas : null,
-            fecha_programada: formAsignar.value.fecha, realizado: false
-          };
-          const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
-          if (error) alert("Error al asignar equipo: " + error.message);
-          else {
-            await cargarDatosDesdeSupabase();
-            showModalAsignarEquipo.value = false;
-            seleccionarPrograma(formAsignar.value.carpeta, formAsignar.value.mes);
-            alert("¡Equipo asignado al programa con éxito!");
+        const autocompletarDatosEquipoGantt = () => {
+          const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formAsignar.value.afi).trim().toUpperCase());
+          if (eq) {
+            formAsignar.value.tipo = eq.tipo || '';
+            formAsignar.value.potencia = eq.modelo || '';
           }
         };
 
-        const marcarProgramaRealizado = async (item) => {
-          const fechaHoy = new Date().toISOString().substring(0,10);
-          await supabaseClient.from('BD_PROGRAMAS').update({ realizado: true, fecha_realizada: fechaHoy }).eq('id', item.id);
+        const guardarAsignacionGantt = async () => {
+          const payload = {
+            carpeta: formAsignar.value.carpeta, nave: formAsignar.value.nave.trim().toUpperCase(), mes: formAsignar.value.nave.trim().toUpperCase(),
+            afi: formAsignar.value.afi, tipo: formAsignar.value.tipo, potencia: formAsignar.value.potencia, condicion: formAsignar.value.condicion,
+            asignado_a: formAsignar.value.asignado_a, fecha_programada: formAsignar.value.fecha_programada, fecha_fin: formAsignar.value.fecha_fin,
+            progreso: 0, realizado: false
+          };
+          const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
+          if (error) alert("Error al guardar en Gantt: " + error.message);
+          else {
+            await cargarDatosDesdeSupabase();
+            showModalAsignarEquipo.value = false;
+            seleccionarCarpetaGantt(formAsignar.value.carpeta);
+            alert("¡Fila añadida a la Carta Gantt con éxito!");
+          }
+        };
+
+        const marcarItemGanttRealizado = async (item) => {
+          const nuevoProg = item.progreso == 100 ? 0 : 100;
+          await supabaseClient.from('BD_PROGRAMAS').update({ progreso: nuevoProg, realizado: nuevoProg === 100 }).eq('id', item.id);
           await cargarDatosDesdeSupabase();
         };
 
         const eliminarItemPrograma = async (id) => {
-          if (confirm("¿Eliminar este equipo del programa?")) {
+          if (confirm("¿Eliminar esta fila de la Carta Gantt?")) {
             await supabaseClient.from('BD_PROGRAMAS').delete().eq('id', id);
             await cargarDatosDesdeSupabase();
           }
         };
 
-        const guardarAsignacionDesdePerfil = async () => {
+        const guardarAsignacionGanttDesdePerfil = async () => {
           const payload = {
-            carpeta: perfilAsignacionProg.value.carpeta, mes: perfilAsignacionProg.value.mes, afi: perfilEquipo.value.afi,
-            tipo: perfilAsignacionProg.value.tipo, horas: perfilAsignacionProg.value.tipo === 'Mantención' ? perfilAsignacionProg.value.horas : null,
-            fecha_programada: perfilAsignacionProg.value.fecha, realizado: false
+            carpeta: perfilAsignacionProg.value.carpeta, nave: perfilAsignacionProg.value.nave, mes: perfilAsignacionProg.value.nave,
+            afi: perfilEquipo.value.afi, tipo: perfilEquipo.value.tipo, potencia: perfilAsignacionProg.value.potencia, condicion: perfilAsignacionProg.value.condicion,
+            asignado_a: perfilAsignacionProg.value.asignado_a, fecha_programada: perfilAsignacionProg.value.fecha_programada, fecha_fin: perfilAsignacionProg.value.fecha_fin,
+            progreso: 0, realizado: false
           };
           const { error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]);
-          if(error) alert("Error guardando asignación.");
+          if(error) alert("Error guardando en Gantt.");
           else {
-            alert("¡Equipo asignado al programa con éxito!");
-            perfilAsignacionProg.value = { carpeta: '', mes: '', tipo: 'Mantención', horas: '250 hrs', fecha: '' };
+            alert("¡Equipo añadido a la Carta Gantt!");
+            perfilAsignacionProg.value = { carpeta: '', nave: 'NAVE 1', potencia: '', condicion: 'ARRIENDO', asignado_a: '', fecha_programada: '', fecha_fin: '' };
             await cargarDatosDesdeSupabase();
           }
+        };
+
+        const exportarGanttExcel = () => {
+          if (!progSelect.value.carpeta) return alert("Selecciona un programa primero.");
+          const items = dbProgramas.value.filter(p => p.carpeta === progSelect.value.carpeta && p.afi);
+          const exportData = items.map(i => ({
+            "NAVE / ZONA": i.nave || i.mes, "TIPO": i.tipo, "AFI": i.afi, "POTENCIA": i.potencia,
+            "CONDICION": i.condicion, "ASIGNADO A": i.asignado_a, "PROGRESO": (i.progreso || 0) + '%',
+            "INICIO": i.fecha_programada, "FIN": i.fecha_fin
+          }));
+          exportarCSV(exportData, `Gantt_${progSelect.value.carpeta}`);
         };
 
         // CORE UTILS & DATA LOAD
@@ -1478,7 +1446,6 @@
           } catch (err) { console.error("Error cargando datos:", err); }
         };
 
-        // LÓGICA DE HORÓMETROS (EVALÚA PENÚLTIMO SI EL ÚLTIMO COINCIDE CON LA MANTENCIÓN)
         const actualizarHorometrosDesdeHistorial = () => {
           const intervencionesPorAFI = {};
           dbIntervenciones.value.forEach(i => {
@@ -1491,7 +1458,6 @@
 
           dbEquipos.value.forEach(eq => {
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
-            
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             const histMantenciones = histConHorometro.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT') || String(i.causa).toUpperCase().includes('MANTENCION'));
 
@@ -1509,17 +1475,14 @@
             if (histConHorometro.length >= 2) {
               let idxUltimo = histConHorometro.length - 1;
               let idxPenultimo = histConHorometro.length - 2;
-              
               let ultimo = histConHorometro[idxUltimo];
               let penultimo = histConHorometro[idxPenultimo];
-
               let dH = Number(ultimo.horometro) - Number(penultimo.horometro);
               if (dH === 0 && histConHorometro.length >= 3) {
                 idxPenultimo = histConHorometro.length - 3;
                 penultimo = histConHorometro[idxPenultimo];
                 dH = Number(ultimo.horometro) - Number(penultimo.horometro);
               }
-
               const dias = Math.max(1, Math.floor((parseIsoDate(ultimo.fecha) - parseIsoDate(penultimo.fecha)) / 86400000));
               if (dH > 0) rateHrsDia = dH / dias;
             }
@@ -1848,6 +1811,7 @@
         onMounted(async () => {
           const cfgSaved = localStorage.getItem('afi_config_custom'); if (cfgSaved) config.value = JSON.parse(cfgSaved);
           await cargarUsuariosDesdeSupabase(); await cargarDatosDesdeSupabase();
+          if (listaCarpetasProgramas.value.length > 0) progSelect.value.carpeta = listaCarpetasProgramas.value[0];
         });
 
         const login = () => {
@@ -1869,10 +1833,9 @@
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
           showModalCarpeta, formCarpetaNombre, abrirModalCrearCarpeta, guardarNuevaCarpeta,
-          showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes,
-          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoEnProgreso, guardarAsignacionEquipo,
-          listaCarpetasProgramas, obtenerMesesDeCarpeta, obtenerItemsPrograma, getProgreso, openFolders, toggleFolder, progSelect, seleccionarPrograma, marcarProgramaRealizado, eliminarItemPrograma,
-          perfilAsignacionProg, guardarAsignacionDesdePerfil, toggleFiltroCriticos, eliminarCarpetaProg, opcionesHorasMantencion
+          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoEnProgreso, guardarAsignacionGantt, autocompletarDatosEquipoGantt,
+          listaCarpetasProgramas, progSelect, seleccionarCarpetaGantt, eliminarCarpetaProg, diasMesGantt, gruposPorNave, estaEnRangoGantt, marcarItemGanttRealizado, eliminarItemPrograma,
+          perfilAsignacionProg, guardarAsignacionGanttDesdePerfil, exportarGanttExcel, toggleFiltroCriticos, opcionesHorasMantencion
         };
       }
     }).mount('#app');
