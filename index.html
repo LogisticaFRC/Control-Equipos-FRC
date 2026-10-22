@@ -281,14 +281,13 @@
           </div>
         </section>
 
-        <!-- SECCIÓN PROGRAMAS (3 BOTONES CLAROS Y SEPARADOS) -->
+        <!-- SECCIÓN PROGRAMAS -->
         <section v-if="currentTab === 'programas'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
               <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt</h2>
               <p class="text-xs text-slate-500 mt-1">Sigue el orden: 1. Crear Carpeta -> 2. Crear Programa (Mes) -> 3. Asignar Equipo.</p>
             </div>
-            <!-- LOS 3 BOTONES EXACTOS Y SEPARADOS -->
             <div class="flex flex-wrap items-center gap-2.5" v-if="isAdmin">
               <button @click="abrirModalCrearCarpeta" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
                 <i class="fa-solid fa-folder-plus text-sm"></i> 1. Crear Carpeta
@@ -449,7 +448,7 @@
           </div>
         </section>
 
-        <!-- HISTORIAL (CON ÚLTIMO HORÓMETRO TOMADO Y FECHA) -->
+        <!-- HISTORIAL -->
         <section v-if="currentTab === 'hojaVida'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-2">
@@ -515,7 +514,6 @@
                     <th class="p-2">CAUSA</th>
                     <th class="p-2">TIPO MANT.</th>
                     <th class="p-2 text-amber-300">TIPO EN HORAS (H)</th>
-                    <!-- COLUMNAS EXPLICITAS DE ÚLTIMO HORÓMETRO TOMADO Y SU FECHA -->
                     <th class="p-2 bg-amber-900 text-amber-200 font-bold">ÚLTIMO HORÓMETRO TOMADO</th>
                     <th class="p-2 bg-amber-900 text-amber-200 font-bold">FECHA HORÓMETRO</th>
                     <th class="p-2">MECÁNICOS</th>
@@ -546,7 +544,6 @@
                     <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
                     <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
                     <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
-                    <!-- DATOS DE HORÓMETRO Y FECHA ASOCIADA EN CADA FILA -->
                     <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
                     <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.fecha || '-' }}</td>
                     <td class="p-2">{{ getMecanicosText(i) }}</td>
