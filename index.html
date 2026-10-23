@@ -588,7 +588,7 @@
                     <td class="p-2">{{ getMecanicosText(i) }}</td>
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
-                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ calcularRestaHoras(i.horaInicio, i.horaTermino) }}</td>
+                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ i.horaTotal || '-' }}</td>
                     <td class="p-2 text-emerald-800 font-bold bg-emerald-50/50">{{ i.filtrosTexto || 'Sin filtros' }}</td>
                     <td class="p-2 max-w-xs truncate">{{ i.causaDetallada || '-' }}</td>
                     <td class="p-2 max-w-xs truncate">{{ i.descripcion || '-' }}</td>
@@ -1041,7 +1041,7 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                 <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CI-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ci4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
                 <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CK-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ck4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Refrigerante 50/50</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_5050" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Refrigerante 50/50</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_50" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
                 <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 80W90</label><input type="number" step="any" v-model="formMant.aceite_80w90" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
                 <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 68</label><input type="number" step="any" v-model="formMant.aceite_dacnis_68" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
                 <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 46</label><input type="number" step="any" v-model="formMant.aceite_dacnis_46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
@@ -1054,6 +1054,11 @@
                 <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 46</label><input type="number" step="any" v-model="formMant.hydra46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
                 <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 68</label><input type="number" step="any" v-model="formMant.hydra_68" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
                 <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Adblue</label><input type="number" step="any" v-model="formMant.adblue" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 75W90</label><input type="number" step="any" v-model="formMant.aceite_75w90" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 10W40</label><input type="number" step="any" v-model="formMant.aceite_10w40" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Multipurpose</label><input type="number" step="any" v-model="formMant.multiproposito" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Desengrasante</label><input type="number" step="any" v-model="formMant.desegransante" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Ácido Muriático</label><input type="number" step="any" v-model="formMant.acido_muriatico" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
               </div>
             </div>
           </div>
@@ -1278,10 +1283,11 @@
           programaCorrespondiente: "", horaInicio: "", horaTermino: "",
           mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
           filtrosLista: [],
-          aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "",
+          aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_50: "", aceite_80w90: "",
           aceite_dacnis_68: "", aceite_dacnis_46: "", paroil_m_extreme: "", paroil_s_extreme: "",
           aceite_5w30: "", liquido_freno_dot4: "", tractofluid_10w30: "", sae_30: "",
-          hydra46: "", hydra_68: "", adblue: ""
+          hydra46: "", hydra_68: "", adblue: "",
+          aceite_75w90: "", aceite_10w40: "", multiproposito: "", desegransante: "", acido_muriatico: ""
         });
 
         const showModalMovimiento = ref(false);
@@ -1671,7 +1677,12 @@
               dbIntervenciones.value = intData.map(item => {
                 const rawFecha = item.fecha || item.fecha_mantencion || item.created_at;
                 const aceitesConsumidos = [];
-                const camposAceites = [ "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90", "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme", "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46", "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico" ];
+                const camposAceites = [ 
+                  "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_50", "aceite_80w90", 
+                  "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme", 
+                  "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46", 
+                  "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico" 
+                ];
                 camposAceites.forEach(c => {
                   if (item[c] && Number(item[c]) > 0) aceitesConsumidos.push(`${c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase()}: ${item[c]}L`);
                 });
@@ -1689,7 +1700,7 @@
                   tipoMant: String(item.tipo_mantencion || ''), tipoHorasMant: String(item.tipo_horas_mantencion || ''),
                   horometro: Number(item.horometro || 0), mec1: String(item.mecanico_1 || ''), mec2: String(item.mecanico_2 || ''),
                   mec3: String(item.mecanico_3 || ''), mec4: String(item.mecanico_4 || ''), horaInicio: String(item.hora_inicio || ''),
-                  horaTermino: String(item.hora_termino || ''), causaDetallada: String(item.causa_intervencion || ''),
+                  horaTermino: String(item.hora_termino || ''), horaTotal: String(item.hora_total || ''), causaDetallada: String(item.causa_intervencion || ''),
                   descripcion: String(item.descripcion || '').trim(), interferencia: String(item.interferencia || ''),
                   empresaArriendo: String(item.empresa || ''), costo: Number(item.costo || 0), numeroOC: String(item.numero_oc || ''),
                   numeroOT: String(item.numero_ot || ''), linkDrive: String(item.link || ''),
@@ -1697,7 +1708,7 @@
                   filtrosTexto: filtrosTextoStr,
                   aceite_15w40_ci4: item.aceite_15w40_ci4 || 0,
                   aceite_15w40_ck4: item.aceite_15w40_ck4 || 0,
-                  aceite_refrigerante_5050: item.aceite_refrigerante_5050 || 0,
+                  aceite_refrigerante_50: item.aceite_refrigerante_50 || 0,
                   aceite_80w90: item.aceite_80w90 || 0,
                   aceite_dacnis_68: item.aceite_dacnis_68 || 0,
                   aceite_dacnis_46: item.aceite_dacnis_46 || 0,
@@ -1710,6 +1721,11 @@
                   hydra46: item.hydra46 || 0,
                   hydra_68: item.hydra_68 || 0,
                   adblue: item.adblue || 0,
+                  aceite_75w90: item.aceite_75w90 || 0,
+                  aceite_10w40: item.aceite_10w40 || 0,
+                  multiproposito: item.multiproposito || 0,
+                  desegransante: item.desegransante || 0,
+                  acido_muriatico: item.acido_muriatico || 0,
                   aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo"
                 };
               });
@@ -1904,10 +1920,11 @@
             programaCorrespondiente: "", horaInicio: "", horaTermino: "",
             mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
             filtrosLista: [],
-            aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "",
+            aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_50: "", aceite_80w90: "",
             aceite_dacnis_68: "", aceite_dacnis_46: "", paroil_m_extreme: "", paroil_s_extreme: "",
             aceite_5w30: "", liquido_freno_dot4: "", tractofluid_10w30: "", sae_30: "",
-            hydra46: "", hydra_68: "", adblue: ""
+            hydra46: "", hydra_68: "", adblue: "",
+            aceite_75w90: "", aceite_10w40: "", multiproposito: "", desegransante: "", acido_muriatico: ""
           };
           showFormMantencionModal.value = true;
         };
@@ -1935,16 +1952,20 @@
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
+          // Nombres exactos de columnas según tu base de datos Supabase BD_HISTORIAL
           const payload = {
             afi: String(formMant.value.afi).trim(), 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
+            equipo: parseStr(dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase())?.tipo),
             lugar: parseStr(formMant.value.lugar), 
             causa: parseStr(formMant.value.causa),
             tipo_mantencion: parseStr(formMant.value.tipoMant), 
+            tipo_horas_mantencion: parseStr(formMant.value.tipoHorasMant),
             horometro: parseNum(formMant.value.horometro) || 0,
             programa_correspondiente: parseStr(formMant.value.programaCorrespondiente),
             hora_inicio: parseStr(formMant.value.horaInicio), 
             hora_termino: parseStr(formMant.value.horaTermino),
+            hora_total: calcularRestaHoras(formMant.value.horaInicio, formMant.value.horaTermino),
             mecanico_1: parseStr(formMant.value.mec1), 
             mecanico_2: parseStr(formMant.value.mec2), 
             mecanico_3: parseStr(formMant.value.mec3), 
@@ -1959,7 +1980,7 @@
             filtros_json: JSON.stringify(formMant.value.filtrosLista || []),
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
-            aceite_refrigerante_5050: parseNum(formMant.value.aceite_refrigerante_5050) || 0,
+            aceite_refrigerante_50: parseNum(formMant.value.aceite_refrigerante_50) || 0,
             aceite_80w90: parseNum(formMant.value.aceite_80w90) || 0,
             aceite_dacnis_68: parseNum(formMant.value.aceite_dacnis_68) || 0,
             aceite_dacnis_46: parseNum(formMant.value.aceite_dacnis_46) || 0,
@@ -1971,7 +1992,12 @@
             sae_30: parseNum(formMant.value.sae_30) || 0,
             hydra46: parseNum(formMant.value.hydra46) || 0,
             hydra_68: parseNum(formMant.value.hydra_68) || 0,
-            adblue: parseNum(formMant.value.adblue) || 0
+            adblue: parseNum(formMant.value.adblue) || 0,
+            aceite_75w90: parseNum(formMant.value.aceite_75w90) || 0,
+            aceite_10w40: parseNum(formMant.value.aceite_10w40) || 0,
+            multiproposito: parseNum(formMant.value.multiproposito) || 0,
+            desegransante: parseNum(formMant.value.desegransante) || 0,
+            acido_muriatico: parseNum(formMant.value.acido_muriatico) || 0
           };
 
           const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase());
