@@ -422,6 +422,7 @@
                 </div>
               </div>
               <div class="flex items-center gap-2">
+                <button v-if="isAdmin" @click="abrirModalCrearMovimiento" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5"><i class="fa-solid fa-plus-circle"></i> Registrar Movimiento</button>
                 <button @click="limpiarFiltrosMovimientos" class="text-xs text-slate-500 hover:text-slate-800 underline mx-1">Limpiar Filtros</button>
                 <button @click="exportarCSV(filteredMovimientos, 'Movimientos_Filtrados')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
               </div>
@@ -1041,6 +1042,59 @@
         </div>
       </div>
 
+      <!-- MODAL NUEVO MOVIMIENTO -->
+      <div v-if="showModalMovimiento" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
+          <div class="bg-amber-500 px-6 py-4 flex justify-between items-center text-slate-950">
+            <h3 class="font-extrabold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-ramp-box"></i> Registrar Nuevo Movimiento</h3>
+            <button @click="showModalMovimiento = false" class="text-slate-950/80 hover:text-slate-950"><i class="fa-solid fa-xmark text-lg"></i></button>
+          </div>
+          <div class="p-6 space-y-4 text-xs bg-slate-50">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Equipo (AFI)</label>
+              <select v-model="formMov.afi" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
+                <option value="">-- Seleccionar Equipo --</option>
+                <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Fecha</label>
+                <input type="date" v-model="formMov.fecha" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Tipo de Movimiento</label>
+                <input type="text" v-model="formMov.tipo" placeholder="Ej: Traslado de obra" class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Origen</label>
+                <input type="text" v-model="formMov.origen" placeholder="Ubicación anterior..." class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Destino</label>
+                <input type="text" v-model="formMov.destino" placeholder="Nueva ubicación..." class="w-full p-2.5 border rounded-lg bg-white font-bold text-emerald-700">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Camión Encargado</label>
+                <input type="text" v-model="formMov.camion" placeholder="Patente camión..." class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Conductor</label>
+                <input type="text" v-model="formMov.conductor" placeholder="Nombre conductor..." class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+            </div>
+          </div>
+          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
+            <button @click="showModalMovimiento = false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
+            <button @click="guardarNuevoMovimiento" :disabled="!formMov.afi || !formMov.fecha" class="px-5 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 shadow-md text-xs">Guardar Movimiento</button>
+          </div>
+        </div>
+      </div>
+
       <!-- MODAL 1: CREAR CARPETA NUEVA -->
       <div v-if="showModalCarpeta" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl border w-full max-w-md overflow-hidden flex flex-col">
@@ -1207,6 +1261,42 @@
           aceite_5w30: "", liquido_freno_dot4: "", tractofluid_10w30: "", sae_30: "",
           hydra46: "", hydra_68: "", adblue: ""
         });
+
+        const showModalMovimiento = ref(false);
+        const formMov = ref({ afi: "", fecha: new Date().toISOString().substring(0, 10), tipo: "Traslado", origen: "", destino: "", camion: "", conductor: "" });
+
+        const abrirModalCrearMovimiento = () => {
+          formMov.value = { afi: dbEquipos.value[0]?.afi || "", fecha: new Date().toISOString().substring(0, 10), tipo: "Traslado", origen: "", destino: "", camion: "", conductor: "" };
+          showModalMovimiento.value = true;
+        };
+
+        const guardarNuevoMovimiento = async () => {
+          const payload = {
+            afi: String(formMov.value.afi).trim(),
+            fecha: formatIsoDateForSupabase(formMov.value.fecha),
+            tipo: parseStr(formMov.value.tipo),
+            ubicacion_anterior: parseStr(formMov.value.origen),
+            ubicacion_actual: parseStr(formMov.value.destino),
+            camion_encargado: parseStr(formMov.value.camion),
+            conductor_encargado: parseStr(formMov.value.conductor)
+          };
+          try {
+            await supabaseClient.from('BD_MOVIMIENTOS').insert([payload]);
+          } catch(e) {}
+
+          // Actualizar ubicación del equipo si se indicó destino
+          if(payload.ubicacion_actual) {
+            const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === payload.afi.toUpperCase());
+            if(eqRef) {
+              eqRef.ubicacion = payload.ubicacion_actual;
+              try { await supabaseClient.from('BD_INVENTARIO').update({ ubicacion: payload.ubicacion_actual }).eq('id', eqRef.id); } catch(e){}
+            }
+          }
+
+          await cargarDatosDesdeSupabase();
+          showModalMovimiento.value = false;
+          alert("¡Movimiento registrado con éxito!");
+        };
 
         const agregarFilaFiltro = () => {
           formMant.value.filtrosLista.push({ tipo: "", marca: "", codigo: "", cantidad: 1 });
@@ -1991,8 +2081,8 @@
 
         let chartEstadoInst=null, chartTiposInst=null, chartCausasInst=null;
         const renderCharts = () => {
-          if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
           nextTick(() => {
+            if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
             const ctx1 = document.getElementById('chartEstado');
             if (ctx1) {
               if (chartEstadoInst) chartEstadoInst.destroy();
@@ -2018,7 +2108,12 @@
           });
         };
 
-        const switchTab = (tab) => { currentTab.value = tab; if (tab === 'dashboard') renderCharts(); };
+        const switchTab = (tab) => { 
+          currentTab.value = tab; 
+          if (tab === 'dashboard') {
+            renderCharts(); 
+          }
+        };
         const countEstado = (st) => dbEquipos.value.filter(e => normalizarClave(e.disponibilidad) === normalizarClave(st)).length;
         const getEstadoText = (est) => {
           const norm = normalizarClave(est);
@@ -2042,7 +2137,13 @@
 
         const login = () => {
           const userEncontrado = dbUsuarios.value.find(u => u.usuario.toLowerCase() === loginUser.value.trim().toLowerCase() && u.clave === loginPass.value.trim());
-          if (userEncontrado) { usuarioActivo.value = userEncontrado; authError.value = false; loginUser.value = ""; loginPass.value = ""; nextTick(() => renderCharts()); }
+          if (userEncontrado) { 
+            usuarioActivo.value = userEncontrado; 
+            authError.value = false; 
+            loginUser.value = ""; 
+            loginPass.value = ""; 
+            renderCharts(); 
+          }
           else authError.value = true;
         };
         const logout = () => { usuarioActivo.value = null; };
@@ -2058,6 +2159,7 @@
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
           agregarFilaFiltro, eliminarFilaFiltro,
+          showModalMovimiento, formMov, abrirModalCrearMovimiento, guardarNuevoMovimiento,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
           showModalCarpeta, formCarpetaNombre, abrirModalCrearCarpeta, guardarNuevaCarpeta,
           showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes, eliminarProgramaCompleto,
