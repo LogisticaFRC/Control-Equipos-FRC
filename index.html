@@ -2098,7 +2098,7 @@
         let chartEstadoInst=null, chartTiposInst=null, chartCausasInst=null;
         
         const renderCharts = () => {
-          nextTick(() => {
+          setTimeout(() => {
             if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
             
             // Gráfico 1: Estado Operativo
@@ -2154,13 +2154,13 @@
                 options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
               });
             }
-          });
+          }, 300);
         };
 
         const switchTab = (tab) => { 
           currentTab.value = tab; 
           if (tab === 'dashboard') {
-            setTimeout(renderCharts, 100);
+            renderCharts();
           }
         };
 
@@ -2184,7 +2184,7 @@
           const cfgSaved = localStorage.getItem('afi_config_custom'); if (cfgSaved) config.value = JSON.parse(cfgSaved);
           await cargarUsuariosDesdeSupabase(); 
           await cargarDatosDesdeSupabase();
-          setTimeout(renderCharts, 500);
+          renderCharts();
         });
 
         const login = () => {
@@ -2194,7 +2194,7 @@
             authError.value = false; 
             loginUser.value = ""; 
             loginPass.value = ""; 
-            setTimeout(renderCharts, 200);
+            renderCharts();
           }
           else authError.value = true;
         };
