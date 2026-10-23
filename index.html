@@ -396,7 +396,7 @@
                         </td>
                       </tr>
                       <tr v-if="obtenerItemsPrograma(progSelect.id).length === 0">
-                        <td colspan="7" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa. <button @click="abrirModalAsignarEquipoEnProgresoEspecifico(progSelect.id)" class="text-rose-600 underline font-bold">Añadir equipo ahora</button></td>
+                        <td colspan="7" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa. <button @click="abrirModalAsignarEquipoInProgresoEspecifico(progSelect.id)" class="text-rose-600 underline font-bold">Añadir equipo ahora</button></td>
                       </tr>
                     </tbody>
                   </table>
@@ -1927,7 +1927,6 @@
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
-          // Payload simplificado y seguro para evitar errores en tablas de Supabase
           const payload = {
             afi: String(formMant.value.afi).trim(), 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
