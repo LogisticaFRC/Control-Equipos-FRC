@@ -126,7 +126,10 @@
               <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-emerald-600"></i> Dashboard de Control de Equipos y Estado Operativo</h2>
               <p class="text-xs text-slate-500">Haz clic en cualquiera de los bloques para filtrar los equipos en el inventario.</p>
             </div>
-            <button @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-file-excel"></i> Exportar KPIs (CSV)</button>
+            <div class="flex items-center gap-2">
+              <button @click="renderCharts" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-rotate-right"></i> Recargar Gráficos</button>
+              <button @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-file-excel"></i> Exportar KPIs (CSV)</button>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -163,15 +166,15 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
               <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-emerald-600"></i> Estado Operativo</h3>
-              <div class="h-60 relative"><canvas id="chartEstado"></canvas></div>
+              <div class="h-60 relative w-full"><canvas id="chartEstado"></canvas></div>
             </div>
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
               <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-column text-blue-600"></i> Mantenciones por Tipo</h3>
-              <div class="h-60 relative"><canvas id="chartTiposMant"></canvas></div>
+              <div class="h-60 relative w-full"><canvas id="chartTiposMant"></canvas></div>
             </div>
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3 md:col-span-2 lg:col-span-1">
               <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-amber-600"></i> Causas de Intervención</h3>
-              <div class="h-60 relative"><canvas id="chartCausas"></canvas></div>
+              <div class="h-60 relative w-full"><canvas id="chartCausas"></canvas></div>
             </div>
           </div>
         </section>
@@ -1580,7 +1583,6 @@
           } catch(e) { return null; }
         };
 
-        // Formato visual DD-MM-YYYY para América del Sur
         const formatDateForDisplay = (val) => {
           const iso = normalizarFecha(val);
           if (!iso || iso === '-') return '-';
@@ -1976,14 +1978,12 @@
         const getHistorialIntervencionesAFI = (afi) => {
           const cleanAfi = String(afi || '').trim().toUpperCase();
           const arr = dbIntervenciones.value.filter(i => String(i.afi || '').trim().toUpperCase() === cleanAfi);
-          // Ordenar explícitamente de más reciente a más antiguo o viceversa por fecha
           arr.sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
           return arr;
         };
         const getHistorialMovimientosAFI = (afi) => {
           const cleanAfi = String(afi || '').trim().toUpperCase();
           const arr = dbMovimientos.value.filter(m => String(m.afi || '').trim().toUpperCase() === cleanAfi);
-          // Ordenar explícitamente por fecha en perfil de equipo
           arr.sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
           return arr;
         };
@@ -2096,10 +2096,12 @@
         };
 
         let chartEstadoInst=null, chartTiposInst=null, chartCausasInst=null;
+        
         const renderCharts = () => {
           nextTick(() => {
             if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
             
+            // Gráfico 1: Estado Operativo
             const ctx1 = document.getElementById('chartEstado');
             if (ctx1) {
               if (chartEstadoInst) chartEstadoInst.destroy();
@@ -2116,6 +2118,7 @@
               });
             }
 
+            // Gráfico 2: Mantenciones por Tipo
             const ctx2 = document.getElementById('chartTiposMant');
             if (ctx2) {
               if (chartTiposInst) chartTiposInst.destroy();
@@ -2136,6 +2139,7 @@
               });
             }
 
+            // Gráfico 3: Causas de Intervención
             const ctx3 = document.getElementById('chartCausas');
             if (ctx3) {
               if (chartCausasInst) chartCausasInst.destroy();
@@ -2156,7 +2160,7 @@
         const switchTab = (tab) => { 
           currentTab.value = tab; 
           if (tab === 'dashboard') {
-            renderCharts(); 
+            setTimeout(renderCharts, 100);
           }
         };
 
@@ -2180,6 +2184,7 @@
           const cfgSaved = localStorage.getItem('afi_config_custom'); if (cfgSaved) config.value = JSON.parse(cfgSaved);
           await cargarUsuariosDesdeSupabase(); 
           await cargarDatosDesdeSupabase();
+          setTimeout(renderCharts, 500);
         });
 
         const login = () => {
@@ -2189,7 +2194,7 @@
             authError.value = false; 
             loginUser.value = ""; 
             loginPass.value = ""; 
-            renderCharts(); 
+            setTimeout(renderCharts, 200);
           }
           else authError.value = true;
         };
