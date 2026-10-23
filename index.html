@@ -1621,7 +1621,11 @@
             }
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
-            const hAprox = Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
+            
+            // Si el equipo está "Fuera de Servicio", congelamos el conteo de horas y nos quedamos con el último horómetro
+            const estaFueraServicio = normalizarClave(eq.disponibilidad) === 'Fuera de Servicio';
+            const hAprox = estaFueraServicio ? hUltimoTomado : Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
+            
             const hTarget = hUltimaMant > 0 ? hUltimaMant + (Number(eq.frecuenciaMantencion) || 250) : hUltimoTomado + (Number(eq.frecuenciaMantencion) || 250);
             const faltan = hTarget - hAprox;
 
@@ -1771,6 +1775,8 @@
               await supabaseClient.from('BD_HISTORIAL').delete().eq('id', id);
             } catch(e) {}
             dbIntervenciones.value = dbIntervenciones.value.filter(i => i.id !== id);
+            actualizarHorometrosDesdeHistorial();
+            renderCharts();
           }
         };
 
@@ -1800,6 +1806,17 @@
             hydra_68: parseNum(formMant.value.hydra_68) || 0,
             adblue: parseNum(formMant.value.adblue) || 0
           };
+
+          // Si el horómetro registrado es mayor al actual del equipo en inventario, actualizamos también el inventario AFI
+          const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase());
+          let nuevoH = parseNum(formMant.value.horometro) || 0;
+          if (eqRef && nuevoH > eqRef.horometroActual) {
+            eqRef.horometroActual = nuevoH;
+            try {
+              await supabaseClient.from('BD_INVENTARIO').update({ horometroactual: nuevoH }).eq('id', eqRef.id);
+            } catch(e) {}
+          }
+
           try {
             if (isEditingMantencion.value && formMant.value.id) {
               await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
@@ -1807,9 +1824,10 @@
               await supabaseClient.from('BD_HISTORIAL').insert([payload]);
             }
           } catch(e) {}
+
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("¡Mantención guardada con éxito!");
+          alert("¡Mantención guardada con éxito y alojada en el historial!");
         };
 
         const abrirPerfilEquipo = (equipo) => {
