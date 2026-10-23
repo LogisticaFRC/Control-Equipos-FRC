@@ -169,7 +169,7 @@
               <div class="h-60 relative w-full"><canvas id="chartEstado"></canvas></div>
             </div>
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-column text-blue-600"></i> Mantenciones por Tipo</h3>
+              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-column text-blue-600"></i> Registros por Tipo de Documento</h3>
               <div class="h-60 relative w-full"><canvas id="chartTiposMant"></canvas></div>
             </div>
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3 md:col-span-2 lg:col-span-1">
@@ -509,13 +509,6 @@
                 <select v-model="filterInt.afi" class="w-full p-2 border border-amber-300 bg-amber-50 font-bold rounded-lg">
                   <option value="ALL">-- Todos los AFI --</option>
                   <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block font-bold mb-1">Programa</label>
-                <select v-model="filterInt.programa" class="w-full p-2 border rounded-lg font-bold text-indigo-700 bg-indigo-50">
-                  <option value="ALL">-- Todos --</option>
-                  <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.mes">[{{ p.carpeta }}] {{ p.mes }}</option>
                 </select>
               </div>
               <div>
@@ -895,8 +888,8 @@
               <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 <div><label class="block font-bold mb-1">AFI</label><select v-model="formMant.afi" class="w-full p-2 border rounded-lg bg-white font-bold"><option value="">-- AFI --</option><option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option></select></div>
                 <div><label class="block font-bold mb-1">Fecha</label><input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Horómetro</label><input type="number" step="any" v-model="formMant.horometro" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Horómetro</label><input type="number" step="any" v-model="formMant.horometro" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
               </div>
             </div>
 
@@ -948,16 +941,16 @@
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
               <h4 class="font-bold text-slate-800 uppercase">Personal Técnico & Descripción</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                <div><label class="block font-bold mb-1">Causa Detallada</label><input type="text" v-model="formMant.causaDetallada" placeholder="Detalle causa..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Descripción</label><input type="text" v-model="formMant.descripcion" placeholder="Descripción..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Empresa</label><input type="text" v-model="formMant.empresa" placeholder="Empresa..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-emerald-700"></div>
+                <div><label class="block font-bold mb-1">Causa Detallada</label><input type="text" v-model="formMant.causaDetallada" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Descripción</label><input type="text" v-model="formMant.descripcion" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Empresa</label><input type="text" v-model="formMant.empresa" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-emerald-700"></div>
               </div>
             </div>
 
@@ -965,21 +958,21 @@
             <div class="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3">
               <h4 class="font-bold text-amber-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-oil-can"></i> Consumo de Aceites e Insumos (Litros)</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CI-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ci4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CK-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ck4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Refrigerante 50/50</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_5050" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 80W90</label><input type="number" step="any" v-model="formMant.aceite_80w90" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 68</label><input type="number" step="any" v-model="formMant.aceite_dacnis_68" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 46</label><input type="number" step="any" v-model="formMant.aceite_dacnis_46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil M Extreme</label><input type="number" step="any" v-model="formMant.paroil_m_extreme" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil S Extreme</label><input type="number" step="any" v-model="formMant.paroil_s_extreme" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 5W30</label><input type="number" step="any" v-model="formMant.aceite_5w30" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Líquido Freno DOT-4</label><input type="number" step="any" v-model="formMant.liquido_freno_dot4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Tractofluid (10W30)</label><input type="number" step="any" v-model="formMant.tractofluid_10w30" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">SAE 30</label><input type="number" step="any" v-model="formMant.sae_30" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 46</label><input type="number" step="any" v-model="formMant.hydra46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 68</label><input type="number" step="any" v-model="formMant.hydra_68" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Adblue</label><input type="number" step="any" v-model="formMant.adblue" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CI-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ci4" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CK-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ck4" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Refrigerante 50/50</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_5050" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 80W90</label><input type="number" step="any" v-model="formMant.aceite_80w90" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 68</label><input type="number" step="any" v-model="formMant.aceite_dacnis_68" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 46</label><input type="number" step="any" v-model="formMant.aceite_dacnis_46" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil M Extreme</label><input type="number" step="any" v-model="formMant.paroil_m_extreme" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil S Extreme</label><input type="number" step="any" v-model="formMant.paroil_s_extreme" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 5W30</label><input type="number" step="any" v-model="formMant.aceite_5w30" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Líquido Freno DOT-4</label><input type="number" step="any" v-model="formMant.liquido_freno_dot4" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Tractofluid (10W30)</label><input type="number" step="any" v-model="formMant.tractofluid_10w30" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">SAE 30</label><input type="number" step="any" v-model="formMant.sae_30" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 46</label><input type="number" step="any" v-model="formMant.hydra46" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 68</label><input type="number" step="any" v-model="formMant.hydra_68" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Adblue</label><input type="number" step="any" v-model="formMant.adblue" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
               </div>
             </div>
           </div>
@@ -1511,28 +1504,28 @@
 
           const totalHorasCalculado = calcularRestaHoras(formMant.value.horaInicio, formMant.value.horaTermino);
 
-          // Payload adaptado exactamente a las columnas reales de la tabla BD_HISTORIAL en Supabase
+          // Payload flexible: permite dejar celdas en blanco o vacías sin romper Supabase
           const payload = {
             afi: String(formMant.value.afi).trim(), 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
-            lugar: parseStr(formMant.value.lugar), 
-            causa: parseStr(formMant.value.causa),
-            tipo_documento: parseStr(formMant.value.tipoDocumento),
-            tipo_horas_mantencion: formMant.value.tipoDocumento === 'MANTENCION' ? parseStr(formMant.value.tipoHorasMant) : '',
-            horometro: parseNum(formMant.value.horometro) || 0,
-            mecanico_1: parseStr(formMant.value.mec1), 
-            mecanico_2: parseStr(formMant.value.mec2), 
-            mecanico_3: parseStr(formMant.value.mec3), 
-            mecanico_4: parseStr(formMant.value.mec4),
-            hora_inicio: parseStr(formMant.value.horaInicio), 
-            hora_termino: parseStr(formMant.value.horaTermino),
-            hora_total: totalHorasCalculado,
-            causa_intervencion: parseStr(formMant.value.causaDetallada), 
-            descripcion: parseStr(formMant.value.descripcion),
-            empresa: parseStr(formMant.value.empresa),
+            lugar: parseStr(formMant.value.lugar) || null, 
+            causa: parseStr(formMant.value.causa) || null,
+            tipo_documento: parseStr(formMant.value.tipoDocumento) || 'MANTENCION',
+            tipo_horas_mantencion: formMant.value.tipoDocumento === 'MANTENCION' ? parseStr(formMant.value.tipoHorasMant) : null,
+            horometro: parseNum(formMant.value.horometro),
+            mecanico_1: parseStr(formMant.value.mec1) || null, 
+            mecanico_2: parseStr(formMant.value.mec2) || null, 
+            mecanico_3: parseStr(formMant.value.mec3) || null, 
+            mecanico_4: parseStr(formMant.value.mec4) || null,
+            hora_inicio: parseStr(formMant.value.horaInicio) || null, 
+            hora_termino: parseStr(formMant.value.horaTermino) || null,
+            hora_total: totalHorasCalculado !== '-' ? totalHorasCalculado : null,
+            causa_intervencion: parseStr(formMant.value.causaDetallada) || null, 
+            descripcion: parseStr(formMant.value.descripcion) || null,
+            empresa: parseStr(formMant.value.empresa) || null,
             costo: parseNum(formMant.value.costo) || 0, 
-            numero_oc: parseStr(formMant.value.numeroOC), 
-            numero_ot: parseStr(formMant.value.numeroOT),
+            numero_oc: parseStr(formMant.value.numeroOC) || null, 
+            numero_ot: parseStr(formMant.value.numeroOT) || null,
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
             aceite_refrigerante_50: parseNum(formMant.value.aceite_refrigerante_5050) || 0,
