@@ -947,9 +947,9 @@
                 <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" class="w-full p-2 border rounded-lg bg-white"></div>
                 <div><label class="block font-bold mb-1">Horómetro</label><input type="number" step="any" v-model="formMant.horometro" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
                 <div>
-                  <label class="block font-bold mb-1 text-indigo-700">Programa Correspondiente</label>
+                  <label class="block font-bold mb-1 text-indigo-700">Programa Correspondiente (Opcional)</label>
                   <select v-model="formMant.programaCorrespondiente" class="w-full p-2 border border-indigo-300 rounded-lg bg-indigo-50 font-bold text-indigo-900">
-                    <option value="">-- Sin Programa --</option>
+                    <option value="">-- Sin Programa (Opcional) --</option>
                     <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.mes">[{{ p.carpeta }}] {{ p.mes }}</option>
                   </select>
                 </div>
@@ -1478,7 +1478,7 @@
           showModalAsignarEquipo.value = true;
         };
 
-        const abrirModalAsignarEquipoEnProgresoEspecifico = (progId) => {
+        const abrirModalAsignarEquipoInProgresoEspecifico = (progId) => {
           const prog = dbProgramasCalendarios.value.find(p => p.id === progId);
           formAsignar.value = {
             programa_id: progId, afi: '', tipo: 'Reparación', condicion: 'Arriendo',
@@ -1719,22 +1719,31 @@
             if (!intervencionesPorAFI[cleanAFI]) intervencionesPorAFI[cleanAFI] = [];
             intervencionesPorAFI[cleanAFI].push(i);
           });
-          for (const afi in intervencionesPorAFI) { intervencionesPorAFI[afi].sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha)); }
+          for (const afi in intervencionesPorAFI) { 
+            intervencionesPorAFI[afi].sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha)); 
+          }
 
           dbEquipos.value.forEach(eq => {
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
-            const histMantenciones = histConHorometro.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT') || String(i.causa).toUpperCase().includes('MANTENCION'));
+            
+            // Filtro estricto para detectar mantenciones reales y actualizar la "Última Mantención"
+            const histMantenciones = histConHorometro.filter(i => {
+              const tMant = String(i.tipoMant || '').toUpperCase();
+              const cMant = String(i.causa || '').toUpperCase();
+              return tMant.includes('PREVENT') || tMant.includes('PREDICT') || cMant.includes('MANTENCION') || cMant.includes('SERVICIO');
+            });
 
-            let ultimaMant = histMantenciones.length > 0 ? histMantenciones[histMantenciones.length - 1] : (histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : null);
-            let ultimoReg = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : null;
+            let ultimaMant = histMantenciones.length > 0 ? histMantenciones[histMantenciones.length - 1] : null;
+            let ultimoReg = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : (histFull.length > 0 ? histFull[histFull.length - 1] : null);
 
             let hTomadoManual = Number(eq.horometroActual) || (ultimoReg ? Number(ultimoReg.horometro) : 0);
             let fechaUltimoHorometro = ultimoReg ? ultimoReg.fecha : '-';
             let hUltimoTomado = hTomadoManual;
 
-            let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : 0;
-            let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : '-';
+            // Si hay una mantención registrada, su horómetro PASA A SER la última mantención oficial
+            let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : (hUltimoTomado > 0 ? hUltimoTomado : 0);
+            let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : fechaUltimoHorometro;
 
             let rateHrsDia = 0;
             if (histConHorometro.length >= 2) {
@@ -1746,11 +1755,12 @@
             }
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
-            
             const estaFueraServicio = normalizarClave(eq.disponibilidad) === 'Fuera de Servicio';
             const hAprox = estaFueraServicio ? hUltimoTomado : Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
             
-            const hTarget = hUltimaMant > 0 ? hUltimaMant + (Number(eq.frecuenciaMantencion) || 250) : hUltimoTomado + (Number(eq.frecuenciaMantencion) || 250);
+            // La meta se calcula exactamente sumando la frecuencia a la última mantención realizada
+            const frecuencia = Number(eq.frecuenciaMantencion) || 250;
+            const hTarget = hUltimaMant > 0 ? hUltimaMant + frecuencia : hUltimoTomado + frecuencia;
             const faltan = hTarget - hAprox;
 
             let diasFaltantes = rateHrsDia > 0 ? Math.ceil(faltan / rateHrsDia) : 30;
@@ -1905,15 +1915,31 @@
         };
 
         const guardarMantencionForm = async () => {
+          if (!formMant.value.afi || !formMant.value.fecha) {
+            return alert("Por favor selecciona al menos el AFI y la Fecha.");
+          }
+
           const payload = {
-            afi: formMant.value.afi, fecha: formatIsoDateForSupabase(formMant.value.fecha), lugar: formMant.value.lugar, causa: formMant.value.causa,
-            tipo_mantencion: formMant.value.tipoMant, tipo_horas_mantencion: formMant.value.tipoHorasMant, horometro: parseNum(formMant.value.horometro),
-            programa_correspondiente: formMant.value.programaCorrespondiente,
-            hora_inicio: formMant.value.horaInicio, hora_termino: formMant.value.horaTermino,
-            mecanico_1: formMant.value.mec1, mecanico_2: formMant.value.mec2, mecanico_3: formMant.value.mec3, mecanico_4: formMant.value.mec4,
-            causa_intervencion: formMant.value.causaDetallada, descripcion: formMant.value.descripcion,
+            afi: String(formMant.value.afi).trim(), 
+            fecha: formatIsoDateForSupabase(formMant.value.fecha), 
+            lugar: parseStr(formMant.value.lugar), 
+            causa: parseStr(formMant.value.causa),
+            tipo_mantencion: parseStr(formMant.value.tipoMant), 
+            tipo_horas_mantencion: parseStr(formMant.value.tipoHorasMant), 
+            horometro: parseNum(formMant.value.horometro) || 0,
+            programa_correspondiente: parseStr(formMant.value.programaCorrespondiente),
+            hora_inicio: parseStr(formMant.value.horaInicio), 
+            hora_termino: parseStr(formMant.value.horaTermino),
+            mecanico_1: parseStr(formMant.value.mec1), 
+            mecanico_2: parseStr(formMant.value.mec2), 
+            mecanico_3: parseStr(formMant.value.mec3), 
+            mecanico_4: parseStr(formMant.value.mec4),
+            causa_intervencion: parseStr(formMant.value.causaDetallada), 
+            descripcion: parseStr(formMant.value.descripcion),
             filtros_json: JSON.stringify(formMant.value.filtrosLista || []),
-            costo: parseNum(formMant.value.costo), numero_oc: formMant.value.numeroOC, numero_ot: formMant.value.numeroOT,
+            costo: parseNum(formMant.value.costo) || 0, 
+            numero_oc: parseStr(formMant.value.numeroOC), 
+            numero_ot: parseStr(formMant.value.numeroOT),
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
             aceite_refrigerante_5050: parseNum(formMant.value.aceite_refrigerante_5050) || 0,
@@ -1937,20 +1963,26 @@
             eqRef.horometroActual = nuevoH;
             try {
               await supabaseClient.from('BD_INVENTARIO').update({ horometroactual: nuevoH }).eq('id', eqRef.id);
-            } catch(e) {}
+            } catch(e) { console.error("Error actualizando inventario:", e); }
           }
 
           try {
             if (isEditingMantencion.value && formMant.value.id) {
-              await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
+              const { error } = await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
+              if (error) throw error;
             } else {
-              await supabaseClient.from('BD_HISTORIAL').insert([payload]);
+              const { error } = await supabaseClient.from('BD_HISTORIAL').insert([payload]);
+              if (error) throw error;
             }
-          } catch(e) {}
+          } catch(err) {
+            console.error("Error al guardar en Supabase:", err);
+            alert("Hubo un error al guardar en la base de datos de Supabase. Revisa la consola.");
+            return;
+          }
 
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("¡Mantención guardada con éxito y alojada en el historial!");
+          alert("¡Mantención guardada y sincronizada correctamente con el historial y el equipo!");
         };
 
         const abrirPerfilEquipo = (equipo) => {
@@ -2095,66 +2127,74 @@
           }
         };
 
-        let chartEstadoInst=null, chartTiposInst=null, chartCausasInst=null;
+        let chartEstadoInst = null, chartTiposInst = null, chartCausasInst = null;
         
         const renderCharts = () => {
-          setTimeout(() => {
-            if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
-            
-            // Gráfico 1: Estado Operativo
-            const ctx1 = document.getElementById('chartEstado');
-            if (ctx1) {
-              if (chartEstadoInst) chartEstadoInst.destroy();
-              chartEstadoInst = new Chart(ctx1, {
-                type: 'doughnut', 
-                data: { 
-                  labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Mantención', 'Fuera de Servicio', 'Venta'], 
-                  datasets: [{ 
-                    data: [countEstado('Operativo'), countEstado('Disponible'), countEstado('En Traslado'), countEstado('En Mantencion'), countEstado('Fuera de Servicio'), countEstado('Venta')], 
-                    backgroundColor: ['#10b981', '#0284c7', '#f59e0b', '#f43f5e', '#64748b', '#a855f7'] 
-                  }] 
-                }, 
-                options: { responsive: true, maintainAspectRatio: false }
-              });
-            }
+          nextTick(() => {
+            setTimeout(() => {
+              if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
+              
+              // Gráfico 1: Estado Operativo
+              const ctx1 = document.getElementById('chartEstado');
+              if (ctx1) {
+                if (chartEstadoInst) { chartEstadoInst.destroy(); chartEstadoInst = null; }
+                chartEstadoInst = new Chart(ctx1, {
+                  type: 'doughnut', 
+                  data: { 
+                    labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Mantención', 'Fuera de Servicio', 'Venta'], 
+                    datasets: [{ 
+                      data: [countEstado('Operativo'), countEstado('Disponible'), countEstado('En Traslado'), countEstado('En Mantencion'), countEstado('Fuera de Servicio'), countEstado('Venta')], 
+                      backgroundColor: ['#10b981', '#0284c7', '#f59e0b', '#f43f5e', '#64748b', '#a855f7'] 
+                    }] 
+                  }, 
+                  options: { responsive: true, maintainAspectRatio: false }
+                });
+              }
 
-            // Gráfico 2: Mantenciones por Tipo
-            const ctx2 = document.getElementById('chartTiposMant');
-            if (ctx2) {
-              if (chartTiposInst) chartTiposInst.destroy();
-              chartTiposInst = new Chart(ctx2, {
-                type: 'bar', 
-                data: { 
-                  labels: ['Preventiva', 'Predictiva', 'Correctiva'], 
-                  datasets: [{ 
-                    data: [ 
-                      dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT')).length, 
-                      dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREDICT')).length, 
-                      dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('CORRECT')).length 
-                    ], 
-                    backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626'] 
-                  }] 
-                }, 
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-              });
-            }
+              // Gráfico 2: Mantenciones por Tipo (Directo desde el Historial actualizado)
+              const ctx2 = document.getElementById('chartTiposMant');
+              if (ctx2) {
+                if (chartTiposInst) { chartTiposInst.destroy(); chartTiposInst = null; }
+                chartTiposInst = new Chart(ctx2, {
+                  type: 'bar', 
+                  data: { 
+                    labels: ['Preventiva', 'Predictiva', 'Correctiva'], 
+                    datasets: [{ 
+                      data: [ 
+                        dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT')).length, 
+                        dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREDICT')).length, 
+                        dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('CORRECT')).length 
+                      ], 
+                      backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626'] 
+                    }] 
+                  }, 
+                  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+              }
 
-            // Gráfico 3: Causas de Intervención
-            const ctx3 = document.getElementById('chartCausas');
-            if (ctx3) {
-              if (chartCausasInst) chartCausasInst.destroy();
-              const causasMap = {}; 
-              dbIntervenciones.value.forEach(i => { if (i.causa) causasMap[i.causa] = (causasMap[i.causa] || 0) + 1; });
-              chartCausasInst = new Chart(ctx3, {
-                type: 'bar', 
-                data: { 
-                  labels: Object.keys(causasMap).slice(0, 6), 
-                  datasets: [{ data: Object.values(causasMap).slice(0, 6), backgroundColor: '#f59e0b' }] 
-                }, 
-                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-              });
-            }
-          }, 300);
+              // Gráfico 3: Causas de Intervención (Directo desde el Historial actualizado)
+              const ctx3 = document.getElementById('chartCausas');
+              if (ctx3) {
+                if (chartCausasInst) { chartCausasInst.destroy(); chartCausasInst = null; }
+                const causasMap = {}; 
+                dbIntervenciones.value.forEach(i => { 
+                  if (i.causa) {
+                    const cClean = String(i.causa).trim().toUpperCase();
+                    causasMap[cClean] = (causasMap[cClean] || 0) + 1; 
+                  }
+                });
+                const sortedCausas = Object.entries(causasMap).sort((a,b) => b[1] - a[1]).slice(0, 6);
+                chartCausasInst = new Chart(ctx3, {
+                  type: 'bar', 
+                  data: { 
+                    labels: sortedCausas.map(item => item[0]), 
+                    datasets: [{ data: sortedCausas.map(item => item[1]), backgroundColor: '#f59e0b' }] 
+                  }, 
+                  options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+              }
+            }, 250);
+          });
         };
 
         const switchTab = (tab) => { 
@@ -2184,7 +2224,6 @@
           const cfgSaved = localStorage.getItem('afi_config_custom'); if (cfgSaved) config.value = JSON.parse(cfgSaved);
           await cargarUsuariosDesdeSupabase(); 
           await cargarDatosDesdeSupabase();
-          renderCharts();
         });
 
         const login = () => {
@@ -2215,7 +2254,7 @@
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
           showModalCarpeta, formCarpetaNombre, abrirModalCrearCarpeta, guardarNuevaCarpeta,
           showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes, eliminarProgramaCompleto,
-          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoEnProgresoEspecifico, guardarAsignacionEquipo,
+          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoInProgresoEspecifico, guardarAsignacionEquipo,
           dbProgramasCalendarios, dbProgramasItems, listaCarpetasProgramas, obtenerProgramasDeCarpeta, obtenerItemsPrograma, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
           perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos,
           formatDateForDisplay
