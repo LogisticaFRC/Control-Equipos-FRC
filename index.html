@@ -880,7 +880,30 @@
               <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
                 <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-wrench text-blue-600"></i> Historial Mantenciones</h4>
                 <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
-                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]"><tr><th class="p-2">Fecha</th><th class="p-2">Horómetro</th><th class="p-2">Tipo</th><th class="p-2">Causa</th></tr></thead><tbody class="divide-y bg-white"><tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id"><td class="p-2 font-mono font-bold">{{ i.fecha }}</td><td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td><td class="p-2 text-[10px]">{{ i.tipoMant }}</td><td class="p-2 text-[10px] truncate max-w-[120px]">{{ i.causa }}</td></tr><tr v-if="getHistorialIntervencionesAFI(perfilEquipo.afi).length === 0"><td colspan="4" class="p-4 text-center text-slate-400">Sin registros.</td></tr></tbody></table>
+                  <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]">
+                      <tr>
+                        <th class="p-2">Fecha</th>
+                        <th class="p-2">Horómetro</th>
+                        <th class="p-2">Tipo</th>
+                        <th class="p-2">Causa</th>
+                        <th v-if="isAdmin" class="p-2 text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y bg-white text-[11px]">
+                      <tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id">
+                        <td class="p-2 font-mono font-bold">{{ i.fecha }}</td>
+                        <td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td>
+                        <td class="p-2 text-[10px]">{{ i.tipoMant }}</td>
+                        <td class="p-2 text-[10px] truncate max-w-[120px]">{{ i.causa }}</td>
+                        <td v-if="isAdmin" class="p-2 text-center space-x-1">
+                          <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                          <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                      </tr>
+                      <tr v-if="getHistorialIntervencionesAFI(perfilEquipo.afi).length === 0"><td colspan="5" class="p-4 text-center text-slate-400">Sin registros.</td></tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
               <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
@@ -1622,7 +1645,6 @@
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
             
-            // Si el equipo está "Fuera de Servicio", congelamos el conteo de horas y nos quedamos con el último horómetro
             const estaFueraServicio = normalizarClave(eq.disponibilidad) === 'Fuera de Servicio';
             const hAprox = estaFueraServicio ? hUltimoTomado : Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
             
@@ -1807,7 +1829,6 @@
             adblue: parseNum(formMant.value.adblue) || 0
           };
 
-          // Si el horómetro registrado es mayor al actual del equipo en inventario, actualizamos también el inventario AFI
           const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase());
           let nuevoH = parseNum(formMant.value.horometro) || 0;
           if (eqRef && nuevoH > eqRef.horometroActual) {
@@ -1852,8 +1873,14 @@
           await cargarDatosDesdeSupabase(); showPerfilEquipoModal.value = false; alert("¡Perfil guardado correctamente!");
         };
 
-        const getHistorialIntervencionesAFI = (afi) => dbIntervenciones.value.filter(i=>String(i.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
-        const getHistorialMovimientosAFI = (afi) => dbMovimientos.value.filter(m=>String(m.afi).trim().toUpperCase()===String(afi).trim().toUpperCase()).slice(0,10);
+        const getHistorialIntervencionesAFI = (afi) => {
+          const cleanAfi = String(afi || '').trim().toUpperCase();
+          return dbIntervenciones.value.filter(i => String(i.afi || '').trim().toUpperCase() === cleanAfi);
+        };
+        const getHistorialMovimientosAFI = (afi) => {
+          const cleanAfi = String(afi || '').trim().toUpperCase();
+          return dbMovimientos.value.filter(m => String(m.afi || '').trim().toUpperCase() === cleanAfi);
+        };
 
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
         const getVal = (row, ...keys) => {
