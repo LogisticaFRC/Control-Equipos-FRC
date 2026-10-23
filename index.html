@@ -585,6 +585,240 @@
                     <input type="file" @change="uploadFotoEquipo($event, e)" accept="image/*" class="hidden">
                   </label>
                 </div>
+                <div class="p-4 space-y-3<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ config.title }}</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/Chart.js"></script>
+  <!-- SheetJS CDN (Excel) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <style>
+    @keyframes blink-red-slow {
+      0% { background-color: #450a0a; border-color: #ef4444; }
+      50% { background-color: #991b1b; border-color: #fca5a5; }
+      100% { background-color: #450a0a; border-color: #ef4444; }
+    }
+    .bg-pasado-blink {
+      animation: blink-red-slow 2.5s ease-in-out infinite;
+      color: white;
+    }
+    .bg-normal-horometro {
+      background-color: #0f172a;
+      border-color: #334155;
+      color: white;
+    }
+    ::-webkit-scrollbar { height: 8px; width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body :style="bodyStyle" class="font-sans min-h-screen flex flex-col transition-colors duration-300">
+
+  <div id="app" class="flex-grow flex flex-col">
+
+    <!-- MENÚ DE CREDENCIALES -->
+    <div v-if="!usuarioActivo" class="min-h-screen flex items-center justify-center bg-slate-900 p-4 w-full flex-grow">
+      <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-8 space-y-6 text-center">
+        <div class="flex justify-center">
+          <div class="bg-slate-900 p-3 rounded-2xl w-28 h-28 flex items-center justify-center border border-slate-700 shadow-xl">
+            <img :src="config.logo" alt="Logo Empresa" class="max-h-full max-w-full object-contain">
+          </div>
+        </div>
+        <div>
+          <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">{{ config.title }}</h2>
+          <p class="text-xs text-slate-500 mt-1 font-semibold">{{ config.subtitle }}</p>
+        </div>
+        <form @submit.prevent="login" class="space-y-4 text-left text-xs">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">Usuario</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
+              <input type="text" v-model="loginUser" placeholder="Ingresa tu usuario..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">Contraseña</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-lock"></i></span>
+              <input type="password" v-model="loginPass" placeholder="Ingresa tu contraseña..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
+            </div>
+          </div>
+          <p v-if="authError" class="text-rose-600 font-bold text-center bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i> Usuario o contraseña incorrectos
+          </p>
+          <button type="submit" :style="primaryBtnStyle" class="w-full font-extrabold py-3.5 rounded-xl shadow-lg hover:brightness-110 transition flex items-center justify-center gap-2 text-sm uppercase tracking-wider">
+            <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+          </button>
+        </form>
+        <div class="text-[11px] text-slate-400 font-medium">Acceso protegido - Sistema Operativo FRC</div>
+      </div>
+    </div>
+
+    <!-- PANEL PRINCIPAL -->
+    <template v-else>
+      <header :style="headerStyle" class="text-white shadow-lg sticky top-0 z-40 transition-colors duration-300">
+        <div class="max-w-[1400px] mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+          <div class="flex items-center gap-3">
+            <div class="bg-white p-1 rounded-lg w-12 h-12 flex items-center justify-center overflow-hidden border border-slate-700 shadow-sm">
+              <img :src="config.logo" alt="Logo" class="max-h-full max-w-full object-contain">
+            </div>
+            <div>
+              <h1 class="font-bold text-lg leading-tight">{{ config.title }}</h1>
+              <p class="text-xs text-slate-300 opacity-90">{{ config.subtitle }}</p>
+            </div>
+          </div>
+
+          <nav class="flex items-center gap-1.5 overflow-x-auto py-1">
+            <button @click="switchTab('dashboard')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'dashboard' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
+            <button @click="switchTab('inventario')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'inventario' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-boxes-stacked"></i> Inventario AFI ({{ dbEquipos.length }})</button>
+            <button @click="switchTab('programas')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'programas' ? 'bg-rose-500 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-calendar-check"></i> Programas</button>
+            <button @click="switchTab('movimientos')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'movimientos' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-truck-ramp-box"></i> Movimientos ({{ dbMovimientos.length }})</button>
+            <button @click="switchTab('hojaVida')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'hojaVida' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-file-medical"></i> Historial ({{ dbIntervenciones.length }})</button>
+            <button @click="switchTab('aceites')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'aceites' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-oil-can"></i> Control Aceites</button>
+            <button @click="switchTab('configuracion')" :class="['px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap', currentTab === 'configuracion' ? 'bg-white/20 text-white shadow' : 'hover:bg-white/10 text-slate-200']"><i class="fa-solid fa-gear"></i> Config & Usuarios</button>
+          </nav>
+
+          <div class="flex items-center gap-3">
+            <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
+              <i class="fa-solid fa-plus-circle text-sm"></i> Agregar Mantención
+            </button>
+            <div class="text-right text-xs">
+              <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin)</span>
+              <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap"><i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)</span>
+            </div>
+            <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="max-w-[1400px] mx-auto px-4 py-6 flex-grow w-full">
+
+        <!-- DASHBOARD -->
+        <section v-if="currentTab === 'dashboard'" class="space-y-6">
+          <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
+            <div>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-emerald-600"></i> Dashboard de Control de Equipos y Estado Operativo</h2>
+              <p class="text-xs text-slate-500">Haz clic en cualquiera de los bloques para filtrar los equipos en el inventario.</p>
+            </div>
+            <button @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-file-excel"></i> Exportar KPIs (CSV)</button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div @click="filtrarYIrAInventario('ALL')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer hover:border-slate-400 transition">
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Total Flota</p><h3 class="text-xl font-bold text-slate-800">{{ dbEquipos.length }}</h3></div>
+              <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-monster"></i></div>
+            </div>
+            <div @click="filtrarYIrAInventario('Operativo')" class="bg-white p-3.5 rounded-xl shadow-sm border border-emerald-200 flex items-center justify-between cursor-pointer hover:border-emerald-500 transition">
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Trabajando</p><h3 class="text-xl font-bold text-emerald-600">{{ countEstado('Operativo') }}</h3></div>
+              <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm"><i class="fa-solid fa-circle-check"></i></div>
+            </div>
+            <div @click="filtrarYIrAInventario('Disponible')" class="bg-white p-3.5 rounded-xl shadow-sm border border-sky-200 flex items-center justify-between cursor-pointer hover:border-sky-500 transition">
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Disponible</p><h3 class="text-xl font-bold text-sky-600">{{ countEstado('Disponible') }}</h3></div>
+              <div class="w-8 h-8 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center text-sm"><i class="fa-solid fa-warehouse"></i></div>
+            </div>
+            <div @click="filtrarYIrAInventario('En Traslado')" class="bg-white p-3.5 rounded-xl shadow-sm border border-amber-200 flex items-center justify-between cursor-pointer hover:border-amber-500 transition">
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">En Traslado</p><h3 class="text-xl font-bold text-amber-600">{{ countEstado('En Traslado') }}</h3></div>
+              <div class="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-moving"></i></div>
+            </div>
+            <div @click="filtrarYIrAInventario('En Mantencion')" class="bg-white p-3.5 rounded-xl shadow-sm border border-rose-200 flex items-center justify-between cursor-pointer hover:border-rose-500 transition">
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">En Mantención</p><h3 class="text-xl font-bold text-rose-600">{{ countEstado('En Mantencion') }}</h3></div>
+              <div class="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-sm"><i class="fa-solid fa-wrench"></i></div>
+            </div>
+            <div @click="filtrarYIrAInventario('Fuera de Servicio')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-300 flex items-center justify-between cursor-pointer hover:border-slate-600 transition">
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Fuera Servicio</p><h3 class="text-xl font-bold text-slate-700">{{ countEstado('Fuera de Servicio') }}</h3></div>
+              <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fa-solid fa-ban"></i></div>
+            </div>
+            <div @click="filtrarYIrAInventario('Venta')" class="bg-white p-3.5 rounded-xl shadow-sm border border-purple-200 flex items-center justify-between cursor-pointer hover:border-purple-500 transition">
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">En Venta</p><h3 class="text-xl font-bold text-purple-600">{{ countEstado('Venta') }}</h3></div>
+              <div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center text-sm"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-emerald-600"></i> Estado Operativo</h3>
+              <div class="h-60 relative"><canvas id="chartEstado"></canvas></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-column text-blue-600"></i> Mantenciones por Tipo</h3>
+              <div class="h-60 relative"><canvas id="chartTiposMant"></canvas></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3 md:col-span-2 lg:col-span-1">
+              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-amber-600"></i> Causas de Intervención</h3>
+              <div class="h-60 relative"><canvas id="chartCausas"></canvas></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- INVENTARIO AFI -->
+        <section v-if="currentTab === 'inventario'" class="space-y-4">
+          <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Inventario General</h2>
+              <div class="flex flex-wrap items-center gap-2">
+                <button @click="toggleFiltroCriticos" :class="['text-xs font-extrabold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow', filterInv.mostrarCriticos ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-100 text-rose-600 border border-rose-200 hover:bg-rose-50']">
+                  <i class="fa-solid fa-triangle-exclamation"></i> {{ filterInv.mostrarCriticos ? 'Viendo Críticos' : 'Ver Equipos Críticos / Pasados' }}
+                </button>
+                <label class="text-xs font-bold text-slate-700 ml-2">Orden:</label>
+                <select v-model="sortInventarioOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
+                  <option value="desc">Más Recientes primero</option>
+                  <option value="asc">Más Antiguos primero</option>
+                </select>
+                <button @click="resetFiltrosInventario" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Limpiar</button>
+                <button @click="exportarCSV(filteredEquipos, 'Inventario_AFI_Filtrado')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div><label class="block font-bold text-slate-700 mb-1">Buscar (AFI / Tipo / Marca)</label><input type="text" v-model="filterInv.search" placeholder="Ej: Generador..." class="w-full p-2 border border-slate-300 rounded-lg"></div>
+              <div><label class="block font-bold text-slate-700 mb-1">Ubicación</label><input type="text" v-model="filterInv.ubicacion" placeholder="Ej: Tierras Blancas" class="w-full p-2 border border-slate-300 rounded-lg"></div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Estado</label>
+                <select v-model="filterInv.estado" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
+                  <option value="ALL">-- Todos --</option>
+                  <option value="Operativo">Trabajando / Operativo</option>
+                  <option value="Disponible">Disponible</option>
+                  <option value="En Traslado">En Traslado</option>
+                  <option value="En Mantencion">En Mantención</option>
+                  <option value="Fuera de Servicio">Fuera de Servicio</option>
+                  <option value="Venta">En Venta</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">GPS</label>
+                <select v-model="filterInv.gps" class="w-full p-2 border border-slate-300 rounded-lg">
+                  <option value="ALL">-- Todos --</option>
+                  <option value="Instalado">Instalado</option>
+                  <option value="Sin GPS">Sin GPS</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-for="e in filteredEquipos" :key="e.id" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+              <div>
+                <div class="relative h-44 bg-slate-900 group">
+                  <img :src="e.foto || 'https://via.placeholder.com/300x180/0f172a/ffffff?text=' + e.afi" class="w-full h-full object-cover">
+                  <span :class="['absolute top-2 right-2 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-md', getBadgeClass(e.disponibilidad)]">{{ getEstadoText(e.disponibilidad) }}</span>
+                  <label v-if="isAdmin" class="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg text-xs cursor-pointer shadow flex items-center gap-1">
+                    <i class="fa-solid fa-camera"></i> <span>Subir Foto</span>
+                    <input type="file" @change="uploadFotoEquipo($event, e)" accept="image/*" class="hidden">
+                  </label>
+                </div>
                 <div class="p-4 space-y-3">
                   <div>
                     <span class="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">AFI: {{ e.afi }}</span>
