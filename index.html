@@ -106,7 +106,7 @@
 
           <div class="flex items-center gap-3">
             <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
-              <i class="fa-solid fa-plus-circle text-sm"></i> Registrar Mantención / Intervención
+              <i class="fa-solid fa-plus-circle text-sm"></i> Agregar Mantención
             </button>
             <div class="text-right text-xs">
               <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin)</span>
@@ -169,7 +169,7 @@
               <div class="h-60 relative w-full"><canvas id="chartEstado"></canvas></div>
             </div>
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-column text-blue-600"></i> Registros por Tipo de Documento</h3>
+              <h3 class="text-xs font-bold uppercase text-slate-700 flex items-center gap-2"><i class="fa-solid fa-chart-column text-blue-600"></i> Mantenciones por Tipo</h3>
               <div class="h-60 relative w-full"><canvas id="chartTiposMant"></canvas></div>
             </div>
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3 md:col-span-2 lg:col-span-1">
@@ -512,13 +512,19 @@
                 </select>
               </div>
               <div>
-                <label class="block font-bold mb-1">Tipo Documento</label>
+                <label class="block font-bold mb-1">Programa</label>
+                <select v-model="filterInt.programa" class="w-full p-2 border rounded-lg font-bold text-indigo-700 bg-indigo-50">
+                  <option value="ALL">-- Todos --</option>
+                  <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.mes">[{{ p.carpeta }}] {{ p.mes }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold mb-1">Tipo Mantención</label>
                 <select v-model="filterInt.tipoMant" class="w-full p-2 border rounded-lg font-semibold">
                   <option value="ALL">-- Todos --</option>
-                  <option value="MANTENCION">MANTENCIÓN</option>
-                  <option value="INTERVENCION">INTERVENCIÓN</option>
-                  <option value="REPARACION">REPARACIÓN</option>
-                  <option value="PUESTA EN MARCHA">PUESTA EN MARCHA</option>
+                  <option value="PREVENTIVA">PREVENTIVA</option>
+                  <option value="PREDICTIVA">PREDICTIVA</option>
+                  <option value="CORRECTIVA">CORRECTIVA</option>
                 </select>
               </div>
               <div>
@@ -539,23 +545,28 @@
                     <th v-if="isAdmin" class="p-2 text-center">ACCIONES</th>
                     <th class="p-2">AFI</th>
                     <th class="p-2">FECHA MANT.</th>
-                    <th class="p-2 text-indigo-300">TIPO DOCUMENTO</th>
-                    <th class="p-2 text-amber-300">TIPO / HORAS</th>
+                    <th class="p-2 text-indigo-300">PROGRAMA CORRESPONDIENTE</th>
                     <th class="p-2">EQUIPO</th>
                     <th class="p-2">LUGAR</th>
                     <th class="p-2">CAUSA</th>
-                    <th class="p-2 bg-amber-900 text-amber-200 font-bold">HORÓMETRO</th>
+                    <th class="p-2">TIPO MANT.</th>
+                    <th class="p-2 text-amber-300">TIPO EN HORAS (H)</th>
+                    <th class="p-2 bg-amber-900 text-amber-200 font-bold">ÚLTIMO HORÓMETRO TOMADO</th>
+                    <th class="p-2 bg-amber-900 text-amber-200 font-bold">FECHA HORÓMETRO</th>
                     <th class="p-2">MECÁNICOS</th>
                     <th class="p-2 text-sky-300">INICIO HORA</th>
                     <th class="p-2 text-sky-300">TÉRMINO HORA</th>
                     <th class="p-2 text-amber-300">TOTAL HORAS</th>
+                    <th class="p-2 text-emerald-300">FILTROS UTILIZADOS</th>
                     <th class="p-2">CAUSA DETALLADA</th>
                     <th class="p-2">DESCRIPCIÓN</th>
+                    <th class="p-2">INTERFERENCIA</th>
                     <th class="p-2">EMPRESA</th>
                     <th class="p-2">COSTO</th>
                     <th class="p-2">N° OC</th>
                     <th class="p-2">N° OT</th>
                     <th class="p-2 text-amber-300">CONSUMO ACEITES</th>
+                    <th class="p-2 text-center">LINK</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y bg-white">
@@ -566,25 +577,33 @@
                     </td>
                     <td class="p-2 font-bold text-amber-700"><button @click="verDetallePorAfiString(i.afi)" class="hover:underline bg-amber-50 px-2 rounded">{{ i.afi }}</button></td>
                     <td class="p-2 font-mono font-bold text-slate-800 bg-amber-50/50">{{ formatDateForDisplay(i.fecha) }}</td>
-                    <td class="p-2 font-bold text-indigo-700 bg-indigo-50/40">{{ i.tipoDocumento || '-' }}</td>
-                    <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
+                    <td class="p-2 font-bold text-indigo-700 bg-indigo-50/40">{{ i.programaCorrespondiente || '-' }}</td>
                     <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
                     <td class="p-2">{{ i.lugar || '-' }}</td>
                     <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
+                    <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
+                    <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
                     <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
+                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ formatDateForDisplay(i.fecha) }}</td>
                     <td class="p-2">{{ getMecanicosText(i) }}</td>
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
-                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ i.horaTotal || '-' }}</td>
+                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ calcularRestaHoras(i.horaInicio, i.horaTermino) }}</td>
+                    <td class="p-2 text-emerald-800 font-bold bg-emerald-50/50">{{ i.filtrosTexto || 'Sin filtros' }}</td>
                     <td class="p-2 max-w-xs truncate">{{ i.causaDetallada || '-' }}</td>
                     <td class="p-2 max-w-xs truncate">{{ i.descripcion || '-' }}</td>
-                    <td class="p-2">{{ i.empresa || '-' }}</td>
+                    <td class="p-2">{{ i.interferencia || '-' }}</td>
+                    <td class="p-2">{{ i.empresaArriendo || '-' }}</td>
                     <td class="p-2 font-bold text-emerald-700">${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
                     <td class="p-2 font-mono">{{ i.numeroOC || '-' }}</td>
                     <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
                     <td class="p-2 text-amber-300 font-bold bg-amber-50">{{ i.aceites }}</td>
+                    <td class="p-2 text-center">
+                      <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-link"></i> Drive</a>
+                      <span v-else class="text-slate-400 italic">-</span>
+                    </td>
                   </tr>
-                  <tr v-if="filteredIntervenciones.length === 0"><td colspan="20" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
+                  <tr v-if="filteredIntervenciones.length === 0"><td colspan="25" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -654,7 +673,7 @@
                     <th class="p-2.5">AFI</th>
                     <th class="p-2.5">EQUIPO</th>
                     <th class="p-2.5">LUGAR</th>
-                    <th class="p-2.5">TIPO / CAUSA</th>
+                    <th class="p-2.5">CAUSA / TIPO</th>
                     <th class="p-2.5 text-amber-300">DETALLE DE ACEITES E INSUMOS</th>
                     <th class="p-2.5 text-right">COSTO</th>
                   </tr>
@@ -665,7 +684,7 @@
                     <td class="p-2.5 font-bold text-amber-700"><button @click="verDetallePorAfiString(item.afi)" class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200 hover:underline">{{ item.afi }}</button></td>
                     <td class="p-2.5 font-semibold">{{ item.equipo || '-' }}</td>
                     <td class="p-2.5 text-slate-600">{{ item.lugar || '-' }}</td>
-                    <td class="p-2.5"><span class="font-bold block text-slate-800">{{ item.tipoDocumento }}</span><span class="text-[10px] text-blue-600">{{ item.causa }}</span></td>
+                    <td class="p-2.5"><span class="font-bold block text-slate-800">{{ item.causa }}</span><span class="text-[10px] text-blue-600">{{ item.tipoMant }}</span></td>
                     <td class="p-2.5 font-bold text-amber-900 bg-amber-50/50">{{ item.aceites }}</td>
                     <td class="p-2.5 font-bold text-emerald-700 text-right">${{ Number(item.costo || 0).toLocaleString('es-CL') }}</td>
                   </tr>
@@ -736,6 +755,24 @@
               </div>
               <div class="md:col-span-2 flex justify-end">
                 <button @click="guardarConfiguracionPersonalizada" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar Cambios</button>
+              </div>
+            </div>
+
+            <div class="border-t pt-4">
+              <h4 class="font-bold text-xs text-slate-800 mb-3"><i class="fa-solid fa-file-import text-violet-600"></i> Importador de Bases de Datos</h4>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+                  <span class="font-bold text-xs">Inventario AFI</span>
+                  <label :class="['w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-500']"><i class="fa-solid fa-file-excel"></i> Subir Excel<input type="file" :disabled="!isAdmin" @change="importarInventarioFile" accept=".xlsx, .xls, .csv" class="hidden"></label>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+                  <span class="font-bold text-xs">Movimientos</span>
+                  <label :class="['w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-amber-600 text-white' : 'bg-slate-300 text-slate-500']"><i class="fa-solid fa-file-excel"></i> Subir Excel<input type="file" :disabled="!isAdmin" @change="importarMovimientosFile" accept=".xlsx, .xls, .csv" class="hidden"></label>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+                  <span class="font-bold text-xs">Historial (Mantenciones)</span>
+                  <label :class="['w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow', isAdmin ? 'bg-blue-600 text-white' : 'bg-slate-300 text-slate-500']"><i class="fa-solid fa-file-excel"></i> Subir Excel<input type="file" :disabled="!isAdmin" @change="importarIntervencionesFile" accept=".xlsx, .xls, .csv" class="hidden"></label>
+                </div>
               </div>
             </div>
           </div>
@@ -823,17 +860,36 @@
               </div>
             </div>
 
+            <!-- ASIGNACIÓN A PROGRAMA -->
+            <div v-if="isAdmin" class="bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm">
+              <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar rápidamente a un Programa</h4>
+              <div class="flex flex-wrap items-end gap-3">
+                <div class="flex-grow">
+                  <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Programa (Calendario)</label>
+                  <select v-model="perfilAsignacionProgId" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold">
+                    <option value="">-- Elige Programa / Calendario --</option>
+                    <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.mes }} ({{ formatDateForDisplay(p.fecha_inicio) }} a {{ formatDateForDisplay(p.fecha_fin) }})</option>
+                  </select>
+                </div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Tipo</label><select v-model="perfilAsignacionTipo" class="p-2 border rounded-lg bg-white font-semibold"><option value="Mantención">Mantención</option><option value="Reparación">Reparación</option></select></div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Condición</label><select v-model="perfilAsignacionCondicion" class="p-2 border rounded-lg bg-white font-semibold"><option value="Arriendo">Arriendo</option><option value="Venta">Venta</option></select></div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Inicio</label><input type="date" v-model="perfilAsignacionFechaInicio" class="p-2 border rounded-lg bg-white font-mono"></div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Fin</label><input type="date" v-model="perfilAsignacionFechaFin" class="p-2 border rounded-lg bg-white font-mono"></div>
+                <button @click="guardarAsignacionDesdePerfil" :disabled="!perfilAsignacionProgId || !perfilAsignacionFechaInicio" class="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg transition shadow-md h-[36px] flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Añadir</button>
+              </div>
+            </div>
+
             <!-- Historiales en perfil -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
-                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-wrench text-blue-600"></i> Historial Mantenciones e Intervenciones</h4>
+                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-wrench text-blue-600"></i> Historial Mantenciones</h4>
                 <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
                   <table class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]">
                       <tr>
                         <th class="p-2">Fecha</th>
-                        <th class="p-2">Tipo</th>
                         <th class="p-2">Horómetro</th>
+                        <th class="p-2">Tipo</th>
                         <th class="p-2">Causa</th>
                         <th v-if="isAdmin" class="p-2 text-center">Acciones</th>
                       </tr>
@@ -841,8 +897,8 @@
                     <tbody class="divide-y bg-white text-[11px]">
                       <tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id">
                         <td class="p-2 font-mono font-bold">{{ formatDateForDisplay(i.fecha) }}</td>
-                        <td class="p-2 font-semibold text-blue-600">{{ i.tipoDocumento }}</td>
                         <td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td>
+                        <td class="p-2 text-[10px]">{{ i.tipoMant }}</td>
                         <td class="p-2 text-[10px] truncate max-w-[120px]">{{ i.causa }}</td>
                         <td v-if="isAdmin" class="p-2 text-center space-x-1">
                           <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -873,11 +929,11 @@
         </div>
       </div>
 
-      <!-- MODAL FORMULARIO MANTENCIÓN / INTERVENCIÓN -->
+      <!-- MODAL FORMULARIO MANTENCIÓN COMPLETADO -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
-            <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-wrench text-amber-400"></i> {{ isEditingMantencion ? 'Editar Registro' : 'Registrar Mantención o Intervención' }}</h3>
+            <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-wrench text-amber-400"></i> {{ isEditingMantencion ? 'Editar Mantención' : 'Registrar Nueva Mantención' }}</h3>
             <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
@@ -885,49 +941,38 @@
             <!-- INFORMES PRINCIPALES -->
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
               <h4 class="font-bold text-slate-800 uppercase">Informes Principales</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <div><label class="block font-bold mb-1">AFI</label><select v-model="formMant.afi" class="w-full p-2 border rounded-lg bg-white font-bold"><option value="">-- AFI --</option><option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option></select></div>
                 <div><label class="block font-bold mb-1">Fecha</label><input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Horómetro</label><input type="number" step="any" v-model="formMant.horometro" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-              </div>
-            </div>
-
-            <!-- CLASIFICACIÓN Y TIPO -->
-            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <h4 class="font-bold text-slate-800 uppercase">Clasificación del Registro</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Horómetro</label><input type="number" step="any" v-model="formMant.horometro" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
                 <div>
-                  <label class="block font-bold mb-1 text-indigo-700">Tipo de Documento</label>
-                  <select v-model="formMant.tipoDocumento" class="w-full p-2 border border-indigo-300 rounded-lg bg-indigo-50 font-bold text-indigo-900">
-                    <option value="MANTENCION">MANTENCIÓN</option>
-                    <option value="INTERVENCION">INTERVENCIÓN</option>
-                    <option value="REPARACION">REPARACIÓN</option>
-                    <option value="PUESTA EN MARCHA">PUESTA EN MARCHA</option>
-                  </select>
-                </div>
-                <div v-if="formMant.tipoDocumento === 'MANTENCION'">
-                  <label class="block font-bold mb-1 text-amber-800">Horas de Mantención</label>
-                  <select v-model="formMant.tipoHorasMant" class="w-full p-2 border border-amber-300 rounded-lg bg-amber-50 font-bold text-amber-900">
-                    <option value="250 hrs">250 hrs</option>
-                    <option value="500 hrs">500 hrs</option>
-                    <option value="1000 hrs">1000 hrs</option>
-                    <option value="Intermedia">Intermedia</option>
-                  </select>
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block font-bold mb-1">Causa</label>
-                  <select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold">
-                    <option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option>
+                  <label class="block font-bold mb-1 text-indigo-700">Programa Correspondiente (Opcional)</label>
+                  <select v-model="formMant.programaCorrespondiente" class="w-full p-2 border border-indigo-300 rounded-lg bg-indigo-50 font-bold text-indigo-900">
+                    <option value="">-- Sin Programa (Opcional) --</option>
+                    <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.mes">[{{ p.carpeta }}] {{ p.mes }}</option>
                   </select>
                 </div>
               </div>
             </div>
 
-            <!-- HORARIOS DE TRABAJO -->
+            <!-- CLASIFICACIÓN Y HORAS -->
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
-              <h4 class="font-bold text-slate-800 uppercase">Horarios de Trabajo</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <h4 class="font-bold text-slate-800 uppercase">Clasificación & Horarios de Trabajo</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                <div class="md:col-span-2"><label class="block font-bold mb-1">Causa</label><select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold"><option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option></select></div>
+                <div>
+                  <label class="block font-bold mb-1">Tipo / Horas</label>
+                  <select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white font-bold text-amber-900">
+                    <option value="PREVENTIVA 250 HRS">PREVENTIVA 250 hrs</option>
+                    <option value="PREVENTIVA 500 HRS">PREVENTIVA 500 hrs</option>
+                    <option value="PREVENTIVA 1000 HRS">PREVENTIVA 1000 hrs</option>
+                    <option value="MANTENCION INTERMEDIA">Mantención Intermedia</option>
+                    <option value="PREVENTIVA">Preventiva (General)</option>
+                    <option value="PREDICTIVA">Predictiva</option>
+                    <option value="CORRECTIVA">Correctiva</option>
+                  </select>
+                </div>
                 <div><label class="block font-bold mb-1">Hora Inicio</label><input type="time" v-model="formMant.horaInicio" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-sky-700"></div>
                 <div><label class="block font-bold mb-1">Hora Término</label><input type="time" v-model="formMant.horaTermino" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-sky-700"></div>
                 <div>
@@ -941,16 +986,44 @@
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
               <h4 class="font-bold text-slate-800 uppercase">Personal Técnico & Descripción</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                <div><label class="block font-bold mb-1">Causa Detallada</label><input type="text" v-model="formMant.causaDetallada" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Descripción</label><input type="text" v-model="formMant.descripcion" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Empresa</label><input type="text" v-model="formMant.empresa" placeholder="Opcional..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-emerald-700"></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div><label class="block font-bold mb-1">Causa Detallada</label><input type="text" v-model="formMant.causaDetallada" placeholder="Detalle causa..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Descripción del Trabajo</label><input type="text" v-model="formMant.descripcion" placeholder="Descripción..." class="w-full p-2 border rounded-lg bg-white"></div>
+              </div>
+            </div>
+
+            <!-- REGISTRO DE FILTROS -->
+            <div class="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-3">
+              <div class="flex justify-between items-center">
+                <h4 class="font-bold text-emerald-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-filter"></i> Registro de Filtros Utilizados</h4>
+                <button @click="agregarFilaFiltro" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-[11px] font-bold shadow"><i class="fa-solid fa-plus"></i> Añadir Filtro</button>
+              </div>
+              <div v-if="formMant.filtrosLista.length === 0" class="text-xs text-slate-500 italic text-center py-2">No se han agregado filtros en este registro. Haz clic en "+ Añadir Filtro".</div>
+              <div v-for="(f, index) in formMant.filtrosLista" :key="index" class="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center bg-white p-2.5 rounded-lg border">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Tipo de Filtro</label>
+                  <input type="text" v-model="f.tipo" placeholder="Ej: Aceite / Aire" class="w-full p-1.5 border rounded text-xs">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Marca</label>
+                  <input type="text" v-model="f.marca" placeholder="Ej: Donaldson / Baldwin" class="w-full p-1.5 border rounded text-xs">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Código</label>
+                  <input type="text" v-model="f.codigo" placeholder="Ej: P550388" class="w-full p-1.5 border rounded text-xs font-mono font-bold">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Cantidad</label>
+                  <input type="number" v-model="f.cantidad" placeholder="1" class="w-full p-1.5 border rounded text-xs font-mono font-bold">
+                </div>
+                <div class="flex justify-end pt-4">
+                  <button @click="eliminarFilaFiltro(index)" type="button" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-1.5 rounded font-bold text-xs"><i class="fa-solid fa-trash"></i></button>
+                </div>
               </div>
             </div>
 
@@ -958,21 +1031,21 @@
             <div class="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3">
               <h4 class="font-bold text-amber-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-oil-can"></i> Consumo de Aceites e Insumos (Litros)</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CI-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ci4" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CK-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ck4" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Refrigerante 50/50</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_5050" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 80W90</label><input type="number" step="any" v-model="formMant.aceite_80w90" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 68</label><input type="number" step="any" v-model="formMant.aceite_dacnis_68" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 46</label><input type="number" step="any" v-model="formMant.aceite_dacnis_46" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil M Extreme</label><input type="number" step="any" v-model="formMant.paroil_m_extreme" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil S Extreme</label><input type="number" step="any" v-model="formMant.paroil_s_extreme" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 5W30</label><input type="number" step="any" v-model="formMant.aceite_5w30" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Líquido Freno DOT-4</label><input type="number" step="any" v-model="formMant.liquido_freno_dot4" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Tractofluid (10W30)</label><input type="number" step="any" v-model="formMant.tractofluid_10w30" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">SAE 30</label><input type="number" step="any" v-model="formMant.sae_30" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 46</label><input type="number" step="any" v-model="formMant.hydra46" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 68</label><input type="number" step="any" v-model="formMant.hydra_68" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
-                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Adblue</label><input type="number" step="any" v-model="formMant.adblue" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CI-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ci4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">15W40 CK-4</label><input type="number" step="any" v-model="formMant.aceite_15w40_ck4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Refrigerante 50/50</label><input type="number" step="any" v-model="formMant.aceite_refrigerante_5050" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 80W90</label><input type="number" step="any" v-model="formMant.aceite_80w90" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 68</label><input type="number" step="any" v-model="formMant.aceite_dacnis_68" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Dacnis 46</label><input type="number" step="any" v-model="formMant.aceite_dacnis_46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil M Extreme</label><input type="number" step="any" v-model="formMant.paroil_m_extreme" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Paroil S Extreme</label><input type="number" step="any" v-model="formMant.paroil_s_extreme" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Aceite 5W30</label><input type="number" step="any" v-model="formMant.aceite_5w30" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Líquido Freno DOT-4</label><input type="number" step="any" v-model="formMant.liquido_freno_dot4" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Tractofluid (10W30)</label><input type="number" step="any" v-model="formMant.tractofluid_10w30" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">SAE 30</label><input type="number" step="any" v-model="formMant.sae_30" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 46</label><input type="number" step="any" v-model="formMant.hydra46" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Hydra 68</label><input type="number" step="any" v-model="formMant.hydra_68" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1 text-[11px] text-amber-900">Adblue</label><input type="number" step="any" v-model="formMant.adblue" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
               </div>
             </div>
           </div>
@@ -1018,10 +1091,131 @@
                 <input type="text" v-model="formMov.destino" placeholder="Nueva ubicación..." class="w-full p-2.5 border rounded-lg bg-white font-bold text-emerald-700">
               </div>
             </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Camión Encargado</label>
+                <input type="text" v-model="formMov.camion" placeholder="Patente camión..." class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Conductor</label>
+                <input type="text" v-model="formMov.conductor" placeholder="Nombre conductor..." class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+            </div>
           </div>
           <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
             <button @click="showModalMovimiento = false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
             <button @click="guardarNuevoMovimiento" :disabled="!formMov.afi || !formMov.fecha" class="px-5 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 shadow-md text-xs">Guardar Movimiento</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL 1: CREAR CARPETA NUEVA -->
+      <div v-if="showModalCarpeta" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-md overflow-hidden flex flex-col">
+          <div class="bg-amber-500 px-6 py-4 flex justify-between items-center text-slate-950">
+            <h3 class="font-extrabold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-folder-plus"></i> Crear Nueva Carpeta</h3>
+            <button @click="showModalCarpeta=false" class="text-slate-950/80 hover:text-slate-950"><i class="fa-solid fa-xmark text-lg"></i></button>
+          </div>
+          <div class="p-6 space-y-4 text-xs bg-slate-50">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre de la Carpeta</label>
+              <input type="text" v-model="formCarpetaNombre" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: PROGRAMA REPARACION">
+            </div>
+          </div>
+          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
+            <button @click="showModalCarpeta=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
+            <button @click="guardarNuevaCarpeta" :disabled="!formCarpetaNombre.trim()" class="px-5 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 shadow-md text-xs">Crear Carpeta</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL 2: CREAR PROGRAMA CON RANGO DE FECHAS -->
+      <div v-if="showModalPrograma" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
+          <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Crear Programa / Calendario con Fechas</h3>
+            <button @click="showModalPrograma=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+          </div>
+          <div class="p-6 space-y-4 text-xs bg-slate-50">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Seleccionar Carpeta</label>
+              <select v-model="formProgMes.carpeta" class="w-full p-2.5 border rounded-lg bg-white font-bold">
+                <option value="">-- Elige Carpeta --</option>
+                <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa</label>
+              <input type="text" v-model="formProgMes.mes" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: AGOSTO/SEPTIEMBRE 2026">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Fecha Inicio Real</label>
+                <input type="date" v-model="formProgMes.fecha_inicio" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Fecha Fin Real</label>
+                <input type="date" v-model="formProgMes.fecha_fin" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
+            </div>
+          </div>
+          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
+            <button @click="showModalPrograma=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
+            <button @click="guardarNuevoProgramaMes" :disabled="!formProgMes.carpeta || !formProgMes.mes.trim() || !formProgMes.fecha_inicio || !formProgMes.fecha_fin" class="px-5 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-md text-xs">Crear Calendario del Programa</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL 3: ASIGNAR EQUIPO A PROGRAMA CON CONDICIÓN Y FECHAS -->
+      <div v-if="showModalAsignarEquipo" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
+          <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Asignar Equipo al Calendario del Programa</h3>
+            <button @click="showModalAsignarEquipo=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+          </div>
+          <div class="p-6 space-y-4 text-xs bg-slate-50">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Seleccionar Programa / Calendario</label>
+              <select v-model="formAsignar.programa_id" class="w-full p-2.5 border rounded-lg bg-white font-bold">
+                <option value="">-- Elige Programa --</option>
+                <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.mes }} ({{ formatDateForDisplay(p.fecha_inicio) }} al {{ formatDateForDisplay(p.fecha_fin) }})</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Equipo (AFI)</label>
+              <select v-model="formAsignar.afi" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
+                <option value="">-- Seleccionar Equipo --</option>
+                <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Tipo de Trabajo</label>
+                <select v-model="formAsignar.tipo" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
+                  <option value="Mantención">Mantención</option><option value="Reparación">Reparación</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Condición</label>
+                <select v-model="formAsignar.condicion" class="w-full p-2.5 border rounded-lg bg-white font-semibold text-blue-700">
+                  <option value="Arriendo">Arriendo</option><option value="Venta">Venta</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Fecha Inicio (Trabajo)</label>
+                <input type="date" v-model="formAsignar.fecha_programada" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Fecha Fin (Trabajo)</label>
+                <input type="date" v-model="formAsignar.fecha_fin" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
+            </div>
+          </div>
+          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
+            <button @click="showModalAsignarEquipo=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
+            <button @click="guardarAsignacionEquipo" :disabled="!formAsignar.programa_id || !formAsignar.afi || !formAsignar.fecha_programada" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md text-xs">Guardar en Calendario</button>
           </div>
         </div>
       </div>
@@ -1071,11 +1265,11 @@
         const perfilEquipo = ref({});
         const showFormMantencionModal = ref(false);
         const isEditingMantencion = ref(false);
-        
         const formMant = ref({
-          id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoDocumento: "MANTENCION", tipoHorasMant: "250 hrs", horometro: "",
-          horaInicio: "", horaTermino: "", horaTotal: "",
-          mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", empresa: "", costo: 0, numeroOC: "", numeroOT: "",
+          id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA 250 HRS", tipoHorasMant: "250 hrs", horometro: "",
+          programaCorrespondiente: "", horaInicio: "", horaTermino: "",
+          mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+          filtrosLista: [],
           aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "",
           aceite_dacnis_68: "", aceite_dacnis_46: "", paroil_m_extreme: "", paroil_s_extreme: "",
           aceite_5w30: "", liquido_freno_dot4: "", tractofluid_10w30: "", sae_30: "",
@@ -1117,6 +1311,13 @@
           alert("¡Movimiento registrado con éxito!");
         };
 
+        const agregarFilaFiltro = () => {
+          formMant.value.filtrosLista.push({ tipo: "", marca: "", codigo: "", cantidad: 1 });
+        };
+        const eliminarFilaFiltro = (index) => {
+          formMant.value.filtrosLista.splice(index, 1);
+        };
+
         const listaCausas = [
           "FALLA MECANICA", "FALLA ELECTRICA", "INSPECCION", "REPARACION", "ESTANDARIZACION",
           "DAÑO OPERACIÓN", "PUESTA EN MARCHA", "IMPLEMENTACION", "PRUEBAS MEDICIONES", "CHECK LIST",
@@ -1124,18 +1325,36 @@
           "RETIRO", "CONEXIÓN/DESCONEXION", "FALLA OPERACIONAL", "INSPECCION (ELECTRICA)"
         ];
 
+        const showModalCarpeta = ref(false);
+        const formCarpetaNombre = ref('');
+
+        const showModalPrograma = ref(false);
+        const formProgMes = ref({ carpeta: '', mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' });
+
+        const showModalAsignarEquipo = ref(false);
+        const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', condicion: 'Arriendo', fecha_programada: '2026-08-01', fecha_fin: '2026-08-31' });
+
+        const openFolders = ref({});
+        const progSelect = ref({ id: null, carpeta: '', mes: '', fecha_inicio: '', fecha_fin: '' });
+        
+        const perfilAsignacionProgId = ref('');
+        const perfilAsignacionTipo = ref('Reparación');
+        const perfilAsignacionCondicion = ref('Arriendo');
+        const perfilAsignacionFechaInicio = ref('');
+        const perfilAsignacionFechaFin = ref('');
+
         const filterInv = ref({ search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false });
         const sortInventarioOrder = ref("desc");
         const filterMov = ref({ dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" });
         const sortMovimientosOrder = ref("desc");
-        const filterInt = ref({ searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", programa: "ALL", tipoMant: "ALL", causa: "ALL" });
+        const filterInt = ref({ searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", programa: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" });
         const sortHistorialOrder = ref("desc");
         const filterOil = ref({ dateStart: "", dateEnd: "", afi: "ALL", tipoAceite: "ALL" });
         const sortAceitesOrder = ref("desc");
 
         const toggleFiltroCriticos = () => { filterInv.value.mostrarCriticos = !filterInv.value.mostrarCriticos; };
         const resetFiltrosInventario = () => { filterInv.value = { search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false }; };
-        const limpiarFiltrosHistorial = () => { filterInt.value = { searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", programa: "ALL", tipoMant: "ALL", causa: "ALL" }; };
+        const limpiarFiltrosHistorial = () => { filterInt.value = { searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", programa: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" }; };
         const limpiarFiltrosMovimientos = () => { filterMov.value = { dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" }; };
 
         const guardarConfiguracionPersonalizada = () => {
@@ -1162,6 +1381,179 @@
             alert("¡Foto guardada con éxito!");
           };
           reader.readAsDataURL(file);
+        };
+
+        const listaCarpetasProgramas = computed(() => {
+          const carpetas = new Set(dbProgramasCalendarios.value.map(p => p.carpeta).filter(Boolean));
+          return Array.from(carpetas).sort();
+        });
+
+        const obtenerProgramasDeCarpeta = (carpeta) => {
+          return dbProgramasCalendarios.value.filter(p => p.carpeta === carpeta).sort((a,b) => a.mes.localeCompare(b.mes));
+        };
+
+        const obtenerItemsPrograma = (programaId) => {
+          return dbProgramasItems.value
+            .filter(i => String(i.programa_id) === String(programaId))
+            .sort((a,b) => new Date(a.fecha_programada).getTime() - new Date(b.fecha_programada).getTime());
+        };
+
+        const getProgreso = (programaId) => {
+          const items = obtenerItemsPrograma(programaId);
+          if (items.length === 0) return { total: 0, done: 0, pct: 0 };
+          const done = items.filter(i => i.realizado).length;
+          return { total: items.length, done, pct: Math.round((done / items.length) * 100) };
+        };
+
+        const cumplimientoGlobalTotal = computed(() => {
+          if (dbProgramasItems.value.length === 0) return 0;
+          const total = dbProgramasItems.value.length;
+          const done = dbProgramasItems.value.filter(i => i.realizado).length;
+          return Math.round((done / total) * 100);
+        });
+
+        const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
+        
+        const seleccionarProgramaObj = (prog) => {
+          progSelect.value = { id: prog.id, carpeta: prog.carpeta, mes: prog.mes, fecha_inicio: prog.fecha_inicio, fecha_fin: prog.fecha_fin };
+        };
+
+        const abrirModalCrearCarpeta = () => { formCarpetaNombre.value = ''; showModalCarpeta.value = true; };
+        const guardarNuevaCarpeta = async () => {
+          const cName = formCarpetaNombre.value.trim().toUpperCase();
+          if (!cName) return;
+          try {
+            await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
+              carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30'
+            }]);
+          } catch(e) {
+            if (!dbProgramasCalendarios.value.some(p => p.carpeta === cName)) {
+              dbProgramasCalendarios.value.push({ id: Date.now(), carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' });
+            }
+          }
+          showModalCarpeta.value = false;
+          openFolders.value[cName] = true;
+          alert(`¡Carpeta "${cName}" creada con éxito!`);
+        };
+
+        const abrirModalCrearPrograma = () => {
+          formProgMes.value = { carpeta: listaCarpetasProgramas.value[0] || 'PROGRAMA REPARACION', mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' };
+          showModalPrograma.value = true;
+        };
+        const abrirModalCrearProgramaConCarpeta = (carpeta) => {
+          formProgMes.value = { carpeta, mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' };
+          showModalPrograma.value = true;
+        };
+
+        const guardarNuevoProgramaMes = async () => {
+          const cp = formProgMes.value.carpeta;
+          const ms = formProgMes.value.mes.trim().toUpperCase();
+          const f_ini = formProgMes.value.fecha_inicio;
+          const f_fin = formProgMes.value.fecha_fin;
+          if (!cp || !ms || !f_ini || !f_fin) return;
+
+          let newId = Date.now();
+          try {
+            const { data } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
+              carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin
+            }]).select();
+            if(data && data[0]) newId = data[0].id;
+          } catch(e) {
+            dbProgramasCalendarios.value.push({ id: newId, carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin });
+          }
+          await cargarDatosDesdeSupabase();
+          showModalPrograma.value = false;
+          seleccionarProgramaObj({ id: newId, carpeta: cp, mes: ms, fecha_inicio: f_ini, fecha_fin: f_fin });
+          alert(`¡Programa "${ms}" creado con éxito!`);
+        };
+
+        const eliminarProgramaCompleto = async (progId) => {
+          if (confirm("¿Estás seguro de eliminar este programa completo junto con sus equipos asignados?")) {
+            try {
+              await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('programa_id', progId);
+              await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').delete().eq('id', progId);
+            } catch(e) {}
+            dbProgramasCalendarios.value = dbProgramasCalendarios.value.filter(p => p.id !== progId);
+            dbProgramasItems.value = dbProgramasItems.value.filter(i => i.programa_id !== progId);
+            if (progSelect.value.id === progId) progSelect.value = { id: null, carpeta: '', mes: '', fecha_inicio: '', fecha_fin: '' };
+            alert("¡Programa eliminado con éxito!");
+          }
+        };
+
+        const abrirModalAsignarEquipo = () => {
+          formAsignar.value = {
+            programa_id: progSelect.value.id || (dbProgramasCalendarios.value[0] ? dbProgramasCalendarios.value[0].id : ''),
+            afi: '', tipo: 'Reparación', condicion: 'Arriendo',
+            fecha_programada: progSelect.value.fecha_inicio || '2026-08-01', fecha_fin: progSelect.value.fecha_fin || '2026-08-31'
+          };
+          showModalAsignarEquipo.value = true;
+        };
+
+        const abrirModalAsignarEquipoInProgresoEspecifico = (progId) => {
+          const prog = dbProgramasCalendarios.value.find(p => p.id === progId);
+          formAsignar.value = {
+            programa_id: progId, afi: '', tipo: 'Reparación', condicion: 'Arriendo',
+            fecha_programada: prog?.fecha_inicio || '2026-08-01', fecha_fin: prog?.fecha_fin || '2026-09-30'
+          };
+          showModalAsignarEquipo.value = true;
+        };
+
+        const guardarAsignacionEquipo = async () => {
+          const payload = {
+            id: Date.now(),
+            programa_id: formAsignar.value.programa_id,
+            afi: formAsignar.value.afi,
+            tipo: formAsignar.value.tipo,
+            condicion: formAsignar.value.condicion,
+            fecha_programada: formAsignar.value.fecha_programada,
+            fecha_fin: formAsignar.value.fecha_fin,
+            realizado: false
+          };
+          try {
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
+          } catch(e) {
+            dbProgramasItems.value.push(payload);
+          }
+          showModalAsignarEquipo.value = false;
+          const prog = dbProgramasCalendarios.value.find(p => String(p.id) === String(formAsignar.value.programa_id));
+          if (prog) seleccionarProgramaObj(prog);
+          alert("¡Equipo asignado con éxito!");
+        };
+
+        const cambiarEstadoRealizadoItem = async (item) => {
+          try {
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').update({ realizado: item.realizado }).eq('id', item.id);
+          } catch(e) {}
+        };
+
+        const eliminarItemPrograma = async (itemId) => {
+          if (confirm("¿Eliminar este equipo del programa?")) {
+            try {
+              await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('id', itemId);
+            } catch(e) {}
+            dbProgramasItems.value = dbProgramasItems.value.filter(i => i.id !== itemId);
+          }
+        };
+
+        const guardarAsignacionDesdePerfil = async () => {
+          if (!perfilAsignacionProgId.value || !perfilAsignacionFechaInicio.value) return alert("Selecciona programa y fecha de inicio.");
+          const payload = {
+            id: Date.now(),
+            programa_id: perfilAsignacionProgId.value,
+            afi: perfilEquipo.value.afi,
+            tipo: perfilAsignacionTipo.value,
+            condicion: perfilAsignacionCondicion.value,
+            fecha_programada: perfilAsignacionFechaInicio.value,
+            fecha_fin: perfilAsignacionFechaFin.value || perfilAsignacionFechaInicio.value,
+            realizado: false
+          };
+          try {
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]);
+          } catch(e) {
+            dbProgramasItems.value.push(payload);
+          }
+          alert("¡Equipo asignado al programa con éxito!");
+          perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
         };
 
         const normalizarClave = (str) => {
@@ -1206,7 +1598,9 @@
           const iso = normalizarFecha(val);
           if (!iso || iso === '-') return '-';
           const parts = iso.split('-');
-          if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+          if (parts.length === 3) {
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
           return iso;
         };
 
@@ -1269,32 +1663,59 @@
               dbIntervenciones.value = intData.map(item => {
                 const rawFecha = item.fecha || item.fecha_mantencion || item.created_at;
                 const aceitesConsumidos = [];
-                const camposAceites = [ "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_50", "aceite_80w90", "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme", "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46", "hydra_68", "adblue" ];
+                const camposAceites = [ "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_5050", "aceite_80w90", "aceite_dacnis_68", "aceite_dacnis_46", "paroil_m_extreme", "paroil_s_extreme", "aceite_5w30", "liquido_freno_dot4", "tractofluid_10w30", "sae_30", "hydra46", "hydra_68", "adblue", "aceite_75w90", "aceite_10w40", "multiproposito", "desegransante", "acido_muriatico" ];
                 camposAceites.forEach(c => {
                   if (item[c] && Number(item[c]) > 0) aceitesConsumidos.push(`${c.replace('aceite_', '').replace(/_/g, ' ').toUpperCase()}: ${item[c]}L`);
                 });
 
+                let filtrosParsed = [];
+                try {
+                  if (item.filtros_json) filtrosParsed = typeof item.filtros_json === 'string' ? JSON.parse(item.filtros_json) : item.filtros_json;
+                } catch(e) {}
+                let filtrosTextoStr = filtrosParsed.map(f => `${f.tipo || 'Filtro'} (${f.marca || '-'}: ${f.codigo || '-'} x${f.cantidad || 1})`).join('; ');
+
                 return {
                   id: item.id, afi: String(item.afi || '').trim(), fecha: formatExcelDate(rawFecha),
-                  tipoDocumento: String(item.tipo_documento || 'MANTENCION'),
-                  tipoHorasMant: String(item.tipo_horas_mantencion || ''),
+                  programaCorrespondiente: String(item.programa_correspondiente || item.programa || ''),
                   equipo: String(item.equipo || ''), lugar: String(item.lugar || ''), causa: String(item.causa || ''),
+                  tipoMant: String(item.tipo_mantencion || ''), tipoHorasMant: String(item.tipo_horas_mantencion || ''),
                   horometro: Number(item.horometro || 0), mec1: String(item.mecanico_1 || ''), mec2: String(item.mecanico_2 || ''),
                   mec3: String(item.mecanico_3 || ''), mec4: String(item.mecanico_4 || ''), horaInicio: String(item.hora_inicio || ''),
-                  horaTermino: String(item.hora_termino || ''), horaTotal: String(item.hora_total || ''), causaDetallada: String(item.causa_intervencion || ''),
-                  descripcion: String(item.descripcion || '').trim(), empresa: String(item.empresa || ''), costo: Number(item.costo || 0),
-                  numeroOC: String(item.numero_oc || ''), numeroOT: String(item.numero_ot || ''),
-                  aceite_15w40_ci4: item.aceite_15w40_ci4 || 0, aceite_15w40_ck4: item.aceite_15w40_ck4 || 0,
-                  aceite_refrigerante_50: item.aceite_refrigerante_50 || 0, aceite_80w90: item.aceite_80w90 || 0,
-                  aceite_dacnis_68: item.aceite_dacnis_68 || 0, aceite_dacnis_46: item.aceite_dacnis_46 || 0,
-                  paroil_m_extreme: item.paroil_m_extreme || 0, paroil_s_extreme: item.paroil_s_extreme || 0,
-                  aceite_5w30: item.aceite_5w30 || 0, liquido_freno_dot4: item.liquido_freno_dot4 || 0,
-                  tractofluid_10w30: item.tractofluid_10w30 || 0, sae_30: item.sae_30 || 0,
-                  hydra46: item.hydra46 || 0, hydra_68: item.hydra_68 || 0, adblue: item.adblue || 0,
+                  horaTermino: String(item.hora_termino || ''), causaDetallada: String(item.causa_intervencion || ''),
+                  descripcion: String(item.descripcion || '').trim(), interferencia: String(item.interferencia || ''),
+                  empresaArriendo: String(item.empresa || ''), costo: Number(item.costo || 0), numeroOC: String(item.numero_oc || ''),
+                  numeroOT: String(item.numero_ot || ''), linkDrive: String(item.link || ''),
+                  filtrosLista: filtrosParsed,
+                  filtrosTexto: filtrosTextoStr,
+                  aceite_15w40_ci4: item.aceite_15w40_ci4 || 0,
+                  aceite_15w40_ck4: item.aceite_15w40_ck4 || 0,
+                  aceite_refrigerante_5050: item.aceite_refrigerante_5050 || 0,
+                  aceite_80w90: item.aceite_80w90 || 0,
+                  aceite_dacnis_68: item.aceite_dacnis_68 || 0,
+                  aceite_dacnis_46: item.aceite_dacnis_46 || 0,
+                  paroil_m_extreme: item.paroil_m_extreme || 0,
+                  paroil_s_extreme: item.paroil_s_extreme || 0,
+                  aceite_5w30: item.aceite_5w30 || 0,
+                  liquido_freno_dot4: item.liquido_freno_dot4 || 0,
+                  tractofluid_10w30: item.tractofluid_10w30 || 0,
+                  sae_30: item.sae_30 || 0,
+                  hydra46: item.hydra46 || 0,
+                  hydra_68: item.hydra_68 || 0,
+                  adblue: item.adblue || 0,
                   aceites: aceitesConsumidos.length > 0 ? aceitesConsumidos.join("; ") : "Sin consumo"
                 };
               });
             }
+
+            try {
+              const calData = await fetchAllRowsSupabase('BD_PROGRAMAS_CALENDARIOS');
+              if (calData && calData.length > 0) dbProgramasCalendarios.value = calData;
+            } catch(e) {}
+
+            try {
+              const itemData = await fetchAllRowsSupabase('BD_PROGRAMAS_ITEMS');
+              if (itemData && itemData.length > 0) dbProgramasItems.value = itemData;
+            } catch(e) {}
 
             actualizarHorometrosDesdeHistorial();
             renderCharts();
@@ -1318,8 +1739,9 @@
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             
             const histMantenciones = histConHorometro.filter(i => {
-              const tDoc = String(i.tipoDocumento || '').toUpperCase();
-              return tDoc.includes('MANTENCION');
+              const tMant = String(i.tipoMant || '').toUpperCase();
+              const cMant = String(i.causa || '').toUpperCase();
+              return tMant.includes('PREVENT') || tMant.includes('PREDICT') || cMant.includes('MANTENCION') || cMant.includes('SERVICIO');
             });
 
             let ultimaMant = histMantenciones.length > 0 ? histMantenciones[histMantenciones.length - 1] : null;
@@ -1414,12 +1836,13 @@
         const filteredIntervenciones = computed(() => {
           let arr = dbIntervenciones.value.filter(i => {
             if (filterInt.value.afi !== "ALL" && String(i.afi).trim().toUpperCase() !== String(filterInt.value.afi).trim().toUpperCase()) return false;
-            if (filterInt.value.tipoMant !== "ALL" && String(i.tipoDocumento).trim().toUpperCase() !== String(filterInt.value.tipoMant).trim().toUpperCase()) return false;
+            if (filterInt.value.programa !== "ALL" && String(i.programaCorrespondiente || '').trim().toUpperCase() !== String(filterInt.value.programa).trim().toUpperCase()) return false;
+            if (filterInt.value.tipoMant !== "ALL" && String(i.tipoMant).trim().toUpperCase() !== String(filterInt.value.tipoMant).trim().toUpperCase()) return false;
             if (filterInt.value.causa !== "ALL" && String(i.causa).trim().toUpperCase() !== String(filterInt.value.causa).trim().toUpperCase()) return false;
             const fStr = formatExcelDate(i.fecha);
             if (filterInt.value.dateStart && fStr !== '-' && fStr < filterInt.value.dateStart) return false;
             if (filterInt.value.dateEnd && fStr !== '-' && fStr > filterInt.value.dateEnd) return false;
-            if (filterInt.value.searchQuery && ![i.afi, i.equipo, i.lugar, i.causa, i.tipoDocumento, i.descripcion, i.numeroOC, i.numeroOT].join(" ").toLowerCase().includes(filterInt.value.searchQuery.toLowerCase())) return false;
+            if (filterInt.value.searchQuery && ![i.afi, i.equipo, i.lugar, i.causa, i.tipoMant, i.descripcion, i.numeroOC, i.numeroOT].join(" ").toLowerCase().includes(filterInt.value.searchQuery.toLowerCase())) return false;
             return true;
           });
           arr.sort((a, b) => sortHistorialOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
@@ -1469,9 +1892,10 @@
           isEditingMantencion.value = false;
           formMant.value = {
             id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
-            fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoDocumento: "MANTENCION", tipoHorasMant: "250 hrs", horometro: "",
-            horaInicio: "", horaTermino: "", horaTotal: "",
-            mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", empresa: "", costo: 0, numeroOC: "", numeroOT: "",
+            fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA 250 HRS", tipoHorasMant: "250 hrs", horometro: "",
+            programaCorrespondiente: "", horaInicio: "", horaTermino: "",
+            mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+            filtrosLista: [],
             aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_5050: "", aceite_80w90: "",
             aceite_dacnis_68: "", aceite_dacnis_46: "", paroil_m_extreme: "", paroil_s_extreme: "",
             aceite_5w30: "", liquido_freno_dot4: "", tractofluid_10w30: "", sae_30: "",
@@ -1483,6 +1907,7 @@
         const editarMantencion = (item) => {
           isEditingMantencion.value = true;
           formMant.value = JSON.parse(JSON.stringify(item));
+          if (!formMant.value.filtrosLista) formMant.value.filtrosLista = [];
           showFormMantencionModal.value = true;
         };
 
@@ -1502,33 +1927,29 @@
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
-          const totalHorasCalculado = calcularRestaHoras(formMant.value.horaInicio, formMant.value.horaTermino);
-
-          // Payload flexible: permite dejar celdas en blanco o vacías sin romper Supabase
+          // Payload simplificado y seguro para evitar errores en tablas de Supabase
           const payload = {
             afi: String(formMant.value.afi).trim(), 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
-            lugar: parseStr(formMant.value.lugar) || null, 
-            causa: parseStr(formMant.value.causa) || null,
-            tipo_documento: parseStr(formMant.value.tipoDocumento) || 'MANTENCION',
-            tipo_horas_mantencion: formMant.value.tipoDocumento === 'MANTENCION' ? parseStr(formMant.value.tipoHorasMant) : null,
-            horometro: parseNum(formMant.value.horometro),
-            mecanico_1: parseStr(formMant.value.mec1) || null, 
-            mecanico_2: parseStr(formMant.value.mec2) || null, 
-            mecanico_3: parseStr(formMant.value.mec3) || null, 
-            mecanico_4: parseStr(formMant.value.mec4) || null,
-            hora_inicio: parseStr(formMant.value.horaInicio) || null, 
-            hora_termino: parseStr(formMant.value.horaTermino) || null,
-            hora_total: totalHorasCalculado !== '-' ? totalHorasCalculado : null,
-            causa_intervencion: parseStr(formMant.value.causaDetallada) || null, 
-            descripcion: parseStr(formMant.value.descripcion) || null,
-            empresa: parseStr(formMant.value.empresa) || null,
+            lugar: parseStr(formMant.value.lugar), 
+            causa: parseStr(formMant.value.causa),
+            tipo_mantencion: parseStr(formMant.value.tipoMant), 
+            horometro: parseNum(formMant.value.horometro) || 0,
+            programa_correspondiente: parseStr(formMant.value.programaCorrespondiente),
+            hora_inicio: parseStr(formMant.value.horaInicio), 
+            hora_termino: parseStr(formMant.value.horaTermino),
+            mecanico_1: parseStr(formMant.value.mec1), 
+            mecanico_2: parseStr(formMant.value.mec2), 
+            mecanico_3: parseStr(formMant.value.mec3), 
+            mecanico_4: parseStr(formMant.value.mec4),
+            causa_intervencion: parseStr(formMant.value.causaDetallada), 
+            descripcion: parseStr(formMant.value.descripcion),
             costo: parseNum(formMant.value.costo) || 0, 
-            numero_oc: parseStr(formMant.value.numeroOC) || null, 
-            numero_ot: parseStr(formMant.value.numeroOT) || null,
+            numero_oc: parseStr(formMant.value.numeroOC), 
+            numero_ot: parseStr(formMant.value.numeroOT),
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
-            aceite_refrigerante_50: parseNum(formMant.value.aceite_refrigerante_5050) || 0,
+            aceite_refrigerante_5050: parseNum(formMant.value.aceite_refrigerante_5050) || 0,
             aceite_80w90: parseNum(formMant.value.aceite_80w90) || 0,
             aceite_dacnis_68: parseNum(formMant.value.aceite_dacnis_68) || 0,
             aceite_dacnis_46: parseNum(formMant.value.aceite_dacnis_46) || 0,
@@ -1568,7 +1989,7 @@
 
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("¡Registro guardado y sincronizado correctamente!");
+          alert("¡Mantención guardada y sincronizada correctamente con el historial y el equipo!");
         };
 
         const abrirPerfilEquipo = (equipo) => {
@@ -1604,6 +2025,77 @@
           const arr = dbMovimientos.value.filter(m => String(m.afi || '').trim().toUpperCase() === cleanAfi);
           arr.sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
           return arr;
+        };
+
+        const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+        const getVal = (row, ...keys) => {
+          if (!row) return "";
+          const rowKeys = Object.keys(row);
+          for (const k of keys) {
+            const tk = normalizeKey(k);
+            const fk = rowKeys.find(rk => normalizeKey(rk) === tk);
+            if (fk && row[fk] !== undefined && row[fk] !== null && String(row[fk]).trim() !== "") return row[fk];
+          }
+          return "";
+        };
+
+        const parseFileAnyFormat = (file) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                resolve(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "", raw: false }));
+              } catch (e) { reject("Excel error"); }
+            };
+            reader.readAsArrayBuffer(file);
+          });
+        };
+
+        const importarInventarioFile = async (e) => {
+          const file = e.target.files[0]; if (!file) return;
+          try {
+            const rows = await parseFileAnyFormat(file);
+            const payloads = rows.map(item => {
+              const rawAfi = getVal(item, "afi", "codigo afi");
+              if (!rawAfi) return null;
+              return {
+                afi: String(rawAfi).trim(), tipo: parseStr(getVal(item, "tipo")), marca: parseStr(getVal(item, "marca")), modelo: parseStr(getVal(item, "modelo")),
+                ubicacion: parseStr(getVal(item, "ubicacion")), disponibilidad: normalizarClave(getVal(item, "disponibilidad") || "Operativo"),
+                horometroactual: parseNum(getVal(item, "horometro", "horometroactual")) || 0, frecuencia_mantencion: 250
+              };
+            }).filter(Boolean);
+            await supabaseClient.from('BD_INVENTARIO').upsert(payloads, { onConflict: 'afi' });
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} equipos!`);
+          } catch(err) { alert("Error al importar inventario."); }
+        };
+
+        const importarMovimientosFile = async (e) => {
+          const file = e.target.files[0]; if (!file) return;
+          try {
+            const rows = await parseFileAnyFormat(file);
+            const payloads = rows.map(item => ({
+              afi: String(getVal(item, "afi")).trim(), fecha: formatIsoDateForSupabase(getVal(item, "fecha")), tipo: parseStr(getVal(item, "tipo")),
+              ubicacion_anterior: parseStr(getVal(item, "origen")), ubicacion_actual: parseStr(getVal(item, "destino")), conductor_encargado: parseStr(getVal(item, "conductor"))
+            })).filter(i => i.afi);
+            await supabaseClient.from('BD_MOVIMIENTOS').insert(payloads);
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} movimientos!`);
+          } catch(err) { alert("Error al importar movimientos."); }
+        };
+
+        const importarIntervencionesFile = async (e) => {
+          const file = e.target.files[0]; if (!file) return;
+          try {
+            const rows = await parseFileAnyFormat(file);
+            const payloads = rows.map(item => ({
+              afi: String(getVal(item, "afi")).trim(), fecha: formatIsoDateForSupabase(getVal(item, "fecha")), equipo: parseStr(getVal(item, "equipo")),
+              lugar: parseStr(getVal(item, "lugar")), causa: parseStr(getVal(item, "causa")), tipo_mantencion: parseStr(getVal(item, "tipo mantencion")),
+              horometro: parseNum(getVal(item, "horometro")), costo: parseNum(getVal(item, "costo")), numero_oc: parseStr(getVal(item, "oc")), numero_ot: parseStr(getVal(item, "ot"))
+            })).filter(i => i.afi);
+            await supabaseClient.from('BD_HISTORIAL').insert(payloads);
+            await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} registros de historial!`);
+          } catch(err) { alert("Error al importar historial."); }
         };
 
         const exportarCSV = (dataArray, filename = 'Export') => {
@@ -1671,15 +2163,14 @@
                 chartTiposInst = new Chart(ctx2, {
                   type: 'bar', 
                   data: { 
-                    labels: ['Mantención', 'Intervención', 'Reparación', 'Puesta en Marcha'], 
+                    labels: ['Preventiva', 'Predictiva', 'Correctiva'], 
                     datasets: [{ 
                       data: [ 
-                        dbIntervenciones.value.filter(i => String(i.tipoDocumento).toUpperCase().includes('MANTENCION')).length, 
-                        dbIntervenciones.value.filter(i => String(i.tipoDocumento).toUpperCase().includes('INTERVENCION')).length, 
-                        dbIntervenciones.value.filter(i => String(i.tipoDocumento).toUpperCase().includes('REPARACION')).length,
-                        dbIntervenciones.value.filter(i => String(i.tipoDocumento).toUpperCase().includes('PUESTA EN MARCHA')).length
+                        dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT')).length, 
+                        dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREDICT')).length, 
+                        dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('CORRECT')).length 
                       ], 
-                      backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626', '#10b981'] 
+                      backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626'] 
                     }] 
                   }, 
                   options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
@@ -1758,12 +2249,18 @@
           listaCausas, dbEquipos, dbMovimientos, dbIntervenciones, countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
           sortInventarioOrder, sortMovimientosOrder, sortHistorialOrder, sortAceitesOrder, resetFiltrosInventario, limpiarFiltrosHistorial, limpiarFiltrosMovimientos,
           filtrarYIrAInventario, verDetallePorAfiString, getEstadoText, getBadgeClass, filteredEquipos, filteredMovimientos, filteredIntervenciones, filteredAceitesRecords,
-          listaTiposAceitesDisponibles, sumaTotalLitrosAceites, costoTotalAceitesFiltrados, exportarCSV, getHistorialMovimientosAFI, getHistorialIntervencionesAFI,
-          getMecanicosText, calcularRestaHoras,
+          listaTiposAceitesDisponibles, sumaTotalLitrosAceites, costoTotalAceitesFiltrados, exportarCSV, importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
+          getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
+          agregarFilaFiltro, eliminarFilaFiltro,
           showModalMovimiento, formMov, abrirModalCrearMovimiento, guardarNuevoMovimiento,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
+          showModalCarpeta, formCarpetaNombre, abrirModalCrearCarpeta, guardarNuevaCarpeta,
+          showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes, eliminarProgramaCompleto,
+          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoInProgresoEspecifico, guardarAsignacionEquipo,
+          dbProgramasCalendarios, dbProgramasItems, listaCarpetasProgramas, obtenerProgramasDeCarpeta, obtenerItemsPrograma, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
+          perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos,
           formatDateForDisplay
         };
       }
