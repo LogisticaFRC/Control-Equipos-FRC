@@ -961,7 +961,18 @@
               <h4 class="font-bold text-slate-800 uppercase">Clasificación & Horarios de Trabajo</h4>
               <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-3">
                 <div class="md:col-span-2"><label class="block font-bold mb-1">Causa</label><select v-model="formMant.causa" class="w-full p-2 border rounded-lg bg-white font-bold"><option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option></select></div>
-                <div><label class="block font-bold mb-1">Tipo</label><select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white"><option value="PREVENTIVA">PREVENTIVA</option><option value="PREDICTIVA">PREDICTIVA</option><option value="CORRECTIVA">CORRECTIVA</option></select></div>
+                <div>
+                  <label class="block font-bold mb-1">Tipo / Horas</label>
+                  <select v-model="formMant.tipoMant" class="w-full p-2 border rounded-lg bg-white font-bold text-amber-900">
+                    <option value="PREVENTIVA 250 HRS">PREVENTIVA 250 hrs</option>
+                    <option value="PREVENTIVA 500 HRS">PREVENTIVA 500 hrs</option>
+                    <option value="PREVENTIVA 1000 HRS">PREVENTIVA 1000 hrs</option>
+                    <option value="MANTENCION INTERMEDIA">Mantención Intermedia</option>
+                    <option value="PREVENTIVA">Preventiva (General)</option>
+                    <option value="PREDICTIVA">Predictiva</option>
+                    <option value="CORRECTIVA">Correctiva</option>
+                  </select>
+                </div>
                 <div><label class="block font-bold mb-1">Hora Inicio</label><input type="time" v-model="formMant.horaInicio" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-sky-700"></div>
                 <div><label class="block font-bold mb-1">Hora Término</label><input type="time" v-model="formMant.horaTermino" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-sky-700"></div>
                 <div>
@@ -986,7 +997,7 @@
               </div>
             </div>
 
-            <!-- NUEVA SECCIÓN: REGISTRO DE FILTROS -->
+            <!-- REGISTRO DE FILTROS -->
             <div class="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-3">
               <div class="flex justify-between items-center">
                 <h4 class="font-bold text-emerald-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-filter"></i> Registro de Filtros Utilizados</h4>
@@ -1016,7 +1027,7 @@
               </div>
             </div>
 
-            <!-- SECCIÓN COMPLETA DE CONSUMO DE ACEITES E INSUMOS -->
+            <!-- CONSUMO DE ACEITES E INSUMOS -->
             <div class="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3">
               <h4 class="font-bold text-amber-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-oil-can"></i> Consumo de Aceites e Insumos (Litros)</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
@@ -1255,7 +1266,7 @@
         const showFormMantencionModal = ref(false);
         const isEditingMantencion = ref(false);
         const formMant = ref({
-          id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
+          id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA 250 HRS", tipoHorasMant: "250 hrs", horometro: "",
           programaCorrespondiente: "", horaInicio: "", horaTermino: "",
           mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
           filtrosLista: [],
@@ -1727,7 +1738,6 @@
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             
-            // Filtro estricto para detectar mantenciones reales y actualizar la "Última Mantención"
             const histMantenciones = histConHorometro.filter(i => {
               const tMant = String(i.tipoMant || '').toUpperCase();
               const cMant = String(i.causa || '').toUpperCase();
@@ -1741,7 +1751,6 @@
             let fechaUltimoHorometro = ultimoReg ? ultimoReg.fecha : '-';
             let hUltimoTomado = hTomadoManual;
 
-            // Si hay una mantención registrada, su horómetro PASA A SER la última mantención oficial
             let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : (hUltimoTomado > 0 ? hUltimoTomado : 0);
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : fechaUltimoHorometro;
 
@@ -1758,7 +1767,6 @@
             const estaFueraServicio = normalizarClave(eq.disponibilidad) === 'Fuera de Servicio';
             const hAprox = estaFueraServicio ? hUltimoTomado : Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
             
-            // La meta se calcula exactamente sumando la frecuencia a la última mantención realizada
             const frecuencia = Number(eq.frecuenciaMantencion) || 250;
             const hTarget = hUltimaMant > 0 ? hUltimaMant + frecuencia : hUltimoTomado + frecuencia;
             const faltan = hTarget - hAprox;
@@ -1884,7 +1892,7 @@
           isEditingMantencion.value = false;
           formMant.value = {
             id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
-            fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA", tipoHorasMant: "250 hrs", horometro: "",
+            fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA 250 HRS", tipoHorasMant: "250 hrs", horometro: "",
             programaCorrespondiente: "", horaInicio: "", horaTermino: "",
             mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
             filtrosLista: [],
@@ -1919,13 +1927,13 @@
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
+          // Payload simplificado y seguro para evitar errores en tablas de Supabase
           const payload = {
             afi: String(formMant.value.afi).trim(), 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
             lugar: parseStr(formMant.value.lugar), 
             causa: parseStr(formMant.value.causa),
             tipo_mantencion: parseStr(formMant.value.tipoMant), 
-            tipo_horas_mantencion: parseStr(formMant.value.tipoHorasMant), 
             horometro: parseNum(formMant.value.horometro) || 0,
             programa_correspondiente: parseStr(formMant.value.programaCorrespondiente),
             hora_inicio: parseStr(formMant.value.horaInicio), 
@@ -1936,7 +1944,6 @@
             mecanico_4: parseStr(formMant.value.mec4),
             causa_intervencion: parseStr(formMant.value.causaDetallada), 
             descripcion: parseStr(formMant.value.descripcion),
-            filtros_json: JSON.stringify(formMant.value.filtrosLista || []),
             costo: parseNum(formMant.value.costo) || 0, 
             numero_oc: parseStr(formMant.value.numeroOC), 
             numero_ot: parseStr(formMant.value.numeroOT),
@@ -1963,7 +1970,7 @@
             eqRef.horometroActual = nuevoH;
             try {
               await supabaseClient.from('BD_INVENTARIO').update({ horometroactual: nuevoH }).eq('id', eqRef.id);
-            } catch(e) { console.error("Error actualizando inventario:", e); }
+            } catch(e) {}
           }
 
           try {
@@ -2134,7 +2141,6 @@
             setTimeout(() => {
               if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
               
-              // Gráfico 1: Estado Operativo
               const ctx1 = document.getElementById('chartEstado');
               if (ctx1) {
                 if (chartEstadoInst) { chartEstadoInst.destroy(); chartEstadoInst = null; }
@@ -2151,7 +2157,6 @@
                 });
               }
 
-              // Gráfico 2: Mantenciones por Tipo (Directo desde el Historial actualizado)
               const ctx2 = document.getElementById('chartTiposMant');
               if (ctx2) {
                 if (chartTiposInst) { chartTiposInst.destroy(); chartTiposInst = null; }
@@ -2172,7 +2177,6 @@
                 });
               }
 
-              // Gráfico 3: Causas de Intervención (Directo desde el Historial actualizado)
               const ctx3 = document.getElementById('chartCausas');
               if (ctx3) {
                 if (chartCausasInst) { chartCausasInst.destroy(); chartCausasInst = null; }
@@ -2193,7 +2197,7 @@
                   options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                 });
               }
-            }, 250);
+            }, 300);
           });
         };
 
@@ -2233,7 +2237,7 @@
             authError.value = false; 
             loginUser.value = ""; 
             loginPass.value = ""; 
-            renderCharts();
+            switchTab('dashboard');
           }
           else authError.value = true;
         };
