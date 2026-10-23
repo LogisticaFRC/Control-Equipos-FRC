@@ -266,7 +266,7 @@
                       </div>
                     </div>
                     <div class="text-[11px] font-medium text-slate-700 pt-1 text-center bg-white/60 p-1 rounded">
-                      <i class="fa-solid fa-calendar-days text-amber-600 mr-1"></i> F. aprox. mantención: <strong>{{ e.horometros?.fechaEstimada || '-' }}</strong>
+                      <i class="fa-solid fa-calendar-days text-amber-600 mr-1"></i> F. aprox. mantención: <strong>{{ formatDateForDisplay(e.horometros?.fechaEstimada) }}</strong>
                     </div>
                   </div>
                 </div>
@@ -325,8 +325,8 @@
                         </div>
                       </div>
                       <div class="text-[9px] font-mono text-slate-500 flex justify-between">
-                        <span>Inicio: {{ prog.fecha_inicio || '-' }}</span>
-                        <span>Fin: {{ prog.fecha_fin || '-' }}</span>
+                        <span>Inicio: {{ formatDateForDisplay(prog.fecha_inicio) }}</span>
+                        <span>Fin: {{ formatDateForDisplay(prog.fecha_fin) }}</span>
                       </div>
                     </div>
                     <button v-if="isAdmin" @click="abrirModalCrearProgramaConCarpeta(carpeta)" class="text-[10px] text-indigo-600 hover:underline block pt-1 font-bold">+ Añadir Programa en {{ carpeta }}</button>
@@ -342,7 +342,7 @@
                   <div>
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-folder text-amber-400"></i> {{ progSelect.carpeta }}</span>
                     <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-regular fa-calendar text-rose-500"></i> Programa: {{ progSelect.mes }}</h3>
-                    <p class="text-xs font-mono font-bold text-indigo-700 mt-0.5"><i class="fa-solid fa-calendar-range mr-1"></i> Rango Oficial: {{ progSelect.fecha_inicio }} al {{ progSelect.fecha_fin }}</p>
+                    <p class="text-xs font-mono font-bold text-indigo-700 mt-0.5"><i class="fa-solid fa-calendar-range mr-1"></i> Rango Oficial: {{ formatDateForDisplay(progSelect.fecha_inicio) }} al {{ formatDateForDisplay(progSelect.fecha_fin) }}</p>
                   </div>
                   <div class="flex-grow max-w-xs space-y-1 text-right">
                     <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento Programa:</span> <span>{{ getProgreso(progSelect.id).pct }}%</span></div>
@@ -375,8 +375,8 @@
                             <i :class="['fa-solid mr-1', item.condicion === 'Venta' ? 'fa-hand-holding-dollar' : 'fa-file-contract']"></i> {{ item.condicion || 'Arriendo' }}
                           </span>
                         </td>
-                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ item.fecha_programada }}</td>
-                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ item.fecha_fin || '-' }}</td>
+                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_programada) }}</td>
+                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_fin) }}</td>
                         <td class="p-2.5">
                           <div class="flex items-center gap-3">
                             <label class="relative inline-flex items-center cursor-pointer">
@@ -459,7 +459,7 @@
                 </thead>
                 <tbody class="divide-y bg-white">
                   <tr v-for="m in filteredMovimientos" :key="m.id" class="hover:bg-slate-50">
-                    <td class="p-2.5 font-mono font-bold text-slate-800 bg-amber-50/30">{{ m.fecha }}</td>
+                    <td class="p-2.5 font-mono font-bold text-slate-800 bg-amber-50/30">{{ formatDateForDisplay(m.fecha) }}</td>
                     <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(m.afi)">{{ m.afi }}</td>
                     <td class="p-2.5 font-semibold">{{ m.tipo }}</td>
                     <td class="p-2.5 text-slate-600">{{ m.origen || '-' }}</td>
@@ -573,7 +573,7 @@
                       <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                     </td>
                     <td class="p-2 font-bold text-amber-700"><button @click="verDetallePorAfiString(i.afi)" class="hover:underline bg-amber-50 px-2 rounded">{{ i.afi }}</button></td>
-                    <td class="p-2 font-mono font-bold text-slate-800 bg-amber-50/50">{{ i.fecha }}</td>
+                    <td class="p-2 font-mono font-bold text-slate-800 bg-amber-50/50">{{ formatDateForDisplay(i.fecha) }}</td>
                     <td class="p-2 font-bold text-indigo-700 bg-indigo-50/40">{{ i.programaCorrespondiente || '-' }}</td>
                     <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
                     <td class="p-2">{{ i.lugar || '-' }}</td>
@@ -581,7 +581,7 @@
                     <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
                     <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
                     <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
-                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.fecha || '-' }}</td>
+                    <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ formatDateForDisplay(i.fecha) }}</td>
                     <td class="p-2">{{ getMecanicosText(i) }}</td>
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
                     <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
@@ -677,7 +677,7 @@
                 </thead>
                 <tbody class="divide-y bg-white">
                   <tr v-for="item in filteredAceitesRecords" :key="item.id" class="hover:bg-slate-50">
-                    <td class="p-2.5 font-mono text-slate-700 font-bold bg-amber-50/40">{{ item.fecha }}</td>
+                    <td class="p-2.5 font-mono text-slate-700 font-bold bg-amber-50/40">{{ formatDateForDisplay(item.fecha) }}</td>
                     <td class="p-2.5 font-bold text-amber-700"><button @click="verDetallePorAfiString(item.afi)" class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200 hover:underline">{{ item.afi }}</button></td>
                     <td class="p-2.5 font-semibold">{{ item.equipo || '-' }}</td>
                     <td class="p-2.5 text-slate-600">{{ item.lugar || '-' }}</td>
@@ -834,12 +834,12 @@
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Último Horómetro Tomado</span>
                   <strong class="font-mono text-base text-amber-300 block">{{ perfilEquipo.horometros?.hTomado || 0 }}h</strong>
-                  <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ perfilEquipo.horometros?.fechaUltimoHorometro || '-' }}</span>
+                  <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ formatDateForDisplay(perfilEquipo.horometros?.fechaUltimoHorometro) }}</span>
                 </div>
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Mantención</span>
                   <strong class="font-mono text-base text-blue-300 block">{{ perfilEquipo.horometros?.hUltimaMant || 0 }}h</strong>
-                  <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ perfilEquipo.horometros?.ultimaMantFecha || '-' }}</span>
+                  <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ formatDateForDisplay(perfilEquipo.horometros?.ultimaMantFecha) }}</span>
                 </div>
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Horómetro Actual Aprox.</span>
@@ -852,7 +852,7 @@
                 </div>
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20 col-span-2 sm:col-span-2">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Próxima Mantención (Aprox.)</span>
-                  <strong class="font-mono text-sm text-amber-300 block mt-1"><i class="fa-solid fa-calendar-days mr-1"></i> {{ perfilEquipo.horometros?.fechaEstimada || '-' }}</strong>
+                  <strong class="font-mono text-sm text-amber-300 block mt-1"><i class="fa-solid fa-calendar-days mr-1"></i> {{ formatDateForDisplay(perfilEquipo.horometros?.fechaEstimada) }}</strong>
                 </div>
               </div>
             </div>
@@ -865,7 +865,7 @@
                   <label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Programa (Calendario)</label>
                   <select v-model="perfilAsignacionProgId" class="w-full p-2 border border-rose-300 rounded-lg bg-white font-bold">
                     <option value="">-- Elige Programa / Calendario --</option>
-                    <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.mes }} ({{ p.fecha_inicio }} a {{ p.fecha_fin }})</option>
+                    <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.mes }} ({{ formatDateForDisplay(p.fecha_inicio) }} a {{ formatDateForDisplay(p.fecha_fin) }})</option>
                   </select>
                 </div>
                 <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Tipo</label><select v-model="perfilAsignacionTipo" class="p-2 border rounded-lg bg-white font-semibold"><option value="Mantención">Mantención</option><option value="Reparación">Reparación</option></select></div>
@@ -893,7 +893,7 @@
                     </thead>
                     <tbody class="divide-y bg-white text-[11px]">
                       <tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id">
-                        <td class="p-2 font-mono font-bold">{{ i.fecha }}</td>
+                        <td class="p-2 font-mono font-bold">{{ formatDateForDisplay(i.fecha) }}</td>
                         <td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td>
                         <td class="p-2 text-[10px]">{{ i.tipoMant }}</td>
                         <td class="p-2 text-[10px] truncate max-w-[120px]">{{ i.causa }}</td>
@@ -910,7 +910,7 @@
               <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
                 <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-truck-moving text-amber-500"></i> Historial Traslados</h4>
                 <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
-                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b"><tr><th class="p-2">Fecha</th><th class="p-2">Origen</th><th class="p-2">Destino</th></tr></thead><tbody class="divide-y bg-white text-[11px]"><tr v-for="m in getHistorialMovimientosAFI(perfilEquipo.afi)" :key="m.id"><td class="p-2 font-mono font-bold">{{ m.fecha }}</td><td class="p-2 truncate max-w-[100px]">{{ m.origen }}</td><td class="p-2 font-bold text-emerald-700 truncate max-w-[100px]">{{ m.destino }}</td></tr><tr v-if="getHistorialMovimientosAFI(perfilEquipo.afi).length === 0"><td colspan="3" class="p-4 text-center text-slate-400">Sin traslados.</td></tr></tbody></table>
+                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b"><tr><th class="p-2">Fecha</th><th class="p-2">Origen</th><th class="p-2">Destino</th></tr></thead><tbody class="divide-y bg-white text-[11px]"><tr v-for="m in getHistorialMovimientosAFI(perfilEquipo.afi)" :key="m.id"><td class="p-2 font-mono font-bold">{{ formatDateForDisplay(m.fecha) }}</td><td class="p-2 truncate max-w-[100px]">{{ m.origen }}</td><td class="p-2 font-bold text-emerald-700 truncate max-w-[100px]">{{ m.destino }}</td></tr><tr v-if="getHistorialMovimientosAFI(perfilEquipo.afi).length === 0"><td colspan="3" class="p-4 text-center text-slate-400">Sin traslados.</td></tr></tbody></table>
                 </div>
               </div>
             </div>
@@ -926,7 +926,7 @@
         </div>
       </div>
 
-      <!-- MODAL FORMULARIO MANTENCIÓN COMPLETADO (HORAS, MECÁNICOS, FILTROS Y DESCRIPCIÓN) -->
+      <!-- MODAL FORMULARIO MANTENCIÓN COMPLETADO -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
@@ -1164,7 +1164,7 @@
               <label class="block font-bold text-slate-700 mb-1">Seleccionar Programa / Calendario</label>
               <select v-model="formAsignar.programa_id" class="w-full p-2.5 border rounded-lg bg-white font-bold">
                 <option value="">-- Elige Programa --</option>
-                <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.mes }} ({{ p.fecha_inicio }} al {{ p.fecha_fin }})</option>
+                <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.mes }} ({{ formatDateForDisplay(p.fecha_inicio) }} al {{ formatDateForDisplay(p.fecha_fin) }})</option>
               </select>
             </div>
             <div>
@@ -1284,7 +1284,6 @@
             await supabaseClient.from('BD_MOVIMIENTOS').insert([payload]);
           } catch(e) {}
 
-          // Actualizar ubicación del equipo si se indicó destino
           if(payload.ubicacion_actual) {
             const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === payload.afi.toUpperCase());
             if(eqRef) {
@@ -1579,6 +1578,17 @@
             }
             return strVal;
           } catch(e) { return null; }
+        };
+
+        // Formato visual DD-MM-YYYY para América del Sur
+        const formatDateForDisplay = (val) => {
+          const iso = normalizarFecha(val);
+          if (!iso || iso === '-') return '-';
+          const parts = iso.split('-');
+          if (parts.length === 3) {
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
+          return iso;
         };
 
         const formatExcelDate = (val) => normalizarFecha(val) || '-';
@@ -1965,11 +1975,17 @@
 
         const getHistorialIntervencionesAFI = (afi) => {
           const cleanAfi = String(afi || '').trim().toUpperCase();
-          return dbIntervenciones.value.filter(i => String(i.afi || '').trim().toUpperCase() === cleanAfi);
+          const arr = dbIntervenciones.value.filter(i => String(i.afi || '').trim().toUpperCase() === cleanAfi);
+          // Ordenar explícitamente de más reciente a más antiguo o viceversa por fecha
+          arr.sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
+          return arr;
         };
         const getHistorialMovimientosAFI = (afi) => {
           const cleanAfi = String(afi || '').trim().toUpperCase();
-          return dbMovimientos.value.filter(m => String(m.afi || '').trim().toUpperCase() === cleanAfi);
+          const arr = dbMovimientos.value.filter(m => String(m.afi || '').trim().toUpperCase() === cleanAfi);
+          // Ordenar explícitamente por fecha en perfil de equipo
+          arr.sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
+          return arr;
         };
 
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
@@ -2083,26 +2099,55 @@
         const renderCharts = () => {
           nextTick(() => {
             if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
+            
             const ctx1 = document.getElementById('chartEstado');
             if (ctx1) {
               if (chartEstadoInst) chartEstadoInst.destroy();
               chartEstadoInst = new Chart(ctx1, {
-                type: 'doughnut', data: { labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Mantención', 'Fuera de Servicio', 'Venta'], datasets: [{ data: [countEstado('Operativo'), countEstado('Disponible'), countEstado('En Traslado'), countEstado('En Mantencion'), countEstado('Fuera de Servicio'), countEstado('Venta')], backgroundColor: ['#10b981', '#0284c7', '#f59e0b', '#f43f5e', '#64748b', '#a855f7'] }] }, options: { responsive: true, maintainAspectRatio: false }
+                type: 'doughnut', 
+                data: { 
+                  labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Mantención', 'Fuera de Servicio', 'Venta'], 
+                  datasets: [{ 
+                    data: [countEstado('Operativo'), countEstado('Disponible'), countEstado('En Traslado'), countEstado('En Mantencion'), countEstado('Fuera de Servicio'), countEstado('Venta')], 
+                    backgroundColor: ['#10b981', '#0284c7', '#f59e0b', '#f43f5e', '#64748b', '#a855f7'] 
+                  }] 
+                }, 
+                options: { responsive: true, maintainAspectRatio: false }
               });
             }
+
             const ctx2 = document.getElementById('chartTiposMant');
             if (ctx2) {
               if (chartTiposInst) chartTiposInst.destroy();
               chartTiposInst = new Chart(ctx2, {
-                type: 'bar', data: { labels: ['Preventiva', 'Predictiva', 'Correctiva'], datasets: [{ data: [ dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT')).length, dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREDICT')).length, dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('CORRECT')).length ], backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                type: 'bar', 
+                data: { 
+                  labels: ['Preventiva', 'Predictiva', 'Correctiva'], 
+                  datasets: [{ 
+                    data: [ 
+                      dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT')).length, 
+                      dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREDICT')).length, 
+                      dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('CORRECT')).length 
+                    ], 
+                    backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626'] 
+                  }] 
+                }, 
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
               });
             }
+
             const ctx3 = document.getElementById('chartCausas');
             if (ctx3) {
               if (chartCausasInst) chartCausasInst.destroy();
-              const causasMap = {}; dbIntervenciones.value.forEach(i => { if (i.causa) causasMap[i.causa] = (causasMap[i.causa] || 0) + 1; });
+              const causasMap = {}; 
+              dbIntervenciones.value.forEach(i => { if (i.causa) causasMap[i.causa] = (causasMap[i.causa] || 0) + 1; });
               chartCausasInst = new Chart(ctx3, {
-                type: 'bar', data: { labels: Object.keys(causasMap).slice(0, 6), datasets: [{ data: Object.values(causasMap).slice(0, 6), backgroundColor: '#f59e0b' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                type: 'bar', 
+                data: { 
+                  labels: Object.keys(causasMap).slice(0, 6), 
+                  datasets: [{ data: Object.values(causasMap).slice(0, 6), backgroundColor: '#f59e0b' }] 
+                }, 
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
               });
             }
           });
@@ -2114,6 +2159,7 @@
             renderCharts(); 
           }
         };
+
         const countEstado = (st) => dbEquipos.value.filter(e => normalizarClave(e.disponibilidad) === normalizarClave(st)).length;
         const getEstadoText = (est) => {
           const norm = normalizarClave(est);
@@ -2132,7 +2178,8 @@
 
         onMounted(async () => {
           const cfgSaved = localStorage.getItem('afi_config_custom'); if (cfgSaved) config.value = JSON.parse(cfgSaved);
-          await cargarUsuariosDesdeSupabase(); await cargarDatosDesdeSupabase();
+          await cargarUsuariosDesdeSupabase(); 
+          await cargarDatosDesdeSupabase();
         });
 
         const login = () => {
@@ -2165,7 +2212,8 @@
           showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes, eliminarProgramaCompleto,
           showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoEnProgresoEspecifico, guardarAsignacionEquipo,
           dbProgramasCalendarios, dbProgramasItems, listaCarpetasProgramas, obtenerProgramasDeCarpeta, obtenerItemsPrograma, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
-          perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos
+          perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos,
+          formatDateForDisplay
         };
       }
     }).mount('#app');
