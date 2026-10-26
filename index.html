@@ -1967,19 +1967,18 @@
         };
 
         // --- FUNCIÓN BLINDADA Y SIMPLIFICADA PARA GUARDAR CUALQUIER DATO SIN ERRORES ---
+ 
         const guardarMantencionForm = async () => {
           if (!formMant.value.afi || !formMant.value.fecha) {
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
-          // Limpiar formato del AFI para extraer solo el código
           let afiLimpio = String(formMant.value.afi || '').trim();
           if (afiLimpio.toUpperCase().startsWith('AFI')) {
             const parts = afiLimpio.split('-');
             afiLimpio = parts[0].replace('AFI', '').trim();
           }
 
-          // Mapeo seguro que evita nulos y asegura tipos correctos para Supabase
           const payload = {
             afi: afiLimpio, 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
@@ -2009,7 +2008,7 @@
             numero_ot: parseStr(formMant.value.numeroOT),
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4),
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4),
-            aceite_refrigerante_50: parseNum(formMant.value.aceite_refrigerante_50),
+            aceite_refrigerante_50: parseNum(formMant.value.aceite_refrigerante_50), // <-- Activo aquí
             aceite_80w90: parseNum(formMant.value.aceite_80w90),
             aceite_dacnis_68: parseNum(formMant.value.aceite_dacnis_68),
             aceite_dacnis_46: parseNum(formMant.value.aceite_dacnis_46),
