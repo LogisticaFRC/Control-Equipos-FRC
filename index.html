@@ -289,67 +289,93 @@
         <section v-if="currentTab === 'programas'" class="space-y-4">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt con Fechas Reales</h2>
-              <p class="text-xs text-slate-500 mt-1">Sigue el orden: 1. Crear Carpeta -> 2. Crear Programa (con rango de fechas reales) -> 3. Asignar Equipo.</p>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt</h2>
+              <p class="text-xs text-slate-500 mt-1">Elige entre Crear Programa de Reparación o de Mantención, y asigna equipos con sus condiciones y fechas.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2.5" v-if="isAdmin">
-              <button @click="abrirModalCrearCarpeta" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-folder-plus text-sm"></i> 1. Crear Carpeta
+              <button @click="abrirModalCrearPrograma('REPARACION')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-wrench text-sm"></i> + Programa Reparación
               </button>
-              <button @click="abrirModalCrearPrograma" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-calendar-plus text-sm"></i> 2. Crear Programa (Rango Fechas)
+              <button @click="abrirModalCrearPrograma('MANTENCION')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-oil-can text-sm"></i> + Programa Mantención
               </button>
               <button @click="abrirModalAsignarEquipo" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-truck-monster text-sm"></i> 3. Asignar Equipo
+                <i class="fa-solid fa-truck-monster text-sm"></i> Asignar Equipo
               </button>
             </div>
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Sidebar: Árbol de Carpetas y Programas -->
-            <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[650px] overflow-y-auto">
-              <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 mb-3 flex items-center justify-between">
-                <span><i class="fa-solid fa-folder-tree text-amber-500"></i> Carpetas & Programas</span>
+            <!-- Sidebar: Listado por Categorías (Reparación / Mantención) -->
+            <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[650px] overflow-y-auto space-y-4">
+              <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 flex items-center justify-between">
+                <span><i class="fa-solid fa-folder-tree text-amber-500"></i> Programas por Tipo</span>
                 <span class="text-[10px] text-slate-400 font-mono">Global: {{ cumplimientoGlobalTotal }}%</span>
               </h3>
-              <div v-if="listaCarpetasProgramas.length === 0" class="text-center text-[10px] text-slate-400 font-bold p-4">No hay programas creados.</div>
-              <div class="space-y-3">
-                <div v-for="carpeta in listaCarpetasProgramas" :key="carpeta" class="space-y-1">
-                  <div @click="toggleFolder(carpeta)" class="font-bold text-xs text-slate-700 bg-slate-100 p-2 rounded cursor-pointer hover:bg-slate-200 flex justify-between items-center">
-                    <span class="truncate"><i class="fa-solid fa-folder-open text-amber-500 mr-1.5"></i> {{ carpeta }}</span>
-                    <i :class="['fa-solid text-slate-400 text-[10px]', openFolders[carpeta] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
-                  </div>
-                  <div v-show="openFolders[carpeta]" class="pl-3 pr-1 space-y-1.5 border-l-2 border-slate-200 ml-2 pt-1 pb-2">
-                    <div v-for="prog in obtenerProgramasDeCarpeta(carpeta)" :key="prog.id" :class="['p-2 rounded border transition text-[11px] space-y-1', (progSelect.id === prog.id) ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100']">
-                      <div @click="seleccionarProgramaObj(prog)" class="cursor-pointer flex items-center justify-between font-bold">
-                        <span class="truncate"><i class="fa-solid fa-calendar-days opacity-70 mr-1 text-indigo-600"></i> {{ prog.mes }}</span>
-                        <div class="flex items-center gap-1">
-                          <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
-                          <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar este programa"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                      </div>
-                      <div class="text-[9px] font-mono text-slate-500 flex justify-between">
-                        <span>Inicio: {{ formatDateForDisplay(prog.fecha_inicio) }}</span>
-                        <span>Fin: {{ formatDateForDisplay(prog.fecha_fin) }}</span>
+
+              <!-- Sección REPARACIÓN -->
+              <div class="space-y-1">
+                <div @click="toggleFolder('REPARACION')" class="font-bold text-xs text-slate-800 bg-amber-50 border border-amber-200 p-2 rounded cursor-pointer hover:bg-amber-100 flex justify-between items-center">
+                  <span><i class="fa-solid fa-wrench text-amber-600 mr-1.5"></i> REPARACIÓN</span>
+                  <i :class="['fa-solid text-slate-500 text-[10px]', openFolders['REPARACION'] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                </div>
+                <div v-show="openFolders['REPARACION']" class="pl-3 pr-1 space-y-1.5 border-l-2 border-amber-200 ml-2 pt-1 pb-2">
+                  <div v-for="prog in obtenerProgramasDeCarpeta('REPARACION')" :key="prog.id" :class="['p-2 rounded border transition text-[11px] space-y-1', (progSelect.id === prog.id) ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100']">
+                    <div @click="seleccionarProgramaObj(prog)" class="cursor-pointer flex items-center justify-between font-bold">
+                      <span class="truncate"><i class="fa-solid fa-calendar-days opacity-70 mr-1 text-amber-600"></i> {{ prog.mes }}</span>
+                      <div class="flex items-center gap-1">
+                        <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
+                        <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar programa"><i class="fa-solid fa-trash"></i></button>
                       </div>
                     </div>
-                    <button v-if="isAdmin" @click="abrirModalCrearProgramaConCarpeta(carpeta)" class="text-[10px] text-indigo-600 hover:underline block pt-1 font-bold">+ Añadir Programa en {{ carpeta }}</button>
+                    <div class="text-[9px] font-mono text-slate-500 flex justify-between">
+                      <span>Inicio: {{ formatDateForDisplay(prog.fecha_inicio) }}</span>
+                      <span>Fin: {{ formatDateForDisplay(prog.fecha_fin) }}</span>
+                    </div>
                   </div>
+                  <div v-if="obtenerProgramasDeCarpeta('REPARACION').length === 0" class="text-[10px] text-slate-400 italic p-1">No hay programas de reparación.</div>
                 </div>
               </div>
+
+              <!-- Sección MANTENCIÓN -->
+              <div class="space-y-1">
+                <div @click="toggleFolder('MANTENCION')" class="font-bold text-xs text-slate-800 bg-indigo-50 border border-indigo-200 p-2 rounded cursor-pointer hover:bg-indigo-100 flex justify-between items-center">
+                  <span><i class="fa-solid fa-oil-can text-indigo-600 mr-1.5"></i> MANTENCIÓN</span>
+                  <i :class="['fa-solid text-slate-500 text-[10px]', openFolders['MANTENCION'] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                </div>
+                <div v-show="openFolders['MANTENCION']" class="pl-3 pr-1 space-y-1.5 border-l-2 border-indigo-200 ml-2 pt-1 pb-2">
+                  <div v-for="prog in obtenerProgramasDeCarpeta('MANTENCION')" :key="prog.id" :class="['p-2 rounded border transition text-[11px] space-y-1', (progSelect.id === prog.id) ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100']">
+                    <div @click="seleccionarProgramaObj(prog)" class="cursor-pointer flex items-center justify-between font-bold">
+                      <span class="truncate"><i class="fa-solid fa-calendar-days opacity-70 mr-1 text-indigo-600"></i> {{ prog.mes }}</span>
+                      <div class="flex items-center gap-1">
+                        <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
+                        <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar programa"><i class="fa-solid fa-trash"></i></button>
+                      </div>
+                    </div>
+                    <div class="text-[9px] font-mono text-slate-500 flex justify-between">
+                      <span>Inicio: {{ formatDateForDisplay(prog.fecha_inicio) }}</span>
+                      <span>Fin: {{ formatDateForDisplay(prog.fecha_fin) }}</span>
+                    </div>
+                  </div>
+                  <div v-if="obtenerProgramasDeCarpeta('MANTENCION').length === 0" class="text-[10px] text-slate-400 italic p-1">No hay programas de mantención.</div>
+                </div>
+              </div>
+
             </div>
 
-            <!-- Main Panel: Detalles de la Carta Gantt y Calendario -->
+            <!-- Main Panel: Detalles del Programa Seleccionado -->
             <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[650px] flex flex-col">
               <template v-if="progSelect.id">
                 <div class="border-b pb-4 mb-4 flex flex-wrap items-end justify-between gap-4">
                   <div>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-folder text-amber-400"></i> {{ progSelect.carpeta }}</span>
-                    <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-regular fa-calendar text-rose-500"></i> Programa: {{ progSelect.mes }}</h3>
-                    <p class="text-xs font-mono font-bold text-indigo-700 mt-0.5"><i class="fa-solid fa-calendar-range mr-1"></i> Rango Oficial: {{ formatDateForDisplay(progSelect.fecha_inicio) }} al {{ formatDateForDisplay(progSelect.fecha_fin) }}</p>
+                    <span :class="['text-[10px] font-extrabold uppercase px-2 py-0.5 rounded', progSelect.carpeta === 'REPARACION' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800']">
+                      <i :class="['fa-solid mr-1', progSelect.carpeta === 'REPARACION' ? 'fa-wrench' : 'fa-oil-can']"></i> {{ progSelect.carpeta }}
+                    </span>
+                    <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2 mt-1"><i class="regular fa-calendar text-rose-500"></i> Programa: {{ progSelect.mes }}</h3>
+                    <p class="text-xs font-mono font-bold text-slate-600 mt-0.5"><i class="fa-solid fa-calendar-range mr-1"></i> Rango Oficial: {{ formatDateForDisplay(progSelect.fecha_inicio) }} al {{ formatDateForDisplay(progSelect.fecha_fin) }}</p>
                   </div>
                   <div class="flex-grow max-w-xs space-y-1 text-right">
-                    <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento Programa:</span> <span>{{ getProgreso(progSelect.id).pct }}%</span></div>
+                    <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento:</span> <span>{{ getProgreso(progSelect.id).pct }}%</span></div>
                     <div class="w-full bg-slate-200 rounded-full h-2.5 shadow-inner overflow-hidden">
                       <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" :style="{ width: getProgreso(progSelect.id).pct + '%' }"></div>
                     </div>
@@ -405,7 +431,7 @@
               </template>
               <div v-else class="flex-grow flex flex-col items-center justify-center text-slate-400 space-y-4">
                 <i class="fa-solid fa-calendar-days text-6xl opacity-20"></i>
-                <p class="font-bold">Selecciona una Carpeta y un Programa desde el menú lateral para ver su Carta Gantt, rango de fechas y barras de reparación ON/OFF.</p>
+                <p class="font-bold">Selecciona un Programa desde el menú lateral para ver su tabla de asignación y barras de reparación ON/OFF.</p>
               </div>
             </div>
           </div>
@@ -1123,43 +1149,19 @@
         </div>
       </div>
 
-      <!-- MODAL 1: CREAR CARPETA NUEVA -->
-      <div v-if="showModalCarpeta" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
-          <div class="bg-amber-500 px-6 py-4 flex justify-between items-center text-slate-950">
-            <h3 class="font-extrabold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-folder-plus"></i> Crear Nueva Carpeta</h3>
-            <button @click="showModalCarpeta=false" class="text-slate-950/80 hover:text-slate-950"><i class="fa-solid fa-xmark text-lg"></i></button>
-          </div>
-          <div class="p-6 space-y-4 text-xs bg-slate-50">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre de la Carpeta</label>
-              <input type="text" v-model="formCarpetaNombre" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: PROGRAMA REPARACION">
-            </div>
-          </div>
-          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
-            <button @click="showModalCarpeta=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-            <button @click="guardarNuevaCarpeta" :disabled="!formCarpetaNombre.trim()" class="px-5 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 shadow-md text-xs">Crear Carpeta</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- MODAL 2: CREAR PROGRAMA CON RANGO DE FECHAS -->
+      <!-- MODAL: CREAR PROGRAMA (REPARACIÓN O MANTENCIÓN) -->
       <div v-if="showModalPrograma" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
-          <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
-            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-calendar-plus"></i> Crear Programa / Calendario con Fechas</h3>
-            <button @click="showModalPrograma=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+          <div :class="['px-6 py-4 flex justify-between items-center text-white', formProgMes.carpeta === 'REPARACION' ? 'bg-amber-500 text-slate-950' : 'bg-indigo-600']">
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2">
+              <i :class="['fa-solid', formProgMes.carpeta === 'REPARACION' ? 'fa-wrench' : 'fa-oil-can']"></i>
+              Crear Programa de {{ formProgMes.carpeta }}
+            </h3>
+            <button @click="showModalPrograma=false" class="hover:opacity-80"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 space-y-4 text-xs bg-slate-50">
             <div>
-              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Seleccionar Carpeta</label>
-              <select v-model="formProgMes.carpeta" class="w-full p-2.5 border rounded-lg bg-white font-bold">
-                <option value="">-- Elige Carpeta --</option>
-                <option v-for="c in listaCarpetasProgramas" :key="c" :value="c">{{ c }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa</label>
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa / Calendario</label>
               <input type="text" v-model="formProgMes.mes" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: AGOSTO/SEPTIEMBRE 2026">
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -1175,21 +1177,23 @@
           </div>
           <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
             <button @click="showModalPrograma=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-            <button @click="guardarNuevoProgramaMes" :disabled="!formProgMes.carpeta || !formProgMes.mes.trim() || !formProgMes.fecha_inicio || !formProgMes.fecha_fin" class="px-5 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-md text-xs">Crear Calendario del Programa</button>
+            <button @click="guardarNuevoProgramaMes" :disabled="!formProgMes.mes.trim() || !formProgMes.fecha_inicio || !formProgMes.fecha_fin" :class="['px-5 py-2 rounded-lg font-bold disabled:opacity-50 shadow-md text-xs', formProgMes.carpeta === 'REPARACION' ? 'bg-amber-500 hover:bg-amber-600 text-slate-950' : 'bg-indigo-600 hover:bg-indigo-700 text-white']">
+              Guardar Programa
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- MODAL 3: ASIGNAR EQUIPO A PROGRAMA CON CONDICIÓN Y FECHAS -->
+      <!-- MODAL: ASIGNAR EQUIPO A PROGRAMA CON CONDICIÓN Y FECHAS -->
       <div v-if="showModalAsignarEquipo" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
           <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
-            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Asignar Equipo al Calendario del Programa</h3>
+            <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Asignar Equipo al Programa</h3>
             <button @click="showModalAsignarEquipo=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 space-y-4 text-xs bg-slate-50">
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Seleccionar Programa / Calendario</label>
+              <label class="block font-bold text-slate-700 mb-1">Seleccionar Programa</label>
               <select v-model="formAsignar.programa_id" class="w-full p-2.5 border rounded-lg bg-white font-bold">
                 <option value="">-- Elige Programa --</option>
                 <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.mes }} ({{ formatDateForDisplay(p.fecha_inicio) }} al {{ formatDateForDisplay(p.fecha_fin) }})</option>
@@ -1206,7 +1210,7 @@
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Tipo de Trabajo</label>
                 <select v-model="formAsignar.tipo" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
-                  <option value="Mantención">Mantención</option><option value="Reparación">Reparación</option>
+                  <option value="Reparación">Reparación</option><option value="Mantención">Mantención</option>
                 </select>
               </div>
               <div>
@@ -1346,16 +1350,13 @@
           "RETIRO", "CONEXIÓN/DESCONEXION", "FALLA OPERACIONAL", "INSPECCION (ELECTRICA)"
         ];
 
-        const showModalCarpeta = ref(false);
-        const formCarpetaNombre = ref('');
-
         const showModalPrograma = ref(false);
-        const formProgMes = ref({ carpeta: '', mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' });
+        const formProgMes = ref({ carpeta: 'REPARACION', mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' });
 
         const showModalAsignarEquipo = ref(false);
         const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', condicion: 'Arriendo', fecha_programada: '2026-08-01', fecha_fin: '2026-08-31' });
 
-        const openFolders = ref({});
+        const openFolders = ref({ REPARACION: true, MANTENCION: true });
         const progSelect = ref({ id: null, carpeta: '', mes: '', fecha_inicio: '', fecha_fin: '' });
         
         const perfilAsignacionProgId = ref('');
@@ -1404,13 +1405,8 @@
           reader.readAsDataURL(file);
         };
 
-        const listaCarpetasProgramas = computed(() => {
-          const carpetas = new Set(dbProgramasCalendarios.value.map(p => p.carpeta).filter(Boolean));
-          return Array.from(carpetas).sort();
-        });
-
         const obtenerProgramasDeCarpeta = (carpeta) => {
-          return dbProgramasCalendarios.value.filter(p => p.carpeta === carpeta).sort((a,b) => a.mes.localeCompare(b.mes));
+          return dbProgramasCalendarios.value.filter(p => String(p.carpeta).toUpperCase() === String(carpeta).toUpperCase()).sort((a,b) => a.mes.localeCompare(b.mes));
         };
 
         const obtenerItemsPrograma = (programaId) => {
@@ -1433,36 +1429,14 @@
           return Math.round((done / total) * 100);
         });
 
-        const toggleFolder = (carpeta) => { openFolders.value[carpeta] = !openFolders.value[carpeta]; };
+        const toggleFolder = (folderKey) => { openFolders.value[folderKey] = !openFolders.value[folderKey]; };
         
         const seleccionarProgramaObj = (prog) => {
           progSelect.value = { id: prog.id, carpeta: prog.carpeta, mes: prog.mes, fecha_inicio: prog.fecha_inicio, fecha_fin: prog.fecha_fin };
         };
 
-        const abrirModalCrearCarpeta = () => { formCarpetaNombre.value = ''; showModalCarpeta.value = true; };
-        const guardarNuevaCarpeta = async () => {
-          const cName = formCarpetaNombre.value.trim().toUpperCase();
-          if (!cName) return;
-          try {
-            await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([{
-              carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30'
-            }]);
-          } catch(e) {
-            if (!dbProgramasCalendarios.value.some(p => p.carpeta === cName)) {
-              dbProgramasCalendarios.value.push({ id: Date.now(), carpeta: cName, mes: 'GENERAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' });
-            }
-          }
-          showModalCarpeta.value = false;
-          openFolders.value[cName] = true;
-          alert(`¡Carpeta "${cName}" creada con éxito!`);
-        };
-
-        const abrirModalCrearPrograma = () => {
-          formProgMes.value = { carpeta: listaCarpetasProgramas.value[0] || 'PROGRAMA REPARACION', mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' };
-          showModalPrograma.value = true;
-        };
-        const abrirModalCrearProgramaConCarpeta = (carpeta) => {
-          formProgMes.value = { carpeta, mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' };
+        const abrirModalCrearPrograma = (tipoCarpeta) => {
+          formProgMes.value = { carpeta: tipoCarpeta, mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' };
           showModalPrograma.value = true;
         };
 
@@ -1471,7 +1445,7 @@
           const ms = formProgMes.value.mes.trim().toUpperCase();
           const f_ini = formProgMes.value.fecha_inicio;
           const f_fin = formProgMes.value.fecha_fin;
-          if (!cp || !ms || !f_ini || !f_fin) return;
+          if (!ms || !f_ini || !f_fin) return;
 
           let newId = Date.now();
           try {
@@ -1513,7 +1487,7 @@
         const abrirModalAsignarEquipoInProgresoEspecifico = (progId) => {
           const prog = dbProgramasCalendarios.value.find(p => p.id === progId);
           formAsignar.value = {
-            programa_id: progId, afi: '', tipo: 'Reparación', condicion: 'Arriendo',
+            programa_id: progId, afi: '', tipo: prog?.carpeta === 'MANTENCION' ? 'Mantención' : 'Reparación', condicion: 'Arriendo',
             fecha_programada: prog?.fecha_inicio || '2026-08-01', fecha_fin: prog?.fecha_fin || '2026-09-30'
           };
           showModalAsignarEquipo.value = true;
@@ -2326,10 +2300,9 @@
           agregarFilaFiltro, eliminarFilaFiltro,
           showModalMovimiento, formMov, abrirModalCrearMovimiento, guardarNuevoMovimiento,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
-          showModalCarpeta, formCarpetaNombre, abrirModalCrearCarpeta, guardarNuevaCarpeta,
-          showModalPrograma, formProgMes, abrirModalCrearPrograma, abrirModalCrearProgramaConCarpeta, guardarNuevoProgramaMes, eliminarProgramaCompleto,
+          showModalPrograma, formProgMes, abrirModalCrearPrograma, guardarNuevoProgramaMes, eliminarProgramaCompleto,
           showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoInProgresoEspecifico, guardarAsignacionEquipo,
-          dbProgramasCalendarios, dbProgramasItems, listaCarpetasProgramas, obtenerProgramasDeCarpeta, obtenerItemsPrograma, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
+          dbProgramasCalendarios, dbProgramasItems, obtenerProgramasDeCarpeta, obtenerItemsPrograma, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
           perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos,
           formatDateForDisplay
         };
