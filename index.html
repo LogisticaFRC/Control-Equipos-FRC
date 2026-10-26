@@ -1299,8 +1299,14 @@
         };
 
         const guardarNuevoMovimiento = async () => {
+          let afiLimpio = String(formMov.value.afi || '').trim();
+          if (afiLimpio.toUpperCase().startsWith('AFI')) {
+            const parts = afiLimpio.split('-');
+            afiLimpio = parts[0].replace('AFI', '').trim();
+          }
+
           const payload = {
-            afi: String(formMov.value.afi).trim(),
+            afi: afiLimpio,
             fecha: formatIsoDateForSupabase(formMov.value.fecha),
             tipo: parseStr(formMov.value.tipo),
             ubicacion_anterior: parseStr(formMov.value.origen),
@@ -1513,10 +1519,16 @@
         };
 
         const guardarAsignacionEquipo = async () => {
+          let afiLimpio = String(formAsignar.value.afi || '').trim();
+          if (afiLimpio.toUpperCase().startsWith('AFI')) {
+            const parts = afiLimpio.split('-');
+            afiLimpio = parts[0].replace('AFI', '').trim();
+          }
+
           const payload = {
             id: Date.now(),
             programa_id: formAsignar.value.programa_id,
-            afi: formAsignar.value.afi,
+            afi: afiLimpio,
             tipo: formAsignar.value.tipo,
             condicion: formAsignar.value.condicion,
             fecha_programada: formAsignar.value.fecha_programada,
@@ -1551,10 +1563,16 @@
 
         const guardarAsignacionDesdePerfil = async () => {
           if (!perfilAsignacionProgId.value || !perfilAsignacionFechaInicio.value) return alert("Selecciona programa y fecha de inicio.");
+          let afiLimpio = String(perfilEquipo.value.afi || '').trim();
+          if (afiLimpio.toUpperCase().startsWith('AFI')) {
+            const parts = afiLimpio.split('-');
+            afiLimpio = parts[0].replace('AFI', '').trim();
+          }
+
           const payload = {
             id: Date.now(),
             programa_id: perfilAsignacionProgId.value,
-            afi: perfilEquipo.value.afi,
+            afi: afiLimpio,
             tipo: perfilAsignacionTipo.value,
             condicion: perfilAsignacionCondicion.value,
             fecha_programada: perfilAsignacionFechaInicio.value,
@@ -1952,11 +1970,18 @@
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
+          // LIMPIEZA AUTOMÁTICA DEL AFI (Extrae solo el código limpio si viene con formato "AFI 529 - TORRE")
+          let afiLimpio = String(formMant.value.afi || '').trim();
+          if (afiLimpio.toUpperCase().startsWith('AFI')) {
+            const parts = afiLimpio.split('-');
+            afiLimpio = parts[0].replace('AFI', '').trim();
+          }
+
           // PAYLOAD EXACTO COINCIDENTE CON TUS COLUMNAS DE SUPABASE BD_HISTORIAL
           const payload = {
-            afi: String(formMant.value.afi).trim(), 
+            afi: afiLimpio, 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
-            equipo: parseStr(dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase())?.tipo),
+            equipo: parseStr(dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === afiLimpio.toUpperCase())?.tipo),
             lugar: parseStr(formMant.value.lugar), 
             tipo_documento: "MANTENCION",
             tipo_horas_mantencion: parseStr(formMant.value.tipoHorasMant),
@@ -2004,7 +2029,7 @@
             tipo_mantencion: parseStr(formMant.value.tipoMant)
           };
 
-          const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase());
+          const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === afiLimpio.toUpperCase());
           let nuevoH = parseNum(formMant.value.horometro) || 0;
           if (eqRef && nuevoH > eqRef.horometroActual) {
             eqRef.horometroActual = nuevoH;
