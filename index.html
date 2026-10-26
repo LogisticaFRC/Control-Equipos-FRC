@@ -1549,7 +1549,8 @@
             fecha_termino_programa: f_fin
           };
           try {
-            const { data, error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([payload]).select();
+            // CORREGIDO: Apunta a la tabla 'BD_PROGRAMAS' que ya existe en tu Supabase
+            const { data, error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]).select();
             if (error) throw error;
             
             await cargarDatosDesdeSupabase();
@@ -1558,9 +1559,9 @@
             if (data && data[0]) {
               seleccionarProgramaObj(data[0]);
             }
-            alert(`¡Programa "${nom}" creado con éxito en ${cp}!`);
+            alert(`¡Programa "${nom}" guardado permanentemente en ${cp}!`);
           } catch(err) {
-            alert("Error al guardar en Supabase: " + (err.message || JSON.stringify(err)));
+            alert("Error de Supabase al guardar programa: " + (err.message || JSON.stringify(err)));
           }
         };
 
@@ -1568,7 +1569,7 @@
           if (confirm("¿Estás seguro de eliminar este programa completo junto con sus equipos asignados?")) {
             try {
               await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('programa_id', progId);
-              await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').delete().eq('id', progId);
+              await supabaseClient.from('BD_PROGRAMAS').delete().eq('id', progId);
             } catch(e) {}
             dbProgramasCalendarios.value = dbProgramasCalendarios.value.filter(p => p.id !== progId);
             dbProgramasItems.value = dbProgramasItems.value.filter(i => i.programa_id !== progId);
@@ -1838,7 +1839,8 @@
             }
 
             try {
-              const calData = await fetchAllRowsSupabase('BD_PROGRAMAS_CALENDARIOS');
+              // CORREGIDO: Carga desde la tabla 'BD_PROGRAMAS'
+              const calData = await fetchAllRowsSupabase('BD_PROGRAMAS');
               if (calData && calData.length > 0) dbProgramasCalendarios.value = calData;
             } catch(e) {}
 
@@ -1889,14 +1891,12 @@
               const ultimo = histConHorometro[histConHorometro.length - 1];
               let penultimo = null;
               
-              // MEJORA: Buscar hacia atrás un registro con horómetro menor (diferencia positiva mayor a 0)
               for (let j = histConHorometro.length - 2; j >= 0; j--) {
                 if (Number(histConHorometro[j].horometro) < Number(ultimo.horometro)) {
                   penultimo = histConHorometro[j];
                   break;
                 }
               }
-              // Si todos son iguales o no encuentra uno menor, toma por defecto el inmediatamente anterior
               if (!penultimo) {
                 penultimo = histConHorometro[histConHorometro.length - 2];
               }
