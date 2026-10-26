@@ -286,128 +286,103 @@
         </section>
 
         <!-- SECCIÓN PROGRAMAS -->
-        <section v-if="currentTab === 'programas'" class="space-y-4">
+       <!-- SECCIÓN PROGRAMAS CON VISTA TIPO CARTA GANTT CALENDARIO -->
+        <section v-if="currentTab === 'programas'" class="space-y-6">
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
             <div>
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt con Fechas Reales</h2>
-              <p class="text-xs text-slate-500 mt-1">Sigue el orden: 1. Crear Carpeta -> 2. Crear Programa (con rango de fechas reales) -> 3. Asignar Equipo.</p>
+              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMA & GANTT - Planificación Operativa</h2>
+              <p class="text-xs text-slate-500 mt-1">Visualiza los equipos, sus fechas y el calendario de avance en formato de barras.</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2.5" v-if="isAdmin">
-              <button @click="abrirModalCrearCarpeta" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-folder-plus text-sm"></i> 1. Crear Carpeta
+            
+            <!-- Selector de Programa y Botones -->
+            <div class="flex flex-wrap items-center gap-3">
+              <select v-model="programaGanttSeleccionadoId" class="p-2 border rounded-xl text-xs font-bold bg-slate-50 text-slate-800">
+                <option value="">-- Selecciona un Programa --</option>
+                <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta || 'GENERAL' }}] {{ p.mes }}</option>
+              </select>
+              <button v-if="isAdmin" @click="abrirModalCrearProgramaDirecto" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow">
+                <i class="fa-solid fa-plus mr-1"></i> Nuevo Programa
               </button>
-              <button @click="abrirModalCrearPrograma" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-calendar-plus text-sm"></i> 2. Crear Programa (Rango Fechas)
-              </button>
-              <button @click="abrirModalAsignarEquipo" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-truck-monster text-sm"></i> 3. Asignar Equipo
+              <button v-if="isAdmin && programaGanttSeleccionadoId" @click="abrirModalAsignarEquipoGantt" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3.5 py-2 rounded-xl transition shadow">
+                <i class="fa-solid fa-truck-monster mr-1"></i> + Agregar Equipo
               </button>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Sidebar: Árbol de Carpetas y Programas -->
-            <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[650px] overflow-y-auto">
-              <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 mb-3 flex items-center justify-between">
-                <span><i class="fa-solid fa-folder-tree text-amber-500"></i> Carpetas & Programas</span>
-                <span class="text-[10px] text-slate-400 font-mono">Global: {{ cumplimientoGlobalTotal }}%</span>
-              </h3>
-              <div v-if="listaCarpetasProgramas.length === 0" class="text-center text-[10px] text-slate-400 font-bold p-4">No hay programas creados.</div>
-              <div class="space-y-3">
-                <div v-for="carpeta in listaCarpetasProgramas" :key="carpeta" class="space-y-1">
-                  <div @click="toggleFolder(carpeta)" class="font-bold text-xs text-slate-700 bg-slate-100 p-2 rounded cursor-pointer hover:bg-slate-200 flex justify-between items-center">
-                    <span class="truncate"><i class="fa-solid fa-folder-open text-amber-500 mr-1.5"></i> {{ carpeta }}</span>
-                    <i :class="['fa-solid text-slate-400 text-[10px]', openFolders[carpeta] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
-                  </div>
-                  <div v-show="openFolders[carpeta]" class="pl-3 pr-1 space-y-1.5 border-l-2 border-slate-200 ml-2 pt-1 pb-2">
-                    <div v-for="prog in obtenerProgramasDeCarpeta(carpeta)" :key="prog.id" :class="['p-2 rounded border transition text-[11px] space-y-1', (progSelect.id === prog.id) ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100']">
-                      <div @click="seleccionarProgramaObj(prog)" class="cursor-pointer flex items-center justify-between font-bold">
-                        <span class="truncate"><i class="fa-solid fa-calendar-days opacity-70 mr-1 text-indigo-600"></i> {{ prog.mes }}</span>
-                        <div class="flex items-center gap-1">
-                          <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
-                          <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar este programa"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                      </div>
-                      <div class="text-[9px] font-mono text-slate-500 flex justify-between">
-                        <span>Inicio: {{ formatDateForDisplay(prog.fecha_inicio) }}</span>
-                        <span>Fin: {{ formatDateForDisplay(prog.fecha_fin) }}</span>
-                      </div>
-                    </div>
-                    <button v-if="isAdmin" @click="abrirModalCrearProgramaConCarpeta(carpeta)" class="text-[10px] text-indigo-600 hover:underline block pt-1 font-bold">+ Añadir Programa en {{ carpeta }}</button>
-                  </div>
-                </div>
+          <!-- CONTENEDOR PRINCIPAL GANTT -->
+          <div v-if="programaGanttSeleccionadoId" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+            <!-- Cabecera del Programa Seleccionado -->
+            <div class="bg-slate-900 text-white p-4 rounded-xl flex flex-wrap justify-between items-center gap-4">
+              <div>
+                <span class="text-[10px] font-mono text-amber-400 uppercase tracking-widest font-bold">Programa Operativo FRC</span>
+                <h3 class="text-base font-extrabold flex items-center gap-2 mt-0.5"><i class="fa-regular fa-calendar text-rose-400"></i> {{ obtenerProgramaActualObj?.mes || 'PROGRAMA' }}</h3>
+                <p class="text-[11px] text-slate-300 mt-0.5">Rango Oficial: <span class="font-mono text-emerald-300">{{ formatDateForDisplay(obtenerProgramaActualObj?.fecha_inicio) }} al {{ formatDateForDisplay(obtenerProgramaActualObj?.fecha_fin) }}</span></p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-slate-300 block">Cumplimiento del Programa</span>
+                <strong class="text-xl font-extrabold text-emerald-400">{{ getProgresoGantt(programaGanttSeleccionadoId).pct }}%</strong>
+                <span class="text-[10px] text-slate-400 block">({{ getProgresoGantt(programaGanttSeleccionadoId).done }} de {{ getProgresoGantt(programaGanttSeleccionadoId).total }} equipos listos)</span>
               </div>
             </div>
 
-            <!-- Main Panel: Detalles de la Carta Gantt y Calendario -->
-            <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[650px] flex flex-col">
-              <template v-if="progSelect.id">
-                <div class="border-b pb-4 mb-4 flex flex-wrap items-end justify-between gap-4">
-                  <div>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-folder text-amber-400"></i> {{ progSelect.carpeta }}</span>
-                    <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-regular fa-calendar text-rose-500"></i> Programa: {{ progSelect.mes }}</h3>
-                    <p class="text-xs font-mono font-bold text-indigo-700 mt-0.5"><i class="fa-solid fa-calendar-range mr-1"></i> Rango Oficial: {{ formatDateForDisplay(progSelect.fecha_inicio) }} al {{ formatDateForDisplay(progSelect.fecha_fin) }}</p>
-                  </div>
-                  <div class="flex-grow max-w-xs space-y-1 text-right">
-                    <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento Programa:</span> <span>{{ getProgreso(progSelect.id).pct }}%</span></div>
-                    <div class="w-full bg-slate-200 rounded-full h-2.5 shadow-inner overflow-hidden">
-                      <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" :style="{ width: getProgreso(progSelect.id).pct + '%' }"></div>
-                    </div>
-                    <div class="text-[9px] text-slate-500 font-semibold">{{ getProgreso(progSelect.id).done }} de {{ getProgreso(progSelect.id).total }} equipos realizados</div>
-                  </div>
-                </div>
+            <!-- Tabla Estilo Calendario Gantt -->
+            <div class="overflow-x-auto border rounded-xl shadow-inner">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="bg-slate-800 text-white uppercase text-[10px]">
+                  <tr>
+                    <th class="p-3 text-center border-r border-slate-700">LISTO</th>
+                    <th class="p-3 border-r border-slate-700">TIPO</th>
+                    <th class="p-3 border-r border-slate-700">AFI</th>
+                    <th class="p-3 border-r border-slate-700">POTENCIA / MODELO</th>
+                    <th class="p-3 border-r border-slate-700">CONDICIÓN</th>
+                    <th class="p-3 border-r border-slate-700">INICIO</th>
+                    <th class="p-3 border-r border-slate-700">FIN</th>
+                    <!-- Columnas de Días Dinámicas basadas en el rango del programa -->
+                    <th v-for="dia in arrayDiasCalendario" :key="dia.fechaStr" class="p-1 text-center border-r border-slate-700 min-w-[32px] text-[9px] font-mono">
+                      <span class="block opacity-70">{{ dia.nombreDia }}</span>
+                      <strong class="block text-amber-300">{{ dia.numDia }}</strong>
+                    </th>
+                    <th v-if="isAdmin" class="p-3 text-center">ACCIONES</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y bg-white text-[11px]">
+                  <tr v-for="item in obtenerItemsGanttSeleccionado" :key="item.id" class="hover:bg-slate-50">
+                    <td class="p-3 text-center border-r">
+                      <input type="checkbox" v-model="item.realizado" @change="actualizarRealizadoGantt(item)" class="w-4 h-4 text-emerald-600 rounded cursor-pointer">
+                    </td>
+                    <td class="p-3 font-semibold border-r text-slate-700">{{ obtenerDatosEquipoGantt(item.afi).tipo || 'EQUIPO' }}</td>
+                    <td class="p-3 font-bold text-amber-700 border-r bg-amber-50/30">AFI {{ item.afi }}</td>
+                    <td class="p-3 text-slate-600 border-r">{{ obtenerDatosEquipoGantt(item.afi).modelo || '-' }}</td>
+                    <td class="p-3 border-r">
+                      <span :class="['px-2 py-0.5 rounded font-bold text-[10px]', item.condicion === 'Venta' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800']">
+                        {{ item.condicion || 'Arriendo' }}
+                      </span>
+                    </td>
+                    <td class="p-3 font-mono font-bold text-slate-700 border-r">{{ formatDateForDisplay(item.fecha_programada) }}</td>
+                    <td class="p-3 font-mono font-bold text-slate-700 border-r">{{ formatDateForDisplay(item.fecha_fin) }}</td>
+                    
+                    <!-- Celdas de la Barra Gantt (Pintadas si la fecha cae en el rango del equipo) -->
+                    <td v-for="dia in arrayDiasCalendario" :key="dia.fechaStr" :class="['border-r text-center transition', esDiaEnRangoEquipo(dia.fechaStr, item.fecha_programada, item.fecha_fin) ? (item.realizado ? 'bg-emerald-600' : 'bg-indigo-600') : 'hover:bg-slate-100']">
+                      <span v-if="esDiaEnRangoEquipo(dia.fechaStr, item.fecha_programada, item.fecha_fin)" class="text-white text-[9px] font-bold">■</span>
+                    </td>
 
-                <div class="flex-grow overflow-y-auto space-y-4">
-                  <table class="w-full text-left text-xs whitespace-nowrap">
-                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px] z-10">
-                      <tr>
-                        <th class="p-2.5">EQUIPO AFI</th>
-                        <th class="p-2.5">TIPO TRABAJO</th>
-                        <th class="p-2.5">CONDICIÓN</th>
-                        <th class="p-2.5">FECHA INICIO</th>
-                        <th class="p-2.5">FECHA FIN</th>
-                        <th class="p-2.5">ESTADO / REPARACIÓN (ON/OFF)</th>
-                        <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y bg-white text-[11px]">
-                      <tr v-for="item in obtenerItemsPrograma(progSelect.id)" :key="item.id" :class="item.realizado ? 'bg-emerald-50/50' : 'hover:bg-slate-50'">
-                        <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
-                        <td class="p-2.5 font-semibold text-slate-700">{{ item.tipo }}</td>
-                        <td class="p-2.5">
-                          <span :class="['px-2 py-0.5 rounded font-bold text-[10px]', item.condicion === 'Venta' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-blue-100 text-blue-800 border border-blue-200']">
-                            <i :class="['fa-solid mr-1', item.condicion === 'Venta' ? 'fa-hand-holding-dollar' : 'fa-file-contract']"></i> {{ item.condicion || 'Arriendo' }}
-                          </span>
-                        </td>
-                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_programada) }}</td>
-                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_fin) }}</td>
-                        <td class="p-2.5">
-                          <div class="flex items-center gap-3">
-                            <label class="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" v-model="item.realizado" @change="cambiarEstadoRealizadoItem(item)" class="sr-only peer">
-                              <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-                            </label>
-                            <span :class="['text-[10px] font-bold px-2 py-0.5 rounded', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600']">
-                              {{ item.realizado ? 'REPARADO (ON)' : 'PENDIENTE (OFF)' }}
-                            </span>
-                          </div>
-                        </td>
-                        <td v-if="isAdmin" class="p-2.5 text-center">
-                          <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar del Programa"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                      </tr>
-                      <tr v-if="obtenerItemsPrograma(progSelect.id).length === 0">
-                        <td colspan="7" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa. <button @click="abrirModalAsignarEquipoInProgresoEspecifico(progSelect.id)" class="text-rose-600 underline font-bold">Añadir equipo ahora</button></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </template>
-              <div v-else class="flex-grow flex flex-col items-center justify-center text-slate-400 space-y-4">
-                <i class="fa-solid fa-calendar-days text-6xl opacity-20"></i>
-                <p class="font-bold">Selecciona una Carpeta y un Programa desde el menú lateral para ver su Carta Gantt, rango de fechas y barras de reparación ON/OFF.</p>
-              </div>
+                    <td v-if="isAdmin" class="p-3 text-center">
+                      <button @click="eliminarItemGantt(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                  </tr>
+                  <tr v-if="obtenerItemsGanttSeleccionado.length === 0">
+                    <td :colspan="7 + arrayDiasCalendario.length + (isAdmin ? 1 : 0)" class="p-10 text-center text-slate-400 font-bold">
+                      No hay equipos asignados a este programa. <button @click="abrirModalAsignarEquipoGantt" class="text-rose-600 underline">Añadir equipo</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+          </div>
+          
+          <div v-else class="bg-white p-12 rounded-xl shadow-sm border border-slate-200 text-center text-slate-400 space-y-3">
+            <i class="fa-solid fa-calendar-days text-5xl opacity-30"></i>
+            <p class="font-bold">Selecciona o crea un programa en la parte superior para desplegar su tabla y su Carta Gantt de calendario.</p>
           </div>
         </section>
 
@@ -1714,6 +1689,96 @@
                   if (item.filtros_json) filtrosParsed = typeof item.filtros_json === 'string' ? JSON.parse(item.filtros_json) : item.filtros_json;
                 } catch(e) {}
                 let filtrosTextoStr = filtrosParsed.map(f => `${f.tipo || 'Filtro'} (${f.marca || '-'}: ${f.codigo || '-'} x${f.cantidad || 1})`).join('; ');
+
+                // ==========================================
+        // PEGA AQUÍ LAS NUEVAS FUNCIONES PARA EL GANTT
+        // ==========================================
+        const programaGanttSeleccionadoId = ref('');
+
+        const obtenerProgramaActualObj = computed(() => {
+          return dbProgramasCalendarios.value.find(p => String(p.id) === String(programaGanttSeleccionadoId.value)) || null;
+        });
+
+        const obtenerItemsGanttSeleccionado = computed(() => {
+          if (!programaGanttSeleccionadoId.value) return [];
+          return dbProgramasItems.value.filter(i => String(i.programa_id) === String(programaGanttSeleccionadoId.value));
+        });
+
+        const arrayDiasCalendario = computed(() => {
+          const prog = obtenerProgramaActualObj.value;
+          if (!prog || !prog.fecha_inicio || !prog.fecha_fin) return [];
+          
+          let dias = [];
+          let curr = new Date(`${prog.fecha_inicio}T00:00:00`);
+          let fin = new Date(`${prog.fecha_fin}T00:00:00`);
+          
+          const nombresDias = ['l', 'm', 'm', 'j', 'v', 's', 'd'];
+
+          while (curr <= fin) {
+            let fechaStr = curr.toISOString().substring(0, 10);
+            let numDia = curr.getDate();
+            let dayIndex = curr.getDay() === 0 ? 6 : curr.getDay() - 1;
+            
+            dias.push({ fechaStr, numDia, nombreDia: nombresDias[dayIndex] });
+            curr.setDate(curr.getDate() + 1);
+          }
+          return dias;
+        });
+
+        const esDiaEnRangoEquipo = (diaStr, inicioEquipo, finEquipo) => {
+          if (!inicioEquipo || !finEquipo) return false;
+          const normalIni = normalizarFecha(inicioEquipo);
+          const normalFin = normalizarFecha(finEquipo);
+          return diaStr >= normalIni && diaStr <= normalFin;
+        };
+
+        const obtenerDatosEquipoGantt = (afi) => {
+          const eq = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(afi).trim().toUpperCase());
+          return eq || { tipo: '-', modelo: '-' };
+        };
+
+        const getProgresoGantt = (progId) => {
+          const items = dbProgramasItems.value.filter(i => String(i.programa_id) === String(progId));
+          if (items.length === 0) return { total: 0, done: 0, pct: 0 };
+          const done = items.filter(i => i.realizado).length;
+          return { total: items.length, done, pct: Math.round((done / items.length) * 100) };
+        };
+
+        const actualizarRealizadoGantt = async (item) => {
+          try {
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').update({ realizado: item.realizado }).eq('id', item.id);
+          } catch(e) {}
+        };
+
+        const eliminarItemGantt = async (itemId) => {
+          if (confirm("¿Eliminar este equipo del programa?")) {
+            try {
+              await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('id', itemId);
+            } catch(e) {}
+            dbProgramasItems.value = dbProgramasItems.value.filter(i => i.id !== itemId);
+          }
+        };
+
+        const abrirModalCrearProgramaDirecto = () => {
+          formProgMes.value = { carpeta: 'PROGRAMA REPARACION', mes: '', fecha_inicio: '2026-08-01', fecha_fin: '2026-09-30' };
+          showModalPrograma.value = true;
+        };
+
+        const abrirModalAsignarEquipoGantt = () => {
+          formAsignar.value = {
+            programa_id: programaGanttSeleccionadoId.value,
+            afi: '', tipo: 'Mantención', condicion: 'Arriendo',
+            fecha_programada: obtenerProgramaActualObj.value?.fecha_inicio || '2026-08-01',
+            fecha_fin: obtenerProgramaActualObj.value?.fecha_fin || '2026-08-31'
+          };
+          showModalAsignarEquipo.value = true;
+        };
+        // ==========================================
+
+        // Y NO OLVIDES AGREGAR ESTOS NOMBRES TAMBIÉN EN EL "return { ... }" DE ABAJO:
+        // programaGanttSeleccionadoId, obtenerProgramaActualObj, obtenerItemsGanttSeleccionado,
+        // arrayDiasCalendario, esDiaEnRangoEquipo, obtenerDatosEquipoGantt, getProgresoGantt,
+        // actualizarRealizadoGantt, eliminarItemGantt, abrirModalCrearProgramaDirecto, abrirModalAsignarEquipoGantt
 
                 return {
                   id: item.id, afi: String(item.afi || '').trim(), fecha: formatExcelDate(rawFecha),
