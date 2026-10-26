@@ -534,6 +534,8 @@
                     <th class="p-2.5">TIPO</th>
                     <th class="p-2.5">ORIGEN</th>
                     <th class="p-2.5">DESTINO</th>
+                    <th class="p-2.5">EMPRESA ARRIENDO</th>
+                    <th class="p-2.5">ESTADO</th>
                     <th class="p-2.5">CAMIÓN ENCARGADO</th>
                     <th class="p-2.5">CONDUCTOR</th>
                   </tr>
@@ -545,10 +547,16 @@
                     <td class="p-2.5 font-semibold">{{ m.tipo }}</td>
                     <td class="p-2.5 text-slate-600">{{ m.origen || '-' }}</td>
                     <td class="p-2.5 font-bold text-emerald-700 bg-emerald-50/50">{{ m.destino || '-' }}</td>
+                    <td class="p-2.5 font-semibold text-blue-700">{{ m.empresa_arriendo || '-' }}</td>
+                    <td class="p-2.5">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700">
+                        {{ m.estado || '-' }}
+                      </span>
+                    </td>
                     <td class="p-2.5">{{ m.camion || '-' }}</td>
                     <td class="p-2.5 font-semibold">{{ m.conductor || '-' }}</td>
                   </tr>
-                  <tr v-if="filteredMovimientos.length === 0"><td colspan="7" class="p-8 text-center text-slate-500 font-bold">No se encontraron movimientos.</td></tr>
+                  <tr v-if="filteredMovimientos.length === 0"><td colspan="9" class="p-8 text-center text-slate-500 font-bold">No se encontraron movimientos.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1184,6 +1192,23 @@
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Empresa Arriendo</label>
+                <input type="text" v-model="formMov.empresa_arriendo" placeholder="Empresa..." class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nuevo Estado / Disponibilidad</label>
+                <select v-model="formMov.estado" class="w-full p-2.5 border rounded-lg bg-white font-bold text-blue-800">
+                  <option value="Operativo">Trabajando / Operativo</option>
+                  <option value="Disponible">Disponible</option>
+                  <option value="En Traslado">En Traslado</option>
+                  <option value="En Mantencion">En Mantención</option>
+                  <option value="Fuera de Servicio">Fuera de Servicio</option>
+                  <option value="Venta">En Venta</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
                 <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Camión Encargado</label>
                 <input type="text" v-model="formMov.camion" placeholder="Patente camión..." class="w-full p-2.5 border rounded-lg bg-white">
               </div>
@@ -1348,10 +1373,10 @@
         });
 
         const showModalMovimiento = ref(false);
-        const formMov = ref({ afi: "", fecha: new Date().toISOString().substring(0, 10), tipo: "Traslado", origen: "", destino: "", camion: "", conductor: "" });
+        const formMov = ref({ afi: "", fecha: new Date().toISOString().substring(0, 10), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "" });
 
         const abrirModalCrearMovimiento = () => {
-          formMov.value = { afi: dbEquipos.value[0]?.afi || "", fecha: new Date().toISOString().substring(0, 10), tipo: "Traslado", origen: "", destino: "", camion: "", conductor: "" };
+          formMov.value = { afi: dbEquipos.value[0]?.afi || "", fecha: new Date().toISOString().substring(0, 10), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "" };
           showModalMovimiento.value = true;
         };
 
@@ -1368,6 +1393,8 @@
             tipo: parseStr(formMov.value.tipo),
             ubicacion_anterior: parseStr(formMov.value.origen),
             ubicacion_actual: parseStr(formMov.value.destino),
+            empresa_arriendo: parseStr(formMov.value.empresa_arriendo),
+            estado: parseStr(formMov.value.estado),
             camion_encargado: parseStr(formMov.value.camion),
             conductor_encargado: parseStr(formMov.value.conductor)
           };
@@ -1375,17 +1402,25 @@
             await supabaseClient.from('BD_MOVIMIENTOS').insert([payload]);
           } catch(e) {}
 
-          if(payload.ubicacion_actual) {
-            const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === payload.afi.toUpperCase());
-            if(eqRef) {
+          const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === payload.afi.toUpperCase());
+          if(eqRef) {
+            const updateObj = {};
+            if(payload.ubicacion_actual) {
               eqRef.ubicacion = payload.ubicacion_actual;
-              try { await supabaseClient.from('BD_INVENTARIO').update({ ubicacion: payload.ubicacion_actual }).eq('id', eqRef.id); } catch(e){}
+              updateObj.ubicacion = payload.ubicacion_actual;
+            }
+            if(payload.estado) {
+              eqRef.disponibilidad = normalizarClave(payload.estado);
+              updateObj.disponibilidad = normalizarClave(payload.estado);
+            }
+            if(Object.keys(updateObj).length > 0) {
+              try { await supabaseClient.from('BD_INVENTARIO').update(updateObj).eq('id', eqRef.id); } catch(e){}
             }
           }
 
           await cargarDatosDesdeSupabase();
           showModalMovimiento.value = false;
-          alert("¡Movimiento registrado con éxito!");
+          alert("¡Movimiento registrado y equipo actualizado con éxito!");
         };
 
         const agregarFilaFiltro = () => {
@@ -1712,9 +1747,15 @@
             const movData = await fetchAllRowsSupabase('BD_MOVIMIENTOS');
             if(movData) {
               dbMovimientos.value = movData.map(item => ({
-                id: item.id, fecha: formatExcelDate(item.fecha), afi: String(item.afi || ''),
-                tipo: String(item.tipo || ''), origen: String(item.ubicacion_anterior || ''),
-                destino: String(item.ubicacion_actual || ''), camion: String(item.camion_encargado || ''),
+                id: item.id, 
+                fecha: formatExcelDate(item.fecha), 
+                afi: String(item.afi || ''),
+                tipo: String(item.tipo || ''), 
+                origen: String(item.ubicacion_anterior || ''),
+                destino: String(item.ubicacion_actual || ''), 
+                empresa_arriendo: String(item.empresa_arriendo || ''),
+                estado: String(item.estado || ''),
+                camion: String(item.camion_encargado || ''),
                 conductor: String(item.conductor_encargado || '')
               }));
             }
@@ -1881,7 +1922,7 @@
             const fStr = formatExcelDate(m.fecha);
             if (filterMov.value.dateStart && fStr < filterMov.value.dateStart) return false;
             if (filterMov.value.dateEnd && fStr > filterMov.value.dateEnd) return false;
-            if (filterMov.value.queryText && ! [m.afi, m.tipo, m.origen, m.destino, m.camion, m.conductor].join(" ").toLowerCase().includes(filterMov.value.queryText.toLowerCase())) return false;
+            if (filterMov.value.queryText && ! [m.afi, m.tipo, m.origen, m.destino, m.empresa_arriendo, m.estado, m.camion, m.conductor].join(" ").toLowerCase().includes(filterMov.value.queryText.toLowerCase())) return false;
             return true;
           });
           arr.sort((a, b) => sortMovimientosOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
@@ -2168,7 +2209,10 @@
             const rows = await parseFileAnyFormat(file);
             const payloads = rows.map(item => ({
               afi: String(getVal(item, "afi")).trim(), fecha: formatIsoDateForSupabase(getVal(item, "fecha")), tipo: parseStr(getVal(item, "tipo")),
-              ubicacion_anterior: parseStr(getVal(item, "origen")), ubicacion_actual: parseStr(getVal(item, "destino")), conductor_encargado: parseStr(getVal(item, "conductor"))
+              ubicacion_anterior: parseStr(getVal(item, "origen")), ubicacion_actual: parseStr(getVal(item, "destino")), 
+              empresa_arriendo: parseStr(getVal(item, "empresa_arriendo", "empresa arriendo")),
+              estado: parseStr(getVal(item, "estado")),
+              conductor_encargado: parseStr(getVal(item, "conductor"))
             })).filter(i => i.afi);
             await supabaseClient.from('BD_MOVIMIENTOS').insert(payloads);
             await cargarDatosDesdeSupabase(); alert(`¡Importados ${payloads.length} movimientos!`);
