@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ config.title }}</title>
   <!-- Tailwind CSS -->
-  <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/lib/index.min.js"></script> <!-- O tu CDN de tailwind -->
+  <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/lib/index.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -43,44 +43,43 @@
 
   <div id="app" class="flex-grow flex flex-col">
 
-    <!-- PANTALLA DE LOGIN CORREGIDA -->
-<div v-if="!usuarioActivo" class="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 space-y-6">
-    
-    <!-- Logo o Icono de Empresa -->
-    <div class="text-center space-y-2">
-      <div class="w-16 h-16 bg-slate-900 rounded-2xl mx-auto flex items-center justify-center text-white text-2xl shadow-lg">
-        <i class="fa-solid fa-truck-monster text-amber-400"></i>
+    <!-- MENÚ DE CREDENCIALES -->
+    <div v-if="!usuarioActivo" class="min-h-screen flex items-center justify-center bg-slate-900 p-4 w-full flex-grow">
+      <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-8 space-y-6 text-center">
+        <div class="flex justify-center">
+          <div class="bg-slate-900 p-3 rounded-2xl w-28 h-28 flex items-center justify-center border border-slate-700 shadow-xl">
+            <img :src="config.logo" alt="Logo Empresa" class="max-h-full max-w-full object-contain">
+          </div>
+        </div>
+        <div>
+          <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">{{ config.title }}</h2>
+          <p class="text-xs text-slate-500 mt-1 font-semibold">{{ config.subtitle }}</p>
+        </div>
+        <form @submit.prevent="login" class="space-y-4 text-left text-xs">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">Usuario</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
+              <input type="text" v-model="loginUser" placeholder="Ingresa tu usuario..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">Contraseña</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-lock"></i></span>
+              <input type="password" v-model="loginPass" placeholder="Ingresa tu contraseña..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
+            </div>
+          </div>
+          <p v-if="authError" class="text-rose-600 font-bold text-center bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i> Usuario o contraseña incorrectos
+          </p>
+          <button type="submit" :style="primaryBtnStyle" class="w-full font-extrabold py-3.5 rounded-xl shadow-lg hover:brightness-110 transition flex items-center justify-center gap-2 text-sm uppercase tracking-wider">
+            <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+          </button>
+        </form>
+        <div class="text-[11px] text-slate-400 font-medium">Acceso protegido - Sistema Operativo FRC</div>
       </div>
-      <h1 class="text-xl font-extrabold text-slate-900">Control de Equipos FRC</h1>
-      <p class="text-xs text-slate-500">Sistema Operativo Logística FRC</p>
     </div>
-
-    <!-- Formulario de Acceso -->
-    <div class="space-y-4">
-      <div>
-        <label class="block text-xs font-bold text-slate-700 mb-1">Usuario</label>
-        <input type="text" v-model="loginUser" placeholder="Ingresa tu usuario..." class="w-full p-3 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
-        <input type="password" v-model="loginPass" placeholder="Ingresa tu contraseña..." @keyup.enter="intentarLogin" class="w-full p-3 border rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
-      </div>
-      
-      <div v-if="loginError" class="p-3 bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold rounded-xl text-center">
-        <i class="fa-solid fa-triangle-exclamation mr-1"></i> Usuario o contraseña incorrectos
-      </div>
-
-      <button @click="intentarLogin" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold p-3 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2">
-        <i class="fa-solid fa-right-to-bracket"></i> INICIAR SESIÓN
-      </button>
-    </div>
-
-    <div class="text-center text-[10px] text-slate-400 border-t pt-4">
-      Acceso protegido - Sistema Operativo FRC
-    </div>
-  </div>
-</div>
 
     <!-- PANEL PRINCIPAL -->
     <template v-else>
@@ -931,7 +930,7 @@
         </div>
       </div>
 
-      <!-- MODAL FORMULARIO MANTENCIÓN COMPLETADO CON TODOS LOS CAMPOS DE LA TABLA Y PERMISIVO -->
+      <!-- MODAL FORMULARIO MANTENCIÓN -->
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
@@ -1126,7 +1125,7 @@
 
       <!-- MODAL 1: CREAR CARPETA NUEVA -->
       <div v-if="showModalCarpeta" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-md overflow-hidden flex flex-col">
+        <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
           <div class="bg-amber-500 px-6 py-4 flex justify-between items-center text-slate-950">
             <h3 class="font-extrabold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-folder-plus"></i> Crear Nueva Carpeta</h3>
             <button @click="showModalCarpeta=false" class="text-slate-950/80 hover:text-slate-950"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -1681,7 +1680,6 @@
                 gps: item.gps || 'Sin GPS', imei_gps: item.imei_gps || '', foto: item.foto || '', horometros: null
               }));
               
-              // ---> ESTA ES LA LÍNEA NUEVA QUE ORDENA TODO Y EVITA QUE SALTEN <---
               dbEquipos.value.sort((a, b) => String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true }));
             }
             
@@ -1970,24 +1968,18 @@
           }
         };
 
-        // --- FUNCIÓN BLINDADA Y SIMPLIFICADA PARA GUARDAR CUALQUIER DATO SIN ERRORES ---
- 
-      const guardarMantencionForm = async () => {
+        const guardarMantencionForm = async () => {
           if (!formMant.value.afi || !formMant.value.fecha) {
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
-          // 1. LIMPIEZA Y SEPARACIÓN DEL AFI
-          // Extrae solo el código. Si viene "AFI MT720 - MANIPULADOR", lo deja como "MT720"
           let afiLimpio = String(formMant.value.afi || '').trim();
-          afiLimpio = afiLimpio.replace(/^AFI\s*/i, ''); // Quita la palabra "AFI" si la trae
-          afiLimpio = afiLimpio.split('-')[0].trim();    // Corta en el guión y deja solo la primera parte
+          afiLimpio = afiLimpio.replace(/^AFI\s*/i, '');
+          afiLimpio = afiLimpio.split('-')[0].trim();
 
-          // Buscamos el nombre del equipo para guardarlo también en la tabla
           const equipoObj = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === afiLimpio.toUpperCase());
           const equipoNombre = parseStr(equipoObj?.tipo);
 
-          // 2. ARMAR EL PAYLOAD BLINDADO (0 errores de base de datos)
           const payload = {
             afi: afiLimpio, 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
@@ -2039,16 +2031,14 @@
             tipo_mantencion: parseStr(formMant.value.tipoMant)
           };
 
-          // 3. Actualizar el horómetro en el inventario si el nuevo es mayor
           let nuevoH = parseNum(formMant.value.horometro);
           if (equipoObj && nuevoH > equipoObj.horometroActual) {
             equipoObj.horometroActual = nuevoH;
             try {
               await supabaseClient.from('BD_INVENTARIO').update({ horometroactual: nuevoH }).eq('id', equipoObj.id);
-            } catch(e) { console.warn("Aviso: No se actualizó el horómetro general.", e); }
+            } catch(e) {}
           }
 
-          // 4. Enviar los datos limpios a la base de datos
           try {
             if (isEditingMantencion.value && formMant.value.id) {
               const { error } = await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
@@ -2058,12 +2048,10 @@
               if (error) throw error;
             }
           } catch(err) {
-            console.error("Error detallado de Supabase:", err);
             alert("Error al guardar en Supabase: " + (err.message || JSON.stringify(err)));
             return;
           }
 
-          // 5. Refrescar interfaz y cerrar el modal
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
           alert("¡Mantención guardada! Los datos se han ingresado perfectamente.");
@@ -2211,7 +2199,7 @@
           }
         };
 
-      let chartEstadoInst = null, chartTiposInst = null, chartCausasInst = null;
+        let chartEstadoInst = null, chartTiposInst = null, chartCausasInst = null;
         
         const renderCharts = () => {
           nextTick(() => {
@@ -2282,7 +2270,6 @@
             }, 400); 
           });
         };
-                
 
         const switchTab = (tab) => { 
           currentTab.value = tab; 
