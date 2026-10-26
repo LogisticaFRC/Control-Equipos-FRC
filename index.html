@@ -1540,7 +1540,6 @@
           const f_fin = formProgMes.value.fecha_termino_programa;
           if (!nom || !f_ini || !f_fin) return;
 
-          let newId = Date.now();
           const payload = {
             tipo: cp,
             carpeta: cp,
@@ -1551,15 +1550,18 @@
           };
           try {
             const { data, error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([payload]).select();
-            if(error) throw error;
-            if(data && data[0]) newId = data[0].id;
-          } catch(e) {
-            dbProgramasCalendarios.value.push({ id: newId, ...payload });
+            if (error) throw error;
+            
+            await cargarDatosDesdeSupabase();
+            showModalPrograma.value = false;
+            
+            if (data && data[0]) {
+              seleccionarProgramaObj(data[0]);
+            }
+            alert(`¡Programa "${nom}" creado con éxito en ${cp}!`);
+          } catch(err) {
+            alert("Error al guardar en Supabase: " + (err.message || JSON.stringify(err)));
           }
-          await cargarDatosDesdeSupabase();
-          showModalPrograma.value = false;
-          seleccionarProgramaObj({ id: newId, ...payload });
-          alert(`¡Programa "${nom}" creado con éxito en ${cp}!`);
         };
 
         const eliminarProgramaCompleto = async (progId) => {
