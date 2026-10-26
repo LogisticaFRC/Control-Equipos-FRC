@@ -2210,59 +2210,77 @@
           }
         };
 
-        let chartEstadoInst = null, chartTiposInst = null, chartCausasInst = null;
+      let chartEstadoInst = null, chartTiposInst = null, chartCausasInst = null;
         
         const renderCharts = () => {
           nextTick(() => {
             setTimeout(() => {
               if (currentTab.value !== 'dashboard' || !usuarioActivo.value) return;
               
-              const ctx1 = document.getElementById('chartEstado');
-              if (ctx1) {
-                if (chartEstadoInst) { chartEstadoInst.destroy(); chartEstadoInst = null; }
-                chartEstadoInst = new Chart(ctx1, {
-                  type: 'doughnut', 
-                  data: { 
-                    labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Mantención', 'Fuera de Servicio', 'Venta'], 
-                    datasets: [{ 
-                      data: [countEstado('Operativo'), countEstado('Disponible'), countEstado('En Traslado'), countEstado('En Mantencion'), countEstado('Fuera de Servicio'), countEstado('Venta')], 
-                      backgroundColor: ['#10b981', '#0284c7', '#f59e0b', '#f43f5e', '#64748b', '#a855f7'] 
-                    }] 
-                  }, 
-                  options: { responsive: true, maintainAspectRatio: false }
-                });
-              }
+              try {
+                const ctx1 = document.getElementById('chartEstado');
+                if (ctx1) {
+                  if (chartEstadoInst) { chartEstadoInst.destroy(); chartEstadoInst = null; }
+                  chartEstadoInst = new Chart(ctx1, {
+                    type: 'doughnut', 
+                    data: { 
+                      labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Mantención', 'Fuera de Servicio', 'Venta'], 
+                      datasets: [{ 
+                        data: [countEstado('Operativo'), countEstado('Disponible'), countEstado('En Traslado'), countEstado('En Mantencion'), countEstado('Fuera de Servicio'), countEstado('Venta')], 
+                        backgroundColor: ['#10b981', '#0284c7', '#f59e0b', '#f43f5e', '#64748b', '#a855f7'] 
+                      }] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false }
+                  });
+                }
 
-              const ctx2 = document.getElementById('chartTiposMant');
-              if (ctx2) {
-                if (chartTiposInst) { chartTiposInst.destroy(); chartTiposInst = null; }
-                chartTiposInst = new Chart(ctx2, {
-                  type: 'bar', 
-                  data: { 
-                    labels: ['Preventiva', 'Predictiva', 'Correctiva'], 
-                    datasets: [{ 
-                      data: [ 
-                        dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT')).length, 
-                        dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREDICT')).length, 
-                        dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('CORRECT')).length 
-                      ], 
-                      backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626'] 
-                    }] 
-                  }, 
-                  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-                });
-              }
+                const ctx2 = document.getElementById('chartTiposMant');
+                if (ctx2) {
+                  if (chartTiposInst) { chartTiposInst.destroy(); chartTiposInst = null; }
+                  chartTiposInst = new Chart(ctx2, {
+                    type: 'bar', 
+                    data: { 
+                      labels: ['Preventiva', 'Predictiva', 'Correctiva'], 
+                      datasets: [{ 
+                        data: [ 
+                          dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREVENT')).length, 
+                          dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('PREDICT')).length, 
+                          dbIntervenciones.value.filter(i => String(i.tipoMant).toUpperCase().includes('CORRECT')).length 
+                        ], 
+                        backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626'] 
+                      }] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                  });
+                }
 
-              const ctx3 = document.getElementById('chartCausas');
-              if (ctx3) {
-                if (chartCausasInst) { chartCausasInst.destroy(); chartCausasInst = null; }
-                const causasMap = {}; 
-                dbIntervenciones.value.forEach(i => { 
-                  if (i.causa) {
-                    const cClean = String(i.causa).trim().toUpperCase();
-                    causasMap[cClean] = (causasMap[cClean] || 0) + 1; 
-                  }
-                });
+                const ctx3 = document.getElementById('chartCausas');
+                if (ctx3) {
+                  if (chartCausasInst) { chartCausasInst.destroy(); chartCausasInst = null; }
+                  const causasMap = {}; 
+                  dbIntervenciones.value.forEach(i => { 
+                    if (i.causa && i.causa !== '-') {
+                      const cClean = String(i.causa).trim().toUpperCase();
+                      causasMap[cClean] = (causasMap[cClean] || 0) + 1; 
+                    }
+                  });
+                  const sortedCausas = Object.entries(causasMap).sort((a,b) => b[1] - a[1]).slice(0, 6);
+                  
+                  chartCausasInst = new Chart(ctx3, {
+                    type: 'bar', 
+                    data: { 
+                      labels: sortedCausas.map(item => item[0]), 
+                      datasets: [{ data: sortedCausas.map(item => item[1]), backgroundColor: '#f59e0b' }] 
+                    }, 
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                  });
+                }
+              } catch (error) {
+                console.error("Error al renderizar los gráficos:", error);
+              }
+            }, 400); 
+          });
+        };
                 const sortedCausas = Object.entries(causasMap).sort((a,b) => b[1] - a[1]).slice(0, 6);
                 chartCausasInst = new Chart(ctx3, {
                   type: 'bar', 
