@@ -2282,19 +2282,7 @@
             }, 400); 
           });
         };
-                const sortedCausas = Object.entries(causasMap).sort((a,b) => b[1] - a[1]).slice(0, 6);
-                chartCausasInst = new Chart(ctx3, {
-                  type: 'bar', 
-                  data: { 
-                    labels: sortedCausas.map(item => item[0]), 
-                    datasets: [{ data: sortedCausas.map(item => item[1]), backgroundColor: '#f59e0b' }] 
-                  }, 
-                  options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-                });
-              }
-            }, 300);
-          });
-        };
+                
 
         const switchTab = (tab) => { 
           currentTab.value = tab; 
