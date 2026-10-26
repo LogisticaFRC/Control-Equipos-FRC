@@ -1952,36 +1952,37 @@
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
-          // Nombres exactos de columnas según tu base de datos Supabase BD_HISTORIAL
+          // PAYLOAD 100% LIMPIO Y EXACTO SEGÚN TUS COLUMNAS DE SUPABASE BD_HISTORIAL
           const payload = {
             afi: String(formMant.value.afi).trim(), 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
             equipo: parseStr(dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase())?.tipo),
             lugar: parseStr(formMant.value.lugar), 
-            causa: parseStr(formMant.value.causa),
-            tipo_mantencion: parseStr(formMant.value.tipoMant), 
+            tipo_documento: "MANTENCION",
             tipo_horas_mantencion: parseStr(formMant.value.tipoHorasMant),
             horometro: parseNum(formMant.value.horometro) || 0,
-            programa_correspondiente: parseStr(formMant.value.programaCorrespondiente),
-            hora_inicio: parseStr(formMant.value.horaInicio), 
-            hora_termino: parseStr(formMant.value.horaTermino),
-            hora_total: calcularRestaHoras(formMant.value.horaInicio, formMant.value.horaTermino),
             mecanico_1: parseStr(formMant.value.mec1), 
             mecanico_2: parseStr(formMant.value.mec2), 
             mecanico_3: parseStr(formMant.value.mec3), 
             mecanico_4: parseStr(formMant.value.mec4),
+            uso_de_art: parseStr(formMant.value.programaCorrespondiente),
+            bloqueo_de_equipo: "NO",
+            hora_falla: "",
+            hora_inicio: parseStr(formMant.value.horaInicio), 
+            hora_termino: parseStr(formMant.value.horaTermino),
+            hora_total: calcularRestaHoras(formMant.value.horaInicio, formMant.value.horaTermino),
             causa_intervencion: parseStr(formMant.value.causaDetallada), 
             descripcion: parseStr(formMant.value.descripcion),
             interferencia: parseStr(formMant.value.interferencia),
             empresa: parseStr(formMant.value.empresaArriendo),
+            link: "",
+            kit_bodega: "",
             costo: parseNum(formMant.value.costo) || 0, 
             numero_oc: parseStr(formMant.value.numeroOC), 
             numero_ot: parseStr(formMant.value.numeroOT),
-            filtros_json: JSON.stringify(formMant.value.filtrosLista || []),
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
             aceite_refrigerante_50: parseNum(formMant.value.aceite_refrigerante_50) || 0,
-            aceite_80w90: parseNum(formMant.value.aceite_80w90) || 0,
             aceite_dacnis_68: parseNum(formMant.value.aceite_dacnis_68) || 0,
             aceite_dacnis_46: parseNum(formMant.value.aceite_dacnis_46) || 0,
             paroil_m_extreme: parseNum(formMant.value.paroil_m_extreme) || 0,
@@ -1997,7 +1998,9 @@
             aceite_10w40: parseNum(formMant.value.aceite_10w40) || 0,
             multiproposito: parseNum(formMant.value.multiproposito) || 0,
             desegransante: parseNum(formMant.value.desegransante) || 0,
-            acido_muriatico: parseNum(formMant.value.acido_muriatico) || 0
+            acido_muriatico: parseNum(formMant.value.acido_muriatico) || 0,
+            causa: parseStr(formMant.value.causa),
+            tipo_mantencion: parseStr(formMant.value.tipoMant)
           };
 
           const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === String(formMant.value.afi).trim().toUpperCase());
