@@ -1968,21 +1968,26 @@
 
         // --- FUNCIÓN BLINDADA Y SIMPLIFICADA PARA GUARDAR CUALQUIER DATO SIN ERRORES ---
  
-        const guardarMantencionForm = async () => {
+      const guardarMantencionForm = async () => {
           if (!formMant.value.afi || !formMant.value.fecha) {
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
+          // 1. LIMPIEZA Y SEPARACIÓN DEL AFI
+          // Extrae solo el código. Si viene "AFI MT720 - MANIPULADOR", lo deja como "MT720"
           let afiLimpio = String(formMant.value.afi || '').trim();
-          if (afiLimpio.toUpperCase().startsWith('AFI')) {
-            const parts = afiLimpio.split('-');
-            afiLimpio = parts[0].replace('AFI', '').trim();
-          }
+          afiLimpio = afiLimpio.replace(/^AFI\s*/i, ''); // Quita la palabra "AFI" si la trae
+          afiLimpio = afiLimpio.split('-')[0].trim();    // Corta en el guión y deja solo la primera parte
 
+          // Buscamos el nombre del equipo para guardarlo también en la tabla
+          const equipoObj = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === afiLimpio.toUpperCase());
+          const equipoNombre = parseStr(equipoObj?.tipo);
+
+          // 2. ARMAR EL PAYLOAD BLINDADO (0 errores de base de datos)
           const payload = {
             afi: afiLimpio, 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
-            equipo: parseStr(dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === afiLimpio.toUpperCase())?.tipo),
+            equipo: equipoNombre,
             lugar: parseStr(formMant.value.lugar), 
             tipo_documento: "MANTENCION",
             tipo_horas_mantencion: parseStr(formMant.value.tipoHorasMant),
@@ -1996,19 +2001,19 @@
             hora_falla: "",
             hora_inicio: parseStr(formMant.value.horaInicio), 
             hora_termino: parseStr(formMant.value.horaTermino),
-            hora_total: calcularRestaHoras(formMant.value.horaInicio, formMant.value.horaTermino),
+            hora_total: parseStr(calcularRestaHoras(formMant.value.horaInicio, formMant.value.horaTermino)),
             causa_intervencion: parseStr(formMant.value.causaDetallada), 
             descripcion: parseStr(formMant.value.descripcion),
             interferencia: parseStr(formMant.value.interferencia),
             empresa: parseStr(formMant.value.empresaArriendo),
             link: "",
-            kit_bodega: "",
+            kit_bodega: formMant.value.filtrosLista && formMant.value.filtrosLista.length > 0 ? JSON.stringify(formMant.value.filtrosLista) : "",
             costo: parseNum(formMant.value.costo), 
             numero_oc: parseStr(formMant.value.numeroOC), 
             numero_ot: parseStr(formMant.value.numeroOT),
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4),
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4),
-            aceite_refrigerante_50: parseNum(formMant.value.aceite_refrigerante_50), // <-- Activo aquí
+            aceite_refrigerante_50: parseNum(formMant.value.aceite_refrigerante_50),
             aceite_80w90: parseNum(formMant.value.aceite_80w90),
             aceite_dacnis_68: parseNum(formMant.value.aceite_dacnis_68),
             aceite_dacnis_46: parseNum(formMant.value.aceite_dacnis_46),
@@ -2030,15 +2035,16 @@
             tipo_mantencion: parseStr(formMant.value.tipoMant)
           };
 
-          const eqRef = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === afiLimpio.toUpperCase());
+          // 3. Actualizar el horómetro en el inventario si el nuevo es mayor
           let nuevoH = parseNum(formMant.value.horometro);
-          if (eqRef && nuevoH > eqRef.horometroActual) {
-            eqRef.horometroActual = nuevoH;
+          if (equipoObj && nuevoH > equipoObj.horometroActual) {
+            equipoObj.horometroActual = nuevoH;
             try {
-              await supabaseClient.from('BD_INVENTARIO').update({ horometroactual: nuevoH }).eq('id', eqRef.id);
-            } catch(e) {}
+              await supabaseClient.from('BD_INVENTARIO').update({ horometroactual: nuevoH }).eq('id', equipoObj.id);
+            } catch(e) { console.warn("Aviso: No se actualizó el horómetro general.", e); }
           }
 
+          // 4. Enviar los datos limpios a la base de datos
           try {
             if (isEditingMantencion.value && formMant.value.id) {
               const { error } = await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
@@ -2053,9 +2059,10 @@
             return;
           }
 
+          // 5. Refrescar interfaz y cerrar el modal
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("¡Datos guardados y vinculados correctamente en la tabla de historial!");
+          alert("¡Mantención guardada! Los datos se han ingresado perfectamente.");
         };
 
         const abrirPerfilEquipo = (equipo) => {
