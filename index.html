@@ -1668,7 +1668,7 @@
           return allRows;
         };
 
-        const cargarDatosDesdeSupabase = async () => {
+       const cargarDatosDesdeSupabase = async () => {
           try {
             const eqData = await fetchAllRowsSupabase('BD_INVENTARIO');
             if (eqData) {
@@ -1679,6 +1679,9 @@
                 horometroActual: Number(item.horometroactual || 0), frecuenciaMantencion: Number(item.frecuencia_mantencion) || 250,
                 gps: item.gps || 'Sin GPS', imei_gps: item.imei_gps || '', foto: item.foto || '', horometros: null
               }));
+              
+              // ---> ESTA ES LA LÍNEA NUEVA QUE ORDENA TODO Y EVITA QUE SALTEN <---
+              dbEquipos.value.sort((a, b) => String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true }));
             }
             
             const movData = await fetchAllRowsSupabase('BD_MOVIMIENTOS');
