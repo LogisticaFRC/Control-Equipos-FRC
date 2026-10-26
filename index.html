@@ -1675,7 +1675,7 @@
             const intData = await fetchAllRowsSupabase('BD_HISTORIAL');
             if (intData) {
               dbIntervenciones.value = intData.map(item => {
-                const rawFecha = item.fecha || item.fecha_mantencion || item.created_at;
+                const rawFecha = item.fecha || item.created_at;
                 const aceitesConsumidos = [];
                 const camposAceites = [ 
                   "aceite_15w40_ci4", "aceite_15w40_ck4", "aceite_refrigerante_50", "aceite_80w90", 
@@ -1695,7 +1695,7 @@
 
                 return {
                   id: item.id, afi: String(item.afi || '').trim(), fecha: formatExcelDate(rawFecha),
-                  programaCorrespondiente: String(item.programa_correspondiente || item.programa || ''),
+                  programaCorrespondiente: String(item.uso_de_art || ''),
                   equipo: String(item.equipo || ''), lugar: String(item.lugar || ''), causa: String(item.causa || ''),
                   tipoMant: String(item.tipo_mantencion || ''), tipoHorasMant: String(item.tipo_horas_mantencion || ''),
                   horometro: Number(item.horometro || 0), mec1: String(item.mecanico_1 || ''), mec2: String(item.mecanico_2 || ''),
@@ -1952,7 +1952,7 @@
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
-          // PAYLOAD 100% LIMPIO Y EXACTO SEGÚN TUS COLUMNAS DE SUPABASE BD_HISTORIAL
+          // PAYLOAD EXACTO COINCIDENTE CON TUS COLUMNAS DE SUPABASE BD_HISTORIAL
           const payload = {
             afi: String(formMant.value.afi).trim(), 
             fecha: formatIsoDateForSupabase(formMant.value.fecha), 
@@ -1983,6 +1983,7 @@
             aceite_15w40_ci4: parseNum(formMant.value.aceite_15w40_ci4) || 0,
             aceite_15w40_ck4: parseNum(formMant.value.aceite_15w40_ck4) || 0,
             aceite_refrigerante_50: parseNum(formMant.value.aceite_refrigerante_50) || 0,
+            aceite_80w90: parseNum(formMant.value.aceite_80w90) || 0,
             aceite_dacnis_68: parseNum(formMant.value.aceite_dacnis_68) || 0,
             aceite_dacnis_46: parseNum(formMant.value.aceite_dacnis_46) || 0,
             paroil_m_extreme: parseNum(formMant.value.paroil_m_extreme) || 0,
