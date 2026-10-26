@@ -1885,7 +1885,20 @@
             let rateHrsDia = 0;
             if (histConHorometro.length >= 2) {
               const ultimo = histConHorometro[histConHorometro.length - 1];
-              const penultimo = histConHorometro[histConHorometro.length - 2];
+              let penultimo = null;
+              
+              // MEJORA: Buscar hacia atrás un registro con horómetro menor (diferencia positiva mayor a 0)
+              for (let j = histConHorometro.length - 2; j >= 0; j--) {
+                if (Number(histConHorometro[j].horometro) < Number(ultimo.horometro)) {
+                  penultimo = histConHorometro[j];
+                  break;
+                }
+              }
+              // Si todos son iguales o no encuentra uno menor, toma por defecto el inmediatamente anterior
+              if (!penultimo) {
+                penultimo = histConHorometro[histConHorometro.length - 2];
+              }
+
               const dH = Number(ultimo.horometro) - Number(penultimo.horometro);
               const dias = Math.max(1, Math.floor((parseIsoDate(ultimo.fecha) - parseIsoDate(penultimo.fecha)) / 86400000));
               if (dH > 0) rateHrsDia = dH / dias;
