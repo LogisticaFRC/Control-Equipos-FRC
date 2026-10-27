@@ -942,11 +942,11 @@
 
       <!-- MODAL: PERFIL DE EQUIPO -->
       <div v-if="showPerfilEquipoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
             <div class="flex items-center gap-3">
               <span class="text-xs font-mono font-bold bg-amber-500 text-slate-900 px-3 py-1.5 rounded-lg shadow-sm">AFI: {{ perfilEquipo.afi }}</span>
-              <h3 class="text-base font-extrabold tracking-wide uppercase"><i class="fa-solid fa-id-card mr-2"></i> Perfil de Equipo y Control Histórico</h3>
+              <h3 class="text-base font-extrabold tracking-wide uppercase"><i class="fa-solid fa-id-card mr-2"></i> Perfil de Equipo y Dashboard Individual</h3>
             </div>
             <button @click="showPerfilEquipoModal = false" class="w-8 h-8 rounded-full bg-slate-700 hover:bg-rose-500 text-white flex items-center justify-center transition shadow"><i class="fa-solid fa-xmark text-base"></i></button>
           </div>
@@ -1025,6 +1025,65 @@
               </div>
             </div>
 
+            <!-- DASHBOARD INDIVIDUAL DEL EQUIPO CON FILTROS -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+                <div>
+                  <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 text-xs"><i class="fa-solid fa-chart-pie text-blue-600"></i> Dashboard Individual y Estadísticas de Causas</h4>
+                  <p class="text-[11px] text-slate-500">Filtra el rendimiento y los eventos históricos de este equipo en tiempo real.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <div>
+                    <label class="block text-[10px] font-bold text-slate-600">Desde</label>
+                    <input type="date" v-model="perfilFiltroFechaInicio" class="p-1.5 border rounded text-xs bg-slate-50">
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-bold text-slate-600">Hasta</label>
+                    <input type="date" v-model="perfilFiltroFechaFin" class="p-1.5 border rounded text-xs bg-slate-50">
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-bold text-slate-600">Causa / Tipo</label>
+                    <select v-model="perfilFiltroCausa" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
+                      <option value="ALL">-- Todas las Causas --</option>
+                      <option v-for="c in listaCausasEquipo" :key="c" :value="c">{{ c }}</option>
+                    </select>
+                  </div>
+                  <button @click="resetFiltrosPerfil" class="text-xs text-slate-500 hover:text-slate-800 underline mt-4">Limpiar</button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-center">
+                <div class="bg-slate-50 p-3 rounded-xl border">
+                  <span class="text-[10px] text-slate-500 font-bold uppercase block">Total Intervenciones</span>
+                  <strong class="text-lg font-bold text-slate-800">{{ getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi).length }}</strong>
+                </div>
+                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                  <span class="text-[10px] text-emerald-700 font-bold uppercase block">Costo Total Acumulado</span>
+                  <strong class="text-lg font-bold text-emerald-800">${{ costoTotalIntervencionesFiltradasAFI(perfilEquipo.afi).toLocaleString('es-CL') }}</strong>
+                </div>
+                <div class="bg-amber-50 p-3 rounded-xl border border-amber-200">
+                  <span class="text-[10px] text-amber-800 font-bold uppercase block">Causa Más Frecuente</span>
+                  <strong class="text-sm font-bold text-amber-900 truncate block mt-1">{{ causaMasFrecuenteEquipo(perfilEquipo.afi) }}</strong>
+                </div>
+                <div class="bg-blue-50 p-3 rounded-xl border border-blue-200">
+                  <span class="text-[10px] text-blue-800 font-bold uppercase block">Traslados Realizados</span>
+                  <strong class="text-lg font-bold text-blue-900">{{ getHistorialMovimientosAFI(perfilEquipo.afi).length }}</strong>
+                </div>
+              </div>
+
+              <!-- Mini Gráfico de Causas Individual -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div class="bg-slate-50 p-4 rounded-xl border h-56 relative flex flex-col items-center justify-center">
+                  <h5 class="text-[11px] font-bold uppercase text-slate-700 absolute top-3 left-4"><i class="fa-solid fa-chart-bar text-amber-600 mr-1"></i> Distribución de Causas</h5>
+                  <div class="w-full h-44 relative mt-4"><canvas id="chartPerfilCausas"></canvas></div>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border h-56 relative flex flex-col items-center justify-center">
+                  <h5 class="text-[11px] font-bold uppercase text-slate-700 absolute top-3 left-4"><i class="fa-solid fa-chart-column text-blue-600 mr-1"></i> Tipos de Mantención</h5>
+                  <div class="w-full h-44 relative mt-4"><canvas id="chartPerfilTipos"></canvas></div>
+                </div>
+              </div>
+            </div>
+
             <!-- ASIGNACIÓN A PROGRAMA -->
             <div v-if="isAdmin" class="bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm">
               <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar equipo al programa (con fechas de equipo)</h4>
@@ -1045,44 +1104,84 @@
               </div>
             </div>
 
-            <!-- Historiales en perfil -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
-                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-wrench text-blue-600"></i> Historial Mantenciones</h4>
-                <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
-                  <table class="w-full text-left whitespace-nowrap">
-                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]">
-                      <tr>
-                        <th class="p-2">Fecha</th>
-                        <th class="p-2">Horómetro</th>
-                        <th class="p-2">Tipo</th>
-                        <th class="p-2">Causa</th>
-                        <th v-if="isAdmin" class="p-2 text-center">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y bg-white text-[11px]">
-                      <tr v-for="i in getHistorialIntervencionesAFI(perfilEquipo.afi)" :key="i.id">
-                        <td class="p-2 font-mono font-bold">{{ formatDateForDisplay(i.fecha) }}</td>
-                        <td class="p-2 font-mono text-blue-700">{{ i.horometro }}h</td>
-                        <td class="p-2 text-[10px]">{{ i.tipoMant }}</td>
-                        <td class="p-2 text-[10px] truncate max-w-[120px]">{{ i.causa }}</td>
-                        <td v-if="isAdmin" class="p-2 text-center space-x-1">
-                          <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-                          <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                      </tr>
-                      <tr v-if="getHistorialIntervencionesAFI(perfilEquipo.afi).length === 0"><td colspan="5" class="p-4 text-center text-slate-400">Sin registros.</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-72">
-                <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-3"><i class="fa-solid fa-truck-moving text-amber-500"></i> Historial Traslados</h4>
-                <div class="flex-grow overflow-auto border rounded-lg bg-slate-50">
-                  <table class="w-full text-left whitespace-nowrap"><thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b"><tr><th class="p-2">Fecha</th><th class="p-2">Origen</th><th class="p-2">Destino</th></tr></thead><tbody class="divide-y bg-white text-[11px]"><tr v-for="m in getHistorialMovimientosAFI(perfilEquipo.afi)" :key="m.id"><td class="p-2 font-mono font-bold">{{ formatDateForDisplay(m.fecha) }}</td><td class="p-2 truncate max-w-[100px]">{{ m.origen }}</td><td class="p-2 font-bold text-emerald-700 truncate max-w-[100px]">{{ m.destino }}</td></tr><tr v-if="getHistorialMovimientosAFI(perfilEquipo.afi).length === 0"><td colspan="3" class="p-4 text-center text-slate-400">Sin traslados.</td></tr></tbody></table>
-                </div>
+            <!-- HISTORIAL COMPLETO DE MANTENCIONES EN PERFIL CON MÁS DATOS -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2"><i class="fa-solid fa-wrench text-blue-600"></i> Historial Completo de Mantenciones del Equipo (Todos los Datos)</h4>
+              <div class="overflow-x-auto border rounded-lg bg-slate-50 max-h-80">
+                <table class="w-full text-left whitespace-nowrap text-[11px] border-collapse">
+                  <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]">
+                    <tr>
+                      <th v-if="isAdmin" class="p-2 text-center">Acciones</th>
+                      <th class="p-2">Fecha Mant.</th>
+                      <th class="p-2 text-indigo-300">Programa</th>
+                      <th class="p-2">Lugar</th>
+                      <th class="p-2">Causa</th>
+                      <th class="p-2">Tipo Mant.</th>
+                      <th class="p-2 text-amber-300">Horómetro</th>
+                      <th class="p-2">Mecánicos</th>
+                      <th class="p-2 text-sky-300">Hora Inicio</th>
+                      <th class="p-2 text-sky-300">Hora Término</th>
+                      <th class="p-2 text-amber-300">Total Horas</th>
+                      <th class="p-2 text-emerald-300">Filtros</th>
+                      <th class="p-2">Causa Detallada</th>
+                      <th class="p-2">Descripción</th>
+                      <th class="p-2">Costo</th>
+                      <th class="p-2">OC / OT</th>
+                      <th class="p-2 text-amber-300">Aceites</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y bg-white">
+                    <tr v-for="i in getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi)" :key="i.id" class="hover:bg-slate-50">
+                      <td v-if="isAdmin" class="p-2 text-center space-x-1">
+                        <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                      </td>
+                      <td class="p-2 font-mono font-bold bg-amber-50/50">{{ formatDateForDisplay(i.fecha) }}</td>
+                      <td class="p-2 font-bold text-indigo-700 bg-indigo-50/40">{{ i.programaCorrespondiente || '-' }}</td>
+                      <td class="p-2">{{ i.lugar || '-' }}</td>
+                      <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
+                      <td class="p-2 text-blue-600 font-semibold">{{ i.tipoMant || '-' }}</td>
+                      <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
+                      <td class="p-2">{{ getMecanicosText(i) }}</td>
+                      <td class="p-2 font-mono text-sky-700 bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
+                      <td class="p-2 font-mono text-sky-700 bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
+                      <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ i.horaTotal || '-' }}</td>
+                      <td class="p-2 text-emerald-800 font-bold bg-emerald-50/50">{{ i.filtrosTexto || '-' }}</td>
+                      <td class="p-2 max-w-xs truncate">{{ i.causaDetallada || '-' }}</td>
+                      <td class="p-2 max-w-xs truncate">{{ i.descripcion || '-' }}</td>
+                      <td class="p-2 font-bold text-emerald-700">${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
+                      <td class="p-2 font-mono">OC: {{ i.numeroOC || '-' }} / OT: {{ i.numeroOT || '-' }}</td>
+                      <td class="p-2 text-amber-300 font-bold bg-amber-50">{{ i.aceites }}</td>
+                    </tr>
+                    <tr v-if="getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi).length === 0"><td colspan="17" class="p-4 text-center text-slate-400">Sin registros de mantención para este filtro.</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
+
+            <!-- Historial Movimientos en perfil -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2"><i class="fa-solid fa-truck-moving text-amber-500"></i> Historial de Traslados</h4>
+              <div class="overflow-x-auto border rounded-lg bg-slate-50 max-h-48">
+                <table class="w-full text-left whitespace-nowrap text-[11px]">
+                  <thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b">
+                    <tr><th class="p-2">Fecha</th><th class="p-2">Tipo</th><th class="p-2">Origen</th><th class="p-2">Destino</th><th class="p-2">Empresa</th><th class="p-2">Camión / Conductor</th></tr>
+                  </thead>
+                  <tbody class="divide-y bg-white">
+                    <tr v-for="m in getHistorialMovimientosAFI(perfilEquipo.afi)" :key="m.id">
+                      <td class="p-2 font-mono font-bold">{{ formatDateForDisplay(m.fecha) }}</td>
+                      <td class="p-2">{{ m.tipo }}</td>
+                      <td class="p-2">{{ m.origen }}</td>
+                      <td class="p-2 font-bold text-emerald-700">{{ m.destino }}</td>
+                      <td class="p-2">{{ m.empresa_arriendo }}</td>
+                      <td class="p-2">{{ m.camion }} ({{ m.conductor }})</td>
+                    </tr>
+                    <tr v-if="getHistorialMovimientosAFI(perfilEquipo.afi).length === 0"><td colspan="6" class="p-4 text-center text-slate-400">Sin traslados registrados.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
 
           <div class="px-6 py-4 border-t bg-white flex justify-between items-center">
@@ -1518,6 +1617,63 @@
         const showPerfilEquipoModal = ref(false);
         const perfilEquipo = ref({});
         
+        // Filtros para el Perfil de Equipo y Dashboard Individual
+        const perfilFiltroFechaInicio = ref("");
+        const perfilFiltroFechaFin = ref("");
+        const perfilFiltroCausa = ref("ALL");
+
+        const listaCausasEquipo = computed(() => {
+          const setC = new Set();
+          dbIntervenciones.value.forEach(i => {
+            if (i.causa && i.causa !== '-') setC.add(String(i.causa).trim().toUpperCase());
+          });
+          return Array.from(setC).sort();
+        });
+
+        const getHistorialIntervencionesFiltradoAFI = (afi) => {
+          const cleanAfi = String(afi || '').trim().toUpperCase();
+          let arr = dbIntervenciones.value.filter(i => String(i.afi || '').trim().toUpperCase() === cleanAfi);
+          
+          if (perfilFiltroCausa.value !== "ALL") {
+            arr = arr.filter(i => String(i.causa || '').trim().toUpperCase() === perfilFiltroCausa.value.toUpperCase());
+          }
+          if (perfilFiltroFechaInicio.value) {
+            arr = arr.filter(i => formatExcelDate(i.fecha) >= perfilFiltroFechaInicio.value);
+          }
+          if (perfilFiltroFechaFin.value) {
+            arr = arr.filter(i => formatExcelDate(i.fecha) <= perfilFiltroFechaFin.value);
+          }
+
+          arr.sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
+          return arr;
+        };
+
+        const costoTotalIntervencionesFiltradasAFI = (afi) => {
+          return getHistorialIntervencionesFiltradoAFI(afi).reduce((acc, curr) => acc + Number(curr.costo || 0), 0);
+        };
+
+        const causaMasFrecuenteEquipo = (afi) => {
+          const arr = getHistorialIntervencionesFiltradoAFI(afi);
+          if (arr.length === 0) return 'Sin datos';
+          const counts = {};
+          arr.forEach(i => {
+            const c = String(i.causa || 'S/C').trim().toUpperCase();
+            counts[c] = (counts[c] || 0) + 1;
+          });
+          let maxC = ''; let maxN = -1;
+          for (const [c, n] of Object.entries(counts)) {
+            if (n > maxN) { maxN = n; maxC = c; }
+          }
+          return `${maxC} (${maxN})`;
+        };
+
+        const resetFiltrosPerfil = () => {
+          perfilFiltroFechaInicio.value = "";
+          perfilFiltroFechaFin.value = "";
+          perfilFiltroCausa.value = "ALL";
+          renderPerfilCharts();
+        };
+        
         // Modal Agregar Equipo Nuevo
         const showModalNuevoEquipo = ref(false);
         const formNuevoEquipo = ref({ afi: "", tipo: "", marca: "", modelo: "", ubicacion: "", disponibilidad: "Operativo", horometroActual: 0, frecuenciaMantencion: 250, gps: "Sin GPS" });
@@ -1718,7 +1874,6 @@
           return obtenerItemsProgramaPorNave(programaId, naveNombre).filter(item => {
             const iIni = normalizarFecha(item.fecha_inicio);
             const iFin = normalizarFecha(item.fecha_fin || item.fecha_inicio);
-            // El equipo cae en el programa si se solapa con el rango del programa
             return !(iFin < pIni || iIni > pFin);
           });
         };
@@ -1732,7 +1887,6 @@
           return obtenerItemsPrograma(programaId).filter(item => {
             const iIni = normalizarFecha(item.fecha_inicio);
             const iFin = normalizarFecha(item.fecha_fin || item.fecha_inicio);
-            // Fuera de rango si no se solapa en absoluto
             return (iFin < pIni || iIni > pFin);
           });
         };
@@ -2027,7 +2181,6 @@
                 gps: item.gps || 'Sin GPS', imei_gps: item.imei_gps || '', foto: item.foto || '', horometros: null
               }));
               
-              // Ordenamiento natural: números primero, luego alfanuméricos
               dbEquipos.value.sort((a, b) => {
                 const numA = parseInt(String(a.afi).replace(/\D/g, '')) || 0;
                 const numB = parseInt(String(b.afi).replace(/\D/g, '')) || 0;
@@ -2457,7 +2610,11 @@
         const abrirPerfilEquipo = (equipo) => {
           perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
           perfilEquipo.value.fechaHorometroManual = normalizarFecha(equipo.fechaHorometroManual) || new Date().toISOString().substring(0, 10);
+          perfilFiltroFechaInicio.value = "";
+          perfilFiltroFechaFin.value = "";
+          perfilFiltroCausa.value = "ALL";
           showPerfilEquipoModal.value = true;
+          renderPerfilCharts();
         };
 
         const verDetallePorAfiString = (afiStr) => {
@@ -2480,17 +2637,67 @@
           await cargarDatosDesdeSupabase(); showPerfilEquipoModal.value = false; alert("¡Perfil guardado correctamente!");
         };
 
-        const getHistorialIntervencionesAFI = (afi) => {
-          const cleanAfi = String(afi || '').trim().toUpperCase();
-          const arr = dbIntervenciones.value.filter(i => String(i.afi || '').trim().toUpperCase() === cleanAfi);
-          arr.sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
-          return arr;
-        };
         const getHistorialMovimientosAFI = (afi) => {
           const cleanAfi = String(afi || '').trim().toUpperCase();
           const arr = dbMovimientos.value.filter(m => String(m.afi || '').trim().toUpperCase() === cleanAfi);
           arr.sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
           return arr;
+        };
+
+        let chartPerfilCausasInst = null, chartPerfilTiposInst = null;
+
+        const renderPerfilCharts = () => {
+          nextTick(() => {
+            setTimeout(() => {
+              if (!showPerfilEquipoModal.value || !perfilEquipo.value.afi) return;
+              const arr = getHistorialIntervencionesFiltradoAFI(perfilEquipo.value.afi);
+
+              try {
+                const ctx1 = document.getElementById('chartPerfilCausas');
+                if (ctx1) {
+                  if (chartPerfilCausasInst) { chartPerfilCausasInst.destroy(); chartPerfilCausasInst = null; }
+                  const cMap = {};
+                  arr.forEach(i => {
+                    const c = String(i.causa || 'S/C').trim().toUpperCase();
+                    cMap[c] = (cMap[c] || 0) + 1;
+                  });
+                  const labels = Object.keys(cMap);
+                  const dataVals = Object.values(cMap);
+
+                  chartPerfilCausasInst = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                      labels: labels.length > 0 ? labels : ['Sin datos'],
+                      datasets: [{ data: dataVals.length > 0 ? dataVals : [0], backgroundColor: '#f59e0b' }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                  });
+                }
+
+                const ctx2 = document.getElementById('chartPerfilTipos');
+                if (ctx2) {
+                  if (chartPerfilTiposInst) { chartPerfilTiposInst.destroy(); chartPerfilTiposInst = null; }
+                  const tMap = { PREVENTIVA: 0, PREDICTIVA: 0, CORRECTIVA: 0, OTRAS: 0 };
+                  arr.forEach(i => {
+                    const t = String(i.tipoMant || '').toUpperCase();
+                    if (t.includes('PREVENT')) tMap.PREVENTIVA++;
+                    else if (t.includes('PREDICT')) tMap.PREDICTIVA++;
+                    else if (t.includes('CORRECT')) tMap.CORRECTIVA++;
+                    else tMap.OTRAS++;
+                  });
+
+                  chartPerfilTiposInst = new Chart(ctx2, {
+                    type: 'doughnut',
+                    data: {
+                      labels: ['Preventiva', 'Predictiva', 'Correctiva', 'Otras'],
+                      datasets: [{ data: [tMap.PREVENTIVA, tMap.PREDICTIVA, tMap.CORRECTIVA, tMap.OTRAS], backgroundColor: ['#2563eb', '#8b5cf6', '#dc2626', '#64748b'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                  });
+                }
+              } catch(e) {}
+            }, 300);
+          });
         };
 
         const normalizeKey = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
@@ -2583,23 +2790,18 @@
           if (!window.XLSX) return alert("Librería SheetJS no disponible.");
           const wb = XLSX.utils.book_new();
 
-          // 1. Inventario
           const wsInv = XLSX.utils.json_to_sheet(dbEquipos.value.map(e => ({ AFI: e.afi, Tipo: e.tipo, Marca: e.marca, Modelo: e.modelo, Ubicacion: e.ubicacion, Disponibilidad: e.disponibilidad, Horometro: e.horometroActual, GPS: e.gps })));
           XLSX.utils.book_append_sheet(wb, wsInv, "Inventario");
 
-          // 2. Movimientos
           const wsMov = XLSX.utils.json_to_sheet(dbMovimientos.value.map(m => ({ Fecha: m.fecha, AFI: m.afi, Tipo: m.tipo, Origen: m.origen, Destino: m.destino, Empresa: m.empresa_arriendo, Estado: m.estado, Camion: m.camion, Conductor: m.conductor })));
           XLSX.utils.book_append_sheet(wb, wsMov, "Movimientos");
 
-          // 3. Historial / Mantenciones
           const wsHist = XLSX.utils.json_to_sheet(dbIntervenciones.value.map(i => ({ AFI: i.afi, Fecha: i.fecha, Programa: i.programaCorrespondiente, Equipo: i.equipo, Lugar: i.lugar, Causa: i.causa, TipoMant: i.tipoMant, Horometro: i.horometro, Costo: i.costo, OC: i.numeroOC, OT: i.numeroOT })));
           XLSX.utils.book_append_sheet(wb, wsHist, "Historial Mantenciones");
 
-          // 4. Programas Calendarios
           const wsProg = XLSX.utils.json_to_sheet(dbProgramasCalendarios.value.map(p => ({ ID: p.id, Tipo: p.tipo || p.carpeta, Nombre: p.nombre_programa || p.mes, FechaInicio: p.fecha_inicio_programa, FechaTermino: p.fecha_termino_programa })));
           XLSX.utils.book_append_sheet(wb, wsProg, "Programas");
 
-          // 5. Asignaciones de Programas (Items)
           const wsItems = XLSX.utils.json_to_sheet(dbProgramasItems.value.map(it => ({ ProgramaID: it.programa_id, AFI: it.afi, TipoTrabajo: it.tipo, Nave: it.nave, Condicion: it.condicion, FechaInicio: it.fecha_inicio, FechaFin: it.fecha_fin, Realizado: it.realizado ? 'Sí' : 'No' })));
           XLSX.utils.book_append_sheet(wb, wsItems, "Asignaciones Programas");
 
@@ -2640,7 +2842,6 @@
             XLSX.utils.book_append_sheet(wb, ws, nave.replace(' ', '_'));
           });
 
-          // Hoja de equipos fuera de rango si existen
           const fueraRango = obtenerItemsFueraDeRangoPrograma(prog.id);
           if (fueraRango.length > 0) {
             const rowsFuera = fueraRango.map(item => ({
@@ -2804,7 +3005,7 @@
           sortInventarioOrder, sortMovimientosOrder, sortHistorialOrder, sortAceitesOrder, resetFiltrosInventario, limpiarFiltrosHistorial, limpiarFiltrosMovimientos,
           filtrarYIrAInventario, verDetallePorAfiString, getEstadoText, getBadgeClass, filteredEquipos, filteredMovimientos, filteredIntervenciones, filteredAceitesRecords,
           listaTiposAceitesDisponibles, sumaTotalLitrosAceites, costoTotalAceitesFiltrados, exportarCSV, importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
-          getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
+          getHistorialMovimientosAFI, getMecanicosText, calcularRestaHoras,
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
           showModalNuevoEquipo, formNuevoEquipo, abrirModalCrearEquipo, guardarNuevoEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
@@ -2816,7 +3017,8 @@
           dbProgramasCalendarios, dbProgramasItems, obtenerProgramasDeCarpeta, obtenerItemsPrograma, obtenerItemsProgramaPorNave, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
           perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionNave, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos,
           formatDateForDisplay, vistaProgramaMode, generarDiasDelPrograma, esFechaEnRangoEquipo,
-          exportarTodasLasTablasExcel, exportarProgramaGanttExcel, obtenerDetalleEquipoPorAfi, obtenerItemsProgramaEnRangoPorNave, obtenerItemsFueraDeRangoPrograma
+          exportarTodasLasTablasExcel, exportarProgramaGanttExcel, obtenerDetalleEquipoPorAfi, obtenerItemsProgramaEnRangoPorNave, obtenerItemsFueraDeRangoPrograma,
+          perfilFiltroFechaInicio, perfilFiltroFechaFin, perfilFiltroCausa, listaCausasEquipo, getHistorialIntervencionesFiltradoAFI, costoTotalIntervencionesFiltradasAFI, causaMasFrecuenteEquipo, resetFiltrosPerfil, renderPerfilCharts
         };
       }
     }).mount('#app');
