@@ -1533,7 +1533,7 @@
           showModalPrograma.value = true;
         };
 
-        const guardarNuevoProgramaMes = async () => {
+       const guardarNuevoProgramaMes = async () => {
           const cp = formProgMes.value.carpeta;
           const nom = formProgMes.value.nombre_programa.trim().toUpperCase();
           const f_ini = formProgMes.value.fecha_inicio_programa;
@@ -1546,10 +1546,14 @@
             nombre_programa: nom,
             mes: nom,
             fecha_inicio_programa: f_ini,
-            fecha_termino_programa: f_fin
+            fecha_termino_programa: f_fin,
+            afi: "",
+            horas: "",
+            fecha_programada: f_ini,
+            realizado: false
           };
+          
           try {
-            // CORREGIDO: Apunta a la tabla 'BD_PROGRAMAS' que ya existe en tu Supabase
             const { data, error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]).select();
             if (error) throw error;
             
