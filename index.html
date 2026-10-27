@@ -2023,7 +2023,7 @@
             fecha_termino_programa: f_fin
           };
           try {
-            const { data, error } = await supabaseClient.from('bd_programas_calendarios').insert([payload]).select();
+            const { data, error } = await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').insert([payload]).select();
             if (error) throw error;
             
             await cargarDatosDesdeSupabase();
@@ -2041,8 +2041,8 @@
         const eliminarProgramaCompleto = async (progId) => {
           if (confirm("¿Estás seguro de eliminar este programa completo junto con sus equipos asignados?")) {
             try {
-              await supabaseClient.from('bd_programas_items').delete().eq('programa_id', progId);
-              await supabaseClient.from('bd_programas_calendarios').delete().eq('id', progId);
+              await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('programa_id', progId);
+              await supabaseClient.from('BD_PROGRAMAS_CALENDARIOS').delete().eq('id', progId);
             } catch(e) {}
             dbProgramasCalendarios.value = dbProgramasCalendarios.value.filter(p => p.id !== progId);
             dbProgramasItems.value = dbProgramasItems.value.filter(i => i.programa_id !== progId);
@@ -2090,7 +2090,7 @@
             horometro: null
           };
           try {
-            const { data, error } = await supabaseClient.from('bd_programas_items').insert([payload]).select();
+            const { data, error } = await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]).select();
             if(error) throw error;
             if(data && data[0]) dbProgramasItems.value.push(data[0]);
           } catch(e) {
@@ -2103,13 +2103,13 @@
 
         const cambiarEstadoRealizadoItem = async (item) => {
           try {
-            await supabaseClient.from('bd_programas_items').update({ realizado: item.realizado }).eq('id', item.id);
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').update({ realizado: item.realizado }).eq('id', item.id);
           } catch(e) {}
         };
 
         const actualizarItemMantencionProgramado = async (item) => {
           try {
-            await supabaseClient.from('bd_programas_items').update({
+            await supabaseClient.from('BD_PROGRAMAS_ITEMS').update({
               fecha_programada: item.fecha_programada,
               fecha_fin: item.fecha_fin,
               horometro: parseNum(item.horometro),
@@ -2121,7 +2121,7 @@
         const eliminarItemPrograma = async (itemId) => {
           if (confirm("¿Eliminar este equipo del programa?")) {
             try {
-              await supabaseClient.from('bd_programas_items').delete().eq('id', itemId);
+              await supabaseClient.from('BD_PROGRAMAS_ITEMS').delete().eq('id', itemId);
             } catch(e) {}
             dbProgramasItems.value = dbProgramasItems.value.filter(i => i.id !== itemId);
           }
@@ -2150,7 +2150,7 @@
             realizado: false
           };
           try {
-            const { data, error } = await supabaseClient.from('bd_programas_items').insert([payload]).select();
+            const { data, error } = await supabaseClient.from('BD_PROGRAMAS_ITEMS').insert([payload]).select();
             if(error) throw error;
             if(data && data[0]) dbProgramasItems.value.push(data[0]);
           } catch(e) {
@@ -2368,12 +2368,12 @@
             }
 
             try {
-              const calData = await fetchAllRowsSupabase('bd_programas_calendarios');
+              const calData = await fetchAllRowsSupabase('BD_PROGRAMAS_CALENDARIOS');
               if (calData && calData.length > 0) dbProgramasCalendarios.value = calData;
             } catch(e) {}
 
             try {
-              const itemData = await fetchAllRowsSupabase('bd_programas_items');
+              const itemData = await fetchAllRowsSupabase('BD_PROGRAMAS_ITEMS');
               if (itemData && itemData.length > 0) dbProgramasItems.value = itemData;
             } catch(e) {}
 
@@ -2399,6 +2399,7 @@
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             
+            // FILTRO ESTRICTO: Solo considera registros con causa estricta 'MANTENCION' para la última mantención
             const histMantencionesReales = histConHorometro.filter(i => {
               const cVal = String(i.causa || '').trim().toUpperCase();
               return cVal === 'MANTENCION';
@@ -2415,8 +2416,8 @@
             let hUltimoTomado = hTomadoManual > 0 ? hTomadoManual : (ultimoReg ? Number(ultimoReg.horometro) : 0);
             let fechaUltimoHorometro = hTomadoManual > 0 && fechaTomadoManual ? fechaTomadoManual : (ultimoReg ? ultimoReg.fecha : '-');
 
-            let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : hUltimoTomado;
-            let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : fechaUltimoHorometro;
+            let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : 0;
+            let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : '-';
 
             const calcularDiasExactos = (f1, f2) => {
               const iso1 = normalizarFecha(f1);
