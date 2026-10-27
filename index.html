@@ -1879,7 +1879,7 @@
           } catch (err) { console.error("Error cargando datos:", err); }
         };
 
-        const actualizarHorometrosDesdeHistorial = () => {
+       const actualizarHorometrosDesdeHistorial = () => {
           const intervencionesPorAFI = {};
           dbIntervenciones.value.forEach(i => {
             if (!i.afi) return;
@@ -1896,17 +1896,15 @@
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             
-            // 1. FILTRAR ESTRICTAMENTE LAS QUE TIENEN CAUSA "MANTENCION"
+            // 1. FILTRAR ESTRICTAMENTE LAS QUE TIENEN CAUSA "MANTENCION" Y ORDENAR
             const histMantencionesReales = histConHorometro.filter(i => {
               const cVal = String(i.causa || '').trim().toUpperCase();
               return cVal === 'MANTENCION';
-            });
+            }).sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
 
-            // Última y penúltima mantención real (Causa = MANTENCION)
             let ultimaMant = histMantencionesReales.length > 0 ? histMantencionesReales[histMantencionesReales.length - 1] : null;
             let penultimaMant = histMantencionesReales.length > 1 ? histMantencionesReales[histMantencionesReales.length - 2] : null;
 
-            // Último horómetro tomado (Cualquiera: Inspección, Reparación, Mantención, etc.)
             let ultimoReg = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : (histFull.length > 0 ? histFull[histFull.length - 1] : null);
 
             let hTomadoManual = Number(eq.horometroActual) || 0;
@@ -1918,30 +1916,43 @@
             let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : hUltimoTomado;
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : fechaUltimoHorometro;
 
-            // 2. CÁLCULO DINÁMICO CON TU REGLA DE EXCEPCIÓN
+            // FUNCIÓN SEGURA PARA CALCULAR DÍAS EXACTOS IGNORANDO HORA LOCAL / DST
+            const calcularDiasExactos = (f1, f2) => {
+              const iso1 = normalizarFecha(f1);
+              const iso2 = normalizarFecha(f2);
+              if (!iso1 || !iso2) return 1;
+              const [y1, m1, d1] = iso1.split('-').map(Number);
+              const [y2, m2, d2] = iso2.split('-').map(Number);
+              const utc1 = Date.UTC(y1, m1 - 1, d1);
+              const utc2 = Date.UTC(y2, m2 - 1, d2);
+              const dias = Math.round(Math.abs(utc1 - utc2) / 86400000);
+              return Math.max(1, dias);
+            };
+
+            // 2. CÁLCULO DINÁMICO DE HORAS DIARIAS
             let rateHrsDia = 0;
             
             if (ultimaMant && Number(hUltimoTomado) > Number(ultimaMant.horometro)) {
-              // Caso estándar: Último horómetro vs Última mantención
+              // Caso estándar: Último horómetro vs Última mantención real
               const dH = Number(hUltimoTomado) - Number(ultimaMant.horometro);
-              const dias = Math.max(1, Math.floor((parseIsoDate(fechaUltimoHorometro) - parseIsoDate(ultimaMantFecha)) / 86400000));
+              const dias = calcularDiasExactos(fechaUltimoHorometro, ultimaMantFecha);
               rateHrsDia = dH / dias;
             } 
             else if (ultimaMant && penultimaMant && Number(hUltimoTomado) === Number(ultimaMant.horometro)) {
-              // Excepción: Si son iguales (diferencia 0), comparamos el último horómetro con la PENÚLTIMA mantención
+              // Excepción: Si la diferencia es 0, usamos la penúltima mantención
               const dH = Number(hUltimoTomado) - Number(penultimaMant.horometro);
-              const dias = Math.max(1, Math.floor((parseIsoDate(fechaUltimoHorometro) - parseIsoDate(penultimaMant.fecha)) / 86400000));
+              const dias = calcularDiasExactos(fechaUltimoHorometro, penultimaMant.fecha);
               rateHrsDia = dH / dias;
             } 
             else if (histConHorometro.length >= 2) {
-              // Fallback general por si no hay suficientes mantenciones registradas
               const penultimoReg = histConHorometro[histConHorometro.length - 2];
               const dH = Number(ultimoReg.horometro) - Number(penultimoReg.horometro);
-              const dias = Math.max(1, Math.floor((parseIsoDate(ultimoReg.fecha) - parseIsoDate(penultimoReg.fecha)) / 86400000));
+              const dias = calcularDiasExactos(ultimoReg.fecha, penultimoReg.fecha);
               if (dH > 0) rateHrsDia = dH / dias;
             }
 
-            if (rateHrsDia <= 0) rateHrsDia = 1.5; // Valor seguro por defecto si todo lo demás da 0
+            // Fallback general genérico por si el equipo no tiene historial cruzado
+            if (rateHrsDia <= 0) rateHrsDia = 1.5; 
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
             const estaFueraServicio = normalizarClave(eq.disponibilidad) === 'Fuera de Servicio';
@@ -1967,7 +1978,6 @@
             };
           });
         };
-
         const getHorometroCardBgClass = (h) => h?.horasFaltantes <= 0 ? 'bg-rose-50 border-rose-300' : h?.horasFaltantes <= 50 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200';
         const getPrediccionStatusBadge = (h) => h?.horasFaltantes <= 0 ? 'bg-rose-600 text-white animate-pulse' : h?.horasFaltantes <= 50 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white';
 
