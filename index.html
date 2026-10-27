@@ -249,7 +249,7 @@
                   <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.horometros)]">
                     <div class="flex justify-between items-center text-[10px] text-slate-500 font-bold border-b pb-1">
                       <span class="text-amber-700"><i class="fa-solid fa-stopwatch"></i> FRECUENCIA: {{ e.frecuenciaMantencion }}h</span>
-                      <span class="text-blue-700"><i class="fa-solid fa-chart-line"></i> USO: {{ e.horometros?.rateHrsDia > 0 ? e.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin datos' }}</span>
+                      <span class="text-blue-700"><i class="fa-solid fa-chart-line"></i> USO: {{ e.horometros?.rateHrsDia > 0 ? e.horometros.rateHrsDia.toFixed(2) + ' hrs/día' : 'Sin datos' }}</span>
                     </div>
                     <div class="flex justify-between items-center font-bold">
                       <span><i class="fa-solid fa-gauge-high text-amber-600"></i> Estado Horómetro:</span>
@@ -940,7 +940,7 @@
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Horómetro Actual Aprox.</span>
                   <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong>
-                  <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(1) + ' hrs/día' : 'Sin uso diario' }}</span>
+                  <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(2) + ' hrs/día' : 'Sin uso diario' }}</span>
                 </div>
                 <div class="bg-white/10 p-3 rounded-xl border border-white/20">
                   <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Próxima Mantención (Meta)</span>
@@ -1905,24 +1905,43 @@
             let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : (hUltimoTomado > 0 ? hUltimoTomado : 0);
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : fechaUltimoHorometro;
 
+            // LÓGICA IDÉNTICA AL EXCEL: Comparar último horómetro tomado con última mantención.
+            // Si son iguales, busca el salto con la penúltima mantención (o registro previo).
             let rateHrsDia = 0;
             if (histConHorometro.length >= 2) {
-              const ultimo = histConHorometro[histConHorometro.length - 1];
-              let penultimo = null;
-              
-              for (let j = histConHorometro.length - 2; j >= 0; j--) {
-                if (Number(histConHorometro[j].horometro) < Number(ultimo.horometro)) {
-                  penultimo = histConHorometro[j];
-                  break;
+              let idxUltimo = histConHorometro.length - 1;
+              let regUltimo = histConHorometro[idxUltimo];
+              let regComparacion = null;
+
+              // Si el último horómetro tomado es igual al horómetro de la última mantención,
+              // buscamos hacia atrás un registro que tenga menor horómetro (como la penúltima mantención).
+              if (ultimaMant && Number(regUltimo.horometro) === Number(ultimaMant.horometro)) {
+                for (let j = histConHorometro.length - 2; j >= 0; j--) {
+                  if (Number(histConHorometro[j].horometro) < Number(regUltimo.horometro)) {
+                    regComparacion = histConHorometro[j];
+                    break;
+                  }
                 }
               }
-              if (!penultimo) {
-                penultimo = histConHorometro[histConHorometro.length - 2];
+
+              // Si no encontró por el caso anterior o no son iguales, toma el penúltimo normal
+              if (!regComparacion && histConHorometro.length >= 2) {
+                for (let j = histConHorometro.length - 2; j >= 0; j--) {
+                  if (Number(histConHorometro[j].horometro) < Number(regUltimo.horometro)) {
+                    regComparacion = histConHorometro[j];
+                    break;
+                  }
+                }
+                if (!regComparacion) {
+                  regComparacion = histConHorometro[histConHorometro.length - 2];
+                }
               }
 
-              const dH = Number(ultimo.horometro) - Number(penultimo.horometro);
-              const dias = Math.max(1, Math.floor((parseIsoDate(ultimo.fecha) - parseIsoDate(penultimo.fecha)) / 86400000));
-              if (dH > 0) rateHrsDia = dH / dias;
+              if (regComparacion) {
+                const dH = Number(regUltimo.horometro) - Number(regComparacion.horometro);
+                const dias = Math.max(1, Math.floor((parseIsoDate(regUltimo.fecha) - parseIsoDate(regComparacion.fecha)) / 86400000));
+                if (dH > 0) rateHrsDia = dH / dias;
+              }
             }
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
