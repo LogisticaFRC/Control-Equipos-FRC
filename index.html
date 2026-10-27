@@ -902,7 +902,7 @@
               </div>
             </div>
 
-            <!-- SECCIÓN HORÓMETROS -->
+            <!-- SECCIÓN HORÓMETROS CON FECHA MANUAL -->
             <div :class="['p-5 rounded-xl shadow-sm border flex flex-col lg:flex-row gap-6 items-center', perfilEquipo.horometros?.horasFaltantes <= 0 ? 'bg-pasado-blink' : 'bg-normal-horometro']">
               <div class="w-full lg:w-1/3 space-y-3">
                 <div class="flex items-center justify-between border-b border-white/20 pb-2">
@@ -914,8 +914,12 @@
                   <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
                 </div>
                 <div>
+                  <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Fecha de este Horómetro</label>
+                  <input type="date" v-model="perfilEquipo.fechaHorometroManual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
+                </div>
+                <div>
                   <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención</label>
-                  <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 font-mono font-bold text-white text-sm outline-none">
+                  <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 font-mono font-bold text-sm outline-none">
                 </div>
               </div>
 
@@ -1272,7 +1276,7 @@
               <label class="block font-bold text-slate-700 mb-1">Seleccionar Programa</label>
               <select v-model="formAsignar.programa_id" class="w-full p-2.5 border rounded-lg bg-white font-bold">
                 <option value="">-- Elige Programa --</option>
-                <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta }}] {{ p.nombre_programa || p.mes }} ({{ formatDateForDisplay(p.fecha_inicio_programa) }} al {{ formatDateForDisplay(p.fecha_termino_programa) }})</option>
+                <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta || p.tipo }}] {{ p.nombre_programa || p.mes }} ({{ formatDateForDisplay(p.fecha_inicio_programa) }} al {{ formatDateForDisplay(p.fecha_termino_programa) }})</option>
               </select>
             </div>
             <div>
@@ -1533,7 +1537,7 @@
           showModalPrograma.value = true;
         };
 
-       const guardarNuevoProgramaMes = async () => {
+        const guardarNuevoProgramaMes = async () => {
           const cp = formProgMes.value.carpeta;
           const nom = formProgMes.value.nombre_programa.trim().toUpperCase();
           const f_ini = formProgMes.value.fecha_inicio_programa;
@@ -1552,7 +1556,6 @@
             fecha_programada: f_ini,
             realizado: false
           };
-          
           try {
             const { data, error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]).select();
             if (error) throw error;
@@ -1761,7 +1764,9 @@
                 id: item.id, afi: String(item.afi || ''), tipo: String(item.tipo || ''), marca: String(item.marca || ''),
                 modelo: String(item.modelo || ''), ubicacion: String(item.ubicacion || ''),
                 disponibilidad: normalizarClave(item.disponibilidad), anio: item.anio || 2023,
-                horometroActual: Number(item.horometroactual || 0), frecuenciaMantencion: Number(item.frecuencia_mantencion) || 250,
+                horometroActual: Number(item.horometroactual || 0), 
+                fechaHorometroManual: item.fecha_horometro_manual || '',
+                frecuenciaMantencion: Number(item.frecuencia_mantencion) || 250,
                 gps: item.gps || 'Sin GPS', imei_gps: item.imei_gps || '', foto: item.foto || '', horometros: null
               }));
               dbEquipos.value.sort((a, b) => String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true }));
@@ -1843,7 +1848,6 @@
             }
 
             try {
-              // CORREGIDO: Carga desde la tabla 'BD_PROGRAMAS'
               const calData = await fetchAllRowsSupabase('BD_PROGRAMAS');
               if (calData && calData.length > 0) dbProgramasCalendarios.value = calData;
             } catch(e) {}
@@ -1883,9 +1887,11 @@
             let ultimaMant = histMantenciones.length > 0 ? histMantenciones[histMantenciones.length - 1] : null;
             let ultimoReg = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : (histFull.length > 0 ? histFull[histFull.length - 1] : null);
 
-            let hTomadoManual = Number(eq.horometroActual) || (ultimoReg ? Number(ultimoReg.horometro) : 0);
-            let fechaUltimoHorometro = ultimoReg ? ultimoReg.fecha : '-';
-            let hUltimoTomado = hTomadoManual;
+            let hTomadoManual = Number(eq.horometroActual) || 0;
+            let fechaTomadoManual = eq.fechaHorometroManual;
+
+            let hUltimoTomado = hTomadoManual > 0 ? hTomadoManual : (ultimoReg ? Number(ultimoReg.horometro) : 0);
+            let fechaUltimoHorometro = hTomadoManual > 0 && fechaTomadoManual ? fechaTomadoManual : (ultimoReg ? ultimoReg.fecha : '-');
 
             let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : (hUltimoTomado > 0 ? hUltimoTomado : 0);
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : fechaUltimoHorometro;
@@ -2161,6 +2167,7 @@
 
         const abrirPerfilEquipo = (equipo) => {
           perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
+          perfilEquipo.value.fechaHorometroManual = normalizarFecha(equipo.fechaHorometroManual) || new Date().toISOString().substring(0, 10);
           showPerfilEquipoModal.value = true;
         };
 
@@ -2173,7 +2180,9 @@
           const payload = {
             tipo: perfilEquipo.value.tipo, marca: perfilEquipo.value.marca, modelo: perfilEquipo.value.modelo, ubicacion: perfilEquipo.value.ubicacion,
             disponibilidad: perfilEquipo.value.disponibilidad, gps: perfilEquipo.value.gps, imei_gps: perfilEquipo.value.imei_gps,
-            horometroactual: parseNum(perfilEquipo.value.horometroActual), frecuencia_mantencion: parseNum(perfilEquipo.value.frecuenciaMantencion) || 250
+            horometroactual: parseNum(perfilEquipo.value.horometroActual), 
+            fecha_horometro_manual: formatIsoDateForSupabase(perfilEquipo.value.fechaHorometroManual),
+            frecuencia_mantencion: parseNum(perfilEquipo.value.frecuenciaMantencion) || 250
           };
           try {
             await supabaseClient.from('BD_INVENTARIO').update(payload).eq('id', perfilEquipo.value.id);
