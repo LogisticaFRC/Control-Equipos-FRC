@@ -386,97 +386,100 @@
                 <!-- Pestañas de Vista: Tabla vs Calendario Visual -->
                 <div class="flex items-center gap-2 mb-3 border-b pb-2">
                   <button @click="vistaProgramaMode = 'tabla'" :class="['px-3 py-1 rounded text-xs font-bold transition flex items-center gap-1.5', vistaProgramaMode === 'tabla' ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200']">
-                    <i class="fa-solid fa-list"></i> Vista de Tabla y Estados (ON/OFF)
+                    <i class="fa-solid fa-list"></i> Vista de Tabla por Naves (ON/OFF)
                   </button>
                   <button @click="vistaProgramaMode = 'calendario'" :class="['px-3 py-1 rounded text-xs font-bold transition flex items-center gap-1.5', vistaProgramaMode === 'calendario' ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200']">
-                    <i class="fa-solid fa-calendar-week"></i> Vista Calendario / Gantt con Celdas Marcadas
+                    <i class="fa-solid fa-calendar-week"></i> Vista Calendario / Gantt por Naves
                   </button>
                 </div>
 
-                <!-- CONTENIDO VISTA TABLA -->
-                <div v-if="vistaProgramaMode === 'tabla'" class="flex-grow overflow-y-auto space-y-4">
-                  <table class="w-full text-left text-xs whitespace-nowrap">
-                    <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[10px] z-10">
-                      <tr>
-                        <th class="p-2.5">EQUIPO AFI</th>
-                        <th class="p-2.5">TIPO TRABAJO</th>
-                        <th class="p-2.5">CONDICIÓN</th>
-                        <th class="p-2.5">FECHA INICIO (EQUIPO)</th>
-                        <th class="p-2.5">FECHA FIN (EQUIPO)</th>
-                        <th class="p-2.5">ESTADO / REPARACIÓN (ON/OFF)</th>
-                        <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y bg-white text-[11px]">
-                      <tr v-for="item in obtenerItemsPrograma(progSelect.id)" :key="item.id" :class="item.realizado ? 'bg-emerald-50/50' : 'hover:bg-slate-50'">
-                        <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
-                        <td class="p-2.5 font-semibold text-slate-700">{{ item.tipo }}</td>
-                        <td class="p-2.5">
-                          <span :class="['px-2 py-0.5 rounded font-bold text-[10px]', item.condicion === 'Venta' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-blue-100 text-blue-800 border border-blue-200']">
-                            <i :class="['fa-solid mr-1', item.condicion === 'Venta' ? 'fa-hand-holding-dollar' : 'fa-file-contract']"></i> {{ item.condicion || 'Arriendo' }}
-                          </span>
-                        </td>
-                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_inicio) }}</td>
-                        <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_fin) }}</td>
-                        <td class="p-2.5">
-                          <div class="flex items-center gap-3">
-                            <label class="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" v-model="item.realizado" @change="cambiarEstadoRealizadoItem(item)" class="sr-only peer">
-                              <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-                            </label>
-                            <span :class="['text-[10px] font-bold px-2 py-0.5 rounded', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600']">
-                              {{ item.realizado ? 'REPARADO (ON)' : 'PENDIENTE (OFF)' }}
-                            </span>
-                          </div>
-                        </td>
-                        <td v-if="isAdmin" class="p-2.5 text-center">
-                          <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar del Programa"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                      </tr>
-                      <tr v-if="obtenerItemsPrograma(progSelect.id).length === 0">
-                        <td colspan="7" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa. <button @click="abrirModalAsignarEquipoInProgresoEspecifico(progSelect.id)" class="text-rose-600 underline font-bold">Añadir equipo ahora</button></td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <!-- CONTENIDO VISTA TABLA SEPARADA POR NAVES -->
+                <div v-if="vistaProgramaMode === 'tabla'" class="flex-grow overflow-y-auto space-y-6">
+                  <template v-for="n_nave in ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4']" :key="n_nave">
+                    <div v-if="obtenerItemsProgramaPorNave(progSelect.id, n_nave).length > 0" class="space-y-2 border rounded-xl p-3 bg-slate-50/50 shadow-sm">
+                      <div class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase flex justify-between items-center">
+                        <span><i class="fa-solid fa-warehouse mr-1.5 text-amber-400"></i> {{ n_nave }}</span>
+                        <span class="text-[10px] font-mono bg-white/20 px-2 py-0.5 rounded">{{ obtenerItemsProgramaPorNave(progSelect.id, n_nave).length }} equipos</span>
+                      </div>
+                      <table class="w-full text-left text-xs whitespace-nowrap bg-white rounded-lg overflow-hidden border">
+                        <thead class="bg-slate-100 text-slate-700 uppercase text-[10px]">
+                          <tr>
+                            <th class="p-2.5">EQUIPO AFI</th>
+                            <th class="p-2.5">TIPO TRABAJO</th>
+                            <th class="p-2.5">CONDICIÓN</th>
+                            <th class="p-2.5">FECHA INICIO</th>
+                            <th class="p-2.5">FECHA FIN</th>
+                            <th class="p-2.5">ESTADO (ON/OFF)</th>
+                            <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y text-[11px]">
+                          <tr v-for="item in obtenerItemsProgramaPorNave(progSelect.id, n_nave)" :key="item.id" :class="item.realizado ? 'bg-emerald-50/50' : 'hover:bg-slate-50'">
+                            <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
+                            <td class="p-2.5 font-semibold text-slate-700">{{ item.tipo }}</td>
+                            <td class="p-2.5"><span class="px-2 py-0.5 rounded font-bold text-[10px] bg-blue-100 text-blue-800">{{ item.condicion || 'Arriendo' }}</span></td>
+                            <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_inicio) }}</td>
+                            <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_fin) }}</td>
+                            <td class="p-2.5">
+                              <div class="flex items-center gap-3">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                  <input type="checkbox" v-model="item.realizado" @change="cambiarEstadoRealizadoItem(item)" class="sr-only peer">
+                                  <div class="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                                </label>
+                                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600']">
+                                  {{ item.realizado ? 'REPARADO (ON)' : 'PENDIENTE (OFF)' }}
+                                </span>
+                              </div>
+                            </td>
+                            <td v-if="isAdmin" class="p-2.5 text-center">
+                              <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </template>
+                  <div v-if="obtenerItemsPrograma(progSelect.id).length === 0" class="text-center p-10 text-slate-400 font-bold">No hay equipos asignados a este programa.</div>
                 </div>
 
-                <!-- CONTENIDO VISTA CALENDARIO / GANTT -->
-                <div v-else class="flex-grow overflow-auto p-2 bg-slate-50 border rounded-xl space-y-3">
-                  <div class="text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-                    <span><i class="fa-solid fa-calendar-week text-indigo-600 mr-1"></i> Matriz de Asignación por Fechas Específicas de Equipos</span>
-                    <span class="text-[10px] text-slate-500">Celdas marcadas según rango de cada equipo</span>
-                  </div>
-                  <div class="overflow-x-auto">
-                    <table class="w-full text-[10px] border-collapse bg-white">
-                      <thead>
-                        <tr class="bg-slate-800 text-white">
-                          <th class="p-2 border">Equipo AFI</th>
-                          <th class="p-2 border">Trabajo</th>
-                          <th class="p-2 border">Condición</th>
-                          <th class="p-2 border text-center">Fecha Inicio (Equipo)</th>
-                          <th class="p-2 border text-center">Fecha Fin (Equipo)</th>
-                          <th class="p-2 border text-center">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="item in obtenerItemsPrograma(progSelect.id)" :key="item.id" class="hover:bg-slate-50">
-                          <td class="p-2 border font-bold text-amber-700">AFI {{ item.afi }}</td>
-                          <td class="p-2 border font-semibold">{{ item.tipo }}</td>
-                          <td class="p-2 border font-medium">{{ item.condicion || 'Arriendo' }}</td>
-                          <td class="p-2 border text-center font-mono bg-amber-50 font-bold">{{ formatDateForDisplay(item.fecha_inicio) }}</td>
-                          <td class="p-2 border text-center font-mono bg-amber-50 font-bold">{{ formatDateForDisplay(item.fecha_fin) }}</td>
-                          <td class="p-2 border text-center">
-                            <span :class="['px-2 py-0.5 rounded font-bold uppercase', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800']">
-                              {{ item.realizado ? 'Completado (ON)' : 'Programado (OFF)' }}
-                            </span>
-                          </td>
-                        </tr>
-                        <tr v-if="obtenerItemsPrograma(progSelect.id).length === 0">
-                          <td colspan="6" class="p-6 text-center text-slate-400">Sin equipos asignados para visualizar en calendario.</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                <!-- CONTENIDO VISTA CALENDARIO / GANTT SEPARADA POR NAVES -->
+                <div v-else class="flex-grow overflow-auto p-2 bg-slate-50 border rounded-xl space-y-4">
+                  <template v-for="n_nave in ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4']" :key="n_nave">
+                    <div v-if="obtenerItemsProgramaPorNave(progSelect.id, n_nave).length > 0" class="space-y-1">
+                      <div class="text-[11px] font-bold text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-md uppercase">
+                        <i class="fa-solid fa-warehouse mr-1 text-indigo-600"></i> {{ n_nave }}
+                      </div>
+                      <div class="overflow-x-auto">
+                        <table class="w-full text-[10px] border-collapse bg-white rounded-lg overflow-hidden border">
+                          <thead>
+                            <tr class="bg-slate-800 text-white">
+                              <th class="p-2 border">Equipo AFI</th>
+                              <th class="p-2 border">Trabajo</th>
+                              <th class="p-2 border">Condición</th>
+                              <th class="p-2 border text-center">Fecha Inicio</th>
+                              <th class="p-2 border text-center">Fecha Fin</th>
+                              <th class="p-2 border text-center">Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="item in obtenerItemsProgramaPorNave(progSelect.id, n_nave)" :key="item.id" class="hover:bg-slate-50">
+                              <td class="p-2 border font-bold text-amber-700">AFI {{ item.afi }}</td>
+                              <td class="p-2 border font-semibold">{{ item.tipo }}</td>
+                              <td class="p-2 border font-medium">{{ item.condicion || 'Arriendo' }}</td>
+                              <td class="p-2 border text-center font-mono bg-amber-50 font-bold">{{ formatDateForDisplay(item.fecha_inicio) }}</td>
+                              <td class="p-2 border text-center font-mono bg-amber-50 font-bold">{{ formatDateForDisplay(item.fecha_fin) }}</td>
+                              <td class="p-2 border text-center">
+                                <span :class="['px-2 py-0.5 rounded font-bold uppercase', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800']">
+                                  {{ item.realizado ? 'Completado (ON)' : 'Programado (OFF)' }}
+                                </span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </template>
+                  <div v-if="obtenerItemsPrograma(progSelect.id).length === 0" class="p-6 text-center text-slate-400">Sin equipos asignados para visualizar en calendario.</div>
                 </div>
 
               </template>
@@ -962,6 +965,7 @@
                   </select>
                 </div>
                 <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Tipo</label><select v-model="perfilAsignacionTipo" class="p-2 border rounded-lg bg-white font-semibold"><option value="Mantención">Mantención</option><option value="Reparación">Reparación</option></select></div>
+                <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Nave</label><select v-model="perfilAsignacionNave" class="p-2 border rounded-lg bg-white font-bold text-amber-900"><option value="NAVE 1">Nave 1</option><option value="NAVE 2">Nave 2</option><option value="NAVE 3">Nave 3</option><option value="NAVE 4">Nave 4</option></select></div>
                 <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Condición</label><select v-model="perfilAsignacionCondicion" class="p-2 border rounded-lg bg-white font-semibold"><option value="Arriendo">Arriendo</option><option value="Venta">Venta</option></select></div>
                 <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Inicio (Equipo)</label><input type="date" v-model="perfilAsignacionFechaInicio" class="p-2 border rounded-lg bg-white font-mono"></div>
                 <div><label class="block font-bold text-slate-700 mb-1 text-[10px] uppercase">Fecha Fin (Equipo)</label><input type="date" v-model="perfilAsignacionFechaFin" class="p-2 border rounded-lg bg-white font-mono"></div>
@@ -1286,11 +1290,20 @@
                 <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option>
               </select>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-3 gap-3">
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Tipo de Trabajo</label>
                 <select v-model="formAsignar.tipo" class="w-full p-2.5 border rounded-lg bg-white font-semibold">
                   <option value="Reparación">Reparación</option><option value="Mantención">Mantención</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Nave</label>
+                <select v-model="formAsignar.nave" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
+                  <option value="NAVE 1">Nave 1</option>
+                  <option value="NAVE 2">Nave 2</option>
+                  <option value="NAVE 3">Nave 3</option>
+                  <option value="NAVE 4">Nave 4</option>
                 </select>
               </div>
               <div>
@@ -1445,13 +1458,14 @@
         const formProgMes = ref({ carpeta: 'REPARACION', nombre_programa: '', fecha_inicio_programa: '2026-08-01', fecha_termino_programa: '2026-09-30' });
 
         const showModalAsignarEquipo = ref(false);
-        const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', condicion: 'Arriendo', fecha_inicio: '2026-08-01', fecha_fin: '2026-08-31' });
+        const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', nave: 'NAVE 1', condicion: 'Arriendo', fecha_inicio: '2026-08-01', fecha_fin: '2026-08-31' });
 
         const openFolders = ref({ REPARACION: true, MANTENCION: true });
         const progSelect = ref({ id: null, carpeta: '', nombre_programa: '', mes: '', fecha_inicio_programa: '', fecha_termino_programa: '' });
         
         const perfilAsignacionProgId = ref('');
         const perfilAsignacionTipo = ref('Reparación');
+        const perfilAsignacionNave = ref('NAVE 1');
         const perfilAsignacionCondicion = ref('Arriendo');
         const perfilAsignacionFechaInicio = ref('');
         const perfilAsignacionFechaFin = ref('');
@@ -1506,6 +1520,12 @@
             .sort((a,b) => new Date(a.fecha_inicio || a.fecha_programada || 0).getTime() - new Date(b.fecha_inicio || b.fecha_programada || 0).getTime());
         };
 
+        const obtenerItemsProgramaPorNave = (programaId, naveNombre) => {
+          return dbProgramasItems.value
+            .filter(i => String(i.programa_id) === String(programaId) && String(i.nave || 'NAVE 1').toUpperCase() === String(naveNombre).toUpperCase())
+            .sort((a,b) => new Date(a.fecha_inicio || a.fecha_programada || 0).getTime() - new Date(b.fecha_inicio || b.fecha_programada || 0).getTime());
+        };
+
         const getProgreso = (programaId) => {
           const items = obtenerItemsPrograma(programaId);
           if (items.length === 0) return { total: 0, done: 0, pct: 0 };
@@ -1550,11 +1570,7 @@
             nombre_programa: nom,
             mes: nom,
             fecha_inicio_programa: f_ini,
-            fecha_termino_programa: f_fin,
-            afi: "",
-            horas: "",
-            fecha_programada: f_ini,
-            realizado: false
+            fecha_termino_programa: f_fin
           };
           try {
             const { data, error } = await supabaseClient.from('BD_PROGRAMAS').insert([payload]).select();
@@ -1588,17 +1604,8 @@
         const abrirModalAsignarEquipo = () => {
           formAsignar.value = {
             programa_id: progSelect.value.id || (dbProgramasCalendarios.value[0] ? dbProgramasCalendarios.value[0].id : ''),
-            afi: '', tipo: progSelect.value.carpeta === 'MANTENCION' ? 'Mantención' : 'Reparación', condicion: 'Arriendo',
+            afi: '', tipo: progSelect.value.carpeta === 'MANTENCION' ? 'Mantención' : 'Reparación', nave: 'NAVE 1', condicion: 'Arriendo',
             fecha_inicio: progSelect.value.fecha_inicio_programa || '2026-08-01', fecha_fin: progSelect.value.fecha_termino_programa || '2026-08-31'
-          };
-          showModalAsignarEquipo.value = true;
-        };
-
-        const abrirModalAsignarEquipoInProgresoEspecifico = (progId) => {
-          const prog = dbProgramasCalendarios.value.find(p => p.id === progId);
-          formAsignar.value = {
-            programa_id: progId, afi: '', tipo: (prog?.tipo || prog?.carpeta) === 'MANTENCION' ? 'Mantención' : 'Reparación', condicion: 'Arriendo',
-            fecha_inicio: prog?.fecha_inicio_programa || '2026-08-01', fecha_fin: prog?.fecha_termino_programa || '2026-09-30'
           };
           showModalAsignarEquipo.value = true;
         };
@@ -1614,6 +1621,7 @@
             programa_id: formAsignar.value.programa_id,
             afi: afiLimpio,
             tipo: formAsignar.value.tipo,
+            nave: formAsignar.value.nave || 'NAVE 1',
             condicion: formAsignar.value.condicion,
             fecha_inicio: formAsignar.value.fecha_inicio,
             fecha_fin: formAsignar.value.fecha_fin,
@@ -1660,6 +1668,7 @@
             programa_id: perfilAsignacionProgId.value,
             afi: afiLimpio,
             tipo: perfilAsignacionTipo.value,
+            nave: perfilAsignacionNave.value || 'NAVE 1',
             condicion: perfilAsignacionCondicion.value,
             fecha_inicio: perfilAsignacionFechaInicio.value,
             fecha_fin: perfilAsignacionFechaFin.value || perfilAsignacionFechaInicio.value,
@@ -2441,9 +2450,9 @@
           showModalMovimiento, formMov, abrirModalCrearMovimiento, guardarNuevoMovimiento,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
           showModalPrograma, formProgMes, abrirModalCrearPrograma, guardarNuevoProgramaMes, eliminarProgramaCompleto,
-          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, abrirModalAsignarEquipoInProgresoEspecifico, guardarAsignacionEquipo,
-          dbProgramasCalendarios, dbProgramasItems, obtenerProgramasDeCarpeta, obtenerItemsPrograma, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
-          perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos,
+          showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, guardarAsignacionEquipo,
+          dbProgramasCalendarios, dbProgramasItems, obtenerProgramasDeCarpeta, obtenerItemsPrograma, obtenerItemsProgramaPorNave, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
+          perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionNave, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos,
           formatDateForDisplay, vistaProgramaMode
         };
       }
