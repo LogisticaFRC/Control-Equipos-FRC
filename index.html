@@ -1887,6 +1887,7 @@
             if (!intervencionesPorAFI[cleanAFI]) intervencionesPorAFI[cleanAFI] = [];
             intervencionesPorAFI[cleanAFI].push(i);
           });
+          
           for (const afi in intervencionesPorAFI) { 
             intervencionesPorAFI[afi].sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha)); 
           }
@@ -1895,13 +1896,17 @@
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             
-            const histMantenciones = histConHorometro.filter(i => {
-              const tMant = String(i.tipoMant || '').toUpperCase();
-              const cMant = String(i.causa || '').toUpperCase();
-              return tMant.includes('PREVENT') || tMant.includes('PREDICT') || cMant.includes('MANTENCION') || cMant.includes('SERVICIO');
+            // 1. FILTRAR ESTRICTAMENTE LAS QUE TIENEN CAUSA "MANTENCION"
+            const histMantencionesReales = histConHorometro.filter(i => {
+              const cVal = String(i.causa || '').trim().toUpperCase();
+              return cVal === 'MANTENCION';
             });
 
-            let ultimaMant = histMantenciones.length > 0 ? histMantenciones[histMantenciones.length - 1] : null;
+            // Última mantención real (Causa = MANTENCION)
+            let ultimaMant = histMantencionesReales.length > 0 ? histMantencionesReales[histMantencionesReales.length - 1] : null;
+            let penultimaMant = histMantencionesReales.length > 1 ? histMantencionesReales[histMantencionesReales.length - 2] : null;
+
+            // Último horómetro tomado (Cualquiera: Inspección, Reparación, Mantención, etc.)
             let ultimoReg = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : (histFull.length > 0 ? histFull[histFull.length - 1] : null);
 
             let hTomadoManual = Number(eq.horometroActual) || 0;
@@ -1910,42 +1915,28 @@
             let hUltimoTomado = hTomadoManual > 0 ? hTomadoManual : (ultimoReg ? Number(ultimoReg.horometro) : 0);
             let fechaUltimoHorometro = hTomadoManual > 0 && fechaTomadoManual ? fechaTomadoManual : (ultimoReg ? ultimoReg.fecha : '-');
 
-            let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : (hUltimoTomado > 0 ? hUltimoTomado : 0);
+            let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : hUltimoTomado;
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : fechaUltimoHorometro;
 
+            // 2. CÁLCULO INTELIGENTE DE RATE (HRS/DÍA) BASADO EN MANTENCIONES REALES O HISTORIAL
             let rateHrsDia = 0;
-            if (histConHorometro.length >= 2) {
-              let idxUltimo = histConHorometro.length - 1;
-              let regUltimo = histConHorometro[idxUltimo];
-              let regComparacion = null;
-
-              if (ultimaMant && Number(regUltimo.horometro) === Number(ultimaMant.horometro)) {
-                for (let j = histConHorometro.length - 2; j >= 0; j--) {
-                  if (Number(histConHorometro[j].horometro) < Number(regUltimo.horometro)) {
-                    regComparacion = histConHorometro[j];
-                    break;
-                  }
-                }
-              }
-
-              if (!regComparacion && histConHorometro.length >= 2) {
-                for (let j = histConHorometro.length - 2; j >= 0; j--) {
-                  if (Number(histConHorometro[j].horometro) < Number(regUltimo.horometro)) {
-                    regComparacion = histConHorometro[j];
-                    break;
-                  }
-                }
-                if (!regComparacion) {
-                  regComparacion = histConHorometro[histConHorometro.length - 2];
-                }
-              }
-
-              if (regComparacion) {
-                const dH = Number(regUltimo.horometro) - Number(regComparacion.horometro);
-                const dias = Math.max(1, Math.floor((parseIsoDate(regUltimo.fecha) - parseIsoDate(regComparacion.fecha)) / 86400000));
-                if (dH > 0) rateHrsDia = dH / dias;
-              }
+            
+            // Si tenemos al menos 2 mantenciones reales, calculamos en base a ellas
+            if (ultimaMant && penultimaMant && Number(ultimaMant.horometro) > Number(penultimaMant.horometro)) {
+              const dH = Number(ultimaMant.horometro) - Number(penultimaMant.horometro);
+              const dias = Math.max(1, Math.floor((parseIsoDate(ultimaMant.fecha) - parseIsoDate(penultimaMant.fecha)) / 86400000));
+              rateHrsDia = dH / dias;
+            } 
+            else if (histConHorometro.length >= 2) {
+              // Si no, usamos el último y el penúltimo registro con horómetro general
+              const penultimoReg = histConHorometro[histConHorometro.length - 2];
+              const dH = Number(ultimoReg.horometro) - Number(penultimoReg.horometro);
+              const dias = Math.max(1, Math.floor((parseIsoDate(ultimoReg.fecha) - parseIsoDate(penultimoReg.fecha)) / 86400000));
+              if (dH > 0) rateHrsDia = dH / dias;
             }
+
+            // Si aún con lo anterior el rate es 0, asignamos un estimado lógico o 0 para evitar promedios falsos de 3 fija
+            if (rateHrsDia <= 0) rateHrsDia = 2.5; 
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
             const estaFueraServicio = normalizarClave(eq.disponibilidad) === 'Fuera de Servicio';
