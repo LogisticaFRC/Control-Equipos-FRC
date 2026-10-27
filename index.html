@@ -184,15 +184,20 @@
         <section v-if="currentTab === 'inventario'" class="space-y-4">
           <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Inventario General</h2>
+              <div class="flex items-center gap-2">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Inventario General</h2>
+                <button v-if="isAdmin" @click="abrirModalCrearEquipo" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5 ml-3">
+                  <i class="fa-solid fa-plus-circle"></i> + Agregar Equipo
+                </button>
+              </div>
               <div class="flex flex-wrap items-center gap-2">
                 <button @click="toggleFiltroCriticos" :class="['text-xs font-extrabold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow', filterInv.mostrarCriticos ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-100 text-rose-600 border border-rose-200 hover:bg-rose-50']">
                   <i class="fa-solid fa-triangle-exclamation"></i> {{ filterInv.mostrarCriticos ? 'Viendo Críticos' : 'Ver Equipos Críticos / Pasados' }}
                 </button>
                 <label class="text-xs font-bold text-slate-700 ml-2">Orden:</label>
                 <select v-model="sortInventarioOrder" class="p-1.5 border rounded text-xs font-bold bg-slate-50">
-                  <option value="desc">Más Recientes primero</option>
-                  <option value="asc">Más Antiguos primero</option>
+                  <option value="desc">Descendente</option>
+                  <option value="asc">Ascendente</option>
                 </select>
                 <button @click="resetFiltrosInventario" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Limpiar</button>
                 <button @click="exportarCSV(filteredEquipos, 'Inventario_AFI_Filtrado')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> CSV</button>
@@ -442,44 +447,50 @@
                   <div v-if="obtenerItemsPrograma(progSelect.id).length === 0" class="text-center p-10 text-slate-400 font-bold">No hay equipos asignados a este programa.</div>
                 </div>
 
-                <!-- CONTENIDO VISTA CALENDARIO / GANTT SEPARADA POR NAVES -->
-                <div v-else class="flex-grow overflow-auto p-2 bg-slate-50 border rounded-xl space-y-4">
+                <!-- CONTENIDO VISTA CALENDARIO / GANTT TIPO EXCEL POR DÍAS -->
+                <div v-else class="flex-grow overflow-auto p-3 bg-slate-50 border rounded-xl space-y-6">
                   <template v-for="n_nave in ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4']" :key="n_nave">
-                    <div v-if="obtenerItemsProgramaPorNave(progSelect.id, n_nave).length > 0" class="space-y-1">
-                      <div class="text-[11px] font-bold text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-md uppercase">
-                        <i class="fa-solid fa-warehouse mr-1 text-indigo-600"></i> {{ n_nave }}
+                    <div v-if="obtenerItemsProgramaPorNave(progSelect.id, n_nave).length > 0" class="space-y-2">
+                      <div class="text-xs font-extrabold text-slate-800 bg-blue-100 border border-blue-300 px-3 py-1.5 rounded-md uppercase flex items-center justify-between">
+                        <span><i class="fa-solid fa-warehouse mr-1.5 text-blue-700"></i> {{ n_nave }}</span>
+                        <span class="text-[10px] font-mono text-blue-900">{{ obtenerItemsProgramaPorNave(progSelect.id, n_nave).length }} equipos asignados</span>
                       </div>
-                      <div class="overflow-x-auto">
-                        <table class="w-full text-[10px] border-collapse bg-white rounded-lg overflow-hidden border">
+
+                      <div class="overflow-x-auto border rounded-lg bg-white shadow-sm">
+                        <table class="w-full text-[10px] border-collapse">
                           <thead>
-                            <tr class="bg-slate-800 text-white">
-                              <th class="p-2 border">Equipo AFI</th>
-                              <th class="p-2 border">Trabajo</th>
-                              <th class="p-2 border">Condición</th>
-                              <th class="p-2 border text-center">Fecha Inicio</th>
-                              <th class="p-2 border text-center">Fecha Fin</th>
-                              <th class="p-2 border text-center">Estado</th>
+                            <tr class="bg-slate-800 text-white text-center">
+                              <th class="p-2 border border-slate-700 w-20">TIPO</th>
+                              <th class="p-2 border border-slate-700 w-20">AFI</th>
+                              <th class="p-2 border border-slate-700 w-20">CONDICIÓN</th>
+                              <th class="p-2 border border-slate-700 w-20">INICIO</th>
+                              <th class="p-2 border border-slate-700 w-20">FIN</th>
+                              <th v-for="diaObj in generarDiasDelPrograma(progSelect)" :key="diaObj.fechaStr" class="border border-slate-700 px-0.5 py-1 w-7 text-[9px] font-mono" :title="diaObj.fechaStr">
+                                <span class="block opacity-70">{{ diaObj.letraDia }}</span>
+                                <span class="block font-bold text-amber-300">{{ diaObj.numDia }}</span>
+                              </th>
                             </tr>
                           </thead>
-                          <tbody>
+                          <tbody class="divide-y">
                             <tr v-for="item in obtenerItemsProgramaPorNave(progSelect.id, n_nave)" :key="item.id" class="hover:bg-slate-50">
-                              <td class="p-2 border font-bold text-amber-700">AFI {{ item.afi }}</td>
-                              <td class="p-2 border font-semibold">{{ item.tipo }}</td>
-                              <td class="p-2 border font-medium">{{ item.condicion || 'Arriendo' }}</td>
-                              <td class="p-2 border text-center font-mono bg-amber-50 font-bold">{{ formatDateForDisplay(item.fecha_inicio) }}</td>
-                              <td class="p-2 border text-center font-mono bg-amber-50 font-bold">{{ formatDateForDisplay(item.fecha_fin) }}</td>
-                              <td class="p-2 border text-center">
-                                <span :class="['px-2 py-0.5 rounded font-bold uppercase', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800']">
-                                  {{ item.realizado ? 'Completado (ON)' : 'Programado (OFF)' }}
-                                </span>
+                              <td class="p-2 border font-semibold text-slate-800 bg-slate-50 truncate max-w-[80px]">{{ item.tipo }}</td>
+                              <td class="p-2 border font-bold text-amber-700 bg-amber-50/50">AFI {{ item.afi }}</td>
+                              <td class="p-2 border text-slate-700">{{ item.condicion || 'Arriendo' }}</td>
+                              <td class="p-2 border font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_inicio) }}</td>
+                              <td class="p-2 border font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_fin) }}</td>
+                              <td v-for="diaObj in generarDiasDelPrograma(progSelect)" :key="diaObj.fechaStr" 
+                                  :class="['border border-slate-200 text-center transition-colors', esFechaEnRangoEquipo(diaObj.fechaStr, item.fecha_inicio, item.fecha_fin) ? (item.realizado ? 'bg-emerald-500' : 'bg-purple-500 shadow-inner') : 'bg-white hover:bg-slate-100']"
+                                  :title="`AFI ${item.afi} - ${diaObj.fechaStr}`">
+                                <span v-if="esFechaEnRangoEquipo(diaObj.fechaStr, item.fecha_inicio, item.fecha_fin)" class="text-white text-[8px] font-bold">●</span>
                               </td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
+
                     </div>
                   </template>
-                  <div v-if="obtenerItemsPrograma(progSelect.id).length === 0" class="p-6 text-center text-slate-400">Sin equipos asignados para visualizar en calendario.</div>
+                  <div v-if="obtenerItemsPrograma(progSelect.id).length === 0" class="p-10 text-center text-slate-400 font-bold">Sin equipos asignados para visualizar en la Carta Gantt.</div>
                 </div>
 
               </template>
@@ -884,6 +895,7 @@
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
               <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-4"><i class="fa-solid fa-truck-monster text-emerald-600"></i> Datos Principales del Equipo</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div><label class="block font-bold text-slate-700 mb-1">AFI</label><input type="text" v-model="perfilEquipo.afi" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-amber-800"></div>
                 <div><label class="block font-bold text-slate-700 mb-1">Tipo de Equipo</label><input type="text" v-model="perfilEquipo.tipo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-slate-800"></div>
                 <div><label class="block font-bold text-slate-700 mb-1">Marca</label><input type="text" v-model="perfilEquipo.marca" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
                 <div><label class="block font-bold text-slate-700 mb-1">Modelo</label><input type="text" v-model="perfilEquipo.modelo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
@@ -1019,6 +1031,76 @@
               <button @click="showPerfilEquipoModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-lg text-xs">Cerrar</button>
               <button v-if="isAdmin" @click="guardarPerfilEquipo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: AGREGAR NUEVO EQUIPO -->
+      <div v-if="showModalNuevoEquipo" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-lg overflow-hidden flex flex-col">
+          <div class="bg-amber-500 px-6 py-4 flex justify-between items-center text-slate-950">
+            <h3 class="font-extrabold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Agregar Nuevo Equipo AFI</h3>
+            <button @click="showModalNuevoEquipo = false" class="text-slate-950/80 hover:text-slate-950"><i class="fa-solid fa-xmark text-lg"></i></button>
+          </div>
+          <div class="p-6 space-y-4 text-xs bg-slate-50">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Número AFI *</label>
+              <input type="text" v-model="formNuevoEquipo.afi" placeholder="Ej: 510" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Tipo de Equipo *</label>
+                <input type="text" v-model="formNuevoEquipo.tipo" placeholder="Ej: Generador" class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Marca</label>
+                <input type="text" v-model="formNuevoEquipo.marca" placeholder="Ej: Atlas Copco" class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Modelo</label>
+                <input type="text" v-model="formNuevoEquipo.modelo" placeholder="Ej: QAS 100" class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Ubicación</label>
+                <input type="text" v-model="formNuevoEquipo.ubicacion" placeholder="Ej: Bodega / Obra" class="w-full p-2.5 border rounded-lg bg-white">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Disponibilidad</label>
+                <select v-model="formNuevoEquipo.disponibilidad" class="w-full p-2.5 border rounded-lg bg-white font-bold text-blue-800">
+                  <option value="Operativo">Trabajando / Operativo</option>
+                  <option value="Disponible">Disponible</option>
+                  <option value="En Traslado">En Traslado</option>
+                  <option value="En Mantencion">En Mantención</option>
+                  <option value="Fuera de Servicio">Fuera de Servicio</option>
+                  <option value="Venta">En Venta</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Frecuencia Mantención (h)</label>
+                <input type="number" v-model="formNuevoEquipo.frecuenciaMantencion" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold" value="250">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Horómetro Inicial</label>
+                <input type="number" step="any" v-model="formNuevoEquipo.horometroActual" placeholder="0" class="w-full p-2.5 border rounded-lg bg-white font-mono font-bold">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">GPS</label>
+                <select v-model="formNuevoEquipo.gps" class="w-full p-2.5 border rounded-lg bg-white font-bold">
+                  <option value="Sin GPS">Sin GPS</option>
+                  <option value="Instalado">Instalado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
+            <button @click="showModalNuevoEquipo = false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
+            <button @click="guardarNuevoEquipo" :disabled="!formNuevoEquipo.afi || !formNuevoEquipo.tipo" class="px-5 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 shadow-md text-xs">Guardar Equipo</button>
           </div>
         </div>
       </div>
@@ -1375,6 +1457,43 @@
 
         const showPerfilEquipoModal = ref(false);
         const perfilEquipo = ref({});
+        
+        // Modal Agregar Equipo Nuevo
+        const showModalNuevoEquipo = ref(false);
+        const formNuevoEquipo = ref({ afi: "", tipo: "", marca: "", modelo: "", ubicacion: "", disponibilidad: "Operativo", horometroActual: 0, frecuenciaMantencion: 250, gps: "Sin GPS" });
+
+        const abrirModalCrearEquipo = () => {
+          formNuevoEquipo.value = { afi: "", tipo: "", marca: "", modelo: "", ubicacion: "", disponibilidad: "Operativo", horometroActual: 0, frecuenciaMantencion: 250, gps: "Sin GPS" };
+          showModalNuevoEquipo.value = true;
+        };
+
+        const guardarNuevoEquipo = async () => {
+          let afiClean = String(formNuevoEquipo.value.afi || '').trim();
+          if(!afiClean || !formNuevoEquipo.value.tipo) return alert("Ingresa al menos el AFI y el Tipo de Equipo.");
+          
+          const payload = {
+            afi: afiClean,
+            tipo: parseStr(formNuevoEquipo.value.tipo),
+            marca: parseStr(formNuevoEquipo.value.marca),
+            modelo: parseStr(formNuevoEquipo.value.modelo),
+            ubicacion: parseStr(formNuevoEquipo.value.ubicacion),
+            disponibilidad: normalizarClave(formNuevoEquipo.value.disponibilidad),
+            horometroactual: parseNum(formNuevoEquipo.value.horometroActual),
+            frecuencia_mantencion: parseNum(formNuevoEquipo.value.frecuenciaMantencion) || 250,
+            gps: parseStr(formNuevoEquipo.value.gps)
+          };
+
+          try {
+            const { error } = await supabaseClient.from('BD_INVENTARIO').insert([payload]);
+            if(error) throw error;
+            await cargarDatosDesdeSupabase();
+            showModalNuevoEquipo.value = false;
+            alert("¡Equipo agregado con éxito!");
+          } catch(err) {
+            alert("Error al agregar equipo en Supabase: " + (err.message || JSON.stringify(err)));
+          }
+        };
+
         const showFormMantencionModal = ref(false);
         const isEditingMantencion = ref(false);
         const formMant = ref({
@@ -1471,7 +1590,7 @@
         const perfilAsignacionFechaFin = ref('');
 
         const filterInv = ref({ search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false });
-        const sortInventarioOrder = ref("desc");
+        const sortInventarioOrder = ref("asc");
         const filterMov = ref({ dateStart: "", dateEnd: "", afi: "ALL", queryText: "", estado: "ALL" });
         const sortMovimientosOrder = ref("desc");
         const filterInt = ref({ searchQuery: "", dateStart: "", dateEnd: "", afi: "ALL", programa: "ALL", tipoMant: "ALL", causa: "ALL", mecText: "" });
@@ -1573,7 +1692,6 @@
             fecha_termino_programa: f_fin
           };
           try {
-            // CORREGIDO: Consulta a tu tabla exacta 'bd_programas_calendarios'
             const { data, error } = await supabaseClient.from('bd_programas_calendarios').insert([payload]).select();
             if (error) throw error;
             
@@ -1592,7 +1710,6 @@
         const eliminarProgramaCompleto = async (progId) => {
           if (confirm("¿Estás seguro de eliminar este programa completo junto con sus equipos asignados?")) {
             try {
-              // CORREGIDO: Tablas exactas 'bd_programas_items' y 'bd_programas_calendarios'
               await supabaseClient.from('bd_programas_items').delete().eq('programa_id', progId);
               await supabaseClient.from('bd_programas_calendarios').delete().eq('id', progId);
             } catch(e) {}
@@ -1631,7 +1748,6 @@
             realizado: false
           };
           try {
-            // CORREGIDO: Tabla exacta 'bd_programas_items'
             const { data, error } = await supabaseClient.from('bd_programas_items').insert([payload]).select();
             if(error) throw error;
             if(data && data[0]) dbProgramasItems.value.push(data[0]);
@@ -1646,7 +1762,6 @@
 
         const cambiarEstadoRealizadoItem = async (item) => {
           try {
-            // CORREGIDO: Tabla exacta 'bd_programas_items'
             await supabaseClient.from('bd_programas_items').update({ realizado: item.realizado }).eq('id', item.id);
           } catch(e) {}
         };
@@ -1654,7 +1769,6 @@
         const eliminarItemPrograma = async (itemId) => {
           if (confirm("¿Eliminar este equipo del programa?")) {
             try {
-              // CORREGIDO: Tabla exacta 'bd_programas_items'
               await supabaseClient.from('bd_programas_items').delete().eq('id', itemId);
             } catch(e) {}
             dbProgramasItems.value = dbProgramasItems.value.filter(i => i.id !== itemId);
@@ -1681,7 +1795,6 @@
             realizado: false
           };
           try {
-            // CORREGIDO: Tabla exacta 'bd_programas_items'
             const { data, error } = await supabaseClient.from('bd_programas_items').insert([payload]).select();
             if(error) throw error;
             if(data && data[0]) dbProgramasItems.value.push(data[0]);
@@ -1690,6 +1803,37 @@
           }
           alert("¡Equipo asignado al programa con éxito!");
           perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
+        };
+
+        const generarDiasDelPrograma = (prog) => {
+          if (!prog || !prog.fecha_inicio_programa || !prog.fecha_termino_programa) return [];
+          let diasArr = [];
+          let curr = new Date(prog.fecha_inicio_programa + 'T00:00:00');
+          let fin = new Date(prog.fecha_termino_programa + 'T00:00:00');
+          const letras = ['d', 'l', 'm', 'mi', 'j', 'v', 's'];
+
+          while (curr <= fin) {
+            const y = curr.getFullYear();
+            const m = String(curr.getMonth() + 1).padStart(2, '0');
+            const d = String(curr.getDate()).padStart(2, '0');
+            const fechaStr = `${y}-${m}-${d}`;
+            
+            diasArr.push({
+              fechaStr: fechaStr,
+              numDia: curr.getDate(),
+              letraDia: letras[curr.getDay()]
+            });
+            curr.setDate(curr.getDate() + 1);
+          }
+          return diasArr;
+        };
+
+        const esFechaEnRangoEquipo = (fechaDia, fechaIni, fechaFin) => {
+          if (!fechaIni || !fechaFin) return false;
+          const fD = normalizarFecha(fechaDia);
+          const fI = normalizarFecha(fechaIni);
+          const fF = normalizarFecha(fechaFin);
+          return fD >= fI && fD <= fF;
         };
 
         const normalizarClave = (str) => {
@@ -1784,7 +1928,14 @@
                 frecuenciaMantencion: Number(item.frecuencia_mantencion) || 250,
                 gps: item.gps || 'Sin GPS', imei_gps: item.imei_gps || '', foto: item.foto || '', horometros: null
               }));
-              dbEquipos.value.sort((a, b) => String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true }));
+              
+              // Ordenamiento natural: números primero, luego alfanuméricos
+              dbEquipos.value.sort((a, b) => {
+                const numA = parseInt(String(a.afi).replace(/\D/g, '')) || 0;
+                const numB = parseInt(String(b.afi).replace(/\D/g, '')) || 0;
+                if (numA !== numB) return numA - numB;
+                return String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true });
+              });
             }
             
             const movData = await fetchAllRowsSupabase('BD_MOVIMIENTOS');
@@ -1863,13 +2014,11 @@
             }
 
             try {
-              // CORREGIDO: Consulta exacta a 'bd_programas_calendarios'
               const calData = await fetchAllRowsSupabase('bd_programas_calendarios');
               if (calData && calData.length > 0) dbProgramasCalendarios.value = calData;
             } catch(e) {}
 
             try {
-              // CORREGIDO: Consulta exacta a 'bd_programas_items'
               const itemData = await fetchAllRowsSupabase('bd_programas_items');
               if (itemData && itemData.length > 0) dbProgramasItems.value = itemData;
             } catch(e) {}
@@ -1879,7 +2028,7 @@
           } catch (err) { console.error("Error cargando datos:", err); }
         };
 
-       const actualizarHorometrosDesdeHistorial = () => {
+        const actualizarHorometrosDesdeHistorial = () => {
           const intervencionesPorAFI = {};
           dbIntervenciones.value.forEach(i => {
             if (!i.afi) return;
@@ -1896,7 +2045,6 @@
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             
-            // 1. FILTRAR ESTRICTAMENTE LAS QUE TIENEN CAUSA "MANTENCION" Y ORDENAR
             const histMantencionesReales = histConHorometro.filter(i => {
               const cVal = String(i.causa || '').trim().toUpperCase();
               return cVal === 'MANTENCION';
@@ -1916,7 +2064,6 @@
             let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : hUltimoTomado;
             let ultimaMantFecha = ultimaMant ? ultimaMant.fecha : fechaUltimoHorometro;
 
-            // FUNCIÓN SEGURA PARA CALCULAR DÍAS EXACTOS IGNORANDO HORA LOCAL / DST
             const calcularDiasExactos = (f1, f2) => {
               const iso1 = normalizarFecha(f1);
               const iso2 = normalizarFecha(f2);
@@ -1929,17 +2076,14 @@
               return Math.max(1, dias);
             };
 
-            // 2. CÁLCULO DINÁMICO DE HORAS DIARIAS
             let rateHrsDia = 0;
             
             if (ultimaMant && Number(hUltimoTomado) > Number(ultimaMant.horometro)) {
-              // Caso estándar: Último horómetro vs Última mantención real
               const dH = Number(hUltimoTomado) - Number(ultimaMant.horometro);
               const dias = calcularDiasExactos(fechaUltimoHorometro, ultimaMantFecha);
               rateHrsDia = dH / dias;
             } 
             else if (ultimaMant && penultimaMant && Number(hUltimoTomado) === Number(ultimaMant.horometro)) {
-              // Excepción: Si la diferencia es 0, usamos la penúltima mantención
               const dH = Number(hUltimoTomado) - Number(penultimaMant.horometro);
               const dias = calcularDiasExactos(fechaUltimoHorometro, penultimaMant.fecha);
               rateHrsDia = dH / dias;
@@ -1951,7 +2095,6 @@
               if (dH > 0) rateHrsDia = dH / dias;
             }
 
-            // Fallback general genérico por si el equipo no tiene historial cruzado
             if (rateHrsDia <= 0) rateHrsDia = 1.5; 
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
@@ -1978,6 +2121,7 @@
             };
           });
         };
+
         const getHorometroCardBgClass = (h) => h?.horasFaltantes <= 0 ? 'bg-rose-50 border-rose-300' : h?.horasFaltantes <= 50 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200';
         const getPrediccionStatusBadge = (h) => h?.horasFaltantes <= 0 ? 'bg-rose-600 text-white animate-pulse' : h?.horasFaltantes <= 50 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white';
 
@@ -1990,7 +2134,17 @@
             const matchCritico = !filterInv.value.mostrarCriticos || (e.horometros?.horasFaltantes <= 50);
             return matchSearch && matchUbi && matchEst && matchGps && matchCritico;
           });
-          arr.sort((a,b) => sortInventarioOrder.value === 'desc' ? b.id - a.id : a.id - b.id);
+          
+          arr.sort((a, b) => {
+            const numA = parseInt(String(a.afi).replace(/\D/g, '')) || 0;
+            const numB = parseInt(String(b.afi).replace(/\D/g, '')) || 0;
+            if (numA !== numB) {
+              return sortInventarioOrder.value === 'desc' ? numB - numA : numA - numB;
+            }
+            return sortInventarioOrder.value === 'desc' 
+              ? String(b.afi).localeCompare(String(a.afi), undefined, { numeric: true })
+              : String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true });
+          });
           return arr;
         });
 
@@ -2215,6 +2369,7 @@
 
         const guardarPerfilEquipo = async () => {
           const payload = {
+            afi: String(perfilEquipo.value.afi || '').trim(),
             tipo: perfilEquipo.value.tipo, marca: perfilEquipo.value.marca, modelo: perfilEquipo.value.modelo, ubicacion: perfilEquipo.value.ubicacion,
             disponibilidad: perfilEquipo.value.disponibilidad, gps: perfilEquipo.value.gps, imei_gps: perfilEquipo.value.imei_gps,
             horometroactual: parseNum(perfilEquipo.value.horometroActual), 
@@ -2473,6 +2628,7 @@
           listaTiposAceitesDisponibles, sumaTotalLitrosAceites, costoTotalAceitesFiltrados, exportarCSV, importarInventarioFile, importarMovimientosFile, importarIntervencionesFile,
           getHistorialMovimientosAFI, getHistorialIntervencionesAFI, getMecanicosText, calcularRestaHoras,
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
+          showModalNuevoEquipo, formNuevoEquipo, abrirModalCrearEquipo, guardarNuevoEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
           agregarFilaFiltro, eliminarFilaFiltro,
           showModalMovimiento, formMov, abrirModalCrearMovimiento, guardarNuevoMovimiento,
@@ -2481,7 +2637,7 @@
           showModalAsignarEquipo, formAsignar, abrirModalAsignarEquipo, guardarAsignacionEquipo,
           dbProgramasCalendarios, dbProgramasItems, obtenerProgramasDeCarpeta, obtenerItemsPrograma, obtenerItemsProgramaPorNave, getProgreso, cumplimientoGlobalTotal, openFolders, toggleFolder, progSelect, seleccionarProgramaObj, cambiarEstadoRealizadoItem, eliminarItemPrograma,
           perfilAsignacionProgId, perfilAsignacionTipo, perfilAsignacionNave, perfilAsignacionCondicion, perfilAsignacionFechaInicio, perfilAsignacionFechaFin, guardarAsignacionDesdePerfil, toggleFiltroCriticos,
-          formatDateForDisplay, vistaProgramaMode
+          formatDateForDisplay, vistaProgramaMode, generarDiasDelPrograma, esFechaEnRangoEquipo
         };
       }
     }).mount('#app');
