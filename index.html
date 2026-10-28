@@ -2661,9 +2661,15 @@
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
-          let afiLimpio = String(formMant.value.afi || '').trim().replace(/^AFI\s*/i, '').trim();
-          afiLimpio = afiLimpio.replace(/^AFI\s*/i, '');
-          afiLimpio = afiLimpio.split('-')[0].trim();
+         let afiLimpio = String(formMant.value.afi || '').trim();
+          // Si viene del select con formato "AFI HDVG-11 - CAMIONETA", extraemos la parte inicial limpia
+          if (afiLimpio.toUpperCase().startsWith('AFI')) {
+            afiLimpio = afiLimpio.replace(/^AFI\s*/i, '').trim();
+          }
+          // Si el texto tiene un guión que separa la descripción (ej: "HDVG-11 - CAMIONETA"), nos quedamos con "HDVG-11"
+          if (afiLimpio.includes(' - ')) {
+            afiLimpio = afiLimpio.split(' - ')[0].trim();
+          }
 
           const equipoObj = dbEquipos.value.find(e => String(e.afi).trim().toUpperCase() === afiLimpio.toUpperCase());
           const equipoNombre = parseStr(equipoObj?.tipo);
