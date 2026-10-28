@@ -2434,19 +2434,33 @@
             
             // FILTRO ESTRICTO: Solo considera registros con causa estricta 'MANTENCION' para la última mantención
            // Dentro de actualizarHorometrosDesdeHistorial():
-const histMantencionesReales = histConHorometro.filter(i => {
-  const cVal = String(i.causa || '').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const tVal = String(i.tipoMant || '').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return cVal.includes('MANTENCION') || cVal.includes('MANTENIMIENTO') || tVal.includes('MANTENCION') || tVal.includes('PREVENTIVA');
-}).sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
+const actualizarHorometrosDesdeHistorial = () => {
+          const intervencionesPorAFI = {};
+          dbIntervenciones.value.forEach(i => {
+            if (!i.afi) return;
+            const cleanAFI = String(i.afi).trim().toUpperCase();
+            if (!intervencionesPorAFI[cleanAFI]) intervencionesPorAFI[cleanAFI] = [];
+            intervencionesPorAFI[cleanAFI].push(i);
+          });
+          
+          for (const afi in intervencionesPorAFI) { 
+            intervencionesPorAFI[afi].sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha)); 
+          }
+
+          dbEquipos.value.forEach(eq => {
+            const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
+            const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
+            
+            // Filtro estricto para mantenciones reales
+            const histMantencionesReales = histConHorometro.filter(i => {
+              const cVal = String(i.causa || '').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const tVal = String(i.tipoMant || '').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              return cVal.includes('MANTENCION') || cVal.includes('MANTENIMIENTO') || tVal.includes('MANTENCION') || tVal.includes('PREVENTIVA');
+            }).sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
 
             let ultimaMant = histMantencionesReales.length > 0 ? histMantencionesReales[histMantencionesReales.length - 1] : null;
-            let hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : 0;
+            let penultimaMant = histMantencionesReales.length >= 2 ? histMantencionesReales[histMantencionesReales.length - 2] : null;
 
-            const frecuencia = Number(eq.frecuenciaMantencion) || 250;
-            const hTarget = hUltimaMant > 0 ? hUltimaMant + frecuencia : frecuencia;
-            const faltan = hTarget - hAprox;
-            let estadoTexto = faltan <= 0 ? "¡PASADO!" : faltan <= 50 ? "PRÓXIMO" : "AL DÍA";
             let ultimoReg = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : (histFull.length > 0 ? histFull[histFull.length - 1] : null);
 
             let hTomadoManual = Number(eq.horometroActual) || 0;
@@ -2471,18 +2485,15 @@ const histMantencionesReales = histConHorometro.filter(i => {
             };
 
             let rateHrsDia = 0;
-            
             if (ultimaMant && Number(hUltimoTomado) > Number(ultimaMant.horometro)) {
               const dH = Number(hUltimoTomado) - Number(ultimaMant.horometro);
               const dias = calcularDiasExactos(fechaUltimoHorometro, ultimaMantFecha);
               rateHrsDia = dH / dias;
-            } 
-            else if (ultimaMant && penultimaMant && Number(hUltimoTomado) === Number(ultimaMant.horometro)) {
+            } else if (ultimaMant && penultimaMant && Number(hUltimoTomado) === Number(ultimaMant.horometro)) {
               const dH = Number(hUltimoTomado) - Number(penultimaMant.horometro);
               const dias = calcularDiasExactos(fechaUltimoHorometro, penultimaMant.fecha);
               rateHrsDia = dH / dias;
-            } 
-            else if (histConHorometro.length >= 2) {
+            } else if (histConHorometro.length >= 2) {
               const penultimoReg = histConHorometro[histConHorometro.length - 2];
               const dH = Number(ultimoReg.horometro) - Number(penultimoReg.horometro);
               const dias = calcularDiasExactos(ultimoReg.fecha, penultimoReg.fecha);
