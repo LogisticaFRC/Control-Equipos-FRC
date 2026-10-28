@@ -1678,14 +1678,15 @@
     </template>
   </div>
 
-  <script>
+ <script>
     const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
     const SUPABASE_URL = "https://dxpfaweuiijumvfrykvl.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4cGZhd2V1aWlqdW12ZnJ5a3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODE5NDcsImV4cCI6MjEwODE1Nzk0N30.du61QLSaevcDVDd0GmlM2xTYmE_c4envzjmneocnHgc";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-createApp({
-   setup() {
+
+    createApp({
+      setup() {
         const usuarioActivo = ref(null);
         const isAdmin = computed(() => usuarioActivo.value && usuarioActivo.value.rol === 'admin');
 
@@ -1715,6 +1716,13 @@ createApp({
         const dbProgramasCalendarios = ref([]);
         const dbProgramasItems = ref([]);
         const vistaProgramaMode = ref('tabla');
+
+        // NUEVAS VARIABLES PARA MODELOS Y FORMATOS
+        const dbModelosFichas = ref([]);
+        const dbFormatos = ref([]);
+        const showModalNuevoFormato = ref(false);
+        const formNuevoFormato = ref({ carpeta: 'CHECKLISTS', nombre: '', link: '' });
+        const openFoldersFormatos = ref({ CHECKLISTS: true, PROCEDIMIENTOS: true, MANUALES: true, PERMISOS: true });
 
         const showPerfilEquipoModal = ref(false);
         const perfilEquipo = ref({});
@@ -1824,29 +1832,94 @@ createApp({
           aceite_75w90: "", aceite_10w40: "", multiproposito: "", desegransante: "", acido_muriatico: ""
         });
 
-        // FUNCIÓN PARA SUBIR ARCHIVOS A SUPABASE STORAGE
         const subirArchivoHistorial = async (e) => {
           const file = e.target.files[0];
           if (!file) return;
 
           try {
             const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-            
-            const { data, error } = await supabaseClient.storage
-              .from('archivos_frc')
-              .upload(fileName, file);
-
+            const { data, error } = await supabaseClient.storage.from('archivos_frc').upload(fileName, file);
             if (error) throw error;
 
-            const { data: urlData } = supabaseClient.storage
-              .from('documentos_mantenciones')
-              .getPublicUrl(fileName);
-
+            const { data: urlData } = supabaseClient.storage.from('archivos_frc').getPublicUrl(fileName);
             formMant.value.linkDrive = urlData.publicUrl;
             alert("¡Archivo subido y vinculado con éxito!");
           } catch (err) {
             alert("Error al subir el archivo: " + (err.message || JSON.stringify(err)));
           }
+        };
+
+        // SUBIR FICHA TÉCNICA POR MODELO
+        const subirFichaTecnicaModelo = async (e, modeloObj) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          try {
+            const fileName = `ficha_${modeloObj.modelo.replace(/\s+/g, '_')}_${Date.now()}_${file.name}`;
+            const { data, error } = await supabaseClient.storage.from('archivos_frc').upload(fileName, file);
+            if (error) throw error;
+            const { data: urlData } = supabaseClient.storage.from('archivos_frc').getPublicUrl(fileName);
+            
+            // Guardar en tabla BD_MODELOS_FICHA
+            await supabaseClient.from('BD_MODELOS_FICHA').upsert({
+              marca: modeloObj.marca,
+              modelo: modeloObj.modelo,
+              link_ficha: urlData.publicUrl
+            }, { onConflict: 'modelo' });
+
+            await cargarDatosDesdeSupabase();
+            alert("¡Ficha técnica del modelo subida con éxito!");
+          } catch(err) {
+            alert("Error al subir ficha técnica: " + (err.message || JSON.stringify(err)));
+          }
+        };
+
+        // SUBIR ARCHIVO NUEVO A FORMATOS
+        const subirArchivoFormato = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          try {
+            const fileName = `formato_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+            const { data, error } = await supabaseClient.storage.from('archivos_frc').upload(fileName, file);
+            if (error) throw error;
+            const { data: urlData } = supabaseClient.storage.from('archivos_frc').getPublicUrl(fileName);
+            formNuevoFormato.value.link = urlData.publicUrl;
+            if(!formNuevoFormato.value.nombre) formNuevoFormato.value.nombre = file.name;
+            alert("¡Archivo cargado correctamente!");
+          } catch(err) {
+            alert("Error al subir archivo: " + (err.message || JSON.stringify(err)));
+          }
+        };
+
+        const guardarNuevoFormatoDB = async () => {
+          if(!formNuevoFormato.value.nombre || !formNuevoFormato.value.link) return alert("Completa el nombre y sube el archivo.");
+          try {
+            await supabaseClient.from('BD_FORMATOS').insert([{
+              carpeta: formNuevoFormato.value.carpeta,
+              nombre: formNuevoFormato.value.nombre,
+              link: formNuevoFormato.value.link
+            }]);
+            await cargarDatosDesdeSupabase();
+            showModalNuevoFormato.value = false;
+            formNuevoFormato.value = { carpeta: 'CHECKLISTS', nombre: '', link: '' };
+            alert("¡Formato guardado con éxito!");
+          } catch(err) {
+            alert("Error al guardar formato: " + (err.message || JSON.stringify(err)));
+          }
+        };
+
+        const eliminarFormatoDB = async (id) => {
+          if(confirm("¿Eliminar este formato?")) {
+            try {
+              await supabaseClient.from('BD_FORMATOS').delete().eq('id', id);
+              await cargarDatosDesdeSupabase();
+            } catch(e) {}
+          }
+        };
+
+        const obtenerFichaModelo = (modeloStr) => {
+          if(!modeloStr) return null;
+          const found = dbModelosFichas.value.find(m => String(m.modelo).trim().toUpperCase() === String(modeloStr).trim().toUpperCase());
+          return found ? found.link_ficha : null;
         };
 
         const showModalMovimiento = ref(false);
@@ -2051,6 +2124,7 @@ createApp({
         });
 
         const toggleFolder = (folderKey) => { openFolders.value[folderKey] = !openFolders.value[folderKey]; };
+        const toggleFolderFormatos = (folderKey) => { openFoldersFormatos.value[folderKey] = !openFoldersFormatos.value[folderKey]; };
         
         const seleccionarProgramaObj = (prog) => {
           progSelect.value = { 
@@ -2430,9 +2504,19 @@ createApp({
               if (calData && calData.length > 0) dbProgramasCalendarios.value = calData;
             } catch(e) {}
 
-           try {
+            try {
               const itemData = await fetchAllRowsSupabase('BD_PROGRAMAS_ITEMS');
               if (itemData && itemData.length > 0) dbProgramasItems.value = itemData;
+            } catch(e) {}
+
+            try {
+              const modData = await fetchAllRowsSupabase('BD_MODELOS_FICHA');
+              if(modData) dbModelosFichas.value = modData;
+            } catch(e) {}
+
+            try {
+              const fmtData = await fetchAllRowsSupabase('BD_FORMATOS');
+              if(fmtData) dbFormatos.value = fmtData;
             } catch(e) {}
 
             actualizarHorometrosDesdeHistorial();
@@ -3190,7 +3274,7 @@ createApp({
           }
         };
 
-       return {
+        return {
           usuarioActivo, isAdmin, loginUser, loginPass, authError, currentTab, switchTab, dbUsuarios, nuevoUsuario, crearNuevoUsuario, eliminarUsuario,
           config, headerStyle, bodyStyle, primaryBtnStyle, guardarConfiguracionPersonalizada, subirNuevaFotoLogo, uploadFotoEquipo,
           listaCausas, dbEquipos, dbMovimientos, dbIntervenciones, countEstado, resumenKPIs, filterInv, filterMov, filterInt, filterOil,
@@ -3211,7 +3295,9 @@ createApp({
           formatDateForDisplay, vistaProgramaMode, generarDiasDelPrograma, esFechaEnRangoEquipo,
           exportarTodasLasTablasExcel, exportarProgramaGanttExcel, obtenerDetalleEquipoPorAfi, obtenerItemsProgramaEnRangoPorNave, obtenerItemsFueraDeRangoPrograma,
           perfilFiltroFechaInicio, perfilFiltroFechaFin, perfilFiltroCausa, listaCausasEquipo, getHistorialIntervencionesFiltradoAFI, costoTotalIntervencionesFiltradasAFI, causaMasFrecuenteEquipo, resetFiltrosPerfil, renderPerfilCharts,
-          actualizarTipoSegunProgramaSeleccionado, equiposCriticosDashboard
+          actualizarTipoSegunProgramaSeleccionado, equiposCriticosDashboard,
+          dbModelosFichas, dbFormatos, showModalNuevoFormato, formNuevoFormato, openFoldersFormatos, toggleFolderFormatos,
+          subirFichaTecnicaModelo, subirArchivoFormato, guardarNuevoFormatoDB, eliminarFormatoDB, obtenerFichaModelo
         };
       }
     }).mount('#app');
