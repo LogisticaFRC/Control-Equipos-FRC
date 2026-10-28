@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control AFI & Programación</title>
+
+  <!-- Tailwind CSS (Play CDN, versión fija) -->
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Librerías (versiones fijas) -->
+  <script src="https://unpkg.com/vue@3.4.38/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="font-sans min-h-screen flex flex-col transition-colors duration-300" style="background-color:#f1f5f9">
+  <!-- Toda la aplicación se monta aquí (ver js/main.js) -->
+  <div id="app" class="flex-grow flex flex-col"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

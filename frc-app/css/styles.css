@@ -1,0 +1,24 @@
+/* =====================================================================
+   Estilos globales (complementan Tailwind)
+   ===================================================================== */
+@keyframes blink-red-slow {
+  0% { background-color: #450a0a; border-color: #ef4444; }
+  50% { background-color: #991b1b; border-color: #fca5a5; }
+  100% { background-color: #450a0a; border-color: #ef4444; }
+}
+.bg-pasado-blink {
+  animation: blink-red-slow 2.5s ease-in-out infinite;
+  color: white;
+}
+.bg-normal-horometro {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: white;
+}
+::-webkit-scrollbar { height: 8px; width: 8px; }
+::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Evita que se vean las llaves {{ }} mientras Vue carga */
+[v-cloak] { display: none; }
