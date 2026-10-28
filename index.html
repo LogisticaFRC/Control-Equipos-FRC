@@ -1684,7 +1684,7 @@
     const SUPABASE_URL = "https://dxpfaweuiijumvfrykvl.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4cGZhd2V1aWlqdW12ZnJ5a3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODE5NDcsImV4cCI6MjEwODE1Nzk0N30.du61QLSaevcDVDd0GmlM2xTYmE_c4envzjmneocnHgc";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+createApp({
    setup() {
         const usuarioActivo = ref(null);
         const isAdmin = computed(() => usuarioActivo.value && usuarioActivo.value.rol === 'admin');
