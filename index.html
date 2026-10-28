@@ -2484,10 +2484,14 @@
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
             const estaFueraServicio = normalizarClave(eq.disponibilidad) === 'Fuera de Servicio';
-            const hAprox = estaFueraServicio ? hUltimoTomado : Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
+           const hAprox = estaFueraServicio ? hUltimoTomado : Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
             
             const frecuencia = Number(eq.frecuenciaMantencion) || 250;
-            const hTarget = hUltimaMant > 0 ? hUltimaMant + frecuencia : hUltimoTomado + frecuencia;
+            
+            // CORRECCIÓN: Ahora siempre calcula la meta sumando desde la última mantención.
+            // Si es 0, la meta será 250, por lo que el equipo saltará como ¡PASADO! de inmediato.
+            const hTarget = hUltimaMant + frecuencia;
+            
             const faltan = hTarget - hAprox;
 
             let diasFaltantes = rateHrsDia > 0 ? Math.ceil(faltan / rateHrsDia) : 30;
