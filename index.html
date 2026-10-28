@@ -1362,7 +1362,14 @@
             <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
-            
+            <!-- Agrega este bloque dentro del formulario de mantención (en la Parte 3) -->
+<div class="bg-slate-50 p-4 rounded-xl border space-y-2">
+  <label class="block font-bold mb-1 text-slate-700">Adjuntar Documento / PDF / Factura</label>
+  <input type="file" @change="subirArchivoHistorial" accept=".pdf,image/*" class="w-full text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+  <p v-if="formMant.linkDrive" class="text-[10px] text-emerald-700 font-bold">
+    <i class="fa-solid fa-check"></i> Archivo ya adjunto y vinculado correctamente.
+  </p>
+</div>
             <!-- INFORMES PRINCIPALES -->
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
               <h4 class="font-bold text-slate-800 uppercase">Informes Principales</h4>
@@ -1678,8 +1685,7 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4cGZhd2V1aWlqdW12ZnJ5a3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODE5NDcsImV4cCI6MjEwODE1Nzk0N30.du61QLSaevcDVDd0GmlM2xTYmE_c4envzjmneocnHgc";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    createApp({
-      setup() {
+   setup() {
         const usuarioActivo = ref(null);
         const isAdmin = computed(() => usuarioActivo.value && usuarioActivo.value.rol === 'admin');
 
@@ -1713,7 +1719,6 @@
         const showPerfilEquipoModal = ref(false);
         const perfilEquipo = ref({});
         
-        // Filtros para el Perfil de Equipo y Dashboard Individual
         const perfilFiltroFechaInicio = ref("");
         const perfilFiltroFechaFin = ref("");
         const perfilFiltroCausa = ref("ALL");
@@ -1770,7 +1775,6 @@
           renderPerfilCharts();
         };
         
-        // Modal Agregar Equipo Nuevo
         const showModalNuevoEquipo = ref(false);
         const formNuevoEquipo = ref({ afi: "", tipo: "", marca: "", modelo: "", ubicacion: "", disponibilidad: "Operativo", horometroActual: 0, frecuenciaMantencion: 250, gps: "Sin GPS" });
 
@@ -1810,7 +1814,7 @@
         const isEditingMantencion = ref(false);
         const formMant = ref({
           id: null, afi: "", fecha: "", lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA 250 HRS", tipoHorasMant: "250 hrs", horometro: "",
-          programaCorrespondiente: "", horaInicio: "", horaTermino: "",
+          programaCorrespondiente: "", horaInicio: "", horaTermino: "", linkDrive: "",
           mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
           filtrosLista: [],
           aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_50: "", aceite_80w90: "",
@@ -1819,6 +1823,31 @@
           hydra46: "", hydra_68: "", adblue: "",
           aceite_75w90: "", aceite_10w40: "", multiproposito: "", desegransante: "", acido_muriatico: ""
         });
+
+        // FUNCIÓN PARA SUBIR ARCHIVOS A SUPABASE STORAGE
+        const subirArchivoHistorial = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          try {
+            const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+            
+            const { data, error } = await supabaseClient.storage
+              .from('documentos_mantenciones')
+              .upload(fileName, file);
+
+            if (error) throw error;
+
+            const { data: urlData } = supabaseClient.storage
+              .from('documentos_mantenciones')
+              .getPublicUrl(fileName);
+
+            formMant.value.linkDrive = urlData.publicUrl;
+            alert("¡Archivo subido y vinculado con éxito!");
+          } catch (err) {
+            alert("Error al subir el archivo: " + (err.message || JSON.stringify(err)));
+          }
+        };
 
         const showModalMovimiento = ref(false);
         const formMov = ref({ afi: "", fecha: new Date().toISOString().substring(0, 10), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "" });
@@ -1829,10 +1858,9 @@
         };
 
         const guardarNuevoMovimiento = async () => {
-          let afiLimpio = String(formMov.value.afi || '').trim().replace(/^AFI\s*/i, '').trim();
+          let afiLimpio = String(formMov.value.afi || '').trim();
           if (afiLimpio.toUpperCase().startsWith('AFI')) {
-            const parts = afiLimpio.split('-');
-            afiLimpio = parts[0].replace('AFI', '').trim();
+            afiLimpio = afiLimpio.replace(/^AFI\s*/i, '').trim();
           }
 
           const payload = {
@@ -2100,10 +2128,9 @@
         };
 
         const guardarAsignacionEquipo = async () => {
-          let afiLimpio = String(formAsignar.value.afi || '').trim().replace(/^AFI\s*/i, '').trim();
+          let afiLimpio = String(formAsignar.value.afi || '').trim();
           if (afiLimpio.toUpperCase().startsWith('AFI')) {
-            const parts = afiLimpio.split('-');
-            afiLimpio = parts[0].replace('AFI', '').trim();
+            afiLimpio = afiLimpio.replace(/^AFI\s*/i, '').trim();
           }
 
           const prog = obtenerProgObj(formAsignar.value.programa_id);
@@ -2161,10 +2188,9 @@
 
         const guardarAsignacionDesdePerfil = async () => {
           if (!perfilAsignacionProgId.value || !perfilAsignacionFechaInicio.value) return alert("Selecciona programa y fecha de inicio.");
-          let afiLimpio = String(perfilEquipo.value.afi || '').trim().replace(/^AFI\s*/i, '').trim();
+          let afiLimpio = String(perfilEquipo.value.afi || '').trim();
           if (afiLimpio.toUpperCase().startsWith('AFI')) {
-            const parts = afiLimpio.split('-');
-            afiLimpio = parts[0].replace('AFI', '').trim();
+            afiLimpio = afiLimpio.replace(/^AFI\s*/i, '').trim();
           }
 
           const prog = obtenerProgObj(perfilAsignacionProgId.value);
@@ -2431,7 +2457,6 @@
             const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
             const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
             
-            // Filtro estricto para mantenciones reales
             const histMantencionesReales = histConHorometro.filter(i => {
               const cVal = String(i.causa || '').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
               const tVal = String(i.tipoMant || '').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -2484,14 +2509,10 @@
 
             const diasDesdeUltimo = Math.max(0, Math.floor((new Date() - new Date(fechaUltimoHorometro)) / 86400000));
             const estaFueraServicio = normalizarClave(eq.disponibilidad) === 'Fuera de Servicio';
-           const hAprox = estaFueraServicio ? hUltimoTomado : Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
+            const hAprox = estaFueraServicio ? hUltimoTomado : Math.round((hUltimoTomado + (diasDesdeUltimo * rateHrsDia)) * 10) / 10;
             
             const frecuencia = Number(eq.frecuenciaMantencion) || 250;
-            
-            // CORRECCIÓN: Ahora siempre calcula la meta sumando desde la última mantención.
-            // Si es 0, la meta será 250, por lo que el equipo saltará como ¡PASADO! de inmediato.
             const hTarget = hUltimaMant + frecuencia;
-            
             const faltan = hTarget - hAprox;
 
             let diasFaltantes = rateHrsDia > 0 ? Math.ceil(faltan / rateHrsDia) : 30;
@@ -2626,7 +2647,7 @@
           formMant.value = {
             id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
             fecha: new Date().toISOString().substring(0, 10), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA 250 HRS", tipoHorasMant: "250 hrs", horometro: "",
-            programaCorrespondiente: "", horaInicio: "", horaTermino: "",
+            programaCorrespondiente: "", horaInicio: "", horaTermino: "", linkDrive: "",
             mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
             filtrosLista: [],
             aceite_15w40_ci4: "", aceite_15w40_ck4: "", aceite_refrigerante_50: "", aceite_80w90: "",
@@ -2661,12 +2682,10 @@
             return alert("Por favor selecciona al menos el AFI y la Fecha.");
           }
 
-         let afiLimpio = String(formMant.value.afi || '').trim();
-          // Si viene del select con formato "AFI HDVG-11 - CAMIONETA", extraemos la parte inicial limpia
+          let afiLimpio = String(formMant.value.afi || '').trim();
           if (afiLimpio.toUpperCase().startsWith('AFI')) {
             afiLimpio = afiLimpio.replace(/^AFI\s*/i, '').trim();
           }
-          // Si el texto tiene un guión que separa la descripción (ej: "HDVG-11 - CAMIONETA"), nos quedamos con "HDVG-11"
           if (afiLimpio.includes(' - ')) {
             afiLimpio = afiLimpio.split(' - ')[0].trim();
           }
@@ -2696,7 +2715,7 @@
             descripcion: parseStr(formMant.value.descripcion),
             interferencia: parseStr(formMant.value.interferencia),
             empresa: parseStr(formMant.value.empresaArriendo),
-            link: "",
+            link: parseStr(formMant.value.linkDrive),
             kit_bodega: formMant.value.filtrosLista && formMant.value.filtrosLista.length > 0 ? JSON.stringify(formMant.value.filtrosLista) : "",
             costo: parseNum(formMant.value.costo), 
             numero_oc: parseStr(formMant.value.numeroOC), 
@@ -2738,17 +2757,19 @@
               const { error } = await supabaseClient.from('BD_HISTORIAL').update(payload).eq('id', formMant.value.id);
               if (error) throw error;
             } else {
+              delete payload.id;
               const { error } = await supabaseClient.from('BD_HISTORIAL').insert([payload]);
               if (error) throw error;
             }
           } catch(err) {
+            console.error("Error detallado Supabase:", err);
             alert("Error al guardar en Supabase: " + (err.message || JSON.stringify(err)));
             return;
           }
 
           await cargarDatosDesdeSupabase();
           showFormMantencionModal.value = false;
-          alert("¡Mantención guardada! Los datos se han ingresado perfectamente.");
+          alert("¡Mantención guardada con éxito!");
         };
 
         const abrirPerfilEquipo = (equipo) => {
@@ -2929,7 +2950,6 @@
           const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${filename}.csv`; link.click();
         };
 
-        // EXPORTAR TODAS LAS TABLAS EN UN EXCEL CON MÚLTIPLES HOJAS
         const exportarTodasLasTablasExcel = () => {
           if (!window.XLSX) return alert("Librería SheetJS no disponible.");
           const wb = XLSX.utils.book_new();
@@ -2952,7 +2972,6 @@
           XLSX.writeFile(wb, "Base_De_Datos_Completa_FRC.xlsx");
         };
 
-        // EXPORTAR PROGRAMA CON GANTT EN EXCEL
         const exportarProgramaGanttExcel = (prog) => {
           if (!prog || !prog.id) return alert("Selecciona un programa primero.");
           if (!window.XLSX) return alert("Librería SheetJS no disponible.");
@@ -3182,7 +3201,7 @@
           showPerfilEquipoModal, perfilEquipo, abrirPerfilEquipo, guardarPerfilEquipo,
           showModalNuevoEquipo, formNuevoEquipo, abrirModalCrearEquipo, guardarNuevoEquipo,
           showFormMantencionModal, isEditingMantencion, formMant, abrirFormularioNuevaMantencion, editarMantencion, eliminarMantencion, guardarMantencionForm,
-          agregarFilaFiltro, eliminarFilaFiltro,
+          agregarFilaFiltro, eliminarFilaFiltro, subirArchivoHistorial,
           showModalMovimiento, formMov, abrirModalCrearMovimiento, guardarNuevoMovimiento,
           getHorometroCardBgClass, getPrediccionStatusBadge, login, logout, renderCharts,
           showModalPrograma, formProgMes, abrirModalCrearPrograma, guardarNuevoProgramaMes, eliminarProgramaCompleto,
@@ -3195,7 +3214,3 @@
           actualizarTipoSegunProgramaSeleccionado, equiposCriticosDashboard
         };
       }
-    }).mount('#app');
-  </script>
-</body>
-</html>
