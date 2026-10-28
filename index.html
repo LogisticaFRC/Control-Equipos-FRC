@@ -2415,22 +2415,7 @@
           } catch (err) { console.error("Error cargando datos:", err); }
         };
 
-        const actualizarHorometrosDesdeHistorial = () => {
-          const intervencionesPorAFI = {};
-          dbIntervenciones.value.forEach(i => {
-            if (!i.afi) return;
-            const cleanAFI = String(i.afi).trim().toUpperCase();
-            if (!intervencionesPorAFI[cleanAFI]) intervencionesPorAFI[cleanAFI] = [];
-            intervencionesPorAFI[cleanAFI].push(i);
-          });
-          
-          for (const afi in intervencionesPorAFI) { 
-            intervencionesPorAFI[afi].sort((a, b) => parseIsoDate(a.fecha) - parseIsoDate(b.fecha)); 
-          }
-
-          dbEquipos.value.forEach(eq => {
-            const histFull = intervencionesPorAFI[String(eq.afi).trim().toUpperCase()] || [];
-            const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
+       
             
             // FILTRO ESTRICTO: Solo considera registros con causa estricta 'MANTENCION' para la última mantención
            // Dentro de actualizarHorometrosDesdeHistorial():
