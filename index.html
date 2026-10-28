@@ -3136,7 +3136,15 @@
           await cargarDatosDesdeSupabase();
         });
 
-      const login = () => {
+      const equiposCriticosDashboard = computed(() => {
+          return dbEquipos.value.filter(e => e.horometros && e.horometros.horasFaltantes <= 50);
+        });
+
+        const logout = () => {
+          usuarioActivo.value = null;
+        };
+
+        const login = () => {
           const userEncontrado = dbUsuarios.value.find(u => u.usuario.toLowerCase() === loginUser.value.trim().toLowerCase() && u.clave === loginPass.value.trim());
           if (userEncontrado) { 
             usuarioActivo.value = userEncontrado; 
@@ -3144,17 +3152,12 @@
             loginUser.value = ""; 
             loginPass.value = ""; 
             
-            // Pequeño respiro para que el DOM pinte el dashboard sin bloquearse
             setTimeout(() => {
               currentTab.value = 'dashboard';
               renderCharts();
             }, 50);
           }
           else authError.value = true;
-        };
-
-        const logout = () => {
-          usuarioActivo.value = null;
         };
 
         const switchTab = (tab) => { 
@@ -3187,7 +3190,7 @@
           formatDateForDisplay, vistaProgramaMode, generarDiasDelPrograma, esFechaEnRangoEquipo,
           exportarTodasLasTablasExcel, exportarProgramaGanttExcel, obtenerDetalleEquipoPorAfi, obtenerItemsProgramaEnRangoPorNave, obtenerItemsFueraDeRangoPrograma,
           perfilFiltroFechaInicio, perfilFiltroFechaFin, perfilFiltroCausa, listaCausasEquipo, getHistorialIntervencionesFiltradoAFI, costoTotalIntervencionesFiltradasAFI, causaMasFrecuenteEquipo, resetFiltrosPerfil, renderPerfilCharts,
-          actualizarTipoSegunProgramaSeleccionado
+          actualizarTipoSegunProgramaSeleccionado, equiposCriticosDashboard
         };
       }
     }).mount('#app');
