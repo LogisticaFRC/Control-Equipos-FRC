@@ -3136,18 +3136,31 @@
           await cargarDatosDesdeSupabase();
         });
 
-        const login = () => {
+       const login = () => {
           const userEncontrado = dbUsuarios.value.find(u => u.usuario.toLowerCase() === loginUser.value.trim().toLowerCase() && u.clave === loginPass.value.trim());
           if (userEncontrado) { 
             usuarioActivo.value = userEncontrado; 
             authError.value = false; 
             loginUser.value = ""; 
             loginPass.value = ""; 
-            switchTab('dashboard');
+            
+            // Usamos un pequeño respiro para que el DOM pinte el dashboard sin bloquearse
+            setTimeout(() => {
+              currentTab.value = 'dashboard';
+              renderCharts();
+            }, 50);
           }
           else authError.value = true;
         };
-        const logout = () => { usuarioActivo.value = null; };
+
+        const switchTab = (tab) => { 
+          currentTab.value = tab; 
+          if (tab === 'dashboard') {
+            setTimeout(() => {
+              renderCharts();
+            }, 50);
+          }
+        };
 
         return {
           usuarioActivo, isAdmin, loginUser, loginPass, authError, currentTab, switchTab, dbUsuarios, nuevoUsuario, crearNuevoUsuario, eliminarUsuario,
