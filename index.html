@@ -2405,7 +2405,7 @@
               if (calData && calData.length > 0) dbProgramasCalendarios.value = calData;
             } catch(e) {}
 
-            try {
+           try {
               const itemData = await fetchAllRowsSupabase('BD_PROGRAMAS_ITEMS');
               if (itemData && itemData.length > 0) dbProgramasItems.value = itemData;
             } catch(e) {}
@@ -2415,11 +2415,7 @@
           } catch (err) { console.error("Error cargando datos:", err); }
         };
 
-       
-            
-            // FILTRO ESTRICTO: Solo considera registros con causa estricta 'MANTENCION' para la última mantención
-           // Dentro de actualizarHorometrosDesdeHistorial():
-const actualizarHorometrosDesdeHistorial = () => {
+        const actualizarHorometrosDesdeHistorial = () => {
           const intervencionesPorAFI = {};
           dbIntervenciones.value.forEach(i => {
             if (!i.afi) return;
