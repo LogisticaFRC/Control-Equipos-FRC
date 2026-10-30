@@ -14,6 +14,7 @@ import ConfiguracionView from './modules/configuracion/configuracion.view.js';
 import FormatosView from './modules/formatos/formatos.view.js';
 import DocumentosCarpeta from './modules/formatos/documentos-carpeta.view.js';
 import LoginView from './modules/configuracion/login.view.js';
+import { restaurandoSesion, restaurarSesion } from './core/sesion.js';
 
 // Modales
 import PerfilEquipo from './modules/inventario/perfil-equipo.view.js';
@@ -45,7 +46,10 @@ const TABS = [
 ];
 
 const template = /* html */ `
-  <login-view v-if="!usuarioActivo"></login-view>
+  <div v-if="restaurandoSesion" class="min-h-screen flex items-center justify-center bg-slate-900 w-full flex-grow text-slate-300 text-sm font-semibold">
+    <i class="fa-solid fa-spinner fa-spin mr-2"></i> Cargando...
+  </div>
+  <login-view v-else-if="!usuarioActivo"></login-view>
 
   <template v-else>
     <header :style="headerStyle" class="text-white shadow-lg sticky top-0 z-40 transition-colors duration-300">
@@ -117,11 +121,12 @@ const app = createApp({
     onMounted(async () => {
       cargarConfiguracionGuardada();
       await cargarUsuariosDesdeSupabase();
+      restaurarSesion();   // si se actualizó la página con sesión vigente, se mantiene y vuelve a la misma pestaña
       await cargarDatosDesdeSupabase();
     });
 
     return {
-      usuarioActivo, isAdmin, isSubadmin, puedeEditar, currentTab, config, tabs: TABS, switchTab, logout, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
+      usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, puedeEditar, currentTab, config, tabs: TABS, switchTab, logout, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };
   }

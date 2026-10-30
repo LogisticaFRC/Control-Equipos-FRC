@@ -26,6 +26,9 @@ export default /* html */ `
           <input type="password" v-model="loginPass" placeholder="Ingresa tu contraseña..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
         </div>
       </div>
+      <p v-if="avisoSesion && !authError" class="text-amber-700 font-bold text-center bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs">
+        <i class="fa-solid fa-clock mr-1"></i> {{ avisoSesion }}
+      </p>
       <p v-if="authError" class="text-rose-600 font-bold text-center bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs">
         <i class="fa-solid fa-triangle-exclamation mr-1"></i> Usuario o contraseña incorrectos
       </p>

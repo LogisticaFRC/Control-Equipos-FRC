@@ -19,6 +19,7 @@ js/
     utils.js                   ← fechas, números, AFI, CSV, lectura de Excel
     horometros.js              ← cálculo predictivo de horómetros / próxima mantención
     comunes.js                 ← funciones que usan todas las pantallas
+    sesion.js                  ← sesión persistente (F5 no cierra sesión), cierre por 5 min de inactividad, pestaña en la URL
   modules/
     dashboard/                 ← DASHBOARD
     inventario/                ← INVENTARIO AFI (+ Perfil de Equipo y modal Nuevo Equipo)
@@ -127,3 +128,8 @@ cada acción se bloquea en su `*.service.js`.
 
 > ⚠️ Estas restricciones son del lado del navegador. Para seguridad total habría que aplicar también
 > políticas RLS en Supabase.
+
+## Sesión
+- Al **actualizar la página** la sesión se mantiene y se vuelve a la **misma pestaña** (queda en la URL: `#inventario`, `#programas`…; también funcionan Atrás/Adelante).
+- La sesión se cierra con el botón **Salir** o tras **5 minutos sin actividad** (mouse, teclado, scroll o toque). Se cuenta la actividad de todas las pestañas abiertas del sistema; si se sale en una, se sale en todas.
+- Solo se guarda el nombre de usuario en el navegador (nunca la contraseña); el rol se vuelve a leer desde Supabase. El tiempo se cambia en `INACTIVIDAD_MS` de `js/core/sesion.js`.

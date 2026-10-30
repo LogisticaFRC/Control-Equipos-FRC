@@ -7,6 +7,7 @@ import {
   usuarioActivo, currentTab, config, CONFIG_DEFAULT, LOGO_DEFAULT, LOGO_VERSION, dbUsuarios,
   dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems, soloAdmin } from '../../core/store.js';
 import { placeholderImg } from '../../core/utils.js';
+import { iniciarSesion, cerrarSesion } from '../../core/sesion.js';
 
 const { ref, computed } = Vue;
 
@@ -21,17 +22,16 @@ export const authError = ref(false);
 export const login = () => {
   const userEncontrado = dbUsuarios.value.find(u => String(u.usuario).toLowerCase() === loginUser.value.trim().toLowerCase() && u.clave === loginPass.value.trim());
   if (userEncontrado) {
-    usuarioActivo.value = userEncontrado;
     authError.value = false;
     loginUser.value = "";
     loginPass.value = "";
-    currentTab.value = 'dashboard';
+    iniciarSesion(userEncontrado);   // guarda la sesión (se mantiene al actualizar, se cierra tras 5 min sin actividad)
   } else {
     authError.value = true;
   }
 };
 
-export const logout = () => { usuarioActivo.value = null; };
+export const logout = () => cerrarSesion();
 
 // ---------- Usuarios ----------
 const USUARIO_RESPALDO = [{ usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística FRC" }];
