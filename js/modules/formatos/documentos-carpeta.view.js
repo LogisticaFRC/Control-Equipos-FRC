@@ -3,7 +3,8 @@
 // Uso: <documentos-carpeta :carpeta="'RRHH / ISO CALIDAD 9001'"></documentos-carpeta>
 //      <documentos-carpeta :resultados="lista"></documentos-carpeta>   ← modo resultados de búsqueda
 // - TODOS: buscador, subcarpetas, abrir/descargar.
-// - ADMIN: subir archivo / agregar enlace, crear / renombrar / eliminar subcarpetas,
+// - Las subcarpetas aparecen en la misma lista, arriba de los documentos.
+// - ADMIN: ARRASTRAR documentos sobre una carpeta para moverlos; subir archivo / agregar enlace; crear / renombrar / eliminar subcarpetas;
 //          MODIFICAR documentos (nombre, reemplazar archivo o enlace, mover a otra subcarpeta) y eliminar.
 // =====================================================================
 import { isAdmin } from '../../core/store.js';
@@ -31,12 +32,9 @@ const template = /* html */ `
       </div>
     </div>
 
-    <!-- Subcarpetas (solo en la carpeta principal y sin búsqueda) -->
-    <div v-if="!sub && !busqueda" class="flex flex-wrap gap-2 items-center">
-      <button v-for="s in subcarpetas" :key="s.nombre" @click="sub = s.nombre" class="px-3 py-2 border rounded-lg bg-white hover:border-amber-400 font-bold text-slate-700 flex items-center gap-1.5">
-        <i class="fa-solid fa-folder text-amber-400"></i> {{ s.nombre }} <span class="ml-1 px-1.5 rounded-full bg-slate-100 text-[10px]">{{ s.total }}</span>
-      </button>
-      <button v-if="isAdmin" @click="nuevaSub" class="px-3 py-2 rounded-lg border border-dashed border-amber-400 text-amber-700 font-bold hover:bg-amber-50"><i class="fa-solid fa-folder-plus"></i> Nueva subcarpeta</button>
+    <div v-if="isAdmin && !busqueda" class="flex flex-wrap gap-2 items-center">
+      <button v-if="!sub" @click="nuevaSub" class="px-3 py-1.5 rounded-lg border border-dashed border-amber-400 text-amber-700 font-bold hover:bg-amber-50"><i class="fa-solid fa-folder-plus"></i> Nueva subcarpeta</button>
+      <span class="text-[11px] text-slate-400"><i class="fa-solid fa-hand-pointer"></i> Arrastra un documento sobre una carpeta para moverlo.</span>
     </div>
     <div v-if="sub && isAdmin" class="flex gap-2">
       <button @click="renombrarSub" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700"><i class="fa-solid fa-pen"></i> Renombrar subcarpeta</button>
@@ -73,21 +71,39 @@ const template = /* html */ `
     </div>
   </template>
 
-  <!-- Lista de documentos -->
-  <div v-if="docs.length === 0" class="text-center text-slate-400 py-6 border rounded-xl bg-white">
+  <!-- Lista: carpetas arriba y documentos abajo (como un explorador de archivos) -->
+  <div v-if="docs.length === 0 && filasCarpeta.length === 0" class="text-center text-slate-400 py-6 border rounded-xl bg-white">
     <i :class="['text-2xl mb-1 block', busqueda || modoResultados ? 'fa-solid fa-magnifying-glass' : 'fa-regular fa-folder-open']"></i>
     {{ busqueda || modoResultados ? 'No se encontraron documentos con ese texto.' : (sub ? 'Esta subcarpeta está vacía.' : (vacio || 'Aún no hay documentos en esta carpeta.')) }}
   </div>
   <ul v-else class="divide-y border rounded-xl bg-white overflow-hidden">
-    <li v-for="d in docs" :key="d.id" class="px-3 py-2.5 hover:bg-slate-50">
+    <!-- Carpetas (destino para soltar documentos) -->
+    <li v-for="f in filasCarpeta" :key="'f:' + f.destino"
+      @click="sub = f.abrir" @dragover.prevent="sobreCarpeta = f.destino" @dragenter.prevent="sobreCarpeta = f.destino" @dragleave="sobreCarpeta === f.destino && (sobreCarpeta = null)" @drop.prevent="soltarEn(f.destino)"
+      :class="['flex items-center justify-between gap-3 px-3 py-2.5 cursor-pointer transition', sobreCarpeta === f.destino ? 'bg-amber-100 ring-2 ring-amber-400 ring-inset' : 'hover:bg-amber-50']">
+      <span class="flex items-center gap-2 font-bold text-slate-700">
+        <i :class="['fa-solid text-base', f.volver ? 'fa-arrow-turn-up text-slate-400' : (sobreCarpeta === f.destino ? 'fa-folder-open text-amber-500' : 'fa-folder text-amber-400')]"></i>
+        {{ f.texto }}
+        <span v-if="!f.volver" class="px-1.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">{{ f.total }}</span>
+      </span>
+      <span v-if="arrastrando" class="text-[10px] font-bold text-amber-700 uppercase">Soltar aquí</span>
+      <i v-else-if="!f.volver" class="fa-solid fa-chevron-right text-slate-300"></i>
+    </li>
+
+    <li v-for="d in docs" :key="d.id" :draggable="isAdmin && editandoId !== d.id && !modoResultados"
+      @dragstart="empezarArrastre(d, $event)" @dragend="terminarArrastre"
+      :class="['px-3 py-2.5 hover:bg-slate-50', isAdmin && !modoResultados ? 'cursor-grab' : '', arrastrando && arrastrando.id === d.id ? 'opacity-40' : '']">
       <!-- Vista normal -->
       <div v-if="editandoId !== d.id" class="flex items-center justify-between gap-3">
-        <div class="min-w-0">
+        <div class="min-w-0 flex items-start gap-2">
+          <i v-if="isAdmin && !modoResultados" class="fa-solid fa-grip-vertical text-slate-300 mt-0.5" title="Arrastrar a una carpeta"></i>
+          <div class="min-w-0">
           <a :href="d.link" target="_blank" rel="noopener" class="flex items-center gap-2 min-w-0 font-semibold text-blue-700 hover:underline">
             <i :class="['fa-solid', esArchivoSubido(d.link) ? 'fa-file-lines text-rose-500' : 'fa-link text-sky-500']"></i>
             <span class="truncate">{{ d.nombre }}</span>
           </a>
           <p v-if="mostrarRuta(d)" class="text-[10px] text-slate-400 font-semibold mt-0.5 pl-5 truncate"><i class="fa-solid fa-folder text-amber-400"></i> {{ etiquetaRuta(d) }}</p>
+          </div>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
           <span class="text-[10px] text-slate-400 uppercase font-bold">{{ esArchivoSubido(d.link) ? 'Archivo' : 'Enlace' }}</span>
@@ -179,6 +195,29 @@ export default {
       }
     };
 
+    // ---------- Filas de carpeta dentro de la lista ----------
+    const filasCarpeta = computed(() => {
+      if (modoResultados.value || busqueda.value.trim()) return [];
+      if (sub.value) return [{ texto: 'Volver a Carpeta principal', destino: props.carpeta, abrir: '', volver: true }];
+      return subcarpetas.value.map(s => ({ texto: s.nombre, destino: rutaSub(props.carpeta, s.nombre), abrir: s.nombre, total: s.total }));
+    });
+
+    // ---------- Arrastrar y soltar (solo admin) ----------
+    const arrastrando = ref(null);
+    const sobreCarpeta = ref(null);
+    const empezarArrastre = (d, ev) => {
+      if (!isAdmin.value) return;
+      arrastrando.value = d;
+      try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', String(d.id)); } catch (e) { /* navegador antiguo */ }
+    };
+    const terminarArrastre = () => { arrastrando.value = null; sobreCarpeta.value = null; };
+    const soltarEn = async (destino) => {
+      const d = arrastrando.value;
+      terminarArrastre();
+      if (!d || !isAdmin.value || d.carpeta === destino) return;
+      await editarDocumento(d, { nombre: d.nombre, carpeta: destino });
+    };
+
     // ---------- Subcarpetas ----------
     const nuevaSub = async () => {
       const n = prompt('Nombre de la nueva subcarpeta:');
@@ -221,7 +260,8 @@ export default {
     return {
       isAdmin, modo, nombre, enlace, archivo, inputArchivo, guardando, docs, guardar, eliminarDocumento, esArchivoSubido,
       sub, busqueda, subcarpetas, modoResultados, mostrarRuta, etiquetaRuta, nuevaSub, renombrarSub, borrarSub,
-      editandoId, ed, empezarEdicion, destinosDe, guardarEdicion
+      editandoId, ed, empezarEdicion, destinosDe, guardarEdicion,
+      filasCarpeta, arrastrando, sobreCarpeta, empezarArrastre, terminarArrastre, soltarEn
     };
   }
 };

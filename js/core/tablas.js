@@ -11,5 +11,6 @@ export const TABLAS = {
   PROGRAMAS_ITEMS: 'bd_programas_items',      // antes 'BD_PROGRAMAS_ITEMS' (no existe)
   MODELOS_FICHA: 'bd_modelos_ficha',
   FORMATOS: 'bd_formatos',
-  FILTROS: 'bd_filtros'                       // módulo FILTROS (catálogo, precios, referencias cruzadas)
+  FILTROS: 'bd_filtros',                      // módulo FILTROS: qué filtros usa cada marca/modelo (referencia cruzada)
+  FILTROS_PRECIOS: 'bd_filtros_precios'       // módulo FILTROS: lista de precios por proveedor (comparativo)
 };

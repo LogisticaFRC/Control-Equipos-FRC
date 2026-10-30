@@ -8,7 +8,7 @@ import { actualizarHorometrosDesdeHistorial } from './horometros.js';
 import { mapEquipo, TABLA_INVENTARIO } from '../modules/inventario/inventario.mapper.js';
 import { mapMovimiento, TABLA_MOVIMIENTOS } from '../modules/movimientos/movimientos.mapper.js';
 import { mapIntervencion, TABLA_HISTORIAL } from '../modules/historial/historial.mapper.js';
-import { mapFiltro, TABLA_FILTROS } from '../modules/filtros/filtros.mapper.js';
+import { mapAplicacion, mapPrecio, TABLA_FILTROS, TABLA_FILTROS_PRECIOS } from '../modules/filtros/filtros.mapper.js';
 
 const { ref, computed } = Vue;
 
@@ -56,7 +56,8 @@ export const dbProgramasCalendarios = ref([]);
 export const dbProgramasItems = ref([]);
 export const dbModelosFichas = ref([]);   // módulo Formatos (en construcción)
 export const dbFormatos = ref([]);        // módulo Formatos (en construcción)
-export const dbFiltros = ref([]);         // módulo Filtros (bd_filtros)
+export const dbFiltros = ref([]);         // módulo Filtros: aplicaciones por marca/modelo (bd_filtros)
+export const dbFiltrosPrecios = ref([]);  // módulo Filtros: lista de precios por proveedor (bd_filtros_precios)
 
 /** Se incrementa cada vez que cambian los datos (los gráficos lo observan para redibujarse). */
 export const datosVersion = ref(0);
@@ -80,7 +81,7 @@ export const cargandoDatos = ref(false);
 export const cargarDatosDesdeSupabase = async () => {
   cargandoDatos.value = true;
   try {
-    const [eqData, movData, intData, calData, itemData, modData, fmtData, filData] = await Promise.all([
+    const [eqData, movData, intData, calData, itemData, modData, fmtData, filData, preData] = await Promise.all([
       fetchAllRows(TABLA_INVENTARIO),
       fetchAllRows(TABLA_MOVIMIENTOS),
       fetchAllRows(TABLA_HISTORIAL),
@@ -88,7 +89,8 @@ export const cargarDatosDesdeSupabase = async () => {
       fetchAllRows(TABLAS.PROGRAMAS_ITEMS),
       fetchAllRows(TABLAS.MODELOS_FICHA),
       fetchAllRows(TABLAS.FORMATOS),
-      fetchAllRows(TABLA_FILTROS)
+      fetchAllRows(TABLA_FILTROS),
+      fetchAllRows(TABLA_FILTROS_PRECIOS)
     ]);
 
     dbEquipos.value = eqData.map(mapEquipo).sort((a, b) => compararAfi(a.afi, b.afi));
@@ -98,7 +100,8 @@ export const cargarDatosDesdeSupabase = async () => {
     dbProgramasItems.value = itemData;
     dbModelosFichas.value = modData;
     dbFormatos.value = fmtData;
-    dbFiltros.value = filData.map(mapFiltro);
+    dbFiltros.value = filData.map(mapAplicacion);
+    dbFiltrosPrecios.value = preData.map(mapPrecio);
 
     recalcularHorometros();
   } catch (err) {

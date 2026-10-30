@@ -97,7 +97,7 @@ export const cargarFiltrosDelModelo = () => {
 };
 
 /** Al escribir un código conocido, completa marca / tipo / precio. */
-export const autocompletarFilaFiltro = (f) => autocompletarFiltro(f, equipoFormMant.value);
+export const autocompletarFilaFiltro = (f, campo = 'codigo') => autocompletarFiltro(f, equipoFormMant.value, campo);
 
 /** "PREVENTIVA 500 HRS" -> "500 hrs". Antes este campo quedaba siempre en "250 hrs". */
 const derivarTipoHoras = (tipoMant, actual) => {

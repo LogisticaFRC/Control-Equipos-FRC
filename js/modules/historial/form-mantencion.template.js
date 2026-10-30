@@ -114,7 +114,7 @@ export default /* html */ `
                 </div>
                 <div>
                   <label class="block text-[10px] font-bold text-slate-600">Proveedor</label>
-                  <input type="text" list="dl-mant-prov" v-model="f.proveedor" @change="autocompletarFilaFiltro(f)" placeholder="Ej: Comercial X" class="w-full p-1.5 border rounded text-xs uppercase">
+                  <input type="text" list="dl-mant-prov" v-model="f.proveedor" @change="autocompletarFilaFiltro(f, 'proveedor')" placeholder="Ej: SIKAR" class="w-full p-1.5 border rounded text-xs uppercase">
                 </div>
                 <div>
                   <label class="block text-[10px] font-bold text-slate-600">Precio unitario ($)</label>
