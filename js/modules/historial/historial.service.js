@@ -6,6 +6,7 @@ import { dbEquipos, dbIntervenciones, cargarDatosDesdeSupabase, buscarEquipoPorA
 import { parseNum, parseStr, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, limpiarAfi, mismoAfi, hoyISO, calcularRestaHoras, getVal, parseFileAnyFormat, resetInputFile } from '../../core/utils.js';
 import { TABLA_HISTORIAL, ACEITES, aceitesVacios, COL_FILTROS_ESCRITURA } from './historial.mapper.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
+import { registrarFiltrosDesdeMantencion, requeridosPorModelo, autocompletarFiltro } from '../filtros/filtros.service.js';
 
 const { ref, computed } = Vue;
 
@@ -69,8 +70,34 @@ export const editarMantencion = (item) => {
   showFormMantencionModal.value = true;
 };
 
-export const agregarFilaFiltro = () => { formMant.value.filtrosLista.push({ tipo: "", marca: "", codigo: "", cantidad: 1 }); };
+export const agregarFilaFiltro = () => { formMant.value.filtrosLista.push({ tipo: "", marca: "", codigo: "", proveedor: "", precio: "", cantidad: 1 }); };
 export const eliminarFilaFiltro = (index) => { formMant.value.filtrosLista.splice(index, 1); };
+
+// ---------- Filtros del modelo (vienen del módulo FILTROS) ----------
+/** Equipo seleccionado en el formulario (para saber su marca / modelo). */
+export const equipoFormMant = computed(() => buscarEquipoPorAfi(formMant.value.afi) || null);
+
+/** Filtros que usa "sí o sí" el modelo del equipo seleccionado (según el módulo Filtros). */
+export const filtrosRequeridosFormMant = computed(() => {
+  const eq = equipoFormMant.value;
+  return eq ? requeridosPorModelo(eq.marca, eq.modelo) : [];
+});
+
+/** Agrega al registro los filtros que usa el modelo (opción más barata de cada tipo, con su cantidad). */
+export const cargarFiltrosDelModelo = () => {
+  const reqs = filtrosRequeridosFormMant.value;
+  if (!reqs.length) return alert("Este modelo aún no tiene filtros registrados en el módulo Filtros.");
+  const lista = formMant.value.filtrosLista;
+  const tiposYa = new Set(lista.map(f => String(f.tipo || '').trim().toUpperCase()));
+  reqs.forEach(t => {
+    if (tiposYa.has(t.tipo)) return;
+    const op = t.mejor || t.filas[0];
+    lista.push({ tipo: t.tipo, marca: op.marca, codigo: op.codigo, proveedor: op.proveedor, precio: op.precio || "", cantidad: t.cantidad });
+  });
+};
+
+/** Al escribir un código conocido, completa marca / tipo / precio. */
+export const autocompletarFilaFiltro = (f) => autocompletarFiltro(f, equipoFormMant.value);
 
 /** "PREVENTIVA 500 HRS" -> "500 hrs". Antes este campo quedaba siempre en "250 hrs". */
 const derivarTipoHoras = (tipoMant, actual) => {
@@ -97,7 +124,12 @@ export const guardarMantencionForm = async () => {
 
   const afiLimpio = limpiarAfi(f.afi);
   const equipoObj = buscarEquipoPorAfi(afiLimpio);
-  const filtrosValidos = (f.filtrosLista || []).filter(x => x && (x.tipo || x.marca || x.codigo));
+  const filtrosValidos = (f.filtrosLista || [])
+    .filter(x => x && (x.tipo || x.marca || x.codigo))
+    .map(x => ({
+      tipo: parseStr(x.tipo).toUpperCase(), marca: parseStr(x.marca).toUpperCase(), codigo: parseStr(x.codigo).toUpperCase(),
+      proveedor: parseStr(x.proveedor).toUpperCase(), precio: parseNum(x.precio), cantidad: parseNum(x.cantidad) || 1
+    }));
 
   const payload = {
     afi: afiLimpio,
@@ -140,15 +172,17 @@ export const guardarMantencionForm = async () => {
     return alert("Error al guardar en Supabase: " + errMsg(err));
   }
 
-  // 2) Si el horómetro es mayor al del equipo, actualizarlo JUNTO con su fecha
+  // 2) Registrar los filtros en el módulo FILTROS (catálogo por marca/modelo, precios y referencias cruzadas)
+  let aviso = await registrarFiltrosDesdeMantencion(equipoObj, filtrosValidos, payload.fecha, afiLimpio);
+
+  // 3) Si el horómetro es mayor al del equipo, actualizarlo JUNTO con su fecha
   //    (antes se actualizaba solo el valor y quedaba la fecha vieja -> cálculo de hrs/día erróneo)
-  let aviso = "";
   const nuevoH = parseNum(f.horometro);
   if (equipoObj && nuevoH > Number(equipoObj.horometroActual || 0)) {
     try {
       await sb(supabaseClient.from(TABLA_INVENTARIO).update({ horometroactual: nuevoH, fecha_horometro_manual: payload.fecha }).eq('id', equipoObj.id));
     } catch (err) {
-      aviso = "\n(Atención: no se pudo actualizar el horómetro del equipo: " + errMsg(err) + ")";
+      aviso += "\n(Atención: no se pudo actualizar el horómetro del equipo: " + errMsg(err) + ")";
     }
   }
 

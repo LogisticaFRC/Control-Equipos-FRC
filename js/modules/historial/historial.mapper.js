@@ -55,7 +55,10 @@ const parseFiltros = (raw) => {
 
 export const mapIntervencion = (item) => {
   const filtrosLista = parseFiltros(item[COL_FILTROS_LECTURA]);
-  const filtrosTexto = filtrosLista.map(f => `${f.tipo || 'Filtro'} (${f.marca || '-'}: ${f.codigo || '-'} x${f.cantidad || 1})`).join('; ');
+  const filtrosTexto = filtrosLista.map(f => {
+    const extra = [f.proveedor, Number(f.precio) > 0 ? '$' + Math.round(Number(f.precio)).toLocaleString('es-CL') : ''].filter(Boolean).join(' ');
+    return `${f.tipo || 'Filtro'} (${f.marca || '-'}: ${f.codigo || '-'} x${f.cantidad || 1}${extra ? ' · ' + extra : ''})`;
+  }).join('; ');
 
   const aceitesObj = {};
   const aceitesConsumidos = [];

@@ -7,8 +7,9 @@ import { datosVersion } from '../../core/store.js';
 import * as P from './perfil.service.js';
 import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.js';
 import { editarMantencion, eliminarMantencion } from '../historial/historial.service.js';
+import { requeridosPorModelo, irAFiltrosDelModelo, fmtPrecio } from '../filtros/filtros.service.js';
 
-const { onMounted, onBeforeUnmount, watch, nextTick } = Vue;
+const { onMounted, onBeforeUnmount, watch, nextTick, computed } = Vue;
 
 export default {
   name: 'PerfilEquipo',
@@ -56,9 +57,17 @@ export default {
 
     const resetFiltrosPerfil = () => P.resetFiltrosPerfil();
 
+    // Filtros que usa el equipo: se leen del módulo FILTROS (marca + modelo). Se corrigen solo allá.
+    const filtrosRequeridosPerfil = computed(() => requeridosPorModelo(P.perfilEquipo.value.marca, P.perfilEquipo.value.modelo));
+    const verFiltrosDelPerfil = () => {
+      irAFiltrosDelModelo(P.perfilEquipo.value.marca, P.perfilEquipo.value.modelo);
+      P.showPerfilEquipoModal.value = false;
+    };
+
     return {
       ...comunes(), ...P, resetFiltrosPerfil, renderPerfilCharts,
-      getHistorialMovimientosAFI, editarMantencion, eliminarMantencion
+      getHistorialMovimientosAFI, editarMantencion, eliminarMantencion,
+      filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio
     };
   }
 };

@@ -28,6 +28,7 @@ js/
     historial/                 ← HISTORIAL (+ formulario de Mantención)
     aceites/                   ← CONTROL ACEITES
     configuracion/             ← CONFIG & USUARIOS (+ Login)
+    filtros/                   ← FILTROS (referencia cruzada por marca/modelo, comparativo de precios por proveedor)
     formatos/                  ← FORMATOS (Área → Norma ISO) + carpeta de documentos reutilizable (también Ficha Técnica de equipos)
 ```
 
@@ -51,7 +52,30 @@ Cada módulo tiene:
    );
    ```
    Debe permitir leer/insertar/eliminar con la clave `anon` (igual que las demás tablas) y el bucket `archivos_frc` debe ser público.
-3. Verificar que las políticas RLS de `bd_programas_calendarios` y `bd_programas_items` permitan leer/escribir con la clave `anon` (como las demás tablas).
+3. **Tabla `bd_filtros`** (módulo FILTROS). Ejecutar en *SQL Editor* de Supabase:
+   ```sql
+   CREATE TABLE IF NOT EXISTS public.bd_filtros (
+     id            bigserial PRIMARY KEY,
+     equipo_marca  text NOT NULL DEFAULT '',   -- marca del EQUIPO (ej. TOYOTA)
+     equipo_modelo text NOT NULL DEFAULT '',   -- modelo del EQUIPO (ej. 8FD25)
+     tipo          text NOT NULL DEFAULT '',   -- ACEITE MOTOR, COMBUSTIBLE PRIMARIO...
+     marca         text NOT NULL DEFAULT '',   -- marca del FILTRO (DONALDSON, BALDWIN...)
+     codigo        text NOT NULL,
+     proveedor     text NOT NULL DEFAULT '',
+     precio        numeric DEFAULT 0,
+     fecha_precio  date,
+     cantidad      numeric DEFAULT 1,          -- unidades de ese tipo que usa el modelo (Perfil de Equipo)
+     ultimo_uso    date,
+     ultimo_afi    text,
+     created_at    timestamptz DEFAULT now(),
+     updated_at    timestamptz DEFAULT now(),
+     CONSTRAINT bd_filtros_unico UNIQUE (equipo_marca, equipo_modelo, tipo, codigo, proveedor)
+   );
+   ALTER TABLE public.bd_filtros ENABLE ROW LEVEL SECURITY;
+   DROP POLICY IF EXISTS bd_filtros_anon_all ON public.bd_filtros;
+   CREATE POLICY bd_filtros_anon_all ON public.bd_filtros FOR ALL TO anon USING (true) WITH CHECK (true);
+   ```
+4. Verificar que las políticas RLS de `bd_programas_calendarios` y `bd_programas_items` permitan leer/escribir con la clave `anon` (como las demás tablas).
 
 ## Errores corregidos
 
@@ -133,3 +157,34 @@ cada acción se bloquea en su `*.service.js`.
 - Al **actualizar la página** la sesión se mantiene y se vuelve a la **misma pestaña** (queda en la URL: `#inventario`, `#programas`…; también funcionan Atrás/Adelante).
 - La sesión se cierra con el botón **Salir** o tras **5 minutos sin actividad** (mouse, teclado, scroll o toque). Se cuenta la actividad de todas las pestañas abiertas del sistema; si se sale en una, se sale en todas.
 - Solo se guarda el nombre de usuario en el navegador (nunca la contraseña); el rol se vuelve a leer desde Supabase. El tiempo se cambia en `INACTIVIDAD_MS` de `js/core/sesion.js`.
+- **¿Sigue saliendo al actualizar?** Revisa la versión que aparece abajo en el login (`v2026-10-30 b`). Si no aparece, el navegador u hosting sigue usando archivos antiguos: vuelve a subir la carpeta completa y actualiza con **Ctrl + F5**.
+
+## Filtros
+
+Una sola tabla, `bd_filtros`. Cada fila = *este filtro (tipo / marca / código), de este proveedor a este precio, sirve para equipos de esta MARCA + MODELO*.
+
+**Cómo se llena:** al guardar una mantención, cada filtro del "Registro de Filtros Utilizados" (ahora con **Proveedor** y **Precio**)
+se guarda en el historial (columna `kit_bodega`, como antes) **y** en `bd_filtros` con la marca y modelo del equipo del AFI.
+También se puede agregar a mano desde el módulo Filtros (Admin y Subadmin).
+
+| Regla | Qué hace |
+|---|---|
+| Mismo modelo + mismo tipo + distinto código | **Referencia cruzada**: esos códigos sirven para ese equipo |
+| Mismo código + distinto proveedor | Aparece en el **comparativo de precios** (gana el más barato) |
+| Precio | Es del código + proveedor: al cambiarlo se actualiza en todos los modelos. Una mantención antigua no pisa un precio más nuevo |
+| Cantidad | Es del modelo + tipo (ej. 2 filtros de combustible). Se toma de la primera vez que se registra ese tipo y se **corrige solo en el módulo Filtros** (botón editar) |
+| Tipos | Se guardan en MAYÚSCULAS; usar siempre el mismo nombre (hay lista sugerida) para que la referencia cruzada funcione |
+
+**Pantallas:**
+- *Filtros → Referencia cruzada por equipo:* por marca/modelo, cada tipo con sus códigos equivalentes ordenados por precio (🏆 el mejor) y diferencia vs. el más barato.
+- *Filtros → Comparativo de precios por proveedor:* código × proveedor, mejor proveedor y ahorro.
+- *Perfil de Equipo → Filtros que usa el equipo:* solo lectura, lee `bd_filtros` por marca + modelo (tipo, cantidad, códigos que sirven, mejor opción y costo estimado del kit). El botón *Ver / corregir en módulo Filtros* abre Filtros ya filtrado por ese modelo.
+- *Agregar Mantención:* muestra "Este modelo usa…" y el botón **Cargar filtros del modelo** (llena el registro con la opción más barata de cada tipo y su cantidad). Al escribir un código conocido completa marca y tipo; con proveedor, también el precio.
+
+Permisos: Admin y Subadmin agregan y editan; solo Admin elimina; Lectura solo ve.
+
+## Formatos: buscador, subcarpetas y edición
+- **Buscador general** (arriba en Formatos): busca por nombre en todas las áreas, normas y subcarpetas; muestra la ruta de cada resultado. Cada carpeta tiene además su propio buscador.
+- **Subcarpetas** (solo Admin): botón *Nueva subcarpeta* dentro de cada Área / Norma (también en la Ficha Técnica de un equipo). Se pueden renombrar y eliminar; al eliminar una subcarpeta sus documentos **no se borran**, pasan a la carpeta principal.
+- **Modificar documento** (solo Admin, botón ✏️): cambiar nombre, **mover** a otra subcarpeta y **reemplazar el archivo** (el anterior se borra del Storage) o cambiar el enlace.
+- Sin cambios en la base de datos: la subcarpeta se guarda en la columna `carpeta` (`AREA / NORMA / Subcarpeta`) y las subcarpetas vacías se guardan con una fila marcador `nombre = '__CARPETA__'` que no se muestra. Para borrar archivos reemplazados, el bucket `archivos_frc` debe permitir *delete* con la clave `anon` (si no, el reemplazo funciona igual y el archivo viejo queda en el Storage).

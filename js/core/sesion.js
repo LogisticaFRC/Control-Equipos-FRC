@@ -16,17 +16,36 @@ const SESION_KEY = 'afi_sesion';                       // { usuario, ultimaActiv
 const GUARDAR_ACTIVIDAD_CADA_MS = 10 * 1000;           // no escribir en cada movimiento del mouse
 const REVISAR_CADA_MS = 15 * 1000;
 const EVENTOS_ACTIVIDAD = ['mousemove', 'mousedown', 'keydown', 'wheel', 'scroll', 'touchstart'];
-const TABS_VALIDAS = ['dashboard', 'inventario', 'programas', 'movimientos', 'hojaVida', 'aceites', 'formatos', 'configuracion'];
+const TABS_VALIDAS = ['dashboard', 'inventario', 'programas', 'movimientos', 'hojaVida', 'aceites', 'filtros', 'formatos', 'configuracion'];
 
 /** true mientras se intenta recuperar la sesión al abrir/actualizar (evita que "parpadee" el login). */
 export const restaurandoSesion = ref(true);
 /** Mensaje que se muestra en el login cuando la sesión se cerró sola. */
 export const avisoSesion = ref('');
 
-// ---------- Almacenamiento seguro (puede fallar en modo privado) ----------
-const leer = () => { try { return JSON.parse(localStorage.getItem(SESION_KEY) || 'null'); } catch (e) { return null; } };
-const escribir = (v) => { try { localStorage.setItem(SESION_KEY, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } };
-const borrar = () => { try { localStorage.removeItem(SESION_KEY); } catch (e) { /* sin almacenamiento */ } };
+// ---------- Almacenamiento seguro ----------
+// Se guarda en localStorage y, como respaldo, en sessionStorage y en memoria.
+// Así, si el navegador bloquea uno de ellos (modo privado, página incrustada, etc.),
+// la sesión no se cae sola y, en lo posible, se mantiene al actualizar.
+export const APP_VERSION = '2026-10-30 b';
+let enMemoria = null;
+const leerDe = (st) => { try { return JSON.parse(st.getItem(SESION_KEY) || 'null'); } catch (e) { return null; } };
+const leer = () => {
+  const candidatos = [leerDe(window.localStorage), leerDe(window.sessionStorage), enMemoria].filter(s => s && s.usuario);
+  if (!candidatos.length) return null;
+  return candidatos.sort((a, b) => (b.ultimaActividad || 0) - (a.ultimaActividad || 0))[0];
+};
+const escribir = (v) => {
+  enMemoria = v;
+  const txt = JSON.stringify(v);
+  try { localStorage.setItem(SESION_KEY, txt); } catch (e) { /* bloqueado */ }
+  try { sessionStorage.setItem(SESION_KEY, txt); } catch (e) { /* bloqueado */ }
+};
+const borrar = () => {
+  enMemoria = null;
+  try { localStorage.removeItem(SESION_KEY); } catch (e) { /* bloqueado */ }
+  try { sessionStorage.removeItem(SESION_KEY); } catch (e) { /* bloqueado */ }
+};
 
 // ---------- Pestaña actual en la URL (#inventario, #programas...) ----------
 const tabDesdeUrl = () => {

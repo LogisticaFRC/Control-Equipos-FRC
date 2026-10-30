@@ -42,6 +42,40 @@ export default /* html */ `
         <documentos-carpeta v-if="perfilEquipo.id" :carpeta="'EQUIPO:' + perfilEquipo.id" vacio="Este equipo aún no tiene ficha técnica cargada."></documentos-carpeta>
       </div>
 
+      <!-- FILTROS QUE USA EL EQUIPO (vienen del módulo FILTROS, por marca + modelo) -->
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-emerald-200">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2 mb-4">
+          <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2"><i class="fa-solid fa-filter text-emerald-600"></i> Filtros que usa el equipo <span class="normal-case font-semibold text-slate-500">({{ perfilEquipo.marca || 'sin marca' }} · {{ perfilEquipo.modelo || 'sin modelo' }})</span></h4>
+          <button @click="verFiltrosDelPerfil" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-pen-to-square"></i> Ver / corregir en módulo Filtros</button>
+        </div>
+        <div v-if="filtrosRequeridosPerfil.length === 0" class="text-center text-slate-400 py-3">
+          Aún no hay filtros registrados para esta marca y modelo. Se cargan solos al registrar una mantención con filtros.
+        </div>
+        <div v-else class="overflow-x-auto border rounded-lg">
+          <table class="w-full text-left whitespace-nowrap border-collapse">
+            <thead class="bg-slate-800 text-white uppercase text-[9px]">
+              <tr><th class="p-2">Tipo</th><th class="p-2 text-center">Cantidad</th><th class="p-2">Códigos que sirven (ref. cruzada)</th><th class="p-2">Mejor opción</th><th class="p-2 text-right">Costo estimado</th></tr>
+            </thead>
+            <tbody class="divide-y bg-white">
+              <tr v-for="t in filtrosRequeridosPerfil" :key="t.tipo" class="hover:bg-slate-50 align-top">
+                <td class="p-2 font-extrabold text-slate-800">{{ t.tipo }}</td>
+                <td class="p-2 text-center"><span class="inline-block min-w-[28px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 font-extrabold">{{ t.cantidad }}</span></td>
+                <td class="p-2">
+                  <div class="flex flex-wrap gap-1">
+                    <span v-for="r in t.filas" :key="r.id" :class="['px-1.5 py-0.5 rounded border font-mono text-[10px]', r.esMejor ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold' : 'bg-slate-50 text-slate-700']">{{ r.codigo }}<span class="font-sans text-slate-500 ml-1">{{ r.marca }}<template v-if="r.proveedor"> · {{ r.proveedor }}</template> · {{ fmtPrecio(r.precio) }}</span></span>
+                  </div>
+                </td>
+                <td class="p-2 font-bold text-emerald-700">{{ t.mejor ? t.mejor.codigo + ' · ' + (t.mejor.proveedor || '-') : '-' }}</td>
+                <td class="p-2 text-right font-mono font-bold">{{ fmtPrecio(t.costo) }}</td>
+              </tr>
+            </tbody>
+            <tfoot class="bg-emerald-50 font-extrabold text-emerald-900">
+              <tr><td class="p-2" colspan="4">Costo estimado del kit de filtros</td><td class="p-2 text-right font-mono">{{ fmtPrecio(filtrosRequeridosPerfil.reduce((s, t) => s + t.costo, 0)) }}</td></tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
       <!-- SECCIÓN HORÓMETROS CON FECHA MANUAL -->
       <div :class="['p-5 rounded-xl shadow-sm border flex flex-col lg:flex-row gap-6 items-center', esAlertaRoja(perfilEquipo.horometros) ? 'bg-pasado-blink' : 'bg-normal-horometro']">
         <div class="w-full lg:w-1/3 space-y-3">

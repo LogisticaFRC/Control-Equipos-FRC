@@ -10,5 +10,6 @@ export const TABLAS = {
   PROGRAMAS: 'bd_programas_calendarios',      // antes 'BD_PROGRAMAS_CALENDARIOS' (no existe)
   PROGRAMAS_ITEMS: 'bd_programas_items',      // antes 'BD_PROGRAMAS_ITEMS' (no existe)
   MODELOS_FICHA: 'bd_modelos_ficha',
-  FORMATOS: 'bd_formatos'
+  FORMATOS: 'bd_formatos',
+  FILTROS: 'bd_filtros'                       // módulo FILTROS (catálogo, precios, referencias cruzadas)
 };

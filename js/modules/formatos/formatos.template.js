@@ -4,10 +4,25 @@ export default /* html */ `
   <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
     <div class="border-b pb-3 mb-4">
       <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-folder-tree text-amber-600"></i> Formatos y Documentos ISO</h2>
-      <p class="text-xs text-slate-500">Selecciona un área y luego la norma.<template v-if="!isAdmin"> Puedes abrir y descargar los documentos.</template><template v-else> Como Admin puedes subir archivos o agregar enlaces.</template></p>
+      <p class="text-xs text-slate-500">Selecciona un área y luego la norma.<template v-if="!isAdmin"> Puedes abrir y descargar los documentos.</template><template v-else> Como Admin puedes subir archivos, agregar enlaces, crear subcarpetas y modificar o mover documentos.</template></p>
+    </div>
+
+    <!-- Buscador general -->
+    <div class="relative mb-4">
+      <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-magnifying-glass"></i></span>
+      <input v-model="busquedaFormatos" type="search" placeholder="Buscar documentos en todas las áreas, normas y subcarpetas… (ej: contrato, procedimiento, 45001)"
+        class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none text-xs font-semibold">
+    </div>
+
+    <!-- Resultados de la búsqueda general -->
+    <div v-if="busquedaFormatos.trim()" class="space-y-2">
+      <p class="text-xs font-bold text-slate-600"><i class="fa-solid fa-list"></i> {{ buscarEnFormatos(busquedaFormatos).length }} resultado(s) para "{{ busquedaFormatos }}"
+        <button @click="busquedaFormatos = ''" class="ml-2 text-blue-700 hover:underline">Limpiar búsqueda</button></p>
+      <documentos-carpeta :resultados="buscarEnFormatos(busquedaFormatos)"></documentos-carpeta>
     </div>
 
     <!-- 1) ÁREAS -->
+    <template v-if="!busquedaFormatos.trim()">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <button v-for="a in AREAS" :key="a.key" @click="areaActiva = a.key"
         :class="['p-4 rounded-xl border-2 text-left transition flex items-center gap-3', areaActiva === a.key ? 'border-amber-500 bg-amber-50 shadow' : 'border-slate-200 hover:border-slate-300 bg-white']">
@@ -18,10 +33,11 @@ export default /* html */ `
         </div>
       </button>
     </div>
+    </template>
   </div>
 
   <!-- 2) NORMAS dentro del área -->
-  <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+  <div v-if="!busquedaFormatos.trim()" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
     <div class="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
       <i class="fa-solid fa-folder-open text-amber-500"></i> {{ areaActiva }} <i class="fa-solid fa-chevron-right text-[9px]"></i> <span class="text-slate-800">{{ normaActiva }}</span>
     </div>
@@ -29,7 +45,7 @@ export default /* html */ `
       <button v-for="n in NORMAS" :key="n.key" @click="normaActiva = n.key"
         :class="['px-3 py-2 rounded-lg text-xs font-bold border transition flex items-center gap-1.5', normaActiva === n.key ? 'bg-slate-800 text-white border-slate-800 shadow' : 'bg-white text-slate-700 hover:bg-slate-100']">
         <i :class="['fa-solid', n.icon]"></i> {{ n.key }}
-        <span :class="['ml-1 px-1.5 rounded-full text-[10px]', normaActiva === n.key ? 'bg-white/20' : 'bg-slate-100']">{{ documentosDe(carpetaFormato(areaActiva, n.key)).length }}</span>
+        <span :class="['ml-1 px-1.5 rounded-full text-[10px]', normaActiva === n.key ? 'bg-white/20' : 'bg-slate-100']">{{ documentosConSub(carpetaFormato(areaActiva, n.key)).length }}</span>
       </button>
     </div>
 

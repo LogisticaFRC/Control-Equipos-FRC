@@ -36,7 +36,7 @@ export default /* html */ `
         <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
       </button>
     </form>
-    <div class="text-[11px] text-slate-400 font-medium">Acceso protegido - Sistema Operativo FRC</div>
+    <div class="text-[11px] text-slate-400 font-medium">Acceso protegido - Sistema Operativo FRC · <span class="text-slate-300">v{{ APP_VERSION }}</span></div>
   </div>
 </div>
 `;

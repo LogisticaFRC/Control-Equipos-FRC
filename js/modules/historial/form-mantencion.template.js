@@ -82,34 +82,55 @@ export default /* html */ `
               </div>
             </div>
 
-            <!-- REGISTRO DE FILTROS -->
+            <!-- REGISTRO DE FILTROS (se guarda también en el módulo FILTROS por marca/modelo del equipo) -->
             <div class="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-3">
-              <div class="flex justify-between items-center">
-                <h4 class="font-bold text-emerald-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-filter"></i> Registro de Filtros Utilizados</h4>
-                <button @click="agregarFilaFiltro" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-[11px] font-bold shadow"><i class="fa-solid fa-plus"></i> Añadir Filtro</button>
+              <div class="flex flex-wrap justify-between items-center gap-2">
+                <div>
+                  <h4 class="font-bold text-emerald-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-filter"></i> Registro de Filtros Utilizados</h4>
+                  <p v-if="equipoFormMant" class="text-[10px] text-emerald-800 mt-0.5">Equipo: <b>{{ equipoFormMant.marca || 'SIN MARCA' }} · {{ equipoFormMant.modelo || 'SIN MODELO' }}</b> — los filtros quedan asociados a esta marca y modelo.</p>
+                </div>
+                <div class="flex gap-2">
+                  <button v-if="filtrosRequeridosFormMant.length" @click="cargarFiltrosDelModelo" type="button" class="bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-400 px-3 py-1 rounded text-[11px] font-bold shadow-sm"><i class="fa-solid fa-wand-magic-sparkles"></i> Cargar filtros del modelo</button>
+                  <button @click="agregarFilaFiltro" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-[11px] font-bold shadow"><i class="fa-solid fa-plus"></i> Añadir Filtro</button>
+                </div>
+              </div>
+              <div v-if="filtrosRequeridosFormMant.length" class="text-[10px] bg-white/70 border border-emerald-200 rounded-lg px-3 py-2 text-emerald-900">
+                <b class="mr-2">Este modelo usa:</b>
+                <span v-for="t in filtrosRequeridosFormMant" :key="t.tipo" class="inline-block mr-3">{{ t.cantidad }}× {{ t.tipo }}<span class="text-slate-500 ml-1">({{ t.filas.map(r => r.codigo).filter((c, i, a) => a.indexOf(c) === i).join(' / ') }})</span></span>
               </div>
               <div v-if="formMant.filtrosLista.length === 0" class="text-xs text-slate-500 italic text-center py-2">No se han agregado filtros en este registro. Haz clic en "+ Añadir Filtro".</div>
-              <div v-for="(f, index) in formMant.filtrosLista" :key="index" class="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center bg-white p-2.5 rounded-lg border">
+              <div v-for="(f, index) in formMant.filtrosLista" :key="index" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 items-end bg-white p-2.5 rounded-lg border">
                 <div>
                   <label class="block text-[10px] font-bold text-slate-600">Tipo de Filtro</label>
-                  <input type="text" v-model="f.tipo" placeholder="Ej: Aceite / Aire" class="w-full p-1.5 border rounded text-xs">
+                  <input type="text" list="dl-mant-tipos" v-model="f.tipo" placeholder="Ej: ACEITE MOTOR" class="w-full p-1.5 border rounded text-xs uppercase">
                 </div>
                 <div>
                   <label class="block text-[10px] font-bold text-slate-600">Marca</label>
-                  <input type="text" v-model="f.marca" placeholder="Ej: Donaldson / Baldwin" class="w-full p-1.5 border rounded text-xs">
+                  <input type="text" list="dl-mant-marcas" v-model="f.marca" placeholder="Ej: Donaldson / Baldwin" class="w-full p-1.5 border rounded text-xs uppercase">
                 </div>
                 <div>
                   <label class="block text-[10px] font-bold text-slate-600">Código</label>
-                  <input type="text" v-model="f.codigo" placeholder="Ej: P550388" class="w-full p-1.5 border rounded text-xs font-mono font-bold">
+                  <input type="text" v-model="f.codigo" @change="autocompletarFilaFiltro(f)" placeholder="Ej: P550388" class="w-full p-1.5 border rounded text-xs font-mono font-bold uppercase">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Proveedor</label>
+                  <input type="text" list="dl-mant-prov" v-model="f.proveedor" @change="autocompletarFilaFiltro(f)" placeholder="Ej: Comercial X" class="w-full p-1.5 border rounded text-xs uppercase">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-600">Precio unitario ($)</label>
+                  <input type="number" min="0" v-model="f.precio" placeholder="0" class="w-full p-1.5 border rounded text-xs font-mono font-bold">
                 </div>
                 <div>
                   <label class="block text-[10px] font-bold text-slate-600">Cantidad</label>
-                  <input type="number" v-model="f.cantidad" placeholder="1" class="w-full p-1.5 border rounded text-xs font-mono font-bold">
+                  <input type="number" min="1" v-model="f.cantidad" placeholder="1" class="w-full p-1.5 border rounded text-xs font-mono font-bold">
                 </div>
-                <div class="flex justify-end pt-4">
+                <div class="flex justify-end">
                   <button @click="eliminarFilaFiltro(index)" type="button" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-1.5 rounded font-bold text-xs"><i class="fa-solid fa-trash"></i></button>
                 </div>
               </div>
+              <datalist id="dl-mant-tipos"><option v-for="t in listaTiposFiltro" :key="t" :value="t"></option></datalist>
+              <datalist id="dl-mant-marcas"><option v-for="m in listaMarcasFiltro" :key="m" :value="m"></option></datalist>
+              <datalist id="dl-mant-prov"><option v-for="p in listaProveedoresFiltro" :key="p" :value="p"></option></datalist>
             </div>
 
             <!-- CONSUMO DE ACEITES E INSUMOS -->
