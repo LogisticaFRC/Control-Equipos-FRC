@@ -5,8 +5,7 @@ import { supabaseClient } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
 import {
   usuarioActivo, currentTab, config, CONFIG_DEFAULT, LOGO_DEFAULT, LOGO_VERSION, dbUsuarios,
-  dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems
-} from '../../core/store.js';
+  dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems, soloAdmin } from '../../core/store.js';
 import { placeholderImg } from '../../core/utils.js';
 
 const { ref, computed } = Vue;
@@ -48,6 +47,7 @@ export const cargarUsuariosDesdeSupabase = async () => {
 };
 
 export const crearNuevoUsuario = async () => {
+  if (!soloAdmin()) return;
   const u = nuevoUsuario.value;
   if (!u.usuario || !u.clave) return alert("Completa usuario y clave.");
   const { error } = await supabaseClient.from(TABLAS.USUARIOS).insert([{ usuario: u.usuario.trim(), clave: u.clave.trim(), rol: u.rol, nombre: u.usuario.trim() }]);
@@ -58,6 +58,7 @@ export const crearNuevoUsuario = async () => {
 };
 
 export const eliminarUsuario = async (username) => {
+  if (!soloAdmin()) return;
   if (!confirm(`¿Eliminar al usuario ${username}?`)) return;
   const { error } = await supabaseClient.from(TABLAS.USUARIOS).delete().eq('usuario', username);
   if (error) return alert("Error al eliminar usuario: " + (error.message || JSON.stringify(error)));

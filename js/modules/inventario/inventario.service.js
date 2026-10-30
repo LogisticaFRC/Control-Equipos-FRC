@@ -2,7 +2,7 @@
 // INVENTARIO AFI · Lógica (filtros, alta de equipos, fotos, importación)
 // =====================================================================
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
-import { dbEquipos, cargarDatosDesdeSupabase } from '../../core/store.js';
+import { dbEquipos, cargarDatosDesdeSupabase, soloEditor, soloAdmin } from '../../core/store.js';
 import { normalizarClave, parseNum, parseStr, compararAfi, exportarCSV, getVal, tieneColumna, parseFileAnyFormat, resetInputFile, formatDateForDisplay } from '../../core/utils.js';
 import { esEquipoCritico } from '../../core/horometros.js';
 import { TABLA_INVENTARIO } from './inventario.mapper.js';
@@ -76,6 +76,7 @@ export const filtrarPorEstado = (estado) => { filterInv.value.estado = estado; }
 
 // ---------- Foto del equipo ----------
 export const uploadFotoEquipo = (e, item) => {
+  if (!soloEditor()) return;
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -103,6 +104,7 @@ export const abrirModalCrearEquipo = () => {
 };
 
 export const guardarNuevoEquipo = async () => {
+  if (!soloEditor()) return;
   const f = formNuevoEquipo.value;
   const afiClean = String(f.afi || '').trim();
   if (!afiClean || !f.tipo) return alert("Ingresa al menos el AFI y el Tipo de Equipo.");
@@ -129,6 +131,7 @@ export const guardarNuevoEquipo = async () => {
 
 // ---------- Importación desde Excel ----------
 export const importarInventarioFile = async (e) => {
+  if (!soloAdmin()) return;
   const file = e.target.files[0]; if (!file) return;
   try {
     const rows = await parseFileAnyFormat(file);

@@ -1,7 +1,7 @@
 // =====================================================================
 // MAIN · Punto de entrada: arma la app, el header/menú y registra los módulos
 // =====================================================================
-import { usuarioActivo, isAdmin, currentTab, config, dbEquipos, dbMovimientos, dbIntervenciones, cargarDatosDesdeSupabase } from './core/store.js';
+import { usuarioActivo, isAdmin, isSubadmin, puedeEditar, currentTab, config, dbEquipos, dbMovimientos, dbIntervenciones, cargarDatosDesdeSupabase } from './core/store.js';
 
 // Módulos (pantallas)
 import DashboardView from './modules/dashboard/dashboard.view.js';
@@ -11,6 +11,8 @@ import MovimientosView from './modules/movimientos/movimientos.view.js';
 import HistorialView from './modules/historial/historial.view.js';
 import AceitesView from './modules/aceites/aceites.view.js';
 import ConfiguracionView from './modules/configuracion/configuracion.view.js';
+import FormatosView from './modules/formatos/formatos.view.js';
+import DocumentosCarpeta from './modules/formatos/documentos-carpeta.view.js';
 import LoginView from './modules/configuracion/login.view.js';
 
 // Modales
@@ -38,6 +40,7 @@ const TABS = [
   { key: 'movimientos', label: 'Movimientos', icon: 'fa-truck-ramp-box', count: () => dbMovimientos.value.length },
   { key: 'hojaVida', label: 'Historial', icon: 'fa-file-medical', count: () => dbIntervenciones.value.length },
   { key: 'aceites', label: 'Control Aceites', icon: 'fa-oil-can' },
+  { key: 'formatos', label: 'Formatos', icon: 'fa-folder-tree' },
   { key: 'configuracion', label: 'Config & Usuarios', icon: 'fa-gear' }
 ];
 
@@ -65,11 +68,12 @@ const template = /* html */ `
         </nav>
 
         <div class="flex items-center gap-3">
-          <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
+          <button v-if="puedeEditar" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
             <i class="fa-solid fa-plus-circle text-sm"></i> Agregar Mantención
           </button>
           <div class="text-right text-xs">
             <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin)</span>
+            <span v-else-if="isSubadmin" class="inline-block px-2.5 py-1 rounded-full bg-sky-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-gear mr-1"></i> {{ usuarioActivo.nombre }} (Subadmin)</span>
             <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap"><i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)</span>
           </div>
           <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
@@ -84,6 +88,7 @@ const template = /* html */ `
       <movimientos-view v-if="currentTab === 'movimientos'"></movimientos-view>
       <historial-view v-if="currentTab === 'hojaVida'"></historial-view>
       <aceites-view v-if="currentTab === 'aceites'"></aceites-view>
+      <formatos-view v-if="currentTab === 'formatos'"></formatos-view>
       <configuracion-view v-if="currentTab === 'configuracion'"></configuracion-view>
     </main>
 
@@ -116,7 +121,7 @@ const app = createApp({
     });
 
     return {
-      usuarioActivo, isAdmin, currentTab, config, tabs: TABS, switchTab, logout, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
+      usuarioActivo, isAdmin, isSubadmin, puedeEditar, currentTab, config, tabs: TABS, switchTab, logout, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };
   }
@@ -130,6 +135,8 @@ app.component('MovimientosView', MovimientosView);
 app.component('HistorialView', HistorialView);
 app.component('AceitesView', AceitesView);
 app.component('ConfiguracionView', ConfiguracionView);
+app.component('FormatosView', FormatosView);
+app.component('DocumentosCarpeta', DocumentosCarpeta);   // carpeta de documentos reutilizable (Formatos y Ficha Técnica)
 app.component('PerfilEquipo', PerfilEquipo);
 app.component('ModalNuevoEquipo', ModalNuevoEquipo);
 app.component('FormMantencion', FormMantencion);

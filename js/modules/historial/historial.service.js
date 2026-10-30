@@ -2,7 +2,7 @@
 // HISTORIAL · Lógica (filtros, formulario de mantención, adjuntos, importación)
 // =====================================================================
 import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
-import { dbEquipos, dbIntervenciones, cargarDatosDesdeSupabase, buscarEquipoPorAfi, recalcularHorometros } from '../../core/store.js';
+import { dbEquipos, dbIntervenciones, cargarDatosDesdeSupabase, buscarEquipoPorAfi, recalcularHorometros, soloAdmin, soloEditor } from '../../core/store.js';
 import { parseNum, parseStr, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, limpiarAfi, mismoAfi, hoyISO, calcularRestaHoras, getVal, parseFileAnyFormat, resetInputFile } from '../../core/utils.js';
 import { TABLA_HISTORIAL, ACEITES, aceitesVacios, COL_FILTROS_ESCRITURA } from './historial.mapper.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
@@ -91,6 +91,7 @@ export const subirArchivoHistorial = async (e) => {
 };
 
 export const guardarMantencionForm = async () => {
+  if (!soloEditor()) return;
   const f = formMant.value;
   if (!f.afi || !f.fecha) return alert("Por favor selecciona al menos el AFI y la Fecha.");
 
@@ -157,6 +158,7 @@ export const guardarMantencionForm = async () => {
 };
 
 export const eliminarMantencion = async (id) => {
+  if (!soloAdmin()) return;
   if (!confirm("¿Eliminar registro?")) return;
   try {
     await sb(supabaseClient.from(TABLA_HISTORIAL).delete().eq('id', id));
@@ -169,6 +171,7 @@ export const eliminarMantencion = async (id) => {
 
 // ---------- Importación desde Excel ----------
 export const importarIntervencionesFile = async (e) => {
+  if (!soloAdmin()) return;
   const file = e.target.files[0]; if (!file) return;
   try {
     const rows = await parseFileAnyFormat(file);

@@ -11,7 +11,7 @@ export default /* html */ `
           <option value="asc">Más Antiguos primero</option>
         </select>
         <button @click="limpiarFiltrosHistorial" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Limpiar Filtros</button>
-        <button v-if="isAdmin" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5"><i class="fa-solid fa-plus-circle"></i> + Registrar Mantención</button>
+        <button v-if="puedeEditar" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5"><i class="fa-solid fa-plus-circle"></i> + Registrar Mantención</button>
         <button @click="exportarCSV(filteredIntervenciones, 'HojaVida_Filtrada')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
       </div>
     </div>
@@ -64,7 +64,7 @@ export default /* html */ `
       <table class="w-full text-left text-[11px] whitespace-nowrap border-collapse">
         <thead class="bg-slate-800 text-white sticky top-0 uppercase">
           <tr>
-            <th v-if="isAdmin" class="p-2 text-center">ACCIONES</th>
+            <th v-if="puedeEditar" class="p-2 text-center">ACCIONES</th>
             <th class="p-2">AFI</th>
             <th class="p-2">FECHA MANT.</th>
             <th class="p-2 text-indigo-300">PROGRAMA CORRESPONDIENTE</th>
@@ -93,9 +93,9 @@ export default /* html */ `
         </thead>
         <tbody class="divide-y bg-white">
           <tr v-for="i in filteredIntervenciones" :key="i.id" class="hover:bg-slate-50">
-            <td v-if="isAdmin" class="p-2 text-center space-x-1">
+            <td v-if="puedeEditar" class="p-2 text-center space-x-1">
               <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+              <button v-if="isAdmin" @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
             </td>
             <td class="p-2 font-bold text-amber-700"><button @click="verDetallePorAfiString(i.afi)" class="hover:underline bg-amber-50 px-2 rounded">{{ i.afi }}</button></td>
             <td class="p-2 font-mono font-bold text-slate-800 bg-amber-50/50">{{ formatDateForDisplay(i.fecha) }}</td>

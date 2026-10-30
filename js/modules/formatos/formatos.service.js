@@ -1,90 +1,93 @@
 // =====================================================================
-// FORMATOS & FICHAS TÉCNICAS · ⚠️ MÓDULO EN CONSTRUCCIÓN
-// Código trasladado TAL CUAL desde el archivo original (sin depurar, sin UI todavía).
-// Solo se cambiaron los imports para que funcione separado del archivo principal.
+// FORMATOS & FICHAS TÉCNICAS · Lógica compartida de documentos
+// Todo se guarda en la tabla `bd_formatos` (id, carpeta, nombre, link).
+// La columna `carpeta` indica a qué pertenece el documento:
+//   - Ficha técnica de un equipo  → "EQUIPO:<id del equipo>"
+//   - Formatos                   → "<AREA> / <NORMA>"  (ej. "RRHH / ISO SEGURIDAD 45001")
+// Solo el ADMIN sube, agrega enlaces y elimina. Subadmin y Lectura solo ven y abren.
 // =====================================================================
-import { supabaseClient } from '../../core/supabase.js';
-import { dbModelosFichas, dbFormatos, cargarDatosDesdeSupabase } from '../../core/store.js';
+import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
+import { dbFormatos, cargarDatosDesdeSupabase, soloAdmin } from '../../core/store.js';
+import { TABLAS } from '../../core/tablas.js';
 
 const { ref } = Vue;
 
-export { dbModelosFichas, dbFormatos };
+export { dbFormatos };
 
-export const showModalNuevoFormato = ref(false);
-export const formNuevoFormato = ref({ carpeta: 'CHECKLISTS', nombre: '', link: '' });
-export const openFoldersFormatos = ref({ CHECKLISTS: true, PROCEDIMIENTOS: true, MANUALES: true, PERMISOS: true });
+// ---------- Estructura del módulo Formatos ----------
+export const AREAS = [
+  { key: 'OPERACIONES', icon: 'fa-gears', color: 'amber' },
+  { key: 'RRHH', icon: 'fa-users', color: 'sky' },
+  { key: 'FINANZAS', icon: 'fa-sack-dollar', color: 'emerald' },
+  { key: 'ADMINISTRACION', icon: 'fa-building', color: 'violet' }
+];
+export const NORMAS = [
+  { key: 'ISO CALIDAD 9001', icon: 'fa-award' },
+  { key: 'ISO MEDIO AMBIENTE 14001', icon: 'fa-leaf' },
+  { key: 'ISO SEGURIDAD 45001', icon: 'fa-helmet-safety' }
+];
 
-export const toggleFolderFormatos = (folderKey) => { openFoldersFormatos.value[folderKey] = !openFoldersFormatos.value[folderKey]; };
+export const areaActiva = ref('OPERACIONES');
+export const normaActiva = ref('ISO CALIDAD 9001');
 
-// SUBIR FICHA TÉCNICA POR MODELO
-export const subirFichaTecnicaModelo = async (e, modeloObj) => {
-  const file = e.target.files[0];
-  if (!file) return;
+export const carpetaFormato = (area, norma) => `${area} / ${norma}`;
+export const carpetaEquipo = (equipoId) => `EQUIPO:${equipoId}`;
+
+// ---------- Consultas ----------
+export const documentosDe = (carpeta) =>
+  dbFormatos.value
+    .filter(d => String(d.carpeta || '') === carpeta)
+    .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
+
+export const contarDocumentos = (prefijo) =>
+  dbFormatos.value.filter(d => String(d.carpeta || '').startsWith(prefijo)).length;
+
+/** true si el link apunta a un archivo subido a nuestro Storage (y no a un enlace externo). */
+export const esArchivoSubido = (link) => String(link || '').includes('/storage/v1/object/');
+
+// ---------- Acciones (solo admin) ----------
+const limpiarNombreArchivo = (s) =>
+  String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_');
+
+/** Sube un archivo al Storage y lo registra en la carpeta indicada. */
+export const subirDocumento = async (carpeta, file, nombre) => {
+  if (!soloAdmin()) return false;
+  if (!file) { alert("Selecciona un archivo."); return false; }
   try {
-    const fileName = `ficha_${modeloObj.modelo.replace(/\s+/g, '_')}_${Date.now()}_${file.name}`;
-    const { data, error } = await supabaseClient.storage.from('archivos_frc').upload(fileName, file);
-    if (error) throw error;
-    const { data: urlData } = supabaseClient.storage.from('archivos_frc').getPublicUrl(fileName);
-
-    // Guardar en tabla BD_MODELOS_FICHA
-    await supabaseClient.from('BD_MODELOS_FICHA').upsert({
-      marca: modeloObj.marca,
-      modelo: modeloObj.modelo,
-      link_ficha: urlData.publicUrl
-    }, { onConflict: 'modelo' });
-
-    await cargarDatosDesdeSupabase();
-    alert("¡Ficha técnica del modelo subida con éxito!");
-  } catch(err) {
-    alert("Error al subir ficha técnica: " + (err.message || JSON.stringify(err)));
+    const ruta = `formatos/${limpiarNombreArchivo(carpeta)}/${Date.now()}_${limpiarNombreArchivo(file.name)}`;
+    const url = await subirArchivoStorage(ruta, file);
+    await sb(supabaseClient.from(TABLAS.FORMATOS).insert([{ carpeta, nombre: (nombre || '').trim() || file.name, link: url }]));
+  } catch (err) {
+    alert("Error al subir el archivo: " + errMsg(err));
+    return false;
   }
+  await cargarDatosDesdeSupabase();
+  return true;
 };
 
-// SUBIR ARCHIVO NUEVO A FORMATOS
-export const subirArchivoFormato = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+/** Registra un enlace externo (Drive, OneDrive, web del fabricante, etc.) en la carpeta indicada. */
+export const agregarEnlace = async (carpeta, link, nombre) => {
+  if (!soloAdmin()) return false;
+  let url = String(link || '').trim();
+  if (!url) { alert("Pega el enlace."); return false; }
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
   try {
-    const fileName = `formato_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-    const { data, error } = await supabaseClient.storage.from('archivos_frc').upload(fileName, file);
-    if (error) throw error;
-    const { data: urlData } = supabaseClient.storage.from('archivos_frc').getPublicUrl(fileName);
-    formNuevoFormato.value.link = urlData.publicUrl;
-    if(!formNuevoFormato.value.nombre) formNuevoFormato.value.nombre = file.name;
-    alert("¡Archivo cargado correctamente!");
-  } catch(err) {
-    alert("Error al subir archivo: " + (err.message || JSON.stringify(err)));
+    await sb(supabaseClient.from(TABLAS.FORMATOS).insert([{ carpeta, nombre: (nombre || '').trim() || url, link: url }]));
+  } catch (err) {
+    alert("Error al guardar el enlace: " + errMsg(err));
+    return false;
   }
+  await cargarDatosDesdeSupabase();
+  return true;
 };
 
-export const guardarNuevoFormatoDB = async () => {
-  if(!formNuevoFormato.value.nombre || !formNuevoFormato.value.link) return alert("Completa el nombre y sube el archivo.");
+export const eliminarDocumento = async (doc) => {
+  if (!soloAdmin()) return;
+  if (!confirm(`¿Eliminar "${doc.nombre}"?`)) return;
   try {
-    await supabaseClient.from('BD_FORMATOS').insert([{
-      carpeta: formNuevoFormato.value.carpeta,
-      nombre: formNuevoFormato.value.nombre,
-      link: formNuevoFormato.value.link
-    }]);
-    await cargarDatosDesdeSupabase();
-    showModalNuevoFormato.value = false;
-    formNuevoFormato.value = { carpeta: 'CHECKLISTS', nombre: '', link: '' };
-    alert("¡Formato guardado con éxito!");
-  } catch(err) {
-    alert("Error al guardar formato: " + (err.message || JSON.stringify(err)));
+    await sb(supabaseClient.from(TABLAS.FORMATOS).delete().eq('id', doc.id));
+  } catch (err) {
+    return alert("Error al eliminar: " + errMsg(err));
   }
-};
-
-export const eliminarFormatoDB = async (id) => {
-  if(confirm("¿Eliminar este formato?")) {
-    try {
-      await supabaseClient.from('BD_FORMATOS').delete().eq('id', id);
-      await cargarDatosDesdeSupabase();
-    } catch(e) {}
-  }
-};
-
-export const obtenerFichaModelo = (modeloStr) => {
-  if(!modeloStr) return null;
-  const found = dbModelosFichas.value.find(m => String(m.modelo).trim().toUpperCase() === String(modeloStr).trim().toUpperCase());
-  return found ? found.link_ficha : null;
+  await cargarDatosDesdeSupabase();
 };

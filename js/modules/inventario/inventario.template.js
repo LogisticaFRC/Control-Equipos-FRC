@@ -5,7 +5,7 @@ export default /* html */ `
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> Filtros de Inventario General</h2>
-        <button v-if="isAdmin" @click="abrirModalCrearEquipo" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5 ml-3">
+        <button v-if="puedeEditar" @click="abrirModalCrearEquipo" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5 ml-3">
           <i class="fa-solid fa-plus-circle"></i> + Agregar Equipo
         </button>
       </div>
@@ -55,7 +55,7 @@ export default /* html */ `
         <div class="relative h-44 bg-slate-900 group">
           <img :src="e.foto || placeholderImg(e.afi)" class="w-full h-full object-cover">
           <span :class="['absolute top-2 right-2 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-md', getBadgeClass(e.disponibilidad)]">{{ getEstadoText(e.disponibilidad) }}</span>
-          <label v-if="isAdmin" class="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg text-xs cursor-pointer shadow flex items-center gap-1">
+          <label v-if="puedeEditar" class="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg text-xs cursor-pointer shadow flex items-center gap-1">
             <i class="fa-solid fa-camera"></i> <span>Subir Foto</span>
             <input type="file" @change="uploadFotoEquipo($event, e)" accept="image/*" class="hidden">
           </label>

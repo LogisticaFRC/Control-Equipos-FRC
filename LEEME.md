@@ -27,7 +27,7 @@ js/
     historial/                 ← HISTORIAL (+ formulario de Mantención)
     aceites/                   ← CONTROL ACEITES
     configuracion/             ← CONFIG & USUARIOS (+ Login)
-    formatos/                  ← En construcción (código original sin tocar, sin pantalla)
+    formatos/                  ← FORMATOS (Área → Norma ISO) + carpeta de documentos reutilizable (también Ficha Técnica de equipos)
 ```
 
 Cada módulo tiene:
@@ -43,7 +43,14 @@ Cada módulo tiene:
    ALTER TABLE public.bd_programas_items ADD COLUMN IF NOT EXISTS horometro numeric;
    ```
    Mientras no exista, la app guarda igual las fechas y el estado, y avisa que el horómetro no se guardó.
-2. Verificar que las políticas RLS de `bd_programas_calendarios` y `bd_programas_items` permitan leer/escribir con la clave `anon` (como las demás tablas).
+2. **Tabla `bd_formatos`** (Formatos y Fichas Técnicas). Si ya existe con `carpeta`, `nombre`, `link`, no hay que hacer nada; si no:
+   ```sql
+   CREATE TABLE IF NOT EXISTS public.bd_formatos (
+     id bigserial PRIMARY KEY, carpeta text NOT NULL, nombre text, link text NOT NULL, created_at timestamptz DEFAULT now()
+   );
+   ```
+   Debe permitir leer/insertar/eliminar con la clave `anon` (igual que las demás tablas) y el bucket `archivos_frc` debe ser público.
+3. Verificar que las políticas RLS de `bd_programas_calendarios` y `bd_programas_items` permitan leer/escribir con la clave `anon` (como las demás tablas).
 
 ## Errores corregidos
 
@@ -82,5 +89,41 @@ Cada módulo tiene:
 
 ## Sin cambios (a pedido)
 - **Login:** mismo mecanismo que el original. Las claves se leen desde la tabla `usuarios` y existe el acceso de respaldo `logistica/frc` si la tabla falla.
-- **Formatos / Fichas técnicas** (`modules/formatos/formatos.service.js`): código original sin tocar. Al activarlo, cambiar `'BD_FORMATOS'` → `'bd_formatos'` y `'BD_MODELOS_FICHA'` → `'bd_modelos_ficha'` (en la BD están en minúsculas).
 - La tabla antigua `BD_PROGRAMAS` existe en la BD pero la app no la usa.
+
+## Formatos y Ficha Técnica
+
+Todo se guarda en `bd_formatos`; la columna `carpeta` dice a qué pertenece cada documento:
+
+| Dónde | Valor de `carpeta` |
+|---|---|
+| Ficha Técnica de un equipo (Perfil de Equipo) | `EQUIPO:<id del equipo>` |
+| Formatos | `<ÁREA> / <NORMA>` — ej. `RRHH / ISO SEGURIDAD 45001` |
+
+Áreas: OPERACIONES, RRHH, FINANZAS, ADMINISTRACION. Normas: ISO CALIDAD 9001, ISO MEDIO AMBIENTE 14001, ISO SEGURIDAD 45001
+(se cambian en `AREAS` / `NORMAS` de `formatos.service.js`). En cada carpeta el Admin puede **subir un archivo** (va al bucket
+`archivos_frc/formatos/...`) o **agregar un enlace** (Drive, OneDrive, web del fabricante). Subadmin y Lectura solo ven la lista y abren.
+
+## Perfiles de usuario
+
+| Acción | Admin | Subadmin | Lectura |
+|---|:-:|:-:|:-:|
+| Ver todas las pantallas | ✅ | ✅ | ✅ |
+| Editar horómetros (perfil de equipo) | ✅ | ✅ | ❌ |
+| Registrar / editar mantenciones | ✅ | ✅ | ❌ |
+| Crear equipos, editar datos y foto | ✅ | ✅ | ❌ |
+| Programas: cambiar estado Realizado / Pendiente | ✅ | ✅ | ❌ |
+| Programas: agregar (asignar) equipos a un programa | ✅ | ✅ | ❌ |
+| Programas: crear programas, cambiar fechas u horómetro de lo ya asignado | ✅ | ❌ | ❌ |
+| Movimientos, importaciones Excel, usuarios, configuración | ✅ | ❌ | ❌ |
+| Formatos y Ficha Técnica: ver / abrir | ✅ | ✅ | ✅ |
+| Formatos y Ficha Técnica: subir archivo, agregar enlace, eliminar | ✅ | ❌ | ❌ |
+| **Eliminar cualquier cosa** | ✅ | ❌ | ❌ |
+
+El rol se guarda en la columna `rol` de la tabla `usuarios` (`admin`, `subadmin` o `lectura`).
+Se crea desde *Config & Usuarios → Rol → Subadmin*. Los permisos están en `js/core/store.js`
+(`isAdmin`, `isSubadmin`, `puedeEditar`, `soloAdmin()`, `soloEditor()`), y además de ocultar botones
+cada acción se bloquea en su `*.service.js`.
+
+> ⚠️ Estas restricciones son del lado del navegador. Para seguridad total habría que aplicar también
+> políticas RLS en Supabase.

@@ -3,7 +3,7 @@
 // Se abre desde cualquier módulo al hacer clic en un AFI.
 // =====================================================================
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
-import { dbIntervenciones, cargarDatosDesdeSupabase, buscarEquipoPorAfi } from '../../core/store.js';
+import { dbIntervenciones, cargarDatosDesdeSupabase, buscarEquipoPorAfi, soloEditor } from '../../core/store.js';
 import { normalizarFecha, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, parseNum, mismoAfi, hoyISO } from '../../core/utils.js';
 import { TABLA_INVENTARIO } from './inventario.mapper.js';
 import { insertarItemPrograma } from '../programas/programas.service.js';
@@ -70,6 +70,7 @@ export const verDetallePorAfiString = (afiStr) => {
 };
 
 export const guardarPerfilEquipo = async () => {
+  if (!soloEditor()) return;
   const p = perfilEquipo.value;
   const payload = {
     afi: String(p.afi || '').trim(),
@@ -99,6 +100,7 @@ export const perfilAsignacionFechaInicio = ref('');
 export const perfilAsignacionFechaFin = ref('');
 
 export const guardarAsignacionDesdePerfil = async () => {
+  if (!soloEditor()) return;
   if (!perfilAsignacionProgId.value || !perfilAsignacionFechaInicio.value) return alert("Selecciona programa y fecha de inicio.");
   try {
     await insertarItemPrograma({

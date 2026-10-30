@@ -2,7 +2,7 @@
 // MOVIMIENTOS · Lógica (filtros, registro de traslados, importación)
 // =====================================================================
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
-import { dbEquipos, dbMovimientos, cargarDatosDesdeSupabase, buscarEquipoPorAfi } from '../../core/store.js';
+import { dbEquipos, dbMovimientos, cargarDatosDesdeSupabase, buscarEquipoPorAfi, soloAdmin } from '../../core/store.js';
 import { normalizarClave, parseStr, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, limpiarAfi, mismoAfi, hoyISO, getVal, parseFileAnyFormat, resetInputFile } from '../../core/utils.js';
 import { TABLA_MOVIMIENTOS } from './movimientos.mapper.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
@@ -45,6 +45,7 @@ export const abrirModalCrearMovimiento = () => {
 };
 
 export const guardarNuevoMovimiento = async () => {
+  if (!soloAdmin()) return;
   const f = formMov.value;
   const payload = {
     afi: limpiarAfi(f.afi),
@@ -83,6 +84,7 @@ export const guardarNuevoMovimiento = async () => {
 
 // ---------- Importación desde Excel ----------
 export const importarMovimientosFile = async (e) => {
+  if (!soloAdmin()) return;
   const file = e.target.files[0]; if (!file) return;
   try {
     const rows = await parseFileAnyFormat(file);

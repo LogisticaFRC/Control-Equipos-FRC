@@ -14,26 +14,32 @@ export default /* html */ `
       <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
         <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-4"><i class="fa-solid fa-truck-monster text-emerald-600"></i> Datos Principales del Equipo</h4>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div><label class="block font-bold text-slate-700 mb-1">AFI</label><input type="text" v-model="perfilEquipo.afi" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-amber-800"></div>
-          <div><label class="block font-bold text-slate-700 mb-1">Tipo de Equipo</label><input type="text" v-model="perfilEquipo.tipo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-slate-800"></div>
-          <div><label class="block font-bold text-slate-700 mb-1">Marca</label><input type="text" v-model="perfilEquipo.marca" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
-          <div><label class="block font-bold text-slate-700 mb-1">Modelo</label><input type="text" v-model="perfilEquipo.modelo" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
-          <div><label class="block font-bold text-slate-700 mb-1">Ubicación Actual</label><input type="text" v-model="perfilEquipo.ubicacion" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50"></div>
+          <div><label class="block font-bold text-slate-700 mb-1">AFI</label><input type="text" v-model="perfilEquipo.afi" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-amber-800"></div>
+          <div><label class="block font-bold text-slate-700 mb-1">Tipo de Equipo</label><input type="text" v-model="perfilEquipo.tipo" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-slate-800"></div>
+          <div><label class="block font-bold text-slate-700 mb-1">Marca</label><input type="text" v-model="perfilEquipo.marca" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50"></div>
+          <div><label class="block font-bold text-slate-700 mb-1">Modelo</label><input type="text" v-model="perfilEquipo.modelo" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50"></div>
+          <div><label class="block font-bold text-slate-700 mb-1">Ubicación Actual</label><input type="text" v-model="perfilEquipo.ubicacion" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50"></div>
           <div>
             <label class="block font-bold text-slate-700 mb-1">Disponibilidad</label>
-            <select v-model="perfilEquipo.disponibilidad" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
+            <select v-model="perfilEquipo.disponibilidad" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
               <option value="Operativo">Trabajando / Operativo</option><option value="Disponible">Disponible</option><option value="En Traslado">En Traslado</option>
               <option value="En Mantencion">En Mantención</option><option value="Fuera de Servicio">Fuera de Servicio</option><option value="Venta">En Venta</option>
             </select>
           </div>
           <div>
             <label class="block font-bold text-slate-700 mb-1">GPS</label>
-            <select v-model="perfilEquipo.gps" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-blue-700">
+            <select v-model="perfilEquipo.gps" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-blue-700">
               <option value="Instalado">Instalado</option><option value="Sin GPS">Sin GPS</option>
             </select>
           </div>
-          <div class="md:col-span-2"><label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label><input type="text" v-model="perfilEquipo.imei_gps" :disabled="!isAdmin" class="w-full p-2 border rounded-lg bg-slate-50 font-mono"></div>
+          <div class="md:col-span-2"><label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label><input type="text" v-model="perfilEquipo.imei_gps" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-mono"></div>
         </div>
+      </div>
+
+      <!-- FICHA TÉCNICA DEL EQUIPO (Admin sube archivo o enlace; los demás solo ven) -->
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-4"><i class="fa-solid fa-file-pdf text-rose-600"></i> Ficha Técnica del Equipo</h4>
+        <documentos-carpeta v-if="perfilEquipo.id" :carpeta="'EQUIPO:' + perfilEquipo.id" vacio="Este equipo aún no tiene ficha técnica cargada."></documentos-carpeta>
       </div>
 
       <!-- SECCIÓN HORÓMETROS CON FECHA MANUAL -->
@@ -48,15 +54,15 @@ export default /* html */ `
           </div>
           <div>
             <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Último Horómetro Tomado (Manual)</label>
-            <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
+            <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!puedeEditar" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
           </div>
           <div>
             <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Fecha de este Horómetro</label>
-            <input type="date" v-model="perfilEquipo.fechaHorometroManual" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
+            <input type="date" v-model="perfilEquipo.fechaHorometroManual" :disabled="!puedeEditar" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
           </div>
           <div>
             <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención</label>
-            <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!isAdmin" class="w-full p-2.5 border-none rounded-lg bg-white/10 font-mono font-bold text-sm outline-none">
+            <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!puedeEditar" class="w-full p-2.5 border-none rounded-lg bg-white/10 font-mono font-bold text-sm outline-none">
           </div>
         </div>
 
@@ -152,7 +158,7 @@ export default /* html */ `
       </div>
 
       <!-- ASIGNACIÓN A PROGRAMA -->
-      <div v-if="isAdmin" class="bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm">
+      <div v-if="puedeEditar" class="bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm">
         <h4 class="font-bold text-rose-800 uppercase flex items-center gap-2 border-b border-rose-200 pb-2 mb-3"><i class="fa-solid fa-calendar-plus"></i> Asignar equipo al programa</h4>
         <div class="flex flex-wrap items-end gap-3">
           <div class="flex-grow">
@@ -178,7 +184,7 @@ export default /* html */ `
           <table class="w-full text-left whitespace-nowrap text-[11px] border-collapse">
             <thead class="bg-slate-800 text-white sticky top-0 uppercase text-[9px]">
               <tr>
-                <th v-if="isAdmin" class="p-2 text-center">Acciones</th>
+                <th v-if="puedeEditar" class="p-2 text-center">Acciones</th>
                 <th class="p-2">Fecha Mant.</th>
                 <th class="p-2 text-indigo-300">Programa</th>
                 <th class="p-2">Lugar</th>
@@ -199,9 +205,9 @@ export default /* html */ `
             </thead>
             <tbody class="divide-y bg-white">
               <tr v-for="i in getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi)" :key="i.id" class="hover:bg-slate-50">
-                <td v-if="isAdmin" class="p-2 text-center space-x-1">
+                <td v-if="puedeEditar" class="p-2 text-center space-x-1">
                   <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-                  <button @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                  <button v-if="isAdmin" @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                 </td>
                 <td class="p-2 font-mono font-bold bg-amber-50/50">{{ formatDateForDisplay(i.fecha) }}</td>
                 <td class="p-2 font-bold text-indigo-700 bg-indigo-50/40">{{ i.programaCorrespondiente || '-' }}</td>
@@ -255,7 +261,7 @@ export default /* html */ `
       <span class="text-[10px] text-slate-400 font-bold uppercase"><i class="fa-solid fa-cloud"></i> Sincronizado</span>
       <div class="flex items-center gap-2">
         <button @click="showPerfilEquipoModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-lg text-xs">Cerrar</button>
-        <button v-if="isAdmin" @click="guardarPerfilEquipo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
+        <button v-if="puedeEditar" @click="guardarPerfilEquipo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
       </div>
     </div>
   </div>

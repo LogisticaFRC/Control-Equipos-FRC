@@ -2,7 +2,7 @@
 // PROGRAMAS · Lógica (programas de Reparación / Mantención, Gantt, asignaciones)
 // =====================================================================
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
-import { dbProgramasCalendarios, dbProgramasItems, cargarDatosDesdeSupabase, obtenerDetalleEquipoPorAfi } from '../../core/store.js';
+import { dbProgramasCalendarios, dbProgramasItems, cargarDatosDesdeSupabase, obtenerDetalleEquipoPorAfi, soloAdmin, soloEditor } from '../../core/store.js';
 import { normalizarFecha, formatDateForDisplay, parseNum, limpiarAfi, esFechaEnRango, hoyISO } from '../../core/utils.js';
 
 const { ref, computed } = Vue;
@@ -108,6 +108,7 @@ export const abrirModalCrearPrograma = (tipoCarpeta) => {
 };
 
 export const guardarNuevoProgramaMes = async () => {
+  if (!soloAdmin()) return;
   const { carpeta: cp, fecha_inicio_programa: f_ini, fecha_termino_programa: f_fin } = formProgMes.value;
   const nom = formProgMes.value.nombre_programa.trim().toUpperCase();
   if (!nom || !f_ini || !f_fin) return;
@@ -125,6 +126,7 @@ export const guardarNuevoProgramaMes = async () => {
 };
 
 export const eliminarProgramaCompleto = async (progId) => {
+  if (!soloAdmin()) return;
   if (!confirm("¿Estás seguro de eliminar este programa completo junto con sus equipos asignados?")) return;
   try {
     await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).delete().eq('programa_id', progId));
@@ -194,6 +196,7 @@ export const actualizarTipoSegunProgramaSeleccionado = () => {
 };
 
 export const guardarAsignacionEquipo = async () => {
+  if (!soloEditor()) return;
   const f = formAsignar.value;
   try {
     const prog = await insertarItemPrograma({
@@ -210,6 +213,7 @@ export const guardarAsignacionEquipo = async () => {
 
 // ---------- Actualizar / eliminar ítems ----------
 export const cambiarEstadoRealizadoItem = async (item) => {
+  if (!soloEditor()) return;
   try {
     await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ realizado: item.realizado }).eq('id', item.id));
   } catch (err) {
@@ -220,6 +224,7 @@ export const cambiarEstadoRealizadoItem = async (item) => {
 
 let avisoHorometroMostrado = false;
 export const actualizarItemMantencionProgramado = async (item) => {
+  if (!soloAdmin()) return;
   const base = {
     fecha_programada: item.fecha_programada || null,
     fecha_inicio: item.fecha_programada || null,
@@ -245,6 +250,7 @@ export const actualizarItemMantencionProgramado = async (item) => {
 };
 
 export const eliminarItemPrograma = async (itemId) => {
+  if (!soloAdmin()) return;
   if (!confirm("¿Eliminar este equipo del programa?")) return;
   try {
     await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).delete().eq('id', itemId));

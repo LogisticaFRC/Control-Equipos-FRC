@@ -30,6 +30,7 @@ export default /* html */ `
           <label class="block font-bold mb-1">Rol</label>
           <select v-model="nuevoUsuario.rol" class="w-full p-2 border rounded-lg bg-white font-bold">
             <option value="lectura">Solo Lectura</option>
+            <option value="subadmin">Subadmin (Horómetros, Mantenciones y Equipos)</option>
             <option value="admin">Administrador</option>
           </select>
         </div>
@@ -45,7 +46,7 @@ export default /* html */ `
         <tbody class="divide-y bg-white">
           <tr v-for="u in dbUsuarios" :key="u.usuario" class="hover:bg-slate-50">
             <td class="p-2.5 font-bold text-slate-800">{{ u.usuario }}</td>
-            <td class="p-2.5"><span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', u.rol === 'admin' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700']">{{ u.rol }}</span></td>
+            <td class="p-2.5"><span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', u.rol === 'admin' ? 'bg-emerald-100 text-emerald-800' : (u.rol === 'subadmin' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-700')]">{{ u.rol }}</span></td>
             <td v-if="isAdmin" class="p-2.5 text-center">
               <button v-if="u.usuario !== 'logistica'" @click="eliminarUsuario(u.usuario)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-1 rounded font-bold"><i class="fa-solid fa-trash"></i></button>
             </td>

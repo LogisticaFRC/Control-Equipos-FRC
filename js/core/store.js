@@ -14,7 +14,24 @@ const { ref, computed } = Vue;
 // ---------- Sesión y navegación ----------
 export const usuarioActivo = ref(null);
 export const isAdmin = computed(() => Boolean(usuarioActivo.value && usuarioActivo.value.rol === 'admin'));
+/** SUBADMIN: lectura + editar horómetros, registrar/editar mantenciones y equipos, y cambiar el estado
+ *  "Realizado" en Programas. NO puede eliminar nada, ni crear/borrar programas, ni modificar fechas. */
+export const isSubadmin = computed(() => Boolean(usuarioActivo.value && usuarioActivo.value.rol === 'subadmin'));
+/** Admin o Subadmin: puede editar equipos, horómetros y mantenciones. */
+export const puedeEditar = computed(() => isAdmin.value || isSubadmin.value);
 export const currentTab = ref('dashboard');
+
+/** Guardas de permisos (se usan en los services para bloquear acciones aunque se fuerce el botón). */
+export const soloAdmin = () => {
+  if (isAdmin.value) return true;
+  alert("Acción no permitida: requiere perfil Administrador.");
+  return false;
+};
+export const soloEditor = () => {
+  if (isAdmin.value || isSubadmin.value) return true;
+  alert("Acción no permitida: tu perfil es de solo lectura.");
+  return false;
+};
 
 // ---------- Personalización ----------
 /** Logo oficial (imagen directa de imgur). Subir LOGO_VERSION obliga a reemplazar el logo guardado en los navegadores. */

@@ -19,6 +19,8 @@ export default /* html */ `
             <i class="fa-solid fa-oil-can text-sm"></i> + Programa Mantención
           </button>
         </div>
+      </template>
+      <template v-if="puedeEditar">
         <button @click="abrirModalAsignarEquipo" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
           <i class="fa-solid fa-truck-monster text-sm"></i> Asignar Equipo
         </button>
@@ -158,7 +160,7 @@ export default /* html */ `
                 <td class="p-2.5 text-center">
                   <div class="flex items-center justify-center gap-2">
                     <label class="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" v-model="item.realizado" :disabled="!isAdmin" @change="cambiarEstadoRealizadoItem(item)" class="sr-only peer">
+                      <input type="checkbox" v-model="item.realizado" :disabled="!puedeEditar" @change="cambiarEstadoRealizadoItem(item)" class="sr-only peer">
                       <div class="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
                     </label>
                     <span :class="['text-[10px] font-bold px-2 py-0.5 rounded', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800']">
@@ -211,7 +213,7 @@ export default /* html */ `
                     <td class="p-2.5">
                       <div class="flex items-center gap-3">
                         <label class="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" v-model="item.realizado" :disabled="!isAdmin" @change="cambiarEstadoRealizadoItem(item)" class="sr-only peer">
+                          <input type="checkbox" v-model="item.realizado" :disabled="!puedeEditar" @change="cambiarEstadoRealizadoItem(item)" class="sr-only peer">
                           <div class="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
                         </label>
                         <span :class="['text-[10px] font-bold px-2 py-0.5 rounded', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600']">
