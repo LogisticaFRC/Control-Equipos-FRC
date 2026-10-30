@@ -96,6 +96,10 @@ export default /* html */ `
             <div class="text-[11px] font-medium text-slate-700 pt-1 text-center bg-white/60 p-1 rounded">
               <i class="fa-solid fa-calendar-days text-amber-600 mr-1"></i> F. aprox. mantención: <strong>{{ formatDateForDisplay(e.horometros?.fechaEstimada) }}</strong>
             </div>
+            <div class="flex justify-between items-center font-bold pt-1 border-t">
+              <span title="1 año desde la última mantención"><i class="fa-solid fa-calendar-check text-blue-600"></i> Mant. Anual: <span class="font-mono font-normal">{{ formatDateForDisplay(e.horometros?.fechaVencAnual) }}</span></span>
+              <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', getAnualStatusBadge(e.horometros)]" :title="getAnualTextoDias(e.horometros)">{{ e.horometros?.estadoAnual || 'SIN REGISTRO' }}</span>
+            </div>
           </div>
         </div>
       </div>

@@ -37,11 +37,14 @@ export default /* html */ `
       </div>
 
       <!-- SECCIÓN HORÓMETROS CON FECHA MANUAL -->
-      <div :class="['p-5 rounded-xl shadow-sm border flex flex-col lg:flex-row gap-6 items-center', perfilEquipo.horometros?.horasFaltantes <= 0 ? 'bg-pasado-blink' : 'bg-normal-horometro']">
+      <div :class="['p-5 rounded-xl shadow-sm border flex flex-col lg:flex-row gap-6 items-center', esAlertaRoja(perfilEquipo.horometros) ? 'bg-pasado-blink' : 'bg-normal-horometro']">
         <div class="w-full lg:w-1/3 space-y-3">
           <div class="flex items-center justify-between border-b border-white/20 pb-2">
             <h4 class="font-bold text-sm flex items-center gap-2 uppercase"><i class="fa-solid fa-stopwatch"></i> Horómetros y Frecuencia</h4>
-            <span v-if="perfilEquipo.horometros?.horasFaltantes <= 0" class="bg-white text-rose-600 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase animate-pulse">¡PASADO!</span>
+            <div class="flex gap-1">
+              <span v-if="perfilEquipo.horometros?.horasFaltantes <= 0" class="bg-white text-rose-600 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase animate-pulse">¡PASADO!</span>
+              <span v-if="tieneAlertaAnual(perfilEquipo.horometros)" :class="['px-2 py-0.5 rounded text-[10px] font-extrabold uppercase', esAnualVencida(perfilEquipo.horometros) ? 'bg-white text-rose-600 animate-pulse' : 'bg-amber-400 text-slate-900']">{{ perfilEquipo.horometros?.estadoAnual }}</span>
+            </div>
           </div>
           <div>
             <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Último Horómetro Tomado (Manual)</label>
@@ -77,9 +80,14 @@ export default /* html */ `
             <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Próxima Mantención (Meta)</span>
             <strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }}h</strong>
           </div>
-          <div class="bg-white/10 p-3 rounded-xl border border-white/20 col-span-2 sm:col-span-2">
+          <div class="bg-white/10 p-3 rounded-xl border border-white/20">
             <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Próxima Mantención (Aprox.)</span>
             <strong class="font-mono text-sm text-amber-300 block mt-1"><i class="fa-solid fa-calendar-days mr-1"></i> {{ formatDateForDisplay(perfilEquipo.horometros?.fechaEstimada) }}</strong>
+          </div>
+          <div :class="['p-3 rounded-xl border', esAnualVencida(perfilEquipo.horometros) ? 'bg-rose-600/40 border-rose-300' : esAnualProxima(perfilEquipo.horometros) ? 'bg-amber-500/30 border-amber-300' : 'bg-white/10 border-white/20']">
+            <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Mantención Anual (1 año)</span>
+            <strong class="font-mono text-sm text-white block mt-1"><i class="fa-solid fa-calendar-check mr-1"></i> {{ formatDateForDisplay(perfilEquipo.horometros?.fechaVencAnual) }}</strong>
+            <span class="text-[9px] font-bold block mt-0.5">{{ perfilEquipo.horometros?.estadoAnual }} · {{ getAnualTextoDias(perfilEquipo.horometros) }}</span>
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@
 import template from './dashboard.template.js';
 import { comunes } from '../../core/comunes.js';
 import { dbEquipos, dbIntervenciones, currentTab, datosVersion } from '../../core/store.js';
-import { esEquipoCritico } from '../../core/horometros.js';
+import { esEquipoCritico, esAnualVencida, esAnualProxima, esAlertaRoja } from '../../core/horometros.js';
 import { countEstado, filtrarPorEstado } from '../inventario/inventario.service.js';
 
 const { computed, onMounted, onBeforeUnmount, watch, nextTick } = Vue;
@@ -17,7 +17,8 @@ export default {
     let charts = {};
     const destruir = () => { Object.values(charts).forEach(c => c && c.destroy()); charts = {}; };
 
-    const equiposCriticosDashboard = computed(() => dbEquipos.value.filter(esEquipoCritico));
+    const equiposCriticosDashboard = computed(() => dbEquipos.value.filter(esEquipoCritico)
+      .sort((a, b) => Number(esAlertaRoja(b.horometros)) - Number(esAlertaRoja(a.horometros))));
 
     const resumenKPIs = computed(() => [
       { Metrica: "Total Flota", Valor: dbEquipos.value.length },
@@ -27,7 +28,9 @@ export default {
       { Metrica: "En Mantención", Valor: countEstado('En Mantencion') },
       { Metrica: "Fuera de Servicio", Valor: countEstado('Fuera de Servicio') },
       { Metrica: "En Venta", Valor: countEstado('Venta') },
-      { Metrica: "Equipos críticos (pasados/próximos)", Valor: equiposCriticosDashboard.value.length }
+      { Metrica: "Equipos críticos (pasados/próximos)", Valor: equiposCriticosDashboard.value.length },
+      { Metrica: "Mantención anual vencida", Valor: dbEquipos.value.filter(e => esAnualVencida(e.horometros)).length },
+      { Metrica: "Mantención anual próxima (≤30 días)", Valor: dbEquipos.value.filter(e => esAnualProxima(e.horometros)).length }
     ]);
 
     const filtrarYIrAInventario = (estado) => { filtrarPorEstado(estado); currentTab.value = 'inventario'; };

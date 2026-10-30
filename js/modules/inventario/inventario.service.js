@@ -63,7 +63,11 @@ export const exportarInventarioCSV = () => {
     Horometro_Aprox: e.horometros?.hAprox ?? '', Meta_Proxima_Mant: e.horometros?.hTarget ?? '',
     Horas_Faltantes: e.horometros?.horasFaltantes ?? '', Estado_Horometro: e.horometros?.estadoTexto ?? '',
     Uso_Hrs_Dia: e.horometros?.rateHrsDia ? e.horometros.rateHrsDia.toFixed(2) : '',
-    Fecha_Aprox_Mantencion: formatDateForDisplay(e.horometros?.fechaEstimada)
+    Fecha_Aprox_Mantencion: formatDateForDisplay(e.horometros?.fechaEstimada),
+    Fecha_Ultima_Mantencion: formatDateForDisplay(e.horometros?.fechaBaseAnual),
+    Vence_Mant_Anual: formatDateForDisplay(e.horometros?.fechaVencAnual),
+    Dias_Para_Anual: e.horometros?.diasParaAnual ?? '',
+    Estado_Anual: e.horometros?.estadoAnual ?? ''
   })), 'Inventario_AFI_Filtrado');
 };
 
