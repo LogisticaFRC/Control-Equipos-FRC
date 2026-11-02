@@ -97,6 +97,17 @@ export default /* html */ `
             <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2 mt-1"><i class="fa-solid fa-calendar-days text-rose-500"></i> Programa: {{ progSelect.nombre_programa || progSelect.mes }}</h3>
             <p class="text-xs font-mono font-bold text-slate-600 mt-0.5"><i class="fa-solid fa-clock mr-1"></i> Vigencia Programa: {{ formatDateForDisplay(progSelect.fecha_inicio_programa) }} al {{ formatDateForDisplay(progSelect.fecha_termino_programa) }}</p>
           </div>
+          <!-- Switch: descontar KITS de bodega al marcar Realizado (solo Mantención) -->
+          <div v-if="progSelect.carpeta === 'MANTENCION'" :class="['flex items-center gap-3 px-3 py-2 rounded-xl border', descuentaBodega(progSelect.id) ? 'bg-violet-50 border-violet-300' : 'bg-slate-100 border-slate-300']">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" :checked="descuentaBodega(progSelect.id)" :disabled="!puedeEditar" @change="cambiarDescuentoBodega(progSelect.id, $event.target.checked)" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-400 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+            </label>
+            <div class="leading-tight">
+              <p class="text-[11px] font-extrabold uppercase" :class="descuentaBodega(progSelect.id) ? 'text-violet-800' : 'text-slate-600'"><i class="fa-solid fa-warehouse mr-1"></i> Descontar kits de bodega: {{ descuentaBodega(progSelect.id) ? 'ON' : 'OFF' }}</p>
+              <p class="text-[9px] text-slate-500">{{ descuentaBodega(progSelect.id) ? 'Al marcar Realizado se descuenta 1 KIT' : 'Marcar Realizado NO mueve la bodega (programas antiguos)' }}</p>
+            </div>
+          </div>
           <div class="flex-grow max-w-xs space-y-1 text-right">
             <div class="flex justify-between text-[10px] font-bold text-slate-600 uppercase"><span>Cumplimiento:</span> <span>{{ getProgreso(progSelect.id).pct }}%</span></div>
             <div class="w-full bg-slate-200 rounded-full h-2.5 shadow-inner overflow-hidden">
@@ -179,6 +190,9 @@ export default /* html */ `
                 <td class="p-2.5">
                   <template v-if="item.realizado && kitConsumidoItem(item)">
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700" title="Kit descontado de bodega al marcar Realizado"><i class="fa-solid fa-check"></i> Usado: <span class="font-mono">{{ kitConsumidoItem(item) }}</span></span>
+                  </template>
+                  <template v-else-if="item.realizado && !descuentaBodega(progSelect.id)">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500" title="Realizado con el descuento de bodega en OFF"><i class="fa-solid fa-ban"></i> Sin descuento</span>
                   </template>
                   <template v-else-if="kitsEnBodegaAfi(item.afi).total > 0">
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800" :title="kitsEnBodegaAfi(item.afi).kits.map(k => k.codigo + ': ' + k.cantidad).join(' · ')"><i class="fa-solid fa-box-open"></i> {{ kitsEnBodegaAfi(item.afi).total }} en bodega</span>

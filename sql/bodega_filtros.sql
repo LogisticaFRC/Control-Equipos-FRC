@@ -74,3 +74,7 @@ CREATE POLICY bd_filtros_movimientos_anon_all ON public.bd_filtros_movimientos F
 
 -- Refresca la caché de Supabase para que la app vea las tablas nuevas de inmediato
 NOTIFY pgrst, 'reload schema';
+
+-- Programas de Mantención: switch "Descontar kits de bodega" (ON por defecto)
+ALTER TABLE public.bd_programas_calendarios ADD COLUMN IF NOT EXISTS descontar_bodega boolean DEFAULT true;
+NOTIFY pgrst, 'reload schema';

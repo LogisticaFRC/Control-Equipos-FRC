@@ -99,6 +99,28 @@ export const generarDiasDelPrograma = (prog) => {
 
 export const esFechaEnRangoEquipo = esFechaEnRango;
 
+// ---------- Switch "Descontar kits de bodega" (por programa de mantención) ----------
+/** ON por defecto. Se apaga para rellenar programas antiguos sin mover la bodega. */
+export const descuentaBodega = (programaId) => obtenerProgObj(programaId)?.descontar_bodega !== false;
+
+export const cambiarDescuentoBodega = async (programaId, valor) => {
+  if (!soloEditor()) return;
+  const prog = obtenerProgObj(programaId);
+  if (!prog) return;
+  const anterior = prog.descontar_bodega;
+  prog.descontar_bodega = valor;   // se ve el cambio de inmediato
+  try {
+    await sb(supabaseClient.from(TABLA_PROGRAMAS).update({ descontar_bodega: valor }).eq('id', programaId));
+  } catch (err) {
+    prog.descontar_bodega = anterior;
+    if (/descontar_bodega/i.test(errMsg(err))) {
+      alert("Falta la columna 'descontar_bodega' en Supabase. Ejecuta en el SQL Editor:\n\nALTER TABLE public.bd_programas_calendarios ADD COLUMN IF NOT EXISTS descontar_bodega boolean DEFAULT true;\nNOTIFY pgrst, 'reload schema';");
+    } else {
+      alert("No se pudo cambiar el descuento de bodega: " + errMsg(err));
+    }
+  }
+};
+
 // ---------- Crear / eliminar programa ----------
 export const showModalPrograma = ref(false);
 export const formProgMes = ref({ carpeta: 'REPARACION', nombre_programa: '', fecha_inicio_programa: '', fecha_termino_programa: '' });
@@ -223,7 +245,8 @@ export const cambiarEstadoRealizadoItem = async (item) => {
   if (!soloEditor()) { item.realizado = !item.realizado; return; }
   const esMant = esProgramaMantencion(obtenerProgObj(item.programa_id));
 
-  if (esMant && item.realizado && !kitConsumidoItem(item)) {
+  const descuenta = esMant && descuentaBodega(item.programa_id);
+  if (descuenta && item.realizado && !kitConsumidoItem(item)) {
     const { principal } = kitsEnBodegaAfi(item.afi);
     if (!principal && !confirm(`No hay KIT en bodega para el modelo del AFI ${item.afi}.\n¿Marcar como REALIZADO igual (sin descontar kit)?`)) {
       item.realizado = false;
@@ -240,8 +263,8 @@ export const cambiarEstadoRealizadoItem = async (item) => {
 
   if (!esMant) return;
   try {
-    if (item.realizado) await consumirKitParaItem(item);
-    else await devolverKitDeItem(item);
+    if (item.realizado) { if (descuenta) await consumirKitParaItem(item); }
+    else await devolverKitDeItem(item);   // si se había descontado un kit, se devuelve aunque el switch esté en OFF
   } catch (err) {
     alert(`El estado se guardó, pero no se pudo ${item.realizado ? 'descontar' : 'devolver'} el KIT en bodega: ` + errMsg(err));
   }
