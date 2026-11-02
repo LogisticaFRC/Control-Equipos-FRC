@@ -299,7 +299,10 @@ export default /* html */ `
     </div>
 
     <div class="px-6 py-4 border-t bg-white flex justify-between items-center">
-      <span class="text-[10px] text-slate-400 font-bold uppercase"><i class="fa-solid fa-cloud"></i> Sincronizado</span>
+      <div class="flex items-center gap-3">
+        <span class="text-[10px] text-slate-400 font-bold uppercase"><i class="fa-solid fa-cloud"></i> Sincronizado</span>
+        <button v-if="isAdmin" @click="abrirBajaEquipo(buscarEquipoPorId(perfilEquipo.id) || perfilEquipo)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-3 py-2 rounded-lg text-xs border border-rose-200"><i class="fa-solid fa-trash"></i> Eliminar equipo</button>
+      </div>
       <div class="flex items-center gap-2">
         <button @click="showPerfilEquipoModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-lg text-xs">Cerrar</button>
         <button v-if="puedeEditar" @click="guardarPerfilEquipo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-lg shadow text-xs"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>

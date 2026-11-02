@@ -18,6 +18,7 @@ export default /* html */ `
           <option value="desc">Descendente</option>
           <option value="asc">Ascendente</option>
         </select>
+        <button @click="abrirRegistroEliminados" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border flex items-center gap-1.5" title="Equipos eliminados, con su motivo"><i class="fa-solid fa-box-archive text-rose-500"></i> Equipos eliminados</button>
         <button @click="resetFiltrosInventario" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Limpiar</button>
         <button @click="exportarInventarioCSV" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
       </div>

@@ -5,6 +5,8 @@ import template from './perfil-equipo.template.js';
 import { comunes } from '../../core/comunes.js';
 import { datosVersion } from '../../core/store.js';
 import * as P from './perfil.service.js';
+import { abrirBajaEquipo } from './baja.service.js';
+import { dbEquipos } from '../../core/store.js';
 import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.js';
 import { editarMantencion, eliminarMantencion } from '../historial/historial.service.js';
 import { requeridosPorModelo, irAFiltrosDelModelo, fmtPrecio } from '../filtros/filtros.service.js';
@@ -67,7 +69,8 @@ export default {
     return {
       ...comunes(), ...P, resetFiltrosPerfil, renderPerfilCharts,
       getHistorialMovimientosAFI, editarMantencion, eliminarMantencion,
-      filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio
+      filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio,
+      abrirBajaEquipo, buscarEquipoPorId: (id) => dbEquipos.value.find(e => e.id === id)
     };
   }
 };

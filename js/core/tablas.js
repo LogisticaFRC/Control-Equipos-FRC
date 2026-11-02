@@ -9,6 +9,7 @@ export const TABLAS = {
   USUARIOS: 'usuarios',
   PROGRAMAS: 'bd_programas_calendarios',      // antes 'BD_PROGRAMAS_CALENDARIOS' (no existe)
   PROGRAMAS_ITEMS: 'bd_programas_items',
+  EQUIPOS_ELIMINADOS: 'bd_equipos_eliminados',  // registro de equipos eliminados (motivo, quién, cuándo)
   PROGRAMAS_CARPETAS: 'bd_programas_carpetas',   // subcarpetas de programas (ej. NOVIEMBRE) dentro de Reparación / Mantención      // antes 'BD_PROGRAMAS_ITEMS' (no existe)
   MODELOS_FICHA: 'bd_modelos_ficha',
   FORMATOS: 'bd_formatos',

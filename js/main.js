@@ -25,6 +25,7 @@ import FormMantencion from './modules/historial/form-mantencion.view.js';
 import ModalMovimiento from './modules/movimientos/modal-movimiento.view.js';
 import ModalPrograma from './modules/programas/modal-programa.view.js';
 import ModalAsignarEquipo from './modules/programas/modal-asignar.view.js';
+import BajaEquipo from './modules/inventario/baja-equipo.view.js';
 
 import { showPerfilEquipoModal } from './modules/inventario/perfil.service.js';
 import { showModalNuevoEquipo } from './modules/inventario/inventario.service.js';
@@ -109,6 +110,7 @@ const template = /* html */ `
     <modal-movimiento v-if="showModalMovimiento"></modal-movimiento>
     <modal-programa v-if="showModalPrograma"></modal-programa>
     <modal-asignar-equipo v-if="showModalAsignarEquipo"></modal-asignar-equipo>
+    <baja-equipo></baja-equipo>
   </template>
 `;
 
@@ -156,5 +158,6 @@ app.component('FormMantencion', FormMantencion);
 app.component('ModalMovimiento', ModalMovimiento);
 app.component('ModalPrograma', ModalPrograma);
 app.component('ModalAsignarEquipo', ModalAsignarEquipo);
+app.component('BajaEquipo', BajaEquipo);
 
 app.mount('#app');
