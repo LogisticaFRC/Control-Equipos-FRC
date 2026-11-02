@@ -1,9 +1,10 @@
 // =====================================================================
 // PROGRAMAS · Lógica (programas de Reparación / Mantención, Gantt, asignaciones)
 // =====================================================================
-import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
+import { supabaseClient, sb, errMsg, fetchAllRows } from '../../core/supabase.js';
 import { dbProgramasCalendarios, dbProgramasItems, cargarDatosDesdeSupabase, obtenerDetalleEquipoPorAfi, soloAdmin, soloEditor } from '../../core/store.js';
 import { normalizarFecha, formatDateForDisplay, parseNum, limpiarAfi, esFechaEnRango, hoyISO } from '../../core/utils.js';
+import { isAdmin } from '../../core/store.js';
 import { kitsEnBodegaAfi, kitConsumidoItem, consumirKitParaItem, devolverKitDeItem, filtrosRequeridosAfi } from '../bodega/bodega.service.js';
 
 const { ref, computed } = Vue;
@@ -23,6 +24,124 @@ const PROG_VACIO = () => ({ id: null, carpeta: '', nombre_programa: '', mes: '',
 export const progSelect = ref(PROG_VACIO());
 
 export const toggleFolder = (k) => { openFolders.value[k] = !openFolders.value[k]; };
+
+// =====================================================================
+// SUBCARPETAS dentro de REPARACIÓN / MANTENCIÓN (ej. "NOVIEMBRE")
+//  · tabla bd_programas_carpetas (tipo, nombre) → guarda también las subcarpetas vacías
+//  · columna bd_programas_calendarios.subcarpeta → en qué subcarpeta está cada programa (vacío = raíz)
+// =====================================================================
+export const TABLA_PROGRAMAS_CARPETAS = TABLAS.PROGRAMAS_CARPETAS;
+export const dbProgramasCarpetas = ref([]);
+export const openSubfolders = ref({});
+export const programaMoviendo = ref(null);   // id del programa con el selector "Mover a" abierto
+export const programaArrastrado = ref(null); // id del programa que se está arrastrando
+
+const SQL_SUBCARPETAS = `CREATE TABLE IF NOT EXISTS public.bd_programas_carpetas (id bigserial PRIMARY KEY, tipo text NOT NULL, nombre text NOT NULL, created_at timestamptz DEFAULT now(), CONSTRAINT bd_programas_carpetas_unica UNIQUE (tipo, nombre));
+ALTER TABLE public.bd_programas_carpetas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS bd_programas_carpetas_anon_all ON public.bd_programas_carpetas;
+CREATE POLICY bd_programas_carpetas_anon_all ON public.bd_programas_carpetas FOR ALL TO anon USING (true) WITH CHECK (true);
+ALTER TABLE public.bd_programas_calendarios ADD COLUMN IF NOT EXISTS subcarpeta text;
+NOTIFY pgrst, 'reload schema';`;
+const avisoFaltaSql = (err) => {
+  const m = errMsg(err);
+  if (/bd_programas_carpetas|subcarpeta|schema cache/i.test(m)) {
+    alert("Faltan las subcarpetas en Supabase. Ejecuta en el SQL Editor (está en sql/programas_subcarpetas.sql):\n\n" + SQL_SUBCARPETAS);
+  } else alert("Error: " + m);
+};
+
+export const cargarCarpetasProgramas = async () => {
+  const rows = await fetchAllRows(TABLA_PROGRAMAS_CARPETAS);
+  dbProgramasCarpetas.value = rows.map(r => ({ id: r.id, tipo: String(r.tipo || '').toUpperCase(), nombre: String(r.nombre || '').toUpperCase() }));
+};
+
+const subDe = (prog) => String(prog?.subcarpeta || '').trim().toUpperCase();
+const MESES = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+/** Orden: año (si el nombre lo trae) → mes (si es un mes) → alfabético. */
+const claveOrdenSub = (n) => {
+  const anio = (n.match(/(20\d{2})/) || [])[1] || '0000';
+  const mes = MESES.findIndex(m => n.includes(m));
+  return `${anio}-${String(mes < 0 ? 99 : mes).padStart(2, '0')}-${n}`;
+};
+
+/** Subcarpetas de un tipo (las creadas + las que usan los programas). */
+export const subcarpetasDe = (tipo) => {
+  const t = String(tipo).toUpperCase();
+  const set = new Set(dbProgramasCarpetas.value.filter(c => c.tipo === t).map(c => c.nombre));
+  dbProgramasCalendarios.value.filter(p => carpetaDe(p) === t && subDe(p)).forEach(p => set.add(subDe(p)));
+  return Array.from(set).sort((a, b) => claveOrdenSub(a).localeCompare(claveOrdenSub(b)));
+};
+export const programasDeSubcarpeta = (tipo, sub) => obtenerProgramasDeCarpeta(tipo).filter(p => subDe(p) === String(sub || '').toUpperCase());
+export const claveSub = (tipo, sub) => `${tipo}/${sub}`;
+export const subAbierta = (tipo, sub) => openSubfolders.value[claveSub(tipo, sub)] !== false;
+export const toggleSubfolder = (tipo, sub) => { openSubfolders.value[claveSub(tipo, sub)] = !subAbierta(tipo, sub); };
+
+export const crearSubcarpeta = async (tipo) => {
+  if (!soloAdmin()) return;
+  const nombre = String(prompt(`Nombre de la nueva subcarpeta en ${tipo} (ej: NOVIEMBRE 2026):`) || '').trim().toUpperCase();
+  if (!nombre) return;
+  if (subcarpetasDe(tipo).includes(nombre)) return alert('Ya existe una subcarpeta con ese nombre.');
+  try {
+    await sb(supabaseClient.from(TABLA_PROGRAMAS_CARPETAS).insert([{ tipo: String(tipo).toUpperCase(), nombre }]));
+    await cargarCarpetasProgramas();
+    openFolders.value[tipo] = true;
+  } catch (err) { avisoFaltaSql(err); }
+};
+
+export const renombrarSubcarpeta = async (tipo, sub) => {
+  if (!soloAdmin()) return;
+  const nuevo = String(prompt('Nuevo nombre de la subcarpeta:', sub) || '').trim().toUpperCase();
+  if (!nuevo || nuevo === sub) return;
+  if (subcarpetasDe(tipo).includes(nuevo)) return alert('Ya existe una subcarpeta con ese nombre.');
+  try {
+    const fila = dbProgramasCarpetas.value.find(c => c.tipo === tipo && c.nombre === sub);
+    if (fila) await sb(supabaseClient.from(TABLA_PROGRAMAS_CARPETAS).update({ nombre: nuevo }).eq('id', fila.id));
+    else await sb(supabaseClient.from(TABLA_PROGRAMAS_CARPETAS).insert([{ tipo, nombre: nuevo }]));
+    const progs = programasDeSubcarpeta(tipo, sub);
+    for (const p of progs) await sb(supabaseClient.from(TABLA_PROGRAMAS).update({ subcarpeta: nuevo }).eq('id', p.id));
+    progs.forEach(p => { p.subcarpeta = nuevo; });
+    await cargarCarpetasProgramas();
+  } catch (err) { avisoFaltaSql(err); }
+};
+
+export const eliminarSubcarpeta = async (tipo, sub) => {
+  if (!soloAdmin()) return;
+  const progs = programasDeSubcarpeta(tipo, sub);
+  if (!confirm(`¿Eliminar la subcarpeta "${sub}"?${progs.length ? `\nSus ${progs.length} programa(s) NO se borran: pasan a la carpeta ${tipo}.` : ''}`)) return;
+  try {
+    for (const p of progs) await sb(supabaseClient.from(TABLA_PROGRAMAS).update({ subcarpeta: null }).eq('id', p.id));
+    progs.forEach(p => { p.subcarpeta = null; });
+    await sb(supabaseClient.from(TABLA_PROGRAMAS_CARPETAS).delete().eq('tipo', tipo).eq('nombre', sub));
+    await cargarCarpetasProgramas();
+  } catch (err) { avisoFaltaSql(err); }
+};
+
+/** Mueve un programa a una subcarpeta ('' = carpeta principal). */
+export const moverProgramaASubcarpeta = async (prog, sub) => {
+  if (!soloAdmin()) return;
+  const destino = String(sub || '').trim().toUpperCase() || null;
+  programaMoviendo.value = null;
+  if ((subDe(prog) || null) === destino) return;
+  const anterior = prog.subcarpeta;
+  prog.subcarpeta = destino;
+  try {
+    await sb(supabaseClient.from(TABLA_PROGRAMAS).update({ subcarpeta: destino }).eq('id', prog.id));
+    if (destino) openSubfolders.value[claveSub(carpetaDe(prog), destino)] = true;
+  } catch (err) { prog.subcarpeta = anterior; avisoFaltaSql(err); }
+};
+
+// Arrastrar y soltar (solo Admin, dentro del mismo tipo)
+export const iniciarArrastre = (prog, e) => {
+  if (!isAdmin.value) return;
+  programaArrastrado.value = prog.id;
+  try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(prog.id)); } catch (_) {}
+};
+export const terminarArrastre = () => { programaArrastrado.value = null; };
+export const soltarEnSubcarpeta = (tipo, sub) => {
+  const prog = obtenerProgObj(programaArrastrado.value);
+  programaArrastrado.value = null;
+  if (!prog || carpetaDe(prog) !== String(tipo).toUpperCase()) return;
+  moverProgramaASubcarpeta(prog, sub);
+};
 
 export const seleccionarProgramaObj = (prog) => {
   progSelect.value = {
@@ -99,6 +218,29 @@ export const generarDiasDelPrograma = (prog) => {
 
 export const esFechaEnRangoEquipo = esFechaEnRango;
 
+/** Gantt de MANTENCIÓN: qué mostrar en cada día para un equipo.
+ *  'prog' = día programado pendiente · 'atrasado' = programado, ya pasó y sigue pendiente
+ *  'hecho' = realizado ese día · 'reprog' = estaba programado ese día pero se realizó otro día */
+export const celdaGanttMant = (item, fechaStr) => {
+  const prog = normalizarFecha(item.fecha_programada || item.fecha_inicio);
+  const real = normalizarFecha(item.fecha_fin);
+  if (item.realizado) {
+    if (real && fechaStr === real) return 'hecho';
+    if (fechaStr === prog) return real && real !== prog ? 'reprog' : 'hecho';
+    return '';
+  }
+  if (fechaStr === prog) return prog < hoyISO() ? 'atrasado' : 'prog';
+  return '';
+};
+export const hoyStr = () => hoyISO();
+/** Equipos del programa de mantención cuya fecha programada queda fuera de la vigencia (no se ven en el Gantt). */
+export const itemsMantFueraDeGantt = (programaId) => {
+  const prog = obtenerProgObj(programaId);
+  if (!prog) return [];
+  const ini = normalizarFecha(prog.fecha_inicio_programa), fin = normalizarFecha(prog.fecha_termino_programa);
+  return obtenerItemsPrograma(programaId).filter(i => { const f = normalizarFecha(i.fecha_programada || i.fecha_inicio); return !f || f < ini || f > fin; });
+};
+
 // ---------- Switch "Descontar kits de bodega" (por programa de mantención) ----------
 /** ON por defecto. Se apaga para rellenar programas antiguos sin mover la bodega. */
 export const descuentaBodega = (programaId) => obtenerProgObj(programaId)?.descontar_bodega !== false;
@@ -123,10 +265,12 @@ export const cambiarDescuentoBodega = async (programaId, valor) => {
 
 // ---------- Crear / eliminar programa ----------
 export const showModalPrograma = ref(false);
-export const formProgMes = ref({ carpeta: 'REPARACION', nombre_programa: '', fecha_inicio_programa: '', fecha_termino_programa: '' });
+export const formProgMes = ref({ carpeta: 'REPARACION', subcarpeta: '', nombre_programa: '', fecha_inicio_programa: '', fecha_termino_programa: '' });
 
 export const abrirModalCrearPrograma = (tipoCarpeta) => {
-  formProgMes.value = { carpeta: tipoCarpeta, nombre_programa: '', fecha_inicio_programa: '2026-08-01', fecha_termino_programa: '2026-09-30' };
+  const actual = obtenerProgObj(progSelect.value.id);
+  const subActual = actual && carpetaDe(actual) === tipoCarpeta ? subDe(actual) : '';
+  formProgMes.value = { carpeta: tipoCarpeta, subcarpeta: subActual, nombre_programa: '', fecha_inicio_programa: '2026-08-01', fecha_termino_programa: '2026-09-30' };
   showModalPrograma.value = true;
 };
 
@@ -137,14 +281,18 @@ export const guardarNuevoProgramaMes = async () => {
   if (!nom || !f_ini || !f_fin) return;
   if (f_fin < f_ini) return alert("La fecha de término no puede ser anterior a la de inicio.");
   const payload = { tipo: cp, carpeta: cp, nombre_programa: nom, mes: nom, fecha_inicio_programa: f_ini, fecha_termino_programa: f_fin };
+  const sub = String(formProgMes.value.subcarpeta || '').trim().toUpperCase();
+  if (sub) payload.subcarpeta = sub;
   try {
     const data = await sb(supabaseClient.from(TABLA_PROGRAMAS).insert([payload]).select());
     await cargarDatosDesdeSupabase();
     showModalPrograma.value = false;
     if (data && data[0]) seleccionarProgramaObj(data[0]);
+    if (sub) openSubfolders.value[claveSub(cp, sub)] = true;
     alert(`¡Programa "${nom}" guardado permanentemente en ${cp}!`);
   } catch (err) {
-    alert("Error de Supabase al guardar programa: " + errMsg(err));
+    if (/subcarpeta/i.test(errMsg(err))) avisoFaltaSql(err);
+    else alert("Error de Supabase al guardar programa: " + errMsg(err));
   }
 };
 
@@ -329,6 +477,14 @@ export const exportarProgramaGanttExcel = (prog) => {
       "ESTADO": item.realizado ? 'REALIZADO' : 'PENDIENTE'
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Mantencion");
+    const dias = generarDiasDelPrograma(prog);
+    const MARCA = { prog: '●', atrasado: '!', hecho: '✓', reprog: 'P' };
+    const gantt = obtenerItemsPrograma(prog.id).map(item => {
+      const r = { "AFI": `AFI ${item.afi}`, "TIPO EQUIPO": det(item.afi, 'tipo'), "MARCA / MODELO": `${det(item.afi, 'marca')} ${det(item.afi, 'modelo')}`, "ESTADO": item.realizado ? 'REALIZADO' : 'PENDIENTE' };
+      dias.forEach(d => { r[d.fechaStr] = MARCA[celdaGanttMant(item, d.fechaStr)] || ''; });
+      return r;
+    });
+    if (gantt.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gantt), "Gantt");
   } else {
     const diasArr = generarDiasDelPrograma(prog);
     NAVES.forEach(nave => {

@@ -36,51 +36,78 @@ export default /* html */ `
         <span class="text-[10px] text-slate-400 font-mono">Global: {{ cumplimientoGlobalTotal }}%</span>
       </h3>
 
-      <!-- Carpeta REPARACIÓN -->
-      <div class="space-y-1">
-        <div @click="toggleFolder('REPARACION')" class="font-bold text-xs text-slate-800 bg-amber-50 border border-amber-200 p-2.5 rounded cursor-pointer hover:bg-amber-100 flex justify-between items-center shadow-sm">
-          <span><i class="fa-solid fa-wrench text-amber-600 mr-1.5"></i> REPARACIÓN ({{ obtenerProgramasDeCarpeta('REPARACION').length }})</span>
-          <i :class="['fa-solid text-slate-500 text-[10px]', openFolders['REPARACION'] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+      <!-- Carpetas REPARACIÓN / MANTENCIÓN con subcarpetas (ej. NOVIEMBRE). El Admin arrastra un programa a una subcarpeta para moverlo. -->
+      <div v-for="f in [{ key: 'REPARACION', label: 'REPARACIÓN', icono: 'text-amber-600', iconoTipo: 'fa-wrench', cab: 'bg-amber-50 border-amber-200 hover:bg-amber-100', linea: 'border-amber-200', sub: 'bg-amber-50/60 border-amber-200 text-amber-900' }, { key: 'MANTENCION', label: 'MANTENCIÓN', icono: 'text-indigo-600', iconoTipo: 'fa-oil-can', cab: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100', linea: 'border-indigo-200', sub: 'bg-indigo-50/60 border-indigo-200 text-indigo-900' }]" :key="f.key" class="space-y-1">
+        <div @click="toggleFolder(f.key)" :class="['font-bold text-xs text-slate-800 border p-2.5 rounded cursor-pointer flex justify-between items-center shadow-sm', f.cab]">
+          <span><i :class="['fa-solid mr-1.5', f.iconoTipo, f.icono]"></i> {{ f.label }} ({{ obtenerProgramasDeCarpeta(f.key).length }})</span>
+          <span class="flex items-center gap-2">
+            <button v-if="isAdmin" @click.stop="crearSubcarpeta(f.key)" class="text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white/70 border rounded px-1.5 py-0.5" title="Nueva subcarpeta"><i class="fa-solid fa-folder-plus"></i></button>
+            <i :class="['fa-solid text-slate-500 text-[10px]', openFolders[f.key] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+          </span>
         </div>
-        <div v-show="openFolders['REPARACION']" class="pl-3 pr-1 space-y-1.5 border-l-2 border-amber-200 ml-2 pt-1 pb-2">
-          <div v-for="prog in obtenerProgramasDeCarpeta('REPARACION')" :key="prog.id" :class="['p-2.5 rounded border transition text-[11px] space-y-1', (progSelect.id === prog.id) ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm font-bold' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100']">
-            <div @click="seleccionarProgramaObj(prog)" class="cursor-pointer flex items-center justify-between">
-              <span class="truncate"><i class="fa-solid fa-calendar-days opacity-70 mr-1 text-amber-600"></i> {{ prog.nombre_programa || prog.mes }}</span>
-              <div class="flex items-center gap-1">
-                <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
-                <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar programa"><i class="fa-solid fa-trash"></i></button>
-              </div>
-            </div>
-            <div class="text-[9px] font-mono text-slate-500 flex justify-between">
-              <span>Del {{ formatDateForDisplay(prog.fecha_inicio_programa) }}</span>
-              <span>Al {{ formatDateForDisplay(prog.fecha_termino_programa) }}</span>
-            </div>
-          </div>
-          <div v-if="obtenerProgramasDeCarpeta('REPARACION').length === 0" class="text-[10px] text-slate-400 italic p-1">No hay programas de reparación.</div>
-        </div>
-      </div>
+        <div v-show="openFolders[f.key]" :class="['pl-3 pr-1 space-y-1.5 border-l-2 ml-2 pt-1 pb-2', f.linea]">
 
-      <!-- Carpeta MANTENCIÓN -->
-      <div class="space-y-1">
-        <div @click="toggleFolder('MANTENCION')" class="font-bold text-xs text-slate-800 bg-indigo-50 border border-indigo-200 p-2.5 rounded cursor-pointer hover:bg-indigo-100 flex justify-between items-center shadow-sm">
-          <span><i class="fa-solid fa-oil-can text-indigo-600 mr-1.5"></i> MANTENCIÓN ({{ obtenerProgramasDeCarpeta('MANTENCION').length }})</span>
-          <i :class="['fa-solid text-slate-500 text-[10px]', openFolders['MANTENCION'] ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
-        </div>
-        <div v-show="openFolders['MANTENCION']" class="pl-3 pr-1 space-y-1.5 border-l-2 border-indigo-200 ml-2 pt-1 pb-2">
-          <div v-for="prog in obtenerProgramasDeCarpeta('MANTENCION')" :key="prog.id" :class="['p-2.5 rounded border transition text-[11px] space-y-1', (progSelect.id === prog.id) ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm font-bold' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100']">
-            <div @click="seleccionarProgramaObj(prog)" class="cursor-pointer flex items-center justify-between">
-              <span class="truncate"><i class="fa-solid fa-calendar-days opacity-70 mr-1 text-indigo-600"></i> {{ prog.nombre_programa || prog.mes }}</span>
-              <div class="flex items-center gap-1">
-                <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
-                <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar programa"><i class="fa-solid fa-trash"></i></button>
-              </div>
+          <!-- Subcarpetas -->
+          <div v-for="sc in subcarpetasDe(f.key)" :key="sc" class="space-y-1"
+               @dragover.prevent @drop.prevent="soltarEnSubcarpeta(f.key, sc)">
+            <div @click="toggleSubfolder(f.key, sc)" :class="['flex items-center justify-between px-2 py-1.5 rounded border text-[11px] font-bold cursor-pointer', f.sub, programaArrastrado ? 'ring-2 ring-offset-1 ring-sky-400' : '']">
+              <span class="truncate"><i :class="['fa-solid mr-1', subAbierta(f.key, sc) ? 'fa-folder-open' : 'fa-folder']"></i> {{ sc }} <span class="font-normal opacity-70">({{ programasDeSubcarpeta(f.key, sc).length }})</span></span>
+              <span class="flex items-center gap-1 shrink-0">
+                <button v-if="isAdmin" @click.stop="renombrarSubcarpeta(f.key, sc)" class="opacity-60 hover:opacity-100 p-0.5" title="Renombrar"><i class="fa-solid fa-pen"></i></button>
+                <button v-if="isAdmin" @click.stop="eliminarSubcarpeta(f.key, sc)" class="text-rose-500 hover:text-rose-700 p-0.5" title="Eliminar subcarpeta (los programas no se borran)"><i class="fa-solid fa-trash"></i></button>
+                <i :class="['fa-solid text-[9px] opacity-60', subAbierta(f.key, sc) ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+              </span>
             </div>
-            <div class="text-[9px] font-mono text-slate-500 flex justify-between">
-              <span>Del {{ formatDateForDisplay(prog.fecha_inicio_programa) }}</span>
-              <span>Al {{ formatDateForDisplay(prog.fecha_termino_programa) }}</span>
+            <div v-show="subAbierta(f.key, sc)" class="pl-2 ml-1 border-l border-dashed border-slate-300 space-y-1.5">
+            <div v-for="prog in programasDeSubcarpeta(f.key, sc)" :key="prog.id" :draggable="isAdmin" @dragstart="iniciarArrastre(prog, $event)" @dragend="terminarArrastre"
+                 :class="['p-2.5 rounded border transition text-[11px] space-y-1', (progSelect.id === prog.id) ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm font-bold' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100', programaArrastrado === prog.id ? 'opacity-40' : '', isAdmin ? 'cursor-grab' : '']">
+              <div @click="seleccionarProgramaObj(prog)" class="cursor-pointer flex items-center justify-between gap-1">
+                <span class="truncate"><i :class="['fa-solid fa-calendar-days opacity-70 mr-1', f.icono]"></i> {{ prog.nombre_programa || prog.mes }}</span>
+                <div class="flex items-center gap-0.5 shrink-0">
+                  <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
+                  <button v-if="isAdmin" @click.stop="programaMoviendo = programaMoviendo === prog.id ? null : prog.id" class="text-slate-400 hover:text-slate-700 p-1" title="Mover a subcarpeta"><i class="fa-solid fa-folder-open"></i></button>
+                  <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar programa"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </div>
+              <div class="text-[9px] font-mono text-slate-500 flex justify-between">
+                <span>Del {{ formatDateForDisplay(prog.fecha_inicio_programa) }}</span>
+                <span>Al {{ formatDateForDisplay(prog.fecha_termino_programa) }}</span>
+              </div>
+              <select v-if="isAdmin && programaMoviendo === prog.id" @click.stop @change="moverProgramaASubcarpeta(prog, $event.target.value)" class="w-full p-1 border rounded text-[10px] font-bold bg-white">
+                <option value="" disabled selected>Mover a...</option>
+                <option value="">Carpeta principal ({{ f.label }})</option>
+                <option v-for="sc in subcarpetasDe(f.key)" :key="sc" :value="sc">📁 {{ sc }}</option>
+              </select>
+            </div>
+              <div v-if="!programasDeSubcarpeta(f.key, sc).length" class="text-[10px] text-slate-400 italic p-1">Vacía{{ isAdmin ? ' · arrastra un programa aquí' : '' }}</div>
             </div>
           </div>
-          <div v-if="obtenerProgramasDeCarpeta('MANTENCION').length === 0" class="text-[10px] text-slate-400 italic p-1">No hay programas de mantención.</div>
+
+          <!-- Programas sin subcarpeta -->
+          <div @dragover.prevent @drop.prevent="soltarEnSubcarpeta(f.key, '')" :class="['space-y-1.5 rounded', programaArrastrado && subcarpetasDe(f.key).length ? 'border-2 border-dashed border-sky-300 p-1 min-h-[2.5rem]' : '']">
+            <p v-if="programaArrastrado && subcarpetasDe(f.key).length" class="text-[9px] text-sky-700 font-bold text-center">Soltar aquí = carpeta principal</p>
+            <div v-for="prog in programasDeSubcarpeta(f.key, '')" :key="prog.id" :draggable="isAdmin" @dragstart="iniciarArrastre(prog, $event)" @dragend="terminarArrastre"
+                 :class="['p-2.5 rounded border transition text-[11px] space-y-1', (progSelect.id === prog.id) ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm font-bold' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100', programaArrastrado === prog.id ? 'opacity-40' : '', isAdmin ? 'cursor-grab' : '']">
+              <div @click="seleccionarProgramaObj(prog)" class="cursor-pointer flex items-center justify-between gap-1">
+                <span class="truncate"><i :class="['fa-solid fa-calendar-days opacity-70 mr-1', f.icono]"></i> {{ prog.nombre_programa || prog.mes }}</span>
+                <div class="flex items-center gap-0.5 shrink-0">
+                  <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
+                  <button v-if="isAdmin" @click.stop="programaMoviendo = programaMoviendo === prog.id ? null : prog.id" class="text-slate-400 hover:text-slate-700 p-1" title="Mover a subcarpeta"><i class="fa-solid fa-folder-open"></i></button>
+                  <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar programa"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </div>
+              <div class="text-[9px] font-mono text-slate-500 flex justify-between">
+                <span>Del {{ formatDateForDisplay(prog.fecha_inicio_programa) }}</span>
+                <span>Al {{ formatDateForDisplay(prog.fecha_termino_programa) }}</span>
+              </div>
+              <select v-if="isAdmin && programaMoviendo === prog.id" @click.stop @change="moverProgramaASubcarpeta(prog, $event.target.value)" class="w-full p-1 border rounded text-[10px] font-bold bg-white">
+                <option value="" disabled selected>Mover a...</option>
+                <option value="">Carpeta principal ({{ f.label }})</option>
+                <option v-for="sc in subcarpetasDe(f.key)" :key="sc" :value="sc">📁 {{ sc }}</option>
+              </select>
+            </div>
+          </div>
+          <div v-if="obtenerProgramasDeCarpeta(f.key).length === 0 && subcarpetasDe(f.key).length === 0" class="text-[10px] text-slate-400 italic p-1">No hay programas de {{ f.label.toLowerCase() }}.</div>
         </div>
       </div>
 
@@ -117,18 +144,18 @@ export default /* html */ `
           </div>
         </div>
 
-        <!-- Pestañas de Vista: Solo se muestra si es Reparación -->
-        <div v-if="progSelect.carpeta === 'REPARACION'" class="flex items-center gap-2 mb-3 border-b pb-2">
+        <!-- Pestañas de Vista (Reparación y Mantención) -->
+        <div class="flex items-center gap-2 mb-3 border-b pb-2">
           <button @click="vistaProgramaMode = 'tabla'" :class="['px-3 py-1 rounded text-xs font-bold transition flex items-center gap-1.5', vistaProgramaMode === 'tabla' ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200']">
-            <i class="fa-solid fa-list"></i> Vista de Tabla por Naves (ON/OFF)
+            <i class="fa-solid fa-list"></i> {{ progSelect.carpeta === 'REPARACION' ? 'Vista de Tabla por Naves (ON/OFF)' : 'Vista de Tabla' }}
           </button>
           <button @click="vistaProgramaMode = 'calendario'" :class="['px-3 py-1 rounded text-xs font-bold transition flex items-center gap-1.5', vistaProgramaMode === 'calendario' ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200']">
-            <i class="fa-solid fa-calendar-week"></i> Vista Calendario / Gantt por Naves
+            <i class="fa-solid fa-calendar-week"></i> {{ progSelect.carpeta === 'REPARACION' ? 'Vista Calendario / Gantt por Naves' : 'Vista Calendario / Carta Gantt' }}
           </button>
         </div>
 
         <!-- CONTENIDO PARA PROGRAMA DE MANTENCIÓN (SIN NAVE: TABLA DIRECTA) -->
-        <div v-if="progSelect.carpeta === 'MANTENCION'" class="flex-grow overflow-y-auto space-y-4">
+        <div v-if="progSelect.carpeta === 'MANTENCION' && vistaProgramaMode === 'tabla'" class="flex-grow overflow-y-auto space-y-4">
           <div class="bg-indigo-900 text-white px-3 py-2 rounded-lg text-xs font-extrabold uppercase flex justify-between items-center shadow-sm">
             <span><i class="fa-solid fa-oil-can mr-1.5 text-indigo-300"></i> Listado de Equipos - Programa de Mantención</span>
             <span class="text-[10px] font-mono bg-white/20 px-2.5 py-0.5 rounded">{{ obtenerItemsPrograma(progSelect.id).length }} equipos</span>
@@ -241,7 +268,7 @@ export default /* html */ `
         </div>
 
         <!-- CONTENIDO VISTA TABLA SEPARADA POR NAVES (REPARACIÓN) -->
-        <div v-else-if="vistaProgramaMode === 'tabla'" class="flex-grow overflow-y-auto space-y-6">
+        <div v-else-if="progSelect.carpeta === 'REPARACION' && vistaProgramaMode === 'tabla'" class="flex-grow overflow-y-auto space-y-6">
           <template v-for="n_nave in ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4']" :key="n_nave">
             <div v-if="obtenerItemsProgramaEnRangoPorNave(progSelect.id, n_nave).length > 0" class="space-y-2 border rounded-xl p-3 bg-slate-50/50 shadow-sm">
               <div class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase flex justify-between items-center">
@@ -336,6 +363,63 @@ export default /* html */ `
               </div>
             </div>
           </template>
+        </div>
+
+        <!-- CONTENIDO VISTA CALENDARIO / GANTT (MANTENCIÓN) -->
+        <div v-else-if="progSelect.carpeta === 'MANTENCION' && vistaProgramaMode === 'calendario'" class="flex-grow overflow-auto p-3 bg-slate-50 border rounded-xl space-y-3">
+          <div class="flex flex-wrap items-center gap-3 text-[10px] font-semibold text-slate-600">
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-purple-500"></span> Programado</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-rose-600"></span> Atrasado (pendiente)</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-emerald-500"></span> Realizado</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm border-2 border-amber-500 bg-amber-50"></span> Programado, realizado otro día</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-sky-200"></span> Hoy</span>
+          </div>
+          <div class="overflow-x-auto border rounded-lg bg-white shadow-sm">
+            <table class="w-full text-[10px] border-collapse">
+              <thead>
+                <tr class="bg-indigo-900 text-white text-center">
+                  <th class="p-2 border border-indigo-800 w-24">TIPO EQUIPO</th>
+                  <th class="p-2 border border-indigo-800 w-16">AFI</th>
+                  <th class="p-2 border border-indigo-800 w-24">MARCA / MODELO</th>
+                  <th class="p-2 border border-indigo-800 w-20">PROGRAMADA</th>
+                  <th class="p-2 border border-indigo-800 w-20">REALIZADA</th>
+                  <th v-for="diaObj in generarDiasDelPrograma(progSelect)" :key="diaObj.fechaStr" :class="['border border-indigo-800 px-0.5 py-1 w-7 text-[9px] font-mono', diaObj.fechaStr === hoyStr() ? 'bg-sky-600' : '']" :title="diaObj.fechaStr">
+                    <span class="block opacity-70">{{ diaObj.letraDia }}</span>
+                    <span class="block font-bold text-amber-300">{{ diaObj.numDia }}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="item in obtenerItemsPrograma(progSelect.id)" :key="item.id" class="hover:bg-slate-50">
+                  <td class="p-2 border font-semibold text-slate-800 bg-slate-50 truncate max-w-[110px]">{{ obtenerDetalleEquipoPorAfi(item.afi, 'tipo') }}</td>
+                  <td class="p-2 border font-bold text-amber-700 bg-amber-50/50 cursor-pointer hover:underline whitespace-nowrap" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
+                  <td class="p-2 border text-slate-600 truncate max-w-[120px]">{{ obtenerDetalleEquipoPorAfi(item.afi, 'marca') }} {{ obtenerDetalleEquipoPorAfi(item.afi, 'modelo') }}</td>
+                  <td class="p-2 border font-mono font-bold text-indigo-900 whitespace-nowrap">{{ formatDateForDisplay(item.fecha_programada) }}</td>
+                  <td class="p-2 border font-mono font-bold whitespace-nowrap" :class="item.realizado ? 'text-emerald-700' : 'text-slate-300'">{{ item.realizado ? formatDateForDisplay(item.fecha_fin) : '-' }}</td>
+                  <td v-for="diaObj in generarDiasDelPrograma(progSelect)" :key="diaObj.fechaStr"
+                      :class="['border border-slate-200 text-center', {
+                        'bg-purple-500': celdaGanttMant(item, diaObj.fechaStr) === 'prog',
+                        'bg-rose-600': celdaGanttMant(item, diaObj.fechaStr) === 'atrasado',
+                        'bg-emerald-500': celdaGanttMant(item, diaObj.fechaStr) === 'hecho',
+                        'bg-amber-50 border-2 border-amber-500': celdaGanttMant(item, diaObj.fechaStr) === 'reprog',
+                        'bg-sky-100': !celdaGanttMant(item, diaObj.fechaStr) && diaObj.fechaStr === hoyStr(),
+                        'bg-white': !celdaGanttMant(item, diaObj.fechaStr) && diaObj.fechaStr !== hoyStr()
+                      }]"
+                      :title="'AFI ' + item.afi + ' - ' + diaObj.fechaStr">
+                    <span v-if="celdaGanttMant(item, diaObj.fechaStr) === 'hecho'" class="text-white text-[9px] font-bold">✓</span>
+                    <span v-else-if="celdaGanttMant(item, diaObj.fechaStr) === 'prog'" class="text-white text-[8px] font-bold">●</span>
+                    <span v-else-if="celdaGanttMant(item, diaObj.fechaStr) === 'atrasado'" class="text-white text-[9px] font-bold">!</span>
+                    <span v-else-if="celdaGanttMant(item, diaObj.fechaStr) === 'reprog'" class="text-amber-700 text-[8px] font-bold">P</span>
+                  </td>
+                </tr>
+                <tr v-if="!obtenerItemsPrograma(progSelect.id).length"><td :colspan="5 + generarDiasDelPrograma(progSelect).length" class="p-8 text-center text-slate-400 font-bold">No hay equipos asignados a este programa de mantención.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-if="itemsMantFueraDeGantt(progSelect.id).length" class="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+            <i class="fa-solid fa-triangle-exclamation"></i> {{ itemsMantFueraDeGantt(progSelect.id).length }} equipo(s) tienen fecha programada fuera de la vigencia del programa y no se ven en el calendario:
+            <b>{{ itemsMantFueraDeGantt(progSelect.id).map(i => 'AFI ' + i.afi).join(', ') }}</b>
+          </p>
         </div>
 
         <!-- TABLA AISLADA: EQUIPOS FUERA DEL RANGO / NO PROGRAMADOS (SOLO REPARACIÓN) -->

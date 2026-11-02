@@ -8,7 +8,8 @@ export const TABLAS = {
   HISTORIAL: 'BD_HISTORIAL',
   USUARIOS: 'usuarios',
   PROGRAMAS: 'bd_programas_calendarios',      // antes 'BD_PROGRAMAS_CALENDARIOS' (no existe)
-  PROGRAMAS_ITEMS: 'bd_programas_items',      // antes 'BD_PROGRAMAS_ITEMS' (no existe)
+  PROGRAMAS_ITEMS: 'bd_programas_items',
+  PROGRAMAS_CARPETAS: 'bd_programas_carpetas',   // subcarpetas de programas (ej. NOVIEMBRE) dentro de Reparación / Mantención      // antes 'BD_PROGRAMAS_ITEMS' (no existe)
   MODELOS_FICHA: 'bd_modelos_ficha',
   FORMATOS: 'bd_formatos',
   FILTROS: 'bd_filtros',                      // módulo FILTROS: qué filtros usa cada marca/modelo (referencia cruzada)

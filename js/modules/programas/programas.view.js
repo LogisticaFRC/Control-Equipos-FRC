@@ -10,6 +10,7 @@ export default {
   name: 'ProgramasView',
   template,
   setup() {
+    Vue.onMounted(() => { S.cargarCarpetasProgramas(); });
     return { ...comunes(), ...S, filtrosRequeridosAfi, kitsEnBodegaAfi, sePuedeArmarAfi, kitConsumidoItem, resumenKitsPrograma, abrirArmarKitParaAfi };
   }
 };

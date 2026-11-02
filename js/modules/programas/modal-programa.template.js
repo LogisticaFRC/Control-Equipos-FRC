@@ -14,6 +14,13 @@ export default /* html */ `
         <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa</label>
         <input type="text" v-model="formProgMes.nombre_programa" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: MANTENCION AGOSTO 2026">
       </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Subcarpeta</label>
+        <select v-model="formProgMes.subcarpeta" class="w-full p-2.5 border rounded-lg bg-white font-bold text-slate-800">
+          <option value="">-- Carpeta principal ({{ formProgMes.carpeta }}) --</option>
+          <option v-for="sc in subcarpetasDe(formProgMes.carpeta)" :key="sc" :value="sc">{{ sc }}</option>
+        </select>
+      </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Fecha Inicio Programa</label>
