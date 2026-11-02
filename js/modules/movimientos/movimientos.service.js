@@ -71,8 +71,20 @@ export const guardarNuevoMovimiento = async () => {
     const updateObj = {};
     if (payload.ubicacion_actual) updateObj.ubicacion = payload.ubicacion_actual;
     if (payload.estado) updateObj.disponibilidad = normalizarClave(payload.estado);
+    // Empresa arrendada: Fuera de Servicio = TALLER FRC; si el movimiento trae empresa, pasa a ser la del equipo
+    if (updateObj.disponibilidad === 'Fuera de Servicio') updateObj.empresa_arriendo = 'TALLER FRC';
+    else if (payload.empresa_arriendo) updateObj.empresa_arriendo = String(payload.empresa_arriendo).trim().toUpperCase();
     if (Object.keys(updateObj).length > 0) {
-      try { await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id)); }
+      try {
+        try { await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id)); }
+        catch (err) {
+          // Si aún no existe la columna empresa_arriendo, se actualiza igual ubicación y estado
+          if (!('empresa_arriendo' in updateObj) || !/empresa_arriendo/i.test(errMsg(err))) throw err;
+          delete updateObj.empresa_arriendo;
+          if (Object.keys(updateObj).length) await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id));
+          avisoEquipo = "\n(Atención: falta la columna empresa_arriendo en BD_INVENTARIO, ver sql/empresa_arriendo.sql)";
+        }
+      }
       catch (err) { avisoEquipo = "\n(Atención: no se pudo actualizar la ubicación/estado del equipo: " + errMsg(err) + ")"; }
     }
   }

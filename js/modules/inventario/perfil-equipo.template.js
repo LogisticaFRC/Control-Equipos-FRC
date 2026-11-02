@@ -21,10 +21,17 @@ export default /* html */ `
           <div><label class="block font-bold text-slate-700 mb-1">Ubicación Actual</label><input type="text" v-model="perfilEquipo.ubicacion" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50"></div>
           <div>
             <label class="block font-bold text-slate-700 mb-1">Disponibilidad</label>
-            <select v-model="perfilEquipo.disponibilidad" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
+            <select v-model="perfilEquipo.disponibilidad" @change="alCambiarDisponibilidadPerfil" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
               <option value="Operativo">Trabajando / Operativo</option><option value="Disponible">Disponible</option><option value="En Traslado">En Traslado</option>
               <option value="En Mantencion">En Mantención</option><option value="Fuera de Servicio">Fuera de Servicio</option><option value="Venta">En Venta</option>
             </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-building text-blue-500"></i> Empresa Arrendada</label>
+            <input type="text" list="dl-perfil-empresas" v-model="perfilEquipo.empresaArriendo" :disabled="!puedeEditar || esFueraDeServicio(perfilEquipo)" placeholder="Ej: CODELCO..."
+              :class="['w-full p-2 border rounded-lg uppercase font-bold', esFueraDeServicio(perfilEquipo) ? 'bg-slate-200 text-slate-700' : 'bg-slate-50 text-blue-800']">
+            <p v-if="esFueraDeServicio(perfilEquipo)" class="text-[10px] text-slate-500 mt-0.5"><i class="fa-solid fa-lock"></i> Fuera de Servicio → siempre TALLER FRC</p>
+            <datalist id="dl-perfil-empresas"><option v-for="emp in listaEmpresas" :key="emp" :value="emp"></option></datalist>
           </div>
           <div>
             <label class="block font-bold text-slate-700 mb-1">GPS</label>

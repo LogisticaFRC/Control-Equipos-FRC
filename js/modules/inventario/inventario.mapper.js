@@ -13,6 +13,7 @@ export const mapEquipo = (item) => ({
   marca: String(item.marca || ''),
   modelo: String(item.modelo || ''),
   ubicacion: String(item.ubicacion || ''),
+  empresaArriendo: String(item.empresa_arriendo || '').trim().toUpperCase(),
   disponibilidad: normalizarClave(item.disponibilidad),
   anio: item.anio || 2023,
   horometroActual: Number(item.horometroactual || 0),
@@ -23,3 +24,14 @@ export const mapEquipo = (item) => ({
   foto: item.foto || '',
   horometros: null
 });
+
+// ---------- Empresa arrendada ----------
+/** Un equipo FUERA DE SERVICIO siempre está en "TALLER FRC". */
+export const EMPRESA_TALLER = 'TALLER FRC';
+export const esFueraDeServicio = (e) => normalizarClave(e?.disponibilidad) === 'Fuera de Servicio';
+/** Empresa a mostrar: Taller si está fuera de servicio; si no, la del inventario o, si está vacía, la del último movimiento. */
+export const empresaDe = (e) => {
+  if (!e) return '';
+  if (esFueraDeServicio(e)) return EMPRESA_TALLER;
+  return e.empresaArriendo || e.empresaUltimoMov || '';
+};

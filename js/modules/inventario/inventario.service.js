@@ -5,7 +5,9 @@ import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
 import { dbEquipos, cargarDatosDesdeSupabase, soloEditor, soloAdmin } from '../../core/store.js';
 import { normalizarClave, parseNum, parseStr, compararAfi, exportarCSV, getVal, tieneColumna, parseFileAnyFormat, resetInputFile, formatDateForDisplay } from '../../core/utils.js';
 import { esEquipoCritico } from '../../core/horometros.js';
-import { TABLA_INVENTARIO } from './inventario.mapper.js';
+import { TABLA_INVENTARIO, empresaDe } from './inventario.mapper.js';
+import { listaEmpresas } from '../../core/store.js';
+export { empresaDe, listaEmpresas };
 
 const { ref, computed } = Vue;
 
@@ -33,7 +35,7 @@ export const getBadgeClass = (est) => {
 };
 
 // ---------- Filtros ----------
-const FILTRO_INV_DEFAULT = () => ({ search: "", ubicacion: "", estado: "ALL", gps: "ALL", mostrarCriticos: false });
+const FILTRO_INV_DEFAULT = () => ({ search: "", ubicacion: "", empresa: "ALL", estado: "ALL", gps: "ALL", mostrarCriticos: false });
 export const filterInv = ref(FILTRO_INV_DEFAULT());
 export const sortInventarioOrder = ref("asc");
 
@@ -43,12 +45,14 @@ export const resetFiltrosInventario = () => { filterInv.value = FILTRO_INV_DEFAU
 export const filteredEquipos = computed(() => {
   const f = filterInv.value;
   const arr = dbEquipos.value.filter(e => {
-    const matchSearch = !f.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion].join(" ").toLowerCase().includes(f.search.toLowerCase());
+    const matchSearch = !f.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion, empresaDe(e)].join(" ").toLowerCase().includes(f.search.toLowerCase());
     const matchUbi = !f.ubicacion || String(e.ubicacion).toLowerCase().includes(f.ubicacion.toLowerCase());
+    const emp = empresaDe(e);
+    const matchEmp = f.empresa === "ALL" || (f.empresa === "SIN" ? !emp : emp === f.empresa);
     const matchEst = f.estado === "ALL" || normalizarClave(e.disponibilidad) === normalizarClave(f.estado);
     const matchGps = f.gps === "ALL" || (f.gps === 'Instalado' ? Boolean(e.gps && e.gps !== 'Sin GPS') : (!e.gps || e.gps === 'Sin GPS'));
     const matchCritico = !f.mostrarCriticos || esEquipoCritico(e);
-    return matchSearch && matchUbi && matchEst && matchGps && matchCritico;
+    return matchSearch && matchUbi && matchEmp && matchEst && matchGps && matchCritico;
   });
   return arr.sort((a, b) => compararAfi(a.afi, b.afi, sortInventarioOrder.value));
 });
@@ -56,7 +60,7 @@ export const filteredEquipos = computed(() => {
 /** Exporta el inventario filtrado (sin la foto en base64 ni objetos anidados). */
 export const exportarInventarioCSV = () => {
   exportarCSV(filteredEquipos.value.map(e => ({
-    AFI: e.afi, Tipo: e.tipo, Marca: e.marca, Modelo: e.modelo, Ubicacion: e.ubicacion,
+    AFI: e.afi, Tipo: e.tipo, Marca: e.marca, Modelo: e.modelo, Ubicacion: e.ubicacion, Empresa_Arriendo: empresaDe(e),
     Disponibilidad: e.disponibilidad, GPS: e.gps, IMEI_GPS: e.imei_gps,
     Frecuencia_Mantencion: e.frecuenciaMantencion,
     Horometro_Tomado: e.horometros?.hTomado ?? '', Fecha_Horometro: formatDateForDisplay(e.horometros?.fechaUltimoHorometro),
@@ -157,3 +161,10 @@ export const importarInventarioFile = async (e) => {
     alert("Error al importar inventario: " + errMsg(err));
   } finally { resetInputFile(e); }
 };
+
+/** Cantidad de equipos por empresa (para el filtro). */
+export const conteoPorEmpresa = computed(() => {
+  const m = {};
+  dbEquipos.value.forEach(e => { const k = empresaDe(e) || 'SIN'; m[k] = (m[k] || 0) + 1; });
+  return m;
+});

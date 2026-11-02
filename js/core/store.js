@@ -5,7 +5,7 @@ import { fetchAllRows } from './supabase.js';
 import { TABLAS } from './tablas.js';
 import { compararAfi, mismoAfi } from './utils.js';
 import { actualizarHorometrosDesdeHistorial } from './horometros.js';
-import { mapEquipo, TABLA_INVENTARIO } from '../modules/inventario/inventario.mapper.js';
+import { mapEquipo, TABLA_INVENTARIO, empresaDe, EMPRESA_TALLER } from '../modules/inventario/inventario.mapper.js';
 import { mapMovimiento, TABLA_MOVIMIENTOS } from '../modules/movimientos/movimientos.mapper.js';
 import { mapIntervencion, TABLA_HISTORIAL } from '../modules/historial/historial.mapper.js';
 import { mapAplicacion, mapPrecio, TABLA_FILTROS, TABLA_FILTROS_PRECIOS } from '../modules/filtros/filtros.mapper.js';
@@ -66,6 +66,13 @@ export const dbBodegaMov = ref([]);       // módulo Bodega: movimientos (bd_fil
 /** Se incrementa cada vez que cambian los datos (los gráficos lo observan para redibujarse). */
 export const datosVersion = ref(0);
 
+/** Empresas conocidas (inventario + movimientos), siempre incluye TALLER FRC. */
+export const listaEmpresas = computed(() => Array.from(new Set([
+  EMPRESA_TALLER,
+  ...dbEquipos.value.map(e => empresaDe(e)),
+  ...dbMovimientos.value.map(m => String(m.empresa_arriendo || '').trim().toUpperCase())
+].filter(Boolean))).sort());
+
 export const buscarEquipoPorAfi = (afi) => dbEquipos.value.find(e => mismoAfi(e.afi, afi));
 
 export const obtenerDetalleEquipoPorAfi = (afi, campo) => {
@@ -103,6 +110,11 @@ export const cargarDatosDesdeSupabase = async () => {
 
     dbEquipos.value = eqData.map(mapEquipo).sort((a, b) => compararAfi(a.afi, b.afi));
     dbMovimientos.value = movData.map(mapMovimiento);
+    // Empresa del último movimiento de cada AFI (se usa si el equipo no tiene empresa guardada)
+    const ultimaEmpresa = new Map();
+    [...dbMovimientos.value].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+      .forEach(m => { if (m.empresa_arriendo.trim()) ultimaEmpresa.set(String(m.afi).trim().toUpperCase(), m.empresa_arriendo.trim().toUpperCase()); });
+    dbEquipos.value.forEach(e => { e.empresaUltimoMov = ultimaEmpresa.get(String(e.afi).trim().toUpperCase()) || ''; });
     dbIntervenciones.value = intData.map(mapIntervencion);
     dbProgramasCalendarios.value = calData;
     dbProgramasItems.value = itemData;

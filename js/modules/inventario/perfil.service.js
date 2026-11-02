@@ -3,6 +3,8 @@
 // Se abre desde cualquier módulo al hacer clic en un AFI.
 // =====================================================================
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
+import { empresaDe, esFueraDeServicio, EMPRESA_TALLER } from './inventario.mapper.js';
+import { listaEmpresas } from '../../core/store.js';
 import { dbIntervenciones, cargarDatosDesdeSupabase, buscarEquipoPorAfi, soloEditor } from '../../core/store.js';
 import { normalizarFecha, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, parseNum, mismoAfi, hoyISO } from '../../core/utils.js';
 import { TABLA_INVENTARIO } from './inventario.mapper.js';
@@ -58,6 +60,7 @@ export const causaMasFrecuenteEquipo = (afi) => {
 export const abrirPerfilEquipo = (equipo) => {
   perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
   perfilEquipo.value.fechaHorometroManual = normalizarFecha(equipo.fechaHorometroManual) || hoyISO();
+  perfilEquipo.value.empresaArriendo = empresaDe(equipo);
   resetFiltrosPerfil();
   perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
   showPerfilEquipoModal.value = true;
@@ -76,6 +79,7 @@ export const guardarPerfilEquipo = async () => {
     afi: String(p.afi || '').trim(),
     tipo: p.tipo, marca: p.marca, modelo: p.modelo, ubicacion: p.ubicacion,
     disponibilidad: p.disponibilidad, gps: p.gps, imei_gps: p.imei_gps,
+    empresa_arriendo: esFueraDeServicio(p) ? EMPRESA_TALLER : (String(p.empresaArriendo || '').trim().toUpperCase() || null),
     horometroactual: parseNum(p.horometroActual),
     fecha_horometro_manual: formatIsoDateForSupabase(p.fechaHorometroManual),
     frecuencia_mantencion: Math.round(parseNum(p.frecuenciaMantencion)) || 250
@@ -84,6 +88,7 @@ export const guardarPerfilEquipo = async () => {
   try {
     await sb(supabaseClient.from(TABLA_INVENTARIO).update(payload).eq('id', p.id));
   } catch (err) {
+    if (/empresa_arriendo/i.test(errMsg(err))) return alert("Falta la columna 'empresa_arriendo' en BD_INVENTARIO. Ejecuta en Supabase → SQL Editor el archivo sql/empresa_arriendo.sql:\n\nALTER TABLE public.\"BD_INVENTARIO\" ADD COLUMN IF NOT EXISTS empresa_arriendo text;\nNOTIFY pgrst, 'reload schema';");
     return alert("Error al guardar el perfil: " + errMsg(err));
   }
   await cargarDatosDesdeSupabase();
@@ -117,4 +122,13 @@ export const guardarAsignacionDesdePerfil = async () => {
   } catch (err) {
     alert("Error al asignar equipo: " + errMsg(err));
   }
+};
+
+// ---------- Empresa arrendada ----------
+export { listaEmpresas, EMPRESA_TALLER, esFueraDeServicio };
+/** Al cambiar la disponibilidad: Fuera de Servicio → TALLER FRC; al salir de Fuera de Servicio se limpia para escribir la nueva. */
+export const alCambiarDisponibilidadPerfil = () => {
+  const p = perfilEquipo.value;
+  if (esFueraDeServicio(p)) p.empresaArriendo = EMPRESA_TALLER;
+  else if (p.empresaArriendo === EMPRESA_TALLER) p.empresaArriendo = '';
 };

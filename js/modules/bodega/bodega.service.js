@@ -7,7 +7,8 @@
 //  - Registro de movimientos (trazabilidad)
 // =====================================================================
 import { supabaseClient, sb, errMsg, fetchAllRows } from '../../core/supabase.js';
-import { dbBodegaStock, dbKits, dbBodegaMov, dbFiltros, dbEquipos, usuarioActivo, buscarEquipoPorAfi, soloAdmin, soloEditor, currentTab } from '../../core/store.js';
+import { TABLAS } from '../../core/tablas.js';
+import { dbBodegaStock, dbKits, dbBodegaMov, dbFiltros, dbEquipos, usuarioActivo, buscarEquipoPorAfi, soloAdmin, soloEditor, currentTab, cargarDatosDesdeSupabase } from '../../core/store.js';
 import { parseNum, parseFileAnyFormat, getVal, resetInputFile } from '../../core/utils.js';
 import { normTxt, normCodigo, normTipo, claveModelo } from '../filtros/filtros.mapper.js';
 import { TABLA_FILTROS } from '../filtros/filtros.mapper.js';
@@ -218,7 +219,9 @@ export const abrirMovStock = (modo, fila = null) => {
   if (modo === 'AJUSTE' ? !soloAdmin() : !soloEditor()) return;
   formStock.value = {
     modo, codigo: fila?.codigo || '', tipo: fila?.tipo || '', marca: fila?.marca || '',
-    cantidad: modo === 'AJUSTE' ? (fila?.cantidad ?? 0) : '', detalle: '', bloqueado: !!fila
+    cantidad: modo === 'AJUSTE' ? (fila?.cantidad ?? 0) : '', detalle: '',
+    bloqueado: !!fila && modo !== 'AJUSTE',      // en AJUSTE (Admin) el código se puede corregir
+    original: fila?.codigo || ''
   };
   showModalStock.value = true;
 };
@@ -251,6 +254,12 @@ export const guardarMovStock = async () => {
       await ajustarStockFiltro(codigo, -cant);
       await registrarMov({ tipoMov: 'SALIDA', codigo, cantidad: -cant, detalle: f.detalle });
     } else {
+      // Corregir el código (renombrar) antes de ajustar la cantidad
+      if (f.original && codigo !== f.original) {
+        const ok = await renombrarCodigoStock(f.original, codigo, { tipo, marca });
+        if (!ok) return;
+        await recargarBodega();
+      }
       const s = stockDe(codigo);
       const actual = s ? s.cantidad : 0;
       const delta = cant - actual;
@@ -266,6 +275,52 @@ export const guardarMovStock = async () => {
   }
   await recargarBodega();
   showModalStock.value = false;
+};
+
+/**
+ * Corrige un código mal escrito en la bodega: cambia el código en el inventario general, en la composición
+ * de los kits y en el historial de movimientos. Si el código nuevo ya existe en bodega, ofrece UNIRLOS (suma cantidades).
+ * Opcionalmente lo corrige también en el módulo Filtros (precios y equipos).
+ */
+const renombrarCodigoStock = async (viejo, nuevo, info = {}) => {
+  const fila = stockDe(viejo);
+  if (!fila) { alert(`El código ${viejo} ya no existe en bodega.`); return false; }
+  const destino = stockDe(nuevo);
+  const kitsConAmbos = dbKits.value.filter(k => k.items.some(i => i.codigo === viejo) && k.items.some(i => i.codigo === nuevo));
+  if (kitsConAmbos.length) { alert(`No se puede: los kits ${kitsConAmbos.map(k => k.codigo).join(', ')} ya tienen ${viejo} y ${nuevo}. Corrige primero esos kits.`); return false; }
+  if (dbKits.value.some(k => k.codigo === nuevo)) { alert(`${nuevo} ya es el código de un KIT. Usa otro código.`); return false; }
+  const msg = destino
+    ? `El código ${nuevo} YA EXISTE en bodega (${destino.cantidad} un.).\n¿Unir ${viejo} (${fila.cantidad} un.) dentro de ${nuevo}? Quedarán ${destino.cantidad + fila.cantidad} un. en ${nuevo} y ${viejo} desaparece.`
+    : `¿Cambiar el código ${viejo} por ${nuevo}?\nSe corrige también en los kits y en el historial de movimientos.`;
+  if (!confirm(msg)) return false;
+
+  const enFiltros = dbFiltros.value.some(a => a.codigo === viejo) || !!buscarEnCatalogo(viejo);
+  const nuevoEnFiltros = dbFiltros.value.some(a => a.codigo === nuevo) || !!buscarEnCatalogo(nuevo);
+  const tambienFiltros = enFiltros && !nuevoEnFiltros && confirm(`El código ${viejo} también está en el módulo Filtros (precios / equipos).\n¿Corregirlo ahí también?`);
+  try {
+    if (destino) {
+      if (fila.cantidad > 0) await ajustarCantidad(TABLA_STOCK, destino.id, fila.cantidad, `Filtro ${nuevo}`);
+      await sb(supabaseClient.from(TABLA_STOCK).delete().eq('id', fila.id));
+    } else {
+      const upd = { codigo: nuevo, updated_at: ahora() };
+      if (info.tipo) upd.tipo = info.tipo;
+      if (info.marca) upd.marca = info.marca;
+      await sb(supabaseClient.from(TABLA_STOCK).update(upd).eq('id', fila.id));
+    }
+    await sb(supabaseClient.from(TABLA_KITS_ITEMS).update({ codigo: nuevo }).eq('codigo', viejo));
+    await sb(supabaseClient.from(TABLA_BODEGA_MOV).update({ codigo: nuevo }).eq('codigo', viejo).eq('es_kit', false));
+    if (tambienFiltros) {
+      await sb(supabaseClient.from(TABLA_FILTROS).update({ codigo: nuevo }).eq('codigo', viejo));
+      await sb(supabaseClient.from(TABLAS.FILTROS_PRECIOS).update({ codigo: nuevo }).eq('codigo', viejo));
+    }
+    await registrarMov({ tipoMov: 'AJUSTE', codigo: nuevo, cantidad: 0, detalle: destino ? `Unido con ${viejo} (código corregido)` : `Código corregido: ${viejo} → ${nuevo}` });
+  } catch (err) {
+    alert('No se pudo corregir el código: ' + errMsg(err));
+    await recargarBodega();
+    return false;
+  }
+  if (tambienFiltros) await cargarDatosDesdeSupabase();
+  return true;
 };
 
 export const eliminarStock = async (fila) => {
@@ -462,6 +517,10 @@ export const guardarKit = async () => {
       kitId = data[0].id;
     } else {
       await sb(supabaseClient.from(TABLA_KITS).update(datos).eq('id', kitId));
+      // Código del kit corregido: el historial (y los consumos en Programas) siguen apuntando al kit
+      if (f.original && f.original !== codigo) {
+        await sb(supabaseClient.from(TABLA_BODEGA_MOV).update({ codigo }).eq('codigo', f.original).eq('es_kit', true));
+      }
     }
     if (composicionEditable.value) {
       await sb(supabaseClient.from(TABLA_KITS_ITEMS).delete().eq('kit_id', kitId));

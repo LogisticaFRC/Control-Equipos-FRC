@@ -86,7 +86,7 @@ export default /* html */ `
               <td v-if="puedeEditar" class="p-2 text-center space-x-1">
                 <button @click="abrirMovStock('INGRESO', s)" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 p-1 px-1.5 rounded font-bold" title="Ingreso"><i class="fa-solid fa-plus"></i></button>
                 <button @click="abrirMovStock('SALIDA', s)" :disabled="s.cantidad <= 0" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 px-1.5 rounded font-bold disabled:opacity-40" title="Salida"><i class="fa-solid fa-minus"></i></button>
-                <button v-if="isAdmin" @click="abrirMovStock('AJUSTE', s)" class="bg-sky-100 hover:bg-sky-200 text-sky-800 p-1 px-1.5 rounded font-bold" title="Ajustar / editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button v-if="isAdmin" @click="abrirMovStock('AJUSTE', s)" class="bg-sky-100 hover:bg-sky-200 text-sky-800 p-1 px-1.5 rounded font-bold" title="Editar código, tipo, marca o cantidad"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button v-if="isAdmin" @click="eliminarStock(s)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 px-1.5 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
               </td>
             </tr>
@@ -163,12 +163,14 @@ export default /* html */ `
   <div v-if="showModalStock && formStock" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-lg overflow-hidden">
       <div :class="['px-6 py-4 border-b flex items-center justify-between text-white', formStock.modo === 'INGRESO' ? 'bg-emerald-700' : formStock.modo === 'SALIDA' ? 'bg-amber-600' : 'bg-sky-700']">
-        <h3 class="text-sm font-bold"><i class="fa-solid fa-warehouse mr-1.5"></i> {{ formStock.modo === 'INGRESO' ? 'Ingreso a bodega' : formStock.modo === 'SALIDA' ? 'Salida de bodega' : 'Ajuste / editar filtro' }}</h3>
+        <h3 class="text-sm font-bold"><i class="fa-solid fa-warehouse mr-1.5"></i> {{ formStock.modo === 'INGRESO' ? 'Ingreso a bodega' : formStock.modo === 'SALIDA' ? 'Salida de bodega' : 'Editar filtro ' + formStock.original }}</h3>
         <button @click="showModalStock = false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
       <div class="p-6 space-y-3">
         <div class="grid grid-cols-2 gap-3">
-          <div class="col-span-2"><label class="block font-bold mb-1">Código *</label><input type="text" list="dl-bod-codigos" v-model="formStock.codigo" :disabled="formStock.bloqueado" @change="autocompletarStock" placeholder="P550388" class="w-full p-2 border rounded-lg font-mono font-bold uppercase disabled:bg-slate-100"></div>
+          <div class="col-span-2"><label class="block font-bold mb-1">Código *</label><input type="text" list="dl-bod-codigos" v-model="formStock.codigo" :disabled="formStock.bloqueado" @change="autocompletarStock" placeholder="P550388" class="w-full p-2 border rounded-lg font-mono font-bold uppercase disabled:bg-slate-100">
+            <p v-if="formStock.modo === 'AJUSTE' && formStock.original && formStock.codigo && formStock.codigo.trim().toUpperCase() !== formStock.original" class="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded p-1.5 mt-1"><i class="fa-solid fa-pen"></i> Se corregirá el código <b class="font-mono">{{ formStock.original }}</b> → <b class="font-mono">{{ formStock.codigo.trim().toUpperCase() }}</b> en la bodega, los kits y el historial.</p>
+          </div>
           <div><label class="block font-bold mb-1">Tipo {{ formStock.modo === 'INGRESO' ? '*' : '' }}</label><input type="text" list="dl-bod-tipos" v-model="formStock.tipo" :disabled="formStock.modo === 'SALIDA'" class="w-full p-2 border rounded-lg uppercase disabled:bg-slate-100"></div>
           <div><label class="block font-bold mb-1">Marca</label><input type="text" v-model="formStock.marca" :disabled="formStock.modo === 'SALIDA'" class="w-full p-2 border rounded-lg uppercase disabled:bg-slate-100"></div>
           <div>

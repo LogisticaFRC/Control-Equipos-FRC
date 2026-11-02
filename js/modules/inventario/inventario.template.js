@@ -23,9 +23,17 @@ export default /* html */ `
       </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
       <div><label class="block font-bold text-slate-700 mb-1">Buscar (AFI / Tipo / Marca)</label><input type="text" v-model="filterInv.search" placeholder="Ej: Generador..." class="w-full p-2 border border-slate-300 rounded-lg"></div>
       <div><label class="block font-bold text-slate-700 mb-1">Ubicación</label><input type="text" v-model="filterInv.ubicacion" placeholder="Ej: Tierras Blancas" class="w-full p-2 border border-slate-300 rounded-lg"></div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Empresa Arrendada</label>
+        <select v-model="filterInv.empresa" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
+          <option value="ALL">-- Todas --</option>
+          <option v-for="emp in listaEmpresas" :key="emp" :value="emp">{{ emp }} ({{ conteoPorEmpresa[emp] || 0 }})</option>
+          <option value="SIN">(Sin empresa) ({{ conteoPorEmpresa['SIN'] || 0 }})</option>
+        </select>
+      </div>
       <div>
         <label class="block font-bold text-slate-700 mb-1">Estado</label>
         <select v-model="filterInv.estado" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
@@ -68,6 +76,10 @@ export default /* html */ `
           <div class="text-xs space-y-1 text-slate-600">
             <p><i class="fa-solid fa-industry w-4 text-slate-400"></i> <strong>Marca/Modelo:</strong> {{ e.marca }} {{ e.modelo }}</p>
             <p><i class="fa-solid fa-location-dot w-4 text-rose-500"></i> <strong>Ubicación:</strong> <span class="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{{ e.ubicacion }}</span></p>
+            <p><i class="fa-solid fa-building w-4 text-blue-500"></i> <strong>Empresa:</strong>
+              <span v-if="empresaDe(e)" @click="filterInv.empresa = empresaDe(e)" :class="['font-semibold px-1.5 py-0.5 rounded cursor-pointer', empresaDe(e) === 'TALLER FRC' ? 'bg-slate-200 text-slate-800' : 'bg-blue-50 text-blue-700']" title="Filtrar por esta empresa">{{ empresaDe(e) }}</span>
+              <span v-else class="text-slate-400 italic">Sin empresa</span>
+            </p>
           </div>
 
           <div :class="['rounded-xl p-3 space-y-2 text-xs border', getHorometroCardBgClass(e.horometros)]">
