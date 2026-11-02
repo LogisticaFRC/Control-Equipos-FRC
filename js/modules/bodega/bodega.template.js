@@ -198,8 +198,22 @@ export default /* html */ `
       </div>
       <div class="p-6 space-y-5 overflow-y-auto">
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div><label class="block font-bold mb-1">Marca equipo *</label><input type="text" list="dl-bod-eqmarca" v-model="formKit.equipoMarca" :disabled="formKit.modo === 'armar'" class="w-full p-2 border rounded-lg uppercase disabled:bg-slate-100"></div>
-          <div><label class="block font-bold mb-1">Modelo equipo *</label><input type="text" list="dl-bod-eqmodelo" v-model="formKit.equipoModelo" :disabled="formKit.modo === 'armar'" class="w-full p-2 border rounded-lg uppercase disabled:bg-slate-100"></div>
+          <div>
+            <label class="block font-bold mb-1">Marca equipo * <span class="font-normal text-[10px] text-slate-500">(Inventario AFI)</span></label>
+            <select v-model="formKit.equipoMarca" @change="alCambiarMarcaKit" :disabled="formKit.modo === 'armar'" class="w-full p-2 border rounded-lg bg-white font-semibold disabled:bg-slate-100">
+              <option value="">-- Seleccionar --</option>
+              <option v-for="m in marcasInventario" :key="m.marca" :value="m.marca">{{ m.marca }} ({{ m.equipos }})</option>
+              <option v-if="formKit.equipoMarca && !marcasInventario.some(m => m.marca === formKit.equipoMarca)" :value="formKit.equipoMarca">{{ formKit.equipoMarca }} (no está en inventario)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">Modelo equipo *</label>
+            <select v-model="formKit.equipoModelo" @change="alCambiarModeloKit" :disabled="formKit.modo === 'armar' || !formKit.equipoMarca" class="w-full p-2 border rounded-lg bg-white font-semibold disabled:bg-slate-100">
+              <option value="">{{ formKit.equipoMarca ? '-- Seleccionar --' : '-- Elige la marca --' }}</option>
+              <option v-for="m in modelosInventario(formKit.equipoMarca)" :key="m.modelo" :value="m.modelo">{{ m.modelo }} · AFI {{ m.afis.join(', ') }}</option>
+              <option v-if="formKit.equipoModelo && !modelosInventario(formKit.equipoMarca).some(m => m.modelo === formKit.equipoModelo)" :value="formKit.equipoModelo">{{ formKit.equipoModelo }} (no está en inventario)</option>
+            </select>
+          </div>
           <div>
             <label class="block font-bold mb-1">Código del KIT *</label>
             <div class="flex gap-1">
@@ -263,7 +277,5 @@ export default /* html */ `
 
   <datalist id="dl-bod-codigos"><option v-for="c in listaCodigosConocidos" :key="c" :value="c"></option></datalist>
   <datalist id="dl-bod-tipos"><option v-for="t in listaTiposFiltro" :key="t" :value="t"></option></datalist>
-  <datalist id="dl-bod-eqmarca"><option v-for="m in listaMarcasEquipoBodega" :key="m" :value="m"></option></datalist>
-  <datalist id="dl-bod-eqmodelo"><option v-for="m in listaModelosEquipoBodega(formKit ? formKit.equipoMarca : 'ALL')" :key="m" :value="m"></option></datalist>
 </section>
 `;

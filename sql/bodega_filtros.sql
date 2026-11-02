@@ -71,3 +71,6 @@ CREATE POLICY bd_filtros_stock_anon_all ON public.bd_filtros_stock FOR ALL TO an
 CREATE POLICY bd_filtros_kits_anon_all ON public.bd_filtros_kits FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY bd_filtros_kits_items_anon_all ON public.bd_filtros_kits_items FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY bd_filtros_movimientos_anon_all ON public.bd_filtros_movimientos FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- Refresca la caché de Supabase para que la app vea las tablas nuevas de inmediato
+NOTIFY pgrst, 'reload schema';

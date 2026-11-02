@@ -99,11 +99,47 @@ export const kitsDelModelo = (marca, modelo) => {
   return dbKits.value.filter(kit => claveModelo(kit.equipoMarca, kit.equipoModelo) === k);
 };
 
-export const listaMarcasEquipoBodega = computed(() => unicos([...dbFiltros.value.map(f => f.equipoMarca), ...dbKits.value.map(k => k.equipoMarca)]));
+const pasaMarca = (m, marca) => !marca || marca === 'ALL' || m === normTxt(marca);
+export const listaMarcasEquipoBodega = computed(() => unicos([
+  ...dbEquipos.value.map(e => normTxt(e.marca)), ...dbFiltros.value.map(f => f.equipoMarca), ...dbKits.value.map(k => k.equipoMarca)
+]));
 export const listaModelosEquipoBodega = (marca) => unicos([
-  ...dbFiltros.value.filter(f => !marca || marca === 'ALL' || f.equipoMarca === normTxt(marca)).map(f => f.equipoModelo),
-  ...dbKits.value.filter(k => !marca || marca === 'ALL' || k.equipoMarca === normTxt(marca)).map(k => k.equipoModelo)
+  ...dbEquipos.value.filter(e => pasaMarca(normTxt(e.marca), marca)).map(e => normTxt(e.modelo)),
+  ...dbFiltros.value.filter(f => pasaMarca(f.equipoMarca, marca)).map(f => f.equipoModelo),
+  ...dbKits.value.filter(k => pasaMarca(k.equipoMarca, marca)).map(k => k.equipoModelo)
 ]);
+
+// ---------- Marca / modelo desde el INVENTARIO AFI (para ARMAR KIT) ----------
+/** Marcas del Inventario AFI con cuántos equipos tiene cada una. */
+export const marcasInventario = computed(() => {
+  const m = new Map();
+  dbEquipos.value.forEach(e => { const k = normTxt(e.marca); if (k) m.set(k, (m.get(k) || 0) + 1); });
+  return Array.from(m.entries()).map(([marca, equipos]) => ({ marca, equipos })).sort((a, b) => a.marca.localeCompare(b.marca));
+});
+/** Modelos del Inventario AFI de esa marca, con sus AFI. */
+export const modelosInventario = (marca) => {
+  const m = new Map();
+  dbEquipos.value.filter(e => normTxt(e.marca) === normTxt(marca)).forEach(e => {
+    const k = normTxt(e.modelo); if (!k) return;
+    if (!m.has(k)) m.set(k, { modelo: k, afis: [], tipo: e.tipo || '' });
+    m.get(k).afis.push(e.afi);
+  });
+  return Array.from(m.values()).sort((a, b) => a.modelo.localeCompare(b.modelo));
+};
+/** Al elegir marca/modelo en ARMAR KIT: sugiere el código y carga los filtros del modelo (si el kit es nuevo y aún está vacío). */
+export const alCambiarMarcaKit = () => {
+  const f = formKit.value;
+  const modelos = modelosInventario(f.equipoMarca);
+  if (!modelos.some(x => x.modelo === f.equipoModelo)) f.equipoModelo = modelos.length === 1 ? modelos[0].modelo : '';
+  if (f.equipoModelo) alCambiarModeloKit();
+};
+export const alCambiarModeloKit = () => {
+  const f = formKit.value;
+  if (f.modo !== 'nuevo' || !f.equipoModelo) return;
+  f.codigo = sugerirCodigoKit(f.equipoMarca, f.equipoModelo);
+  const vacio = !f.items.some(i => normCodigo(i.codigo));
+  if (vacio && requeridosPorModelo(f.equipoMarca, f.equipoModelo).length) cargarFiltrosDelModeloEnKit();
+};
 export const listaCodigosConocidos = computed(() => unicos([...dbBodegaStock.value.map(s => s.codigo), ...dbFiltros.value.map(f => f.codigo)]));
 export const listaCodigosEnStock = computed(() => dbBodegaStock.value.filter(s => s.cantidad > 0).map(s => s.codigo).sort());
 export { listaTiposFiltro };
