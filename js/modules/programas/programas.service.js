@@ -4,6 +4,7 @@
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
 import { dbProgramasCalendarios, dbProgramasItems, cargarDatosDesdeSupabase, obtenerDetalleEquipoPorAfi, soloAdmin, soloEditor } from '../../core/store.js';
 import { normalizarFecha, formatDateForDisplay, parseNum, limpiarAfi, esFechaEnRango, hoyISO } from '../../core/utils.js';
+import { kitsEnBodegaAfi, kitConsumidoItem, consumirKitParaItem, devolverKitDeItem, filtrosRequeridosAfi } from '../bodega/bodega.service.js';
 
 const { ref, computed } = Vue;
 
@@ -212,13 +213,37 @@ export const guardarAsignacionEquipo = async () => {
 };
 
 // ---------- Actualizar / eliminar ítems ----------
+/**
+ * Cambia Realizado / Pendiente.
+ * En programas de MANTENCIÓN además mueve la Bodega de Filtros:
+ *  - Realizado  → descuenta 1 KIT del modelo del equipo (si no hay, pregunta si marcar igual).
+ *  - Pendiente  → devuelve a bodega el KIT que se había descontado para ese ítem.
+ */
 export const cambiarEstadoRealizadoItem = async (item) => {
-  if (!soloEditor()) return;
+  if (!soloEditor()) { item.realizado = !item.realizado; return; }
+  const esMant = esProgramaMantencion(obtenerProgObj(item.programa_id));
+
+  if (esMant && item.realizado && !kitConsumidoItem(item)) {
+    const { principal } = kitsEnBodegaAfi(item.afi);
+    if (!principal && !confirm(`No hay KIT en bodega para el modelo del AFI ${item.afi}.\n¿Marcar como REALIZADO igual (sin descontar kit)?`)) {
+      item.realizado = false;
+      return;
+    }
+  }
+
   try {
     await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ realizado: item.realizado }).eq('id', item.id));
   } catch (err) {
     item.realizado = !item.realizado; // revierte el switch
-    alert("No se pudo actualizar el estado: " + errMsg(err));
+    return alert("No se pudo actualizar el estado: " + errMsg(err));
+  }
+
+  if (!esMant) return;
+  try {
+    if (item.realizado) await consumirKitParaItem(item);
+    else await devolverKitDeItem(item);
+  } catch (err) {
+    alert(`El estado se guardó, pero no se pudo ${item.realizado ? 'descontar' : 'devolver'} el KIT en bodega: ` + errMsg(err));
   }
 };
 
@@ -275,6 +300,9 @@ export const exportarProgramaGanttExcel = (prog) => {
       "FECHA PROGRAMADA (FIJA)": formatDateForDisplay(item.fecha_programada),
       "FECHA REALIZADA": formatDateForDisplay(item.fecha_fin),
       "HORÓMETRO REALIZADO": item.horometro ? `${item.horometro} hrs` : '-',
+      "FILTROS REQUERIDOS": filtrosRequeridosAfi(item.afi).total || '-',
+      "KITS EN BODEGA": kitsEnBodegaAfi(item.afi).total,
+      "KIT DESCONTADO": kitConsumidoItem(item) || '-',
       "ESTADO": item.realizado ? 'REALIZADO' : 'PENDIENTE'
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Mantencion");

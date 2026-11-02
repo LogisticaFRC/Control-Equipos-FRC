@@ -13,6 +13,7 @@ import AceitesView from './modules/aceites/aceites.view.js';
 import ConfiguracionView from './modules/configuracion/configuracion.view.js';
 import FormatosView from './modules/formatos/formatos.view.js';
 import FiltrosView from './modules/filtros/filtros.view.js';
+import BodegaView from './modules/bodega/bodega.view.js';
 import DocumentosCarpeta from './modules/formatos/documentos-carpeta.view.js';
 import LoginView from './modules/configuracion/login.view.js';
 import { restaurandoSesion, restaurarSesion } from './core/sesion.js';
@@ -43,6 +44,7 @@ const TABS = [
   { key: 'hojaVida', label: 'Historial', icon: 'fa-file-medical', count: () => dbIntervenciones.value.length },
   { key: 'aceites', label: 'Control Aceites', icon: 'fa-oil-can' },
   { key: 'filtros', label: 'Filtros', icon: 'fa-filter' },
+  { key: 'bodega', label: 'Bodega Filtros', icon: 'fa-warehouse' },
   { key: 'formatos', label: 'Formatos', icon: 'fa-folder-tree' },
   { key: 'configuracion', label: 'Config & Usuarios', icon: 'fa-gear' }
 ];
@@ -95,6 +97,7 @@ const template = /* html */ `
       <historial-view v-if="currentTab === 'hojaVida'"></historial-view>
       <aceites-view v-if="currentTab === 'aceites'"></aceites-view>
       <filtros-view v-if="currentTab === 'filtros'"></filtros-view>
+      <bodega-view v-if="currentTab === 'bodega'"></bodega-view>
       <formatos-view v-if="currentTab === 'formatos'"></formatos-view>
       <configuracion-view v-if="currentTab === 'configuracion'"></configuracion-view>
     </main>
@@ -145,6 +148,7 @@ app.component('AceitesView', AceitesView);
 app.component('ConfiguracionView', ConfiguracionView);
 app.component('FormatosView', FormatosView);
 app.component('FiltrosView', FiltrosView);
+app.component('BodegaView', BodegaView);
 app.component('DocumentosCarpeta', DocumentosCarpeta);   // carpeta de documentos reutilizable (Formatos y Ficha Técnica)
 app.component('PerfilEquipo', PerfilEquipo);
 app.component('ModalNuevoEquipo', ModalNuevoEquipo);

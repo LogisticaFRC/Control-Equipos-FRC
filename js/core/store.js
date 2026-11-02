@@ -9,6 +9,7 @@ import { mapEquipo, TABLA_INVENTARIO } from '../modules/inventario/inventario.ma
 import { mapMovimiento, TABLA_MOVIMIENTOS } from '../modules/movimientos/movimientos.mapper.js';
 import { mapIntervencion, TABLA_HISTORIAL } from '../modules/historial/historial.mapper.js';
 import { mapAplicacion, mapPrecio, TABLA_FILTROS, TABLA_FILTROS_PRECIOS } from '../modules/filtros/filtros.mapper.js';
+import { mapStock, mapKit, mapKitItem, mapMovBodega } from '../modules/bodega/bodega.mapper.js';
 
 const { ref, computed } = Vue;
 
@@ -58,6 +59,9 @@ export const dbModelosFichas = ref([]);   // módulo Formatos (en construcción)
 export const dbFormatos = ref([]);        // módulo Formatos (en construcción)
 export const dbFiltros = ref([]);         // módulo Filtros: aplicaciones por marca/modelo (bd_filtros)
 export const dbFiltrosPrecios = ref([]);  // módulo Filtros: lista de precios por proveedor (bd_filtros_precios)
+export const dbBodegaStock = ref([]);     // módulo Bodega: filtros sueltos (bd_filtros_stock)
+export const dbKits = ref([]);            // módulo Bodega: kits (bd_filtros_kits) con su composición en .items
+export const dbBodegaMov = ref([]);       // módulo Bodega: movimientos (bd_filtros_movimientos)
 
 /** Se incrementa cada vez que cambian los datos (los gráficos lo observan para redibujarse). */
 export const datosVersion = ref(0);
@@ -81,7 +85,7 @@ export const cargandoDatos = ref(false);
 export const cargarDatosDesdeSupabase = async () => {
   cargandoDatos.value = true;
   try {
-    const [eqData, movData, intData, calData, itemData, modData, fmtData, filData, preData] = await Promise.all([
+    const [eqData, movData, intData, calData, itemData, modData, fmtData, filData, preData, stkData, kitData, kitItData, bmovData] = await Promise.all([
       fetchAllRows(TABLA_INVENTARIO),
       fetchAllRows(TABLA_MOVIMIENTOS),
       fetchAllRows(TABLA_HISTORIAL),
@@ -90,7 +94,11 @@ export const cargarDatosDesdeSupabase = async () => {
       fetchAllRows(TABLAS.MODELOS_FICHA),
       fetchAllRows(TABLAS.FORMATOS),
       fetchAllRows(TABLA_FILTROS),
-      fetchAllRows(TABLA_FILTROS_PRECIOS)
+      fetchAllRows(TABLA_FILTROS_PRECIOS),
+      fetchAllRows(TABLAS.BODEGA_STOCK),
+      fetchAllRows(TABLAS.BODEGA_KITS),
+      fetchAllRows(TABLAS.BODEGA_KITS_ITEMS),
+      fetchAllRows(TABLAS.BODEGA_MOV)
     ]);
 
     dbEquipos.value = eqData.map(mapEquipo).sort((a, b) => compararAfi(a.afi, b.afi));
@@ -102,6 +110,10 @@ export const cargarDatosDesdeSupabase = async () => {
     dbFormatos.value = fmtData;
     dbFiltros.value = filData.map(mapAplicacion);
     dbFiltrosPrecios.value = preData.map(mapPrecio);
+    dbBodegaStock.value = stkData.map(mapStock);
+    const itemsKit = kitItData.map(mapKitItem);
+    dbKits.value = kitData.map(r => ({ ...mapKit(r), items: itemsKit.filter(i => String(i.kitId) === String(r.id)) }));
+    dbBodegaMov.value = bmovData.map(mapMovBodega).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 
     recalcularHorometros();
   } catch (err) {

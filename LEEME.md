@@ -29,6 +29,7 @@ js/
     aceites/                   ← CONTROL ACEITES
     configuracion/             ← CONFIG & USUARIOS (+ Login)
     filtros/                   ← FILTROS (referencia cruzada por marca/modelo, comparativo de precios por proveedor)
+    bodega/                    ← BODEGA FILTROS (inventario general de filtros, ARMAR KIT, movimientos)
     formatos/                  ← FORMATOS (Área → Norma ISO) + carpeta de documentos reutilizable (también Ficha Técnica de equipos)
 ```
 
@@ -56,7 +57,9 @@ Cada módulo tiene:
    Crea `bd_filtros_precios` (lista de precios) y `bd_filtros` (filtros por marca/modelo), con sus permisos, y carga la
    planilla `filtros1234.xlsx` (108 códigos con precio, 12 proveedores, 269 precios). Si `bd_filtros` ya existía de la versión
    anterior, la ajusta sola (pasa sus precios a la lista). Se puede volver a ejecutar sin duplicar.
-4. Verificar que las políticas RLS de `bd_programas_calendarios` y `bd_programas_items` permitan leer/escribir con la clave `anon` (como las demás tablas).
+4. **Bodega de Filtros + KITS** → abrir `sql/bodega_filtros.sql`, copiar todo en *Supabase → SQL Editor* y **Run** (una vez).
+   Crea `bd_filtros_stock`, `bd_filtros_kits`, `bd_filtros_kits_items` y `bd_filtros_movimientos` con sus permisos.
+5. Verificar que las políticas RLS de `bd_programas_calendarios` y `bd_programas_items` permitan leer/escribir con la clave `anon` (como las demás tablas).
 
 ## Errores corregidos
 
@@ -176,3 +179,29 @@ Dos tablas:
 - **Subcarpetas en la lista**: aparecen arriba de los documentos, como en un explorador. El Admin **arrastra un documento y lo suelta sobre una carpeta** para moverlo (dentro de una subcarpeta, soltarlo en *Volver a Carpeta principal* lo saca). En celular/tablet se usa ✏️ → *Mover a*.
 - **Modificar documento** (solo Admin, botón ✏️): cambiar nombre, **mover** a otra subcarpeta y **reemplazar el archivo** (el anterior se borra del Storage) o cambiar el enlace.
 - Sin cambios en la base de datos: la subcarpeta se guarda en la columna `carpeta` (`AREA / NORMA / Subcarpeta`) y las subcarpetas vacías se guardan con una fila marcador `nombre = '__CARPETA__'` que no se muestra. Para borrar archivos reemplazados, el bucket `archivos_frc` debe permitir *delete* con la clave `anon` (si no, el reemplazo funciona igual y el archivo viejo queda en el Storage).
+
+## Bodega de Filtros y KITS (pestaña "Bodega Filtros")
+
+| Tabla | Qué guarda |
+|---|---|
+| `bd_filtros_stock` | Inventario general de filtros sueltos: **código, tipo, marca, cantidad** (una fila por código) |
+| `bd_filtros_kits` | KITS armados: código del kit, **marca + modelo de equipo** para el que sirve, cantidad en bodega |
+| `bd_filtros_kits_items` | Qué filtros (y cuántos) lleva **1** kit |
+| `bd_filtros_movimientos` | Todo lo que entra y sale: INGRESO, SALIDA, AJUSTE, ARMADO KIT, DESARME KIT, CONSUMO KIT, DEVOLUCION KIT |
+
+**Inventario general**: *Ingresar filtros* (al escribir un código conocido completa tipo y marca desde el módulo Filtros), ➕ ingreso,
+➖ salida, ✏️ ajuste por conteo (Admin), 🗑 eliminar (Admin). *Importar stock (Excel)* (Admin): columnas `CODIGO | TIPO | MARCA | CANTIDAD`,
+se **suman** a lo que hay. La columna "Sirve para" sale del módulo Filtros.
+
+**ARMAR KIT**: elegir marca y modelo del equipo → *Cargar filtros del modelo* (trae los tipos y cantidades del módulo Filtros y, entre los
+códigos equivalentes, elige el que tiene stock) o agregar filtros a mano → indicar **N° de kits** → *Armar KIT*. Los filtros se **descuentan
+del inventario general** y el kit queda en bodega con su código (se sugiere `KIT-<MODELO>-01`). Si no alcanza el stock no deja armar.
+Opcional: enlaza los códigos del kit a ese modelo en el módulo Filtros. En cada kit: *Armar más* (misma composición), *Desarmar* (Admin,
+devuelve los filtros al inventario), editar / eliminar (Admin; la composición solo se cambia con 0 kits armados).
+
+**Programas → Mantención**: cada equipo muestra
+- **FILTROS**: cuántos filtros lleva según el módulo Filtros (pasa el mouse para ver el detalle por tipo y lo que hay suelto en bodega).
+- **KIT EN BODEGA**: cuántos kits hay para su modelo. Si no hay pero alcanzan los filtros sueltos, aparece *Se puede armar · Armar KIT*.
+- Arriba, un resumen por modelo: equipos pendientes vs kits en bodega y cuántos **faltan**.
+- Al marcar **Realizado** se descuenta **1 KIT** del modelo (el de más stock). Si no hay kit, pregunta si marcar igual.
+  Al volver a **Pendiente** el kit se devuelve a bodega. Todo queda en *Bodega Filtros → Movimientos* (con referencia al ítem del programa).

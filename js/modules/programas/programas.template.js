@@ -123,12 +123,39 @@ export default /* html */ `
             <span class="text-[10px] font-mono bg-white/20 px-2.5 py-0.5 rounded">{{ obtenerItemsPrograma(progSelect.id).length }} equipos</span>
           </div>
           
-          <table class="w-full text-left text-xs whitespace-nowrap bg-white rounded-lg overflow-hidden border shadow-sm">
+          <!-- Resumen de KITS para los equipos pendientes del programa -->
+          <div v-if="resumenKitsPrograma(obtenerItemsPrograma(progSelect.id)).length" class="border border-violet-200 rounded-lg overflow-hidden">
+            <div class="bg-violet-50 px-3 py-1.5 text-[10px] font-extrabold uppercase text-violet-900 flex justify-between items-center">
+              <span><i class="fa-solid fa-box-open mr-1"></i> KITS de filtros para equipos pendientes</span>
+              <span v-if="resumenKitsPrograma(obtenerItemsPrograma(progSelect.id)).some(r => r.faltan > 0)" class="text-rose-700"><i class="fa-solid fa-triangle-exclamation"></i> Faltan {{ resumenKitsPrograma(obtenerItemsPrograma(progSelect.id)).reduce((n, r) => n + r.faltan, 0) }} kit(s)</span>
+              <span v-else class="text-emerald-700"><i class="fa-solid fa-circle-check"></i> Kits cubiertos</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-[11px] whitespace-nowrap bg-white">
+                <thead class="text-[9px] uppercase text-slate-500 bg-slate-50"><tr><th class="px-3 py-1.5">Marca / Modelo</th><th class="px-3 py-1.5 text-center">Filtros por equipo</th><th class="px-3 py-1.5 text-center">Equipos pendientes</th><th class="px-3 py-1.5 text-center">Kits en bodega</th><th class="px-3 py-1.5 text-center">Faltan</th><th class="px-3 py-1.5">Códigos de kit</th></tr></thead>
+                <tbody class="divide-y">
+                  <tr v-for="r in resumenKitsPrograma(obtenerItemsPrograma(progSelect.id))" :key="r.key">
+                    <td class="px-3 py-1.5 font-bold text-slate-800">{{ r.marca || '-' }} {{ r.modelo }}</td>
+                    <td class="px-3 py-1.5 text-center font-mono">{{ r.filtrosPorEquipo || '-' }}</td>
+                    <td class="px-3 py-1.5 text-center font-mono font-bold">{{ r.pendientes }}</td>
+                    <td class="px-3 py-1.5 text-center font-mono font-bold" :class="r.kitsBodega > 0 ? 'text-emerald-700' : 'text-slate-400'">{{ r.kitsBodega }}</td>
+                    <td class="px-3 py-1.5 text-center"><span :class="['font-mono font-extrabold px-2 rounded', r.faltan > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700']">{{ r.faltan }}</span></td>
+                    <td class="px-3 py-1.5 font-mono text-[10px] text-slate-500">{{ r.codigos.join(', ') || '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto rounded-lg border shadow-sm">
+          <table class="w-full text-left text-xs whitespace-nowrap bg-white rounded-lg overflow-hidden">
             <thead class="bg-indigo-50 text-indigo-950 uppercase text-[10px]">
               <tr>
                 <th class="p-2.5">EQUIPO AFI</th>
                 <th class="p-2.5">TIPO EQUIPO</th>
                 <th class="p-2.5">MARCA / MODELO</th>
+                <th class="p-2.5 text-teal-800 font-bold text-center">FILTROS</th>
+                <th class="p-2.5 text-violet-800 font-bold">KIT EN BODEGA</th>
                 <th class="p-2.5 text-indigo-800 font-bold">FECHA PROGRAMADA (FIJA)</th>
                 <th class="p-2.5 text-emerald-800 font-bold">FECHA REALIZADA</th>
                 <th class="p-2.5 text-amber-800 font-bold">HORÓMETRO REALIZADO</th>
@@ -141,6 +168,27 @@ export default /* html */ `
                 <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
                 <td class="p-2.5 font-semibold text-slate-800">{{ obtenerDetalleEquipoPorAfi(item.afi, 'tipo') }}</td>
                 <td class="p-2.5 text-slate-600">{{ obtenerDetalleEquipoPorAfi(item.afi, 'marca') }} {{ obtenerDetalleEquipoPorAfi(item.afi, 'modelo') }}</td>
+
+                <!-- Filtros que usa el equipo (módulo Filtros) -->
+                <td class="p-2.5 text-center" :title="filtrosRequeridosAfi(item.afi).detalle || 'Sin filtros enlazados al modelo en el módulo Filtros'">
+                  <span v-if="filtrosRequeridosAfi(item.afi).total" class="inline-block font-extrabold font-mono px-2 py-0.5 rounded bg-teal-100 text-teal-800 cursor-help">{{ filtrosRequeridosAfi(item.afi).total }} <span class="font-normal text-[9px]">({{ filtrosRequeridosAfi(item.afi).tipos.length }} tipos)</span></span>
+                  <span v-else class="text-[10px] text-slate-400 italic">Sin datos</span>
+                </td>
+
+                <!-- KIT en bodega (módulo Bodega Filtros) -->
+                <td class="p-2.5">
+                  <template v-if="item.realizado && kitConsumidoItem(item)">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700" title="Kit descontado de bodega al marcar Realizado"><i class="fa-solid fa-check"></i> Usado: <span class="font-mono">{{ kitConsumidoItem(item) }}</span></span>
+                  </template>
+                  <template v-else-if="kitsEnBodegaAfi(item.afi).total > 0">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800" :title="kitsEnBodegaAfi(item.afi).kits.map(k => k.codigo + ': ' + k.cantidad).join(' · ')"><i class="fa-solid fa-box-open"></i> {{ kitsEnBodegaAfi(item.afi).total }} en bodega</span>
+                    <span class="block text-[9px] font-mono text-slate-500 mt-0.5">{{ kitsEnBodegaAfi(item.afi).principal.codigo }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700"><i class="fa-solid fa-xmark"></i> {{ kitsEnBodegaAfi(item.afi).kits.length ? 'Kit agotado' : 'Sin kit' }}</span>
+                    <button v-if="puedeEditar && !item.realizado && sePuedeArmarAfi(item.afi)" @click="abrirArmarKitParaAfi(item.afi)" class="block mt-1 text-[9px] font-bold text-violet-700 hover:underline" title="Hay filtros sueltos suficientes en bodega"><i class="fa-solid fa-wand-magic-sparkles"></i> Se puede armar · Armar KIT</button>
+                  </template>
+                </td>
                 
                 <!-- Fecha Programada Fija -->
                 <td class="p-2.5 font-mono font-bold text-indigo-900 bg-indigo-50/50">
@@ -174,6 +222,7 @@ export default /* html */ `
               </tr>
             </tbody>
           </table>
+          </div>
           <div v-if="obtenerItemsPrograma(progSelect.id).length === 0" class="text-center p-10 text-slate-400 font-bold">No hay equipos asignados a este programa de mantención.</div>
         </div>
 

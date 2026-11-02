@@ -12,5 +12,9 @@ export const TABLAS = {
   MODELOS_FICHA: 'bd_modelos_ficha',
   FORMATOS: 'bd_formatos',
   FILTROS: 'bd_filtros',                      // módulo FILTROS: qué filtros usa cada marca/modelo (referencia cruzada)
-  FILTROS_PRECIOS: 'bd_filtros_precios'       // módulo FILTROS: lista de precios por proveedor (comparativo)
+  FILTROS_PRECIOS: 'bd_filtros_precios',      // módulo FILTROS: lista de precios por proveedor (comparativo)
+  BODEGA_STOCK: 'bd_filtros_stock',           // módulo BODEGA: inventario general de filtros sueltos
+  BODEGA_KITS: 'bd_filtros_kits',             // módulo BODEGA: kits armados (por marca/modelo de equipo)
+  BODEGA_KITS_ITEMS: 'bd_filtros_kits_items', // módulo BODEGA: composición de cada kit
+  BODEGA_MOV: 'bd_filtros_movimientos'        // módulo BODEGA: registro de entradas / salidas
 };

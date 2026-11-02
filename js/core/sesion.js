@@ -16,7 +16,7 @@ const SESION_KEY = 'afi_sesion';                       // { usuario, ultimaActiv
 const GUARDAR_ACTIVIDAD_CADA_MS = 10 * 1000;           // no escribir en cada movimiento del mouse
 const REVISAR_CADA_MS = 15 * 1000;
 const EVENTOS_ACTIVIDAD = ['mousemove', 'mousedown', 'keydown', 'wheel', 'scroll', 'touchstart'];
-const TABS_VALIDAS = ['dashboard', 'inventario', 'programas', 'movimientos', 'hojaVida', 'aceites', 'filtros', 'formatos', 'configuracion'];
+const TABS_VALIDAS = ['dashboard', 'inventario', 'programas', 'movimientos', 'hojaVida', 'aceites', 'filtros', 'bodega', 'formatos', 'configuracion'];
 
 /** true mientras se intenta recuperar la sesión al abrir/actualizar (evita que "parpadee" el login). */
 export const restaurandoSesion = ref(true);
@@ -27,7 +27,7 @@ export const avisoSesion = ref('');
 // Se guarda en localStorage y, como respaldo, en sessionStorage y en memoria.
 // Así, si el navegador bloquea uno de ellos (modo privado, página incrustada, etc.),
 // la sesión no se cae sola y, en lo posible, se mantiene al actualizar.
-export const APP_VERSION = '2026-10-30 b';
+export const APP_VERSION = '2026-11-02 a';
 let enMemoria = null;
 const leerDe = (st) => { try { return JSON.parse(st.getItem(SESION_KEY) || 'null'); } catch (e) { return null; } };
 const leer = () => {
