@@ -116,8 +116,10 @@ const encabezado = (wb, ws, logo, titulo, subtitulo, ultimaCol) => {
   ws.getRow(1).height = 26; ws.getRow(2).height = 20; ws.getRow(3).height = 18; ws.getRow(4).height = 6;
   if (logo) {
     const id = wb.addImage({ base64: logo.url, extension: 'png' });
-    const alto = 62;
-    ws.addImage(id, { tl: { col: 0.15, row: 0.15 }, ext: { width: Math.round(alto * logo.ratio), height: alto }, editAs: 'oneCell' });
+    // El logo cabe en las columnas A-B (no tapa el título, que parte en C)
+    const anchoMax = ((ws.getColumn(1).width || 9) + (ws.getColumn(2).width || 9)) * 7 - 8;
+    const alto = Math.min(62, anchoMax / (logo.ratio || 1));
+    ws.addImage(id, { tl: { col: 0.1, row: 0.15 }, ext: { width: Math.round(alto * (logo.ratio || 1)), height: Math.round(alto) }, editAs: 'oneCell' });
   }
   const fila = (r, texto, font) => {
     ws.mergeCells(r, 3, r, ultimaCol);
@@ -170,46 +172,71 @@ const bloqueResumen = (ws, fila, r) => {
   return f + 2;
 };
 
-const COLS_TABLA = ['N° ITEM', 'PERSONAL ENCARGADO', 'FECHA COMPROMISO', 'FECHA ESTIMADA', 'TAREAS', 'ESTADO', 'FECHA REALIZADO'];
+// Columnas de la tabla de tareas (orden del Excel)
+const COLS_TABLA = [
+  { t: 'N° ITEM', w: 8, v: it => (it.n_item === '' || it.n_item === null ? '' : Number(it.n_item)), al: 'center' },
+  { t: 'ÁREA', w: 12, v: it => it.area || '', al: 'center' },
+  { t: 'RESPONSABLE', w: 22, v: it => String(it.personal || '').split(' / ').join('\n'), al: 'left' },
+  { t: 'FECHA COMPROMISO', w: 14, v: it => fechaExcel(it.fecha_compromiso) || it.fecha_texto || '', al: 'center' },
+  { t: 'FECHA ESTIMADA', w: 14, v: it => fechaExcel(it.fecha_estimada), al: 'center', clave: 'estimada' },
+  { t: 'TAREAS', w: 60, v: it => it.tarea || '', al: 'left' },
+  { t: 'ESTADO', w: 14, v: it => it.estado, al: 'center', clave: 'estado' },
+  { t: 'FECHA REALIZADO', w: 14, v: it => (it.estado === 'Realizado' ? fechaExcel(it.fecha_realizado) : ''), al: 'center', clave: 'realizado' }
+];
 const fechaExcel = (iso) => { if (!iso) return ''; const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
 
-/** Tabla de tareas con colores por estado. */
-const tablaTareas = (ws, fila, items, extraIzq = null) => {
-  const cab = extraIzq ? [...extraIzq.cab, ...COLS_TABLA] : COLS_TABLA;
-  cab.forEach((t, i) => {
-    const c = ws.getCell(fila, i + 1);
-    c.value = t; c.font = { bold: true, size: 9, color: { argb: C.blanco } }; c.fill = fill(C.oscuro);
-    c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.border = bordeFino;
+/** Tabla de tareas con colores por estado.
+ *  agrupar = true → filas de título por SECCIÓN (como en el Word). extra = columnas a la izquierda (Histórico). */
+const tablaTareas = (ws, fila, items, { extra = [], agrupar = true } = {}) => {
+  const cols = [...extra, ...COLS_TABLA];
+  cols.forEach((c, i) => {
+    const cell = ws.getCell(fila, i + 1);
+    cell.value = c.t; cell.font = { bold: true, size: 9, color: { argb: C.blanco } }; cell.fill = fill(C.oscuro);
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; cell.border = bordeFino;
   });
   ws.getRow(fila).height = 28;
   const filaCab = fila;
-  items.forEach((it, idx) => {
-    const r = fila + 1 + idx;
-    const vals = [...(extraIzq ? extraIzq.vals(it) : []), it.n_item === '' ? '' : Number(it.n_item), it.personal || '', fechaExcel(it.fecha_compromiso), fechaExcel(it.fecha_estimada), it.tarea || '', it.estado, it.estado === 'Realizado' ? fechaExcel(it.fecha_realizado) : ''];
-    const off = extraIzq ? extraIzq.cab.length : 0;
-    vals.forEach((v, i) => {
+  let r = fila + 1, seccionAnt = null, par = 0;
+  items.forEach((it) => {
+    const sec = String(it.seccion || '').trim();
+    if (agrupar && sec && sec !== seccionAnt) {
+      ws.mergeCells(r, 1, r, cols.length);
+      const c = ws.getCell(r, 1);
+      c.value = sec; c.font = { bold: true, size: 11, color: { argb: C.oscuro } }; c.fill = fill('FFFDE68A');
+      c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = bordeFino;
+      ws.getRow(r).height = 20; r++;
+    }
+    seccionAnt = sec;
+    const vencida = esVencida(it);
+    cols.forEach((col, i) => {
       const c = ws.getCell(r, i + 1);
+      const v = col.v(it);
       c.value = v; c.border = bordeFino; c.font = { size: 9 };
-      c.alignment = { vertical: 'top', horizontal: i - off === 4 || i - off === 1 || i < off ? 'left' : 'center', wrapText: true };
+      c.alignment = { vertical: 'top', horizontal: col.al, wrapText: true };
       if (v instanceof Date) c.numFmt = 'dd-mm-yyyy';
-      if (idx % 2) c.fill = fill('FFF8FAFC');
-      if (esVencida(it)) c.fill = fill(C.rojoClaro);
+      if (par % 2) c.fill = fill('FFF8FAFC');
+      if (vencida) c.fill = fill(C.rojoClaro);
+      if (col.clave === 'estado') { c.fill = fill(FILL_ESTADO[it.estado]); c.font = { bold: true, size: 9, color: { argb: FONT_ESTADO[it.estado] } }; }
+      if (col.clave === 'estimada' && vencida) { c.font = { bold: true, size: 9, color: { argb: 'FFBE123C' } }; c.note = 'Vencida'; }
+      if (col.clave === 'realizado' && it.estado === 'Realizado') c.font = { bold: true, size: 9, color: { argb: 'FF047857' } };
     });
-    const ce = ws.getCell(r, off + 6);
-    ce.fill = fill(FILL_ESTADO[it.estado]); ce.font = { bold: true, size: 9, color: { argb: FONT_ESTADO[it.estado] } };
-    if (esVencida(it)) { const cf = ws.getCell(r, off + 4); cf.font = { bold: true, size: 9, color: { argb: 'FFBE123C' } }; cf.note = 'Vencida'; }
-    if (it.estado === 'Realizado') ws.getCell(r, off + 7).font = { bold: true, size: 9, color: { argb: 'FF047857' } };
+    r++; par++;
   });
-  ws.autoFilter = { from: { row: filaCab, column: 1 }, to: { row: filaCab + Math.max(items.length, 1), column: cab.length } };
+  if (!agrupar) ws.autoFilter = { from: { row: filaCab, column: 1 }, to: { row: Math.max(r - 1, filaCab + 1), column: cols.length } };
   ws.views = [{ state: 'frozen', ySplit: filaCab }];
-  return fila + items.length + 2;
+  return r + 1;
 };
 
-const anchosTabla = (ws, extra = []) => { ws.columns = [...extra, 9, 24, 14, 14, 62, 15, 15].map(w => ({ width: w })); };
+const anchosTabla = (ws, extra = []) => { ws.columns = [...extra.map(e => e.w), ...COLS_TABLA.map(c => c.w)].map(w => ({ width: w })); };
+const resumenPorSeccionDe = (items) => {
+  const map = {};
+  items.forEach(it => { const k = String(it.seccion || '').trim().toUpperCase(); if (k) (map[k] = map[k] || []).push(it); });
+  return Object.entries(map).map(([personal, list]) => ({ personal, ...resumenItems(list) }));
+};
 
 /** Tabla de cumplimiento por encargado. */
-const tablaPersonal = (ws, fila, porPersonal, col0 = 1) => {
-  const cab = ['ENCARGADO', 'TOTAL', 'REALIZADO', 'ABIERTAS', 'VENCIDAS', 'NO REALIZADO', '% CUMPL.'];
+const tablaPersonal = (ws, fila, porPersonal, col0 = 1, titulo = 'ENCARGADO') => {
+  const cab = [titulo, 'TOTAL', 'REALIZADO', 'ABIERTAS', 'VENCIDAS', 'NO REALIZADO', '% CUMPL.'];
   cab.forEach((t, i) => { const c = ws.getCell(fila, col0 + i); c.value = t; c.font = { bold: true, size: 9, color: { argb: C.blanco } }; c.fill = fill(C.oscuro); c.alignment = { horizontal: 'center' }; c.border = bordeFino; });
   porPersonal.forEach((p, k) => {
     const vals = [p.personal, p.total, p.Realizado, p.Pendiente + p.Proceso, p.vencidas, p['No Realizado'], p.cumplimiento / 100];
@@ -237,10 +264,10 @@ const hojaMinuta = (wb, logo, m, nombre = 'Minuta') => {
   const r = resumenItems(items);
   const ws = wb.addWorksheet(nombreHoja(nombre), { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 }, properties: { tabColor: { argb: C.teal } } });
   anchosTabla(ws);
-  let f = encabezado(wb, ws, logo, 'MINUTA DE MEJORA CONTINUA', `${m.nombre}  ·  Fecha: ${formatDateForDisplay(m.fecha)}`, 7);
-  f = tituloSeccion(ws, f, 'RESUMEN', 7);
+  let f = encabezado(wb, ws, logo, 'MINUTA DE MEJORA CONTINUA', `${m.nombre}  ·  Fecha: ${formatDateForDisplay(m.fecha)}`, 8);
+  f = tituloSeccion(ws, f, 'RESUMEN', 8);
   f = bloqueResumen(ws, f, r);
-  f = tituloSeccion(ws, f, `DETALLE DE TAREAS (${items.length})`, 7);
+  f = tituloSeccion(ws, f, `DETALLE DE TAREAS (${items.length})`, 8);
   tablaTareas(ws, f, items);
   return ws;
 };
@@ -255,6 +282,8 @@ const hojaDashboardMinuta = (wb, logo, m, evo) => {
   f = tituloSeccion(ws, f, 'ESTADO DE LAS TAREAS', 12);
   insertarImagen(wb, ws, graficoPNG(cfgEstados(r), 700, 340), f, 0, 520, 252);
   f += 14;
+  const porSeccion = resumenPorSeccionDe(items);
+  if (porSeccion.length) { f = tituloSeccion(ws, f, 'CUMPLIMIENTO POR SECCIÓN', 12); f = tablaPersonal(ws, f, porSeccion, 1, 'SECCIÓN'); }
   f = tituloSeccion(ws, f, 'CUMPLIMIENTO POR ENCARGADO', 12);
   f = tablaPersonal(ws, f, porPersonal);
   if (porPersonal.length) { insertarImagen(wb, ws, graficoPNG(cfgPersonal(porPersonal), 900, Math.max(260, porPersonal.length * 42 + 90)), f, 0, 760, Math.max(220, porPersonal.length * 35 + 76)); f += Math.ceil(Math.max(220, porPersonal.length * 35 + 76) / 20) + 2; }
@@ -308,6 +337,8 @@ const hojaDashboardGeneral = (wb, logo, minutas, evo) => {
   f = tituloSeccion(ws, f, `ESTADO ACTUAL (${ult.nombre})`, 12);
   insertarImagen(wb, ws, graficoPNG(cfgEstados(r), 700, 340), f, 0, 520, 252);
   f += 14;
+  const porSeccion = resumenPorSeccionDe(itemsUlt);
+  if (porSeccion.length) { f = tituloSeccion(ws, f, 'CUMPLIMIENTO POR SECCIÓN (minuta actual)', 12); f = tablaPersonal(ws, f, porSeccion, 1, 'SECCIÓN'); }
   f = tituloSeccion(ws, f, 'CUMPLIMIENTO POR ENCARGADO (minuta actual)', 12);
   f = tablaPersonal(ws, f, porPersonal);
   if (porPersonal.length) insertarImagen(wb, ws, graficoPNG(cfgPersonal(porPersonal), 900, Math.max(260, porPersonal.length * 42 + 90)), f, 0, 760, Math.max(220, porPersonal.length * 35 + 76));
@@ -316,12 +347,17 @@ const hojaDashboardGeneral = (wb, logo, minutas, evo) => {
 
 const hojaHistorico = (wb, logo, minutas) => {
   const ws = wb.addWorksheet(nombreHoja('Histórico'), { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 } });
-  anchosTabla(ws, [30, 13]);
-  let f = encabezado(wb, ws, logo, 'HISTÓRICO CONSOLIDADO', 'Todas las tareas de todas las minutas, en orden cronológico', 9);
+  const extra = [
+    { t: 'MINUTA', w: 28, v: it => it._m.nombre, al: 'left' },
+    { t: 'FECHA MINUTA', w: 13, v: it => fechaExcel(it._m.fecha), al: 'center' },
+    { t: 'SECCIÓN', w: 16, v: it => it.seccion || '', al: 'left' }
+  ];
+  anchosTabla(ws, extra);
+  let f = encabezado(wb, ws, logo, 'HISTÓRICO CONSOLIDADO', 'Todas las tareas de todas las minutas, en orden cronológico', 11);
   const filas = [];
   minutas.forEach(m => itemsDeMinuta(m.id).forEach(it => filas.push({ ...it, _m: m })));
-  f = tituloSeccion(ws, f, `TAREAS (${filas.length})`, 9);
-  tablaTareas(ws, f, filas, { cab: ['MINUTA', 'FECHA MINUTA'], vals: (it) => [it._m.nombre, fechaExcel(it._m.fecha)] });
+  f = tituloSeccion(ws, f, `TAREAS (${filas.length})`, 11);
+  tablaTareas(ws, f, filas, { extra, agrupar: false });
   return ws;
 };
 

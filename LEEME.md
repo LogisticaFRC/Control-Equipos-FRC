@@ -240,12 +240,12 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
 
 ## Minutas (pestaña "Minutas" en Operaciones)
 
-> ⚠️ Ejecutar una vez **`sql/minutas.sql`** en Supabase (crea `bd_minutas` y `bd_minutas_items`).
+> ⚠️ Ejecutar **`sql/minutas.sql`** en Supabase (crea `bd_minutas` y `bd_minutas_items` y agrega las columnas `seccion`, `area`, `fecha_texto`). Si ya se había ejecutado antes, ejecutarlo **de nuevo** (no borra nada).
 
 | Tabla | Qué guarda |
 |---|---|
 | `bd_minutas` | Cada minuta: nombre, **fecha** (define la carpeta Año → Mes), minuta de origen, quién la creó |
-| `bd_minutas_items` | Tareas: **N° Item, Personal Encargado, Fecha Compromiso, Fecha Estimada, Tareas, Estado, Fecha Realizado** |
+| `bd_minutas_items` | Tareas: **N° Item, Sección, Área, Personal Encargado, Fecha Compromiso (o texto, ej. Siempre), Fecha Estimada, Tareas, Estado, Fecha Realizado** |
 
 - **Menú como Programas:** carpetas por año y mes (se arman solas con la fecha de la minuta). La más reciente lleva la etiqueta *ACTUAL*; cada una muestra su % de cumplimiento.
 - **Nueva Minuta = continúa desde la última:** copia todas sus tareas con estado y fechas (opcional: dejar fuera las cerradas). La minuta anterior queda guardada tal cual (histórico).
@@ -253,7 +253,15 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
 - **Permisos:** Admin crea/renombra/elimina minutas y corrige el histórico. Subadmin crea minutas y edita solo la minuta actual. Lectura solo ve.
 - **Historial de una tarea** (ícono 🕓): cómo fue cambiando en cada minuta.
 - **Dashboard:** totales y % por estado, vencidas, % realizadas a tiempo, gráfico por estado, por encargado y evolución semana a semana.
-- **Importar Excel** (a la minuta seleccionada: reemplazar o agregar) o **Importar como nueva**. Columnas: `N° Item | Personal Encargado | Fecha Compromiso | Fecha Estimada | Tareas | Estado | Fecha Realizado` (botón *Plantilla*). También acepta los Excel exportados por el sistema.
-- **Exportar Minuta:** Excel con logo, resumen con cantidades y %, tabla con colores por estado y hoja *Dashboard* con gráficos.
+- **Importar (Word / Excel)**: se pueden elegir **varios archivos a la vez** (.docx, .xlsx, .csv). Antes de guardar se muestra una revisión con las tareas leídas y la **fecha de cada minuta**, que se puede cambiar.
+  - *Fecha:* se busca en el documento ("FECHA" del encabezado de página del Word, "Fecha: …" o la tabla de encabezado), si no en el nombre del archivo, y si no se usa hoy (avisa para revisarla).
+  - *Minuta ACTUAL:* siempre es la de **fecha más reciente**, aunque se importe después una más antigua (esa queda como histórico).
+  - *Formato Word de la minuta:* tabla con `N° (sin título) | Área | Responsable | Fecha de Compromiso | Tarea | Cumple`. Las filas con un solo texto (ej. **Seguridad**) son **secciones**. Varias personas en Responsable se guardan separadas por " / ". Las viñetas de la tarea se conservan.
+  - *Cumple:* `1` = Realizado (con la fecha de esa minuta como día realizado), `0` = No Realizado, vacío = Pendiente.
+  - *Fecha que no es fecha* (ej. "Siempre") se guarda como texto y se muestra bajo la fecha.
+  - Destino: crear minuta(s) nueva(s) (una por archivo), o agregar / reemplazar las tareas de la minuta seleccionada.
+  - Word antiguo (.doc): abrirlo en Word y guardarlo como .docx. La lectura de Word usa mammoth y JSZip (se descargan solos desde cdn.jsdelivr.net).
+  - Columnas Excel / plantilla: `N° Item | Sección | Área | Personal Encargado | Fecha Compromiso | Fecha Estimada | Tareas | Estado | Fecha Realizado`. También acepta los Excel exportados por el sistema.
+- **Exportar Minuta:** Excel con logo, resumen con cantidades y %, tabla con colores por estado agrupada por **sección** (como el Word) y hoja *Dashboard* con gráficos y cumplimiento por sección y por encargado.
 - **Exportar Todas (un archivo):** *Resumen General* (situación actual + evolución por minuta + promedio), *Dashboard*, *Histórico* consolidado y una hoja por minuta en orden cronológico.
 - La exportación usa ExcelJS (se descarga sola desde cdn.jsdelivr.net al exportar). El logo es el configurado en Config & Usuarios; si el servidor de la imagen no lo permite, el Excel sale sin logo.

@@ -26,6 +26,12 @@ CREATE TABLE IF NOT EXISTS public.bd_minutas_items (
   fecha_realizado   date,                -- día en que quedó Realizado
   created_at        timestamptz DEFAULT now()
 );
+-- Campos del formato Word de la minuta (Sección "Seguridad", Área "SSO", fecha en texto "Siempre")
+-- (ALTER: sirve aunque las tablas ya se hayan creado antes)
+ALTER TABLE public.bd_minutas_items ADD COLUMN IF NOT EXISTS seccion text;       -- título que agrupa tareas (ej. Seguridad)
+ALTER TABLE public.bd_minutas_items ADD COLUMN IF NOT EXISTS area text;          -- Área (ej. SSO)
+ALTER TABLE public.bd_minutas_items ADD COLUMN IF NOT EXISTS fecha_texto text;   -- fecha que no es fecha (ej. Siempre)
+
 CREATE INDEX IF NOT EXISTS bd_minutas_items_minuta_idx ON public.bd_minutas_items (minuta_id);
 
 -- Permisos (igual que las demás tablas: clave anon)
