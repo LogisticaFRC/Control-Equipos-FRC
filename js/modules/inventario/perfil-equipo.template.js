@@ -7,7 +7,10 @@ export default /* html */ `
         <span class="text-xs font-mono font-bold bg-amber-500 text-slate-900 px-3 py-1.5 rounded-lg shadow-sm">AFI: {{ perfilEquipo.afi }}</span>
         <h3 class="text-base font-extrabold tracking-wide uppercase"><i class="fa-solid fa-id-card mr-2"></i> Perfil de Equipo y Dashboard Individual</h3>
       </div>
+      <div class="flex items-center gap-2">
+      <button v-if="puedeEditar" @click="abrirFormularioNuevaMantencion(perfilEquipo.afi)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-plus-circle"></i> Agregar Mantención</button>
       <button @click="showPerfilEquipoModal = false" class="w-8 h-8 rounded-full bg-slate-700 hover:bg-rose-500 text-white flex items-center justify-center transition shadow"><i class="fa-solid fa-xmark text-base"></i></button>
+      </div>
     </div>
 
     <div class="p-6 overflow-y-auto space-y-6 flex-grow bg-slate-100 text-xs">

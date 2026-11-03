@@ -190,7 +190,6 @@ export default /* html */ `
             </div>
             <div class="flex bg-slate-100 rounded-lg p-1 text-xs font-bold">
               <button @click="vistaMinuta = 'tabla'" :class="['px-3 py-1.5 rounded-md', vistaMinuta === 'tabla' ? 'bg-white shadow text-slate-900' : 'text-slate-500']"><i class="fa-solid fa-table mr-1"></i> Tabla</button>
-              <button @click="vistaMinuta = 'general'" :class="['px-3 py-1.5 rounded-md', vistaMinuta === 'general' ? 'bg-white shadow text-slate-900' : 'text-slate-500']"><i class="fa-solid fa-chart-column mr-1"></i> General</button>
               <button @click="vistaMinuta = 'dashboard'" :class="['px-3 py-1.5 rounded-md', vistaMinuta === 'dashboard' ? 'bg-white shadow text-slate-900' : 'text-slate-500']"><i class="fa-solid fa-chart-pie mr-1"></i> Dashboard</button>
             </div>
           </div>

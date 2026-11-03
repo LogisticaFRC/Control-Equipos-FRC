@@ -65,6 +65,23 @@ Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú s
 - Implementación: `core/store.js` (`nivelEnArea`, `isAdmin`/`isSubadmin`/`puedeEditar` calculados según el área de la pantalla actual, `soloAdminGeneral()`). Los módulos no cambiaron: siguen usando `isAdmin`, `soloAdmin()`, `soloEditor()`.
 - Los permisos se validan en el navegador **y en la base de datos (RLS)**: ver la sección Seguridad.
 
+## 📝 Órdenes de Trabajo (OT) — Operaciones → Órdenes de Trabajo
+
+> ⚠️ Ejecutar una vez **`sql/ot.sql`** en Supabase (crea `bd_ot` con sus permisos). El folio parte en **60**.
+> Para cambiar el próximo folio: `select setval('public.bd_ot_folio_seq', 74);` → la siguiente OT será la 75.
+
+- **Formato FRC-RE-OPE-006** idéntico al Excel: el editor muestra la misma hoja; las celdas amarillas se rellenan.
+- Al escribir el **ID EQUIPO (AFI)** se completan Equipo, Marca, Modelo y Hrs actual desde el Inventario. Hrs prox. mant. se escribe a mano.
+- **Tipo de mantención** y **Pauta** (250/500/1000/5000): clic en el cuadro para marcar la X.
+- El **folio** lo asigna la base de datos al guardar (correlativo, no se repite aunque dos personas guarden a la vez).
+- **Excel**: rellena la plantilla original `plantillas/FORMATO_OT.xlsx` (mismas combinaciones, bordes, logo y configuración de impresión).
+- **Imprimir**: abre la hoja lista para imprimir en carta vertical (80 %, como el Excel).
+- **Estado**: *Pendiente* → *Realizada* cuando en el **Historial** existe una mantención con ese **N° OT** (botón *Registrar en Historial*:
+  abre el formulario de mantención con AFI, N° OT, tipo, horómetro, actividades y personal ya rellenados). En el Historial, el N° OT es un enlace que abre la OT.
+- Permisos: crear/editar = Subadmin o Admin de Operaciones · anular/eliminar = Admin.
+- Si cambia el Excel del formato: reemplazar `plantillas/FORMATO_OT.xlsx` y ejecutar
+  `python tools/generar_formato_ot.py plantillas/FORMATO_OT.xlsx js/modules/ot/ot.formato.js` (las celdas de datos están definidas en ese script).
+
 ## 🔒 Seguridad (Supabase Auth + RLS) — actualizado 2026-11-03
 
 **Qué cambió**

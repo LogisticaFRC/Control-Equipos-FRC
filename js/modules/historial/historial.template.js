@@ -118,7 +118,7 @@ export default /* html */ `
             <td class="p-2">{{ i.empresaArriendo || '-' }}</td>
             <td class="p-2 font-bold text-emerald-700">\${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
             <td class="p-2 font-mono">{{ i.numeroOC || '-' }}</td>
-            <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
+            <td class="p-2 font-mono"><button v-if="i.numeroOT" @click.stop="irAOT(i.numeroOT)" title="Abrir la OT" class="text-blue-700 font-bold underline hover:text-blue-900">{{ i.numeroOT }}</button><span v-else>-</span></td>
             <td class="p-2 text-amber-800 font-bold bg-amber-50">{{ i.aceites }}</td>
             <td class="p-2 text-center">
               <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-link"></i> Drive</a>

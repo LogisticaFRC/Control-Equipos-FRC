@@ -28,6 +28,7 @@ export const AREAS = [
       { key: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line' },
       { key: 'inventario', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.length },
       { key: 'programas', label: 'Programas', icon: 'fa-calendar-check' },
+      { key: 'ot', label: 'Órdenes de Trabajo', icon: 'fa-file-signature' },
       { key: 'minutas', label: 'Minutas', icon: 'fa-clipboard-list' },
       { key: 'movimientos', label: 'Movimientos', icon: 'fa-truck-ramp-box', count: () => dbMovimientos.value.length },
       { key: 'hojaVida', label: 'Historial', icon: 'fa-file-medical', count: () => dbIntervenciones.value.length },

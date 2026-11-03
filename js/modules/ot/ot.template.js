@@ -1,0 +1,105 @@
+// Plantilla HTML del módulo OT (lista + editor con el formato FRC-RE-OPE-006)
+export default /* html */ `
+<section class="space-y-5 text-xs">
+
+  <!-- ===================== LISTA ===================== -->
+  <template v-if="!otActual">
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-file-signature text-amber-600"></i> Órdenes de Trabajo</h2>
+        <p class="text-slate-500 mt-0.5">Formato FRC-RE-OPE-006 · el folio es correlativo y se asigna al guardar. Una OT queda <b>Realizada</b> cuando se registra en el Historial con su N° de OT.</p>
+      </div>
+      <button v-if="puedeEditar" @click="nuevaOT()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl shadow flex items-center gap-2"><i class="fa-solid fa-plus-circle"></i> Nueva OT</button>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div @click="filtroOT.estado = ''" class="rounded-xl border p-3 bg-white cursor-pointer hover:shadow"><p class="text-[10px] font-bold text-slate-500 uppercase">Total OT</p><p class="text-2xl font-extrabold text-slate-800">{{ resumenOT.total }}</p></div>
+      <div @click="filtroOT.estado = 'PENDIENTE'" class="rounded-xl border p-3 bg-amber-100 text-amber-800 border-amber-300 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Pendientes</p><p class="text-2xl font-extrabold">{{ resumenOT.PENDIENTE }}</p></div>
+      <div @click="filtroOT.estado = 'REALIZADA'" class="rounded-xl border p-3 bg-emerald-100 text-emerald-800 border-emerald-300 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Realizadas</p><p class="text-2xl font-extrabold">{{ resumenOT.REALIZADA }}</p></div>
+      <div @click="filtroOT.estado = 'ANULADA'" class="rounded-xl border p-3 bg-slate-100 text-slate-600 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Anuladas</p><p class="text-2xl font-extrabold">{{ resumenOT.ANULADA }}</p></div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="p-3 border-b flex flex-wrap gap-2 items-center">
+        <input v-model="filtroOT.texto" type="text" placeholder="Buscar folio, AFI, equipo, actividad..." class="p-2 border rounded-lg w-72">
+        <select v-model="filtroOT.estado" class="p-2 border rounded-lg font-bold"><option value="">Todos los estados</option><option value="PENDIENTE">Pendiente</option><option value="REALIZADA">Realizada</option><option value="ANULADA">Anulada</option></select>
+        <span v-if="cargandoOT" class="text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-slate-800 text-white uppercase text-[10px]">
+            <tr><th class="p-2.5">Folio</th><th class="p-2.5">Fecha</th><th class="p-2.5">AFI</th><th class="p-2.5">Equipo</th><th class="p-2.5">Tipo</th><th class="p-2.5">Actividades</th><th class="p-2.5">Estado</th><th class="p-2.5 text-center">Acciones</th></tr>
+          </thead>
+          <tbody class="divide-y">
+            <tr v-for="o in listaOT" :key="o.id" class="hover:bg-slate-50 cursor-pointer" @click="abrirOT(o)">
+              <td class="p-2.5 font-mono font-extrabold text-rose-700">{{ o.folio }}</td>
+              <td class="p-2.5 whitespace-nowrap">{{ formatDateForDisplay(o.fecha) }}</td>
+              <td class="p-2.5 font-bold text-amber-800">{{ o.afi }}</td>
+              <td class="p-2.5">{{ o.equipo }} <span class="text-slate-400">{{ o.marca }} {{ o.modelo }}</span></td>
+              <td class="p-2.5 font-semibold">{{ o.tipo_mantencion || '-' }}<span v-if="o.pauta" class="text-slate-500"> · {{ o.pauta }} h</span></td>
+              <td class="p-2.5 max-w-[320px] truncate">{{ o.actividades.filter(a => a.descripcion).map(a => a.descripcion).join(' · ') || '-' }}</td>
+              <td class="p-2.5"><span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(o)]]">{{ estadoOT(o) }}</span></td>
+              <td class="p-2.5 text-center whitespace-nowrap" @click.stop>
+                <button @click="imprimirOT(o)" title="Imprimir" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200"><i class="fa-solid fa-print"></i></button>
+                <button @click="exportarOTExcel(o)" title="Exportar Excel" class="ml-1 px-2 py-1 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800"><i class="fa-solid fa-file-excel"></i></button>
+                <button v-if="isAdmin" @click="eliminarOT(o)" title="Eliminar" class="ml-1 px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-700"><i class="fa-solid fa-trash"></i></button>
+              </td>
+            </tr>
+            <tr v-if="!listaOT.length && !cargandoOT"><td colspan="8" class="p-8 text-center text-slate-400 italic">No hay OT{{ filtroOT.texto || filtroOT.estado ? ' con estos filtros' : ' todavía' }}.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </template>
+
+  <!-- ===================== EDITOR (mismo formato del Excel) ===================== -->
+  <template v-else>
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3 sticky top-[72px] z-30">
+      <div class="flex items-center gap-3 flex-wrap">
+        <button @click="cerrarOT" class="px-3 py-2 rounded-lg border font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-arrow-left mr-1"></i> Volver</button>
+        <span class="text-base font-extrabold text-slate-800">OT N° <span class="text-rose-700 font-mono">{{ otActual.folio || 'nueva (se asigna al guardar)' }}</span></span>
+        <span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(otActual)]]">{{ estadoOT(otActual) }}</span>
+        <label class="flex items-center gap-1 font-bold text-slate-600">Fecha OT <input type="date" v-model="otActual.fecha" :disabled="!puedeEditar" class="p-1.5 border rounded-lg"></label>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button v-if="puedeEditar" @click="guardarYAvisar" :disabled="guardandoOT" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg shadow disabled:opacity-60"><i :class="['fa-solid mr-1', guardandoOT ? 'fa-spinner fa-spin' : 'fa-floppy-disk']"></i> Guardar</button>
+        <button @click="imprimirOT(otActual)" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-print mr-1"></i> Imprimir</button>
+        <button @click="exportarOTExcel(otActual)" :disabled="exportandoOT" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-3 py-2 rounded-lg border border-emerald-300 disabled:opacity-60"><i :class="['fa-solid mr-1', exportandoOT ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Excel</button>
+        <button v-if="puedeEditar && estadoOT(otActual) === 'PENDIENTE'" @click="registrarEnHistorial(otActual)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-clipboard-check mr-1"></i> Registrar en Historial</button>
+        <button v-if="isAdmin && otActual.id" @click="anularOT(otActual)" class="px-3 py-2 rounded-lg border font-bold text-slate-600 hover:bg-slate-50">{{ otActual.estado === 'ANULADA' ? 'Reactivar' : 'Anular' }}</button>
+      </div>
+    </div>
+
+    <div v-if="mantencionesDeOT(otActual.folio).length" class="bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl p-3 font-semibold">
+      <i class="fa-solid fa-circle-check mr-1"></i> Registrada en el Historial:
+      <span v-for="m in mantencionesDeOT(otActual.folio)" :key="m.id" class="ml-2">{{ formatDateForDisplay(m.fecha) }} · {{ m.tipoMant }} · {{ m.afi }}</span>
+    </div>
+    <p class="text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i> Escribe el <b>ID EQUIPO (AFI)</b> y se completan Equipo, Marca, Modelo y Hrs actual. Las celdas amarillas se rellenan; en <b>Tipo de mantención</b> y <b>Pauta</b> haz clic en el cuadro para marcar la X.
+      <span v-if="otActual.afi && !equipoDeOT" class="text-rose-600 font-bold ml-1">El AFI {{ otActual.afi }} no está en el inventario.</span></p>
+
+    <datalist id="dl-ot-afi"><option v-for="e in dbEquipos" :key="e.id" :value="e.afi">{{ e.tipo }} {{ e.marca }} {{ e.modelo }}</option></datalist>
+
+    <div class="overflow-x-auto bg-slate-300/60 p-4 rounded-2xl">
+      <div class="bg-white mx-auto shadow-xl" :style="{ position: 'relative', width: anchoHoja * E + 'px' }">
+        <img :src="F.logo.src" alt="" class="pointer-events-none" :style="{ position: 'absolute', left: F.logo.left * E + 'px', top: F.logo.top * E + 'px', width: F.logo.width * E + 'px', height: F.logo.height * E + 'px' }">
+        <table class="ot-hoja" :style="{ width: anchoHoja * E + 'px' }">
+          <colgroup><col v-for="(w, i) in F.cols" :key="i" :style="{ width: w * E + 'px' }"></colgroup>
+          <tbody>
+            <tr v-for="(fila, i) in filasFormato" :key="i" :style="{ height: F.rows[i] * E + 'px' }">
+              <td v-for="c in fila" :key="c.c" :rowspan="c.rs || 1" :colspan="c.cs || 1" :style="estiloCelda(c, E)" :class="c.k ? 'ot-campo' : ''">
+                <template v-if="!c.k">{{ c.t }}</template>
+                <button v-else-if="c.k.startsWith('tipo:')" type="button" :disabled="!puedeEditar" @click="alternarTipo(c.k.slice(5))" class="ot-marca">{{ textoCelda(otActual, c.k) }}</button>
+                <button v-else-if="c.k.startsWith('pauta:')" type="button" :disabled="!puedeEditar" @click="alternarPauta(c.k.slice(6))" class="ot-marca">{{ textoCelda(otActual, c.k) }}</button>
+                <span v-else-if="c.k === 'folio'" class="font-extrabold text-rose-700 px-1">{{ otActual.folio || '—' }}</span>
+                <input v-else-if="c.k === 'afi'" list="dl-ot-afi" v-model="otActual.afi" @change="autocompletarDesdeAfi" :disabled="!puedeEditar" class="ot-in font-bold uppercase">
+                <input v-else :type="tipoCampo(c.k)" :value="valorCampo(otActual, c.k)" @input="fijarCampo(otActual, c.k, $event.target.value)" :disabled="!puedeEditar"
+                  :class="['ot-in', tipoCampo(c.k) !== 'text' ? 'ot-in-sm' : '']" :style="{ textAlign: c.al === 'c' ? 'center' : 'left' }">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </template>
+</section>
+`;

@@ -20,5 +20,6 @@ export const TABLAS = {
   BODEGA_KITS_ITEMS: 'bd_filtros_kits_items', // módulo BODEGA: composición de cada kit
   BODEGA_MOV: 'bd_filtros_movimientos',       // módulo BODEGA: registro de entradas / salidas
   MINUTAS: 'bd_minutas',                      // módulo MINUTAS: cabecera de cada minuta semanal
-  MINUTAS_ITEMS: 'bd_minutas_items'           // módulo MINUTAS: tareas / compromisos de cada minuta
+  MINUTAS_ITEMS: 'bd_minutas_items',          // módulo MINUTAS: tareas / compromisos de cada minuta
+  OT: 'bd_ot'                                 // módulo OT: órdenes de trabajo (formato FRC-RE-OPE-006)
 };

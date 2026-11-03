@@ -1,0 +1,344 @@
+// =====================================================================
+// OT · Órdenes de Trabajo (formato FRC-RE-OPE-006)
+// - El folio es correlativo y lo asigna la base de datos (bd_ot_folio_seq, parte en 60).
+// - Al escribir el AFI se completan Equipo, Marca, Modelo y HRS ACTUAL desde el Inventario.
+// - Una OT queda "Realizada" cuando en el Historial existe una mantención con ese N° de OT.
+// - Exportar Excel: rellena la plantilla original (plantillas/FORMATO_OT.xlsx) → queda idéntica.
+// =====================================================================
+import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
+import { TABLAS } from '../../core/tablas.js';
+import { usuarioActivo, currentTab, dbIntervenciones, buscarEquipoPorAfi, soloAdmin, soloEditor } from '../../core/store.js';
+import { hoyISO, limpiarAfi } from '../../core/utils.js';
+import { FORMATO_OT } from './ot.formato.js';
+import { abrirFormularioNuevaMantencion, formMant } from '../historial/historial.service.js';
+
+const { ref, computed } = Vue;
+
+export const TABLA_OT = TABLAS.OT;
+export const N_ACTIVIDADES = 20, N_INSUMOS = 10, N_PERSONAL = 4;
+export const TIPOS_OT = ['PREVENTIVA', 'CORRECTIVA', 'PREDICTIVA'];
+export const PAUTAS_OT = ['250', '500', '1000', '5000'];
+const PLANTILLA_URL = 'plantillas/FORMATO_OT.xlsx';
+
+const filas = (n, campos) => Array.from({ length: n }, () => Object.fromEntries(campos.map(c => [c, ''])));
+const actVacia = () => filas(N_ACTIVIDADES, ['descripcion', 'ejecutante', 'f_inicio', 'f_term', 'h_inicio', 'h_term']);
+const insVacio = () => filas(N_INSUMOS, ['aceites', 'repuestos', 'fecha', 'retira']);
+const perVacio = () => filas(N_PERSONAL, ['nombre', 'cargo']);
+/** Completa un arreglo guardado hasta n filas (por si en la BD vienen menos). */
+const completar = (arr, vacio) => vacio.map((v, i) => ({ ...v, ...((Array.isArray(arr) && arr[i]) || {}) }));
+
+export const otVacia = () => ({
+  id: null, folio: null, fecha: hoyISO(), afi: '', equipo: '', marca: '', modelo: '', hrs_actual: '', hrs_prox: '',
+  tipo_mantencion: '', pauta: '', actividades: actVacia(), insumos: insVacio(), personal: perVacio(),
+  mecanico: '', supervisor: '', estado: 'ABIERTA'
+});
+
+const mapOT = (r) => ({
+  ...otVacia(), ...r,
+  fecha: r.fecha || '', hrs_actual: r.hrs_actual ?? '', hrs_prox: r.hrs_prox ?? '',
+  actividades: completar(r.actividades, actVacia()), insumos: completar(r.insumos, insVacio()), personal: completar(r.personal, perVacio())
+});
+
+// ---------- Estado ----------
+export const dbOT = ref([]);
+export const cargandoOT = ref(false);
+export const otActual = ref(null);         // OT abierta en el editor (copia editable)
+export const guardandoOT = ref(false);
+export const filtroOT = ref({ texto: '', estado: '' });
+/** Folio a abrir apenas se carguen las OT (ej. al hacer clic en el N° OT del Historial). */
+export const folioPorAbrir = ref(null);
+
+export const cargarOT = async () => {
+  cargandoOT.value = true;
+  try {
+    const data = await sb(supabaseClient.from(TABLA_OT).select('*').order('folio', { ascending: false }));
+    dbOT.value = data.map(mapOT);
+    if (folioPorAbrir.value) {
+      const ot = dbOT.value.find(o => Number(o.folio) === Number(folioPorAbrir.value));
+      folioPorAbrir.value = null;
+      if (ot) abrirOT(ot);
+    }
+  } catch (err) {
+    alert('No se pudieron cargar las OT: ' + errMsg(err) + (/bd_ot/i.test(errMsg(err)) ? '\nEjecuta sql/ot.sql en Supabase.' : ''));
+  } finally {
+    cargandoOT.value = false;
+  }
+};
+
+// ---------- Relación con el Historial ----------
+const numeroDe = (v) => { const m = String(v || '').match(/\d+/); return m ? Number(m[0]) : null; };
+/** Mantenciones del Historial cuyo N° OT es el folio. */
+export const mantencionesDeOT = (folio) => dbIntervenciones.value.filter(i => folio && numeroDe(i.numeroOT) === Number(folio));
+/** 'REALIZADA' (registrada en Historial) · 'ANULADA' · 'PENDIENTE' */
+export const estadoOT = (ot) => {
+  if (!ot) return 'PENDIENTE';
+  if (ot.estado === 'ANULADA') return 'ANULADA';
+  return mantencionesDeOT(ot.folio).length ? 'REALIZADA' : 'PENDIENTE';
+};
+export const ESTILO_ESTADO_OT = {
+  PENDIENTE: 'bg-amber-100 text-amber-800 border-amber-300',
+  REALIZADA: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  ANULADA: 'bg-slate-200 text-slate-500 border-slate-300 line-through'
+};
+
+export const listaOT = computed(() => {
+  const q = filtroOT.value.texto.trim().toLowerCase();
+  return dbOT.value.filter(o => {
+    if (filtroOT.value.estado && estadoOT(o) !== filtroOT.value.estado) return false;
+    if (!q) return true;
+    const txt = [o.folio, o.afi, o.equipo, o.marca, o.modelo, o.tipo_mantencion, o.mecanico,
+      ...o.actividades.map(a => a.descripcion + ' ' + a.ejecutante)].join(' ').toLowerCase();
+    return txt.includes(q);
+  });
+});
+export const resumenOT = computed(() => {
+  const r = { total: dbOT.value.length, PENDIENTE: 0, REALIZADA: 0, ANULADA: 0 };
+  dbOT.value.forEach(o => { r[estadoOT(o)]++; });
+  return r;
+});
+
+// ---------- Editor ----------
+export const nuevaOT = (afi = '') => {
+  if (!soloEditor()) return;
+  otActual.value = otVacia();
+  if (afi) { otActual.value.afi = afi; autocompletarDesdeAfi(); }
+};
+export const abrirOT = (ot) => { otActual.value = JSON.parse(JSON.stringify(ot)); };
+export const cerrarOT = () => { otActual.value = null; };
+
+/** Lee / escribe un campo del formato: 'afi', 'act.3.descripcion', 'ins.0.retira', 'per.1.nombre'... */
+export const valorCampo = (ot, k) => {
+  if (!ot || !k) return '';
+  const [g, i, c] = k.split('.');
+  if (g === 'act') return ot.actividades[i][c];
+  if (g === 'ins') return ot.insumos[i][c];
+  if (g === 'per') return ot.personal[i][c];
+  return ot[k] ?? '';
+};
+export const fijarCampo = (ot, k, v) => {
+  const [g, i, c] = k.split('.');
+  if (g === 'act') ot.actividades[i][c] = v;
+  else if (g === 'ins') ot.insumos[i][c] = v;
+  else if (g === 'per') ot.personal[i][c] = v;
+  else ot[k] = v;
+};
+/** Tipo de dato del campo (para el editor). */
+export const tipoCampo = (k) => {
+  if (/\.(f_inicio|f_term|fecha)$/.test(k)) return 'date';
+  if (/\.(h_inicio|h_term)$/.test(k)) return 'time';
+  return 'text';
+};
+
+/** Al escribir el AFI: completa Equipo, Marca, Modelo y HRS ACTUAL desde el Inventario. */
+const equipoPorAfi = (afi) => buscarEquipoPorAfi(String(afi || '').trim()) || buscarEquipoPorAfi(limpiarAfi(afi));
+export const autocompletarDesdeAfi = () => {
+  const ot = otActual.value;
+  if (!ot) return;
+  const eq = equipoPorAfi(ot.afi);
+  if (!eq) return;
+  ot.afi = eq.afi;
+  ot.equipo = eq.tipo || ot.equipo;
+  ot.marca = eq.marca || ot.marca;
+  ot.modelo = eq.modelo || ot.modelo;
+  if (eq.horometroActual) ot.hrs_actual = String(Math.round(eq.horometroActual * 10) / 10);
+};
+export const equipoDeOT = computed(() => otActual.value ? equipoPorAfi(otActual.value.afi) : null);
+
+export const alternarTipo = (t) => { const ot = otActual.value; ot.tipo_mantencion = ot.tipo_mantencion === t ? '' : t; };
+export const alternarPauta = (p) => { const ot = otActual.value; ot.pauta = ot.pauta === p ? '' : p; };
+
+const payloadOT = (ot) => ({
+  fecha: ot.fecha || hoyISO(), afi: (equipoPorAfi(ot.afi) || {}).afi || limpiarAfi(ot.afi), equipo: ot.equipo, marca: ot.marca, modelo: ot.modelo,
+  hrs_actual: String(ot.hrs_actual ?? ''), hrs_prox: String(ot.hrs_prox ?? ''),
+  tipo_mantencion: ot.tipo_mantencion, pauta: ot.pauta,
+  actividades: ot.actividades, insumos: ot.insumos, personal: ot.personal,
+  mecanico: ot.mecanico, supervisor: ot.supervisor, estado: ot.estado || 'ABIERTA',
+  updated_at: new Date().toISOString()
+});
+
+export const guardarOT = async () => {
+  if (!soloEditor()) return false;
+  const ot = otActual.value;
+  if (!ot.afi.trim()) { alert('Ingresa el AFI del equipo.'); return false; }
+  guardandoOT.value = true;
+  try {
+    if (ot.id) {
+      await sb(supabaseClient.from(TABLA_OT).update(payloadOT(ot)).eq('id', ot.id));
+    } else {
+      const u = usuarioActivo.value;
+      const [fila] = await sb(supabaseClient.from(TABLA_OT).insert([{ ...payloadOT(ot), creado_por: (u && (u.nombre || u.usuario)) || '' }]).select());
+      ot.id = fila.id; ot.folio = fila.folio;
+    }
+    const guardada = mapOT(JSON.parse(JSON.stringify(ot)));
+    const i = dbOT.value.findIndex(o => o.id === ot.id);
+    if (i >= 0) dbOT.value.splice(i, 1, guardada); else dbOT.value.unshift(guardada);
+    return true;
+  } catch (err) {
+    alert('Error al guardar la OT: ' + errMsg(err));
+    return false;
+  } finally {
+    guardandoOT.value = false;
+  }
+};
+
+export const anularOT = async (ot) => {
+  if (!soloAdmin()) return;
+  const anular = ot.estado !== 'ANULADA';
+  if (!confirm(anular ? `¿Anular la OT N° ${ot.folio}? (el folio no se reutiliza)` : `¿Reactivar la OT N° ${ot.folio}?`)) return;
+  try {
+    await sb(supabaseClient.from(TABLA_OT).update({ estado: anular ? 'ANULADA' : 'ABIERTA' }).eq('id', ot.id));
+    ot.estado = anular ? 'ANULADA' : 'ABIERTA';
+    const o = dbOT.value.find(x => x.id === ot.id); if (o) o.estado = ot.estado;
+  } catch (err) { alert('Error: ' + errMsg(err)); }
+};
+
+export const eliminarOT = async (ot) => {
+  if (!soloAdmin()) return;
+  if (!confirm(`¿Eliminar definitivamente la OT N° ${ot.folio}?\nSi solo quieres dejarla sin efecto, usa "Anular".`)) return;
+  try {
+    await sb(supabaseClient.from(TABLA_OT).delete().eq('id', ot.id));
+    dbOT.value = dbOT.value.filter(o => o.id !== ot.id);
+    if (otActual.value && otActual.value.id === ot.id) otActual.value = null;
+  } catch (err) { alert('Error al eliminar: ' + errMsg(err)); }
+};
+
+// ---------- Pasar al Historial ----------
+const TIPO_HISTORIAL = (ot) => {
+  if (ot.tipo_mantencion === 'PREVENTIVA') return ['250', '500', '1000'].includes(ot.pauta) ? `PREVENTIVA ${ot.pauta} HRS` : 'PREVENTIVA';
+  return ot.tipo_mantencion || '';
+};
+/** Abre el formulario de mantención ya rellenado con los datos de la OT (N° OT = folio). */
+export const registrarEnHistorial = async (ot) => {
+  if (!soloEditor()) return;
+  if (!ot.id) { if (!(await guardarOT())) return; ot = otActual.value; }
+  const acts = ot.actividades.filter(a => a.descripcion.trim());
+  const nombres = [...new Set([...ot.personal.map(p => p.nombre), ...acts.map(a => a.ejecutante)].map(s => String(s || '').trim()).filter(Boolean))];
+  abrirFormularioNuevaMantencion(ot.afi);
+  const f = formMant.value;
+  f.numeroOT = String(ot.folio);
+  f.fecha = acts.map(a => a.f_term).filter(Boolean).sort().pop() || hoyISO();
+  f.horometro = ot.hrs_actual || '';
+  f.tipoMant = TIPO_HISTORIAL(ot) || f.tipoMant;
+  if (ot.tipo_mantencion === 'CORRECTIVA') f.causa = 'REPARACION';
+  f.descripcion = acts.map(a => a.descripcion.trim()).join('\n');
+  f.horaInicio = (acts.find(a => a.h_inicio) || {}).h_inicio || '';
+  f.horaTermino = ([...acts].reverse().find(a => a.h_term) || {}).h_term || '';
+  [f.mec1, f.mec2, f.mec3, f.mec4] = [nombres[0] || '', nombres[1] || '', nombres[2] || '', nombres[3] || ''];
+};
+
+// ---------- Texto que va en cada celda (impresión / Excel) ----------
+const fmtFecha = (iso) => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : String(iso || ''); };
+/** Texto final de una celda con campo (k) del formato. */
+export const textoCelda = (ot, k) => {
+  if (k.startsWith('tipo:')) return ot.tipo_mantencion === k.slice(5) ? 'X' : '';
+  if (k.startsWith('pauta:')) return ot.pauta === k.slice(6) ? 'X' : '';
+  if (k === 'folio') return ot.folio ? String(ot.folio) : '';
+  const v = valorCampo(ot, k);
+  return tipoCampo(k) === 'date' ? fmtFecha(v) : String(v ?? '');
+};
+
+// ---------- Exportar a Excel (plantilla original, sin perder formato) ----------
+const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const COLS = (() => { const o = {}; for (let i = 1; i <= 52; i++) { let n = i, s = ''; while (n) { s = String.fromCharCode(65 + (n - 1) % 26) + s; n = Math.floor((n - 1) / 26); } o[i] = s; } return o; })();
+
+/** Escribe un valor en una celda del XML de la hoja conservando su estilo (s="..."). */
+const escribirCelda = (xml, ref, valor) => {
+  const re = new RegExp(`<c r="${ref}"([^>]*?)(/>|>[\\s\\S]*?</c>)`);
+  const m = xml.match(re);
+  if (!m) return xml;   // todas las celdas del formato existen en la plantilla
+  const estilo = (m[1].match(/\ss="\d+"/) || [''])[0];
+  const v = String(valor ?? '');
+  let nueva;
+  if (v === '') nueva = `<c r="${ref}"${estilo}/>`;
+  else if (/^-?\d+(\.\d+)?$/.test(v) && !/^-?0\d/.test(v) && v.length < 15) nueva = `<c r="${ref}"${estilo}><v>${v}</v></c>`;
+  else nueva = `<c r="${ref}"${estilo} t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+  return xml.replace(re, nueva);
+};
+
+export const exportandoOT = ref(false);
+export const exportarOTExcel = async (ot) => {
+  if (!window.JSZip) return alert('No se pudo cargar el generador de Excel (revisa la conexión a internet).');
+  exportandoOT.value = true;
+  try {
+    const resp = await fetch(PLANTILLA_URL, { cache: 'no-cache' });
+    if (!resp.ok) throw new Error('No se encontró la plantilla ' + PLANTILLA_URL);
+    const zip = await JSZip.loadAsync(await resp.arrayBuffer());
+    const ruta = 'xl/worksheets/sheet1.xml';
+    let xml = await zip.file(ruta).async('string');
+    FORMATO_OT.celdas.filter(c => c.k).forEach(c => { xml = escribirCelda(xml, COLS[c.c] + c.r, textoCelda(ot, c.k)); });
+    zip.file(ruta, xml);
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `OT_${String(ot.folio || 'BORRADOR').padStart(3, '0')}_${limpiarAfi(ot.afi) || 'SIN_AFI'}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (err) {
+    alert('Error al exportar: ' + errMsg(err));
+  } finally {
+    exportandoOT.value = false;
+  }
+};
+
+// ---------- Imprimir (réplica HTML del formato) ----------
+const BORDE = (n) => n ? `${n}px solid #000` : 'none';
+export const estiloCelda = (c, escala = 1) => {
+  const s = {
+    borderTop: BORDE(c.b && c.b[0]), borderRight: BORDE(c.b && c.b[1]), borderBottom: BORDE(c.b && c.b[2]), borderLeft: BORDE(c.b && c.b[3]),
+    fontSize: ((c.fs || 10) * 4 / 3 * escala).toFixed(1) + 'px',
+    fontWeight: c.fb ? '700' : '400',
+    fontFamily: c.ff === 'r' ? "Rockwell, 'Rockwell Nova', Georgia, serif" : 'Arial, Helvetica, sans-serif',
+    textAlign: c.al === 'c' ? 'center' : (c.al === 'r' ? 'right' : 'left'),
+    verticalAlign: c.va === 't' ? 'top' : (c.va === 'm' ? 'middle' : 'bottom')
+  };
+  if (c.wr) { s.whiteSpace = 'normal'; s.lineHeight = '1'; }
+  return s;
+};
+const css = (o) => Object.entries(o).map(([k, v]) => k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()) + ':' + v).join(';');
+const htmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** HTML de la hoja completa con los datos de la OT. */
+export const htmlHojaOT = (ot) => {
+  const F = FORMATO_OT;
+  const porFila = {};
+  F.celdas.forEach(c => { (porFila[c.r] = porFila[c.r] || []).push(c); });
+  const filasHtml = F.rows.map((h, i) => {
+    const r = i + 1;
+    const tds = (porFila[r] || []).map(c => {
+      const txt = c.k ? textoCelda(ot, c.k) : (c.t || '');
+      const extra = c.k && (c.k.startsWith('tipo:') || c.k.startsWith('pauta:')) ? ';text-align:center;font-weight:700' : '';
+      return `<td${c.rs ? ` rowspan="${c.rs}"` : ''}${c.cs ? ` colspan="${c.cs}"` : ''} style="${css(estiloCelda(c))}${extra}">${htmlEsc(txt)}</td>`;
+    }).join('');
+    return `<tr style="height:${h}px">${tds}</tr>`;
+  }).join('');
+  const L = F.logo, ancho = F.cols.reduce((a, b) => a + b, 0);
+  return `<div class="hoja" style="position:relative;width:${ancho}px">
+    <img src="${L.src}" style="position:absolute;left:${L.left}px;top:${L.top}px;width:${L.width}px;height:${L.height}px">
+    <table style="width:${ancho}px"><colgroup>${F.cols.map(w => `<col style="width:${w}px">`).join('')}</colgroup><tbody>${filasHtml}</tbody></table></div>`;
+};
+
+export const imprimirOT = (ot) => {
+  const w = window.open('', '_blank');
+  if (!w) return alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>OT ${ot.folio || ''} - ${htmlEsc(ot.afi || '')}</title>
+<style>
+  @page { size: letter portrait; margin: 0.55in 0.24in 0.55in 0.63in; }
+  html, body { margin: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .hoja { zoom: 0.8; margin: 0 auto; }
+  table { border-collapse: collapse; table-layout: fixed; }
+  td { padding: 0 1px; overflow: hidden; white-space: nowrap; line-height: 1.05; box-sizing: border-box; }
+  @media screen { body { padding: 20px; background: #e2e8f0; } .hoja { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.2); zoom: 1; } }
+</style></head><body>${htmlHojaOT(ot)}
+<script>window.onload = function () { setTimeout(function () { window.print(); }, 300); };<\/script></body></html>`);
+  w.document.close();
+};
+
+// ---------- Navegación desde otros módulos ----------
+/** Abre el módulo OT en el folio indicado (ej. clic en el N° OT del Historial). */
+export const irAOT = (numero) => {
+  const n = numeroDe(numero);
+  if (!n) return;
+  folioPorAbrir.value = n;
+  otActual.value = null;
+  if (currentTab.value === 'ot') cargarOT(); else currentTab.value = 'ot';
+};
