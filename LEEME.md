@@ -63,7 +63,47 @@ Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú s
 - Todos ven todas las áreas; los botones de edición aparecen solo donde el usuario tiene permiso.
 - En el header se muestra el nivel del usuario en el área actual (ej. *Juan (Admin Finanzas)*).
 - Implementación: `core/store.js` (`nivelEnArea`, `isAdmin`/`isSubadmin`/`puedeEditar` calculados según el área de la pantalla actual, `soloAdminGeneral()`). Los módulos no cambiaron: siguen usando `isAdmin`, `soloAdmin()`, `soloEditor()`.
-- Igual que antes, la validación es del lado del navegador; para seguridad real faltan políticas RLS en Supabase.
+- Los permisos se validan en el navegador **y en la base de datos (RLS)**: ver la sección Seguridad.
+
+## 🔒 Seguridad (Supabase Auth + RLS) — actualizado 2026-11-03
+
+**Qué cambió**
+- Las contraseñas ya **no están en la tabla `usuarios`**: las guarda Supabase Auth, cifradas, y se validan en el servidor.
+- La sesión es un **token firmado** por Supabase (antes bastaba escribir el nombre de usuario en el navegador para entrar).
+- **RLS activado** en todas las tablas: sin iniciar sesión no se puede leer ni modificar nada, aunque se use la llave `anon`.
+  Cada acción se valida en la base de datos según el nivel por área (Admin general / Admin del área / Subadmin / Lectura).
+- Se eliminó el usuario de respaldo con clave fija que había en el código.
+- Contraseñas: mínimo **10 caracteres, con letras y números**. Al entrar con una clave inicial o temporal, el sistema obliga a cambiarla.
+- Botón 🔑 en el encabezado → cada usuario cambia su propia contraseña.
+- *Config & Usuarios* → columna **Clave**: el Admin general asigna una contraseña temporal (cierra las sesiones de ese usuario).
+- SheetJS actualizado a 0.20.3 (la 0.18.5 tenía vulnerabilidades al abrir archivos Excel).
+
+**Cómo instalarlo (hacerlo todo seguido, la versión antigua deja de funcionar al ejecutar el SQL)**
+1. *Supabase → Authentication → Sign In / Providers → Email*: **desactivar "Allow new users to sign up"**
+   (los usuarios solo los crea el Admin general desde la app). Dejar activo el proveedor Email.
+2. *Supabase → Authentication → Sign In / Providers → Email*: **Minimum password length = 10** y
+   **Password requirements = letras y números** (si tu plan lo muestra).
+3. *Supabase → SQL Editor*: ejecutar **`sql/seguridad_paso1_auth_rls.sql`**. Al final muestra la lista de usuarios con `migrado = true`.
+   Revisa los avisos (NOTICE/WARNING): si alguna tabla aparece "sin RLS", avisar para agregarla.
+4. Subir la carpeta completa al hosting y actualizar con **Ctrl + F5**.
+5. Entrar con `logistica` y su contraseña actual → el sistema pide una nueva. Cada usuario hace lo mismo al entrar.
+6. Cuando todos entren bien (unos días después), ejecutar **`sql/seguridad_paso2_limpieza.sql`**
+   (borra definitivamente las contraseñas antiguas que quedaron respaldadas).
+
+**Detalles técnicos**
+- Cada usuario tiene un correo interno `usuario@usuarios.frchile.cl` (no se envían correos). Se arma igual en
+  `emailDeUsuario()` (`js/core/supabase.js`) y `public.frc_email()` (SQL): si se cambia uno, cambiar el otro.
+- `usuarios` tiene columnas nuevas: `auth_id`, `email`, `debe_cambiar_clave`.
+- Funciones SQL: `frc_nivel(area)`, `frc_puede(areas, minimo)`, `frc_admin_crear_usuario`, `frc_admin_cambiar_clave`,
+  `frc_admin_eliminar_usuario`, `frc_clave_cambiada`. El usuario `logistica` está protegido por un trigger.
+- **Tabla nueva** → agregarla a la lista del punto 7 de `seguridad_paso1_auth_rls.sql` y volver a ejecutarlo
+  (si no, queda sin RLS). Los scripts antiguos (`filtros.sql`, `minutas.sql`, etc.) crean políticas `anon_all`:
+  **si se vuelve a ejecutar alguno, ejecutar después otra vez `seguridad_paso1_auth_rls.sql`.**
+- Las reglas finas del Subadmin (ej. no cambiar fechas de un ítem asignado) siguen validándose en la app;
+  la base de datos asegura lo principal: sin login nada, Lectura no modifica, solo Admin elimina en las tablas principales.
+- Archivos (bucket `archivos_frc`): subir/borrar requiere sesión con nivel Subadmin o Admin. El bucket sigue siendo
+  público para que funcionen los enlaces ya guardados; quien tenga un enlace puede abrir ese archivo.
+- Supabase Auth limita los intentos de login fallidos por IP (*Authentication → Rate Limits*).
 
 Cada módulo tiene:
 - `*.template.js` → el HTML de la pantalla
@@ -84,14 +124,14 @@ Cada módulo tiene:
      id bigserial PRIMARY KEY, carpeta text NOT NULL, nombre text, link text NOT NULL, created_at timestamptz DEFAULT now()
    );
    ```
-   Debe permitir leer/insertar/eliminar con la clave `anon` (igual que las demás tablas) y el bucket `archivos_frc` debe ser público.
+   El bucket `archivos_frc` debe ser público. Los permisos de la tabla los pone `sql/seguridad_paso1_auth_rls.sql`.
 3. **Módulo FILTROS** → abrir `sql/filtros.sql`, copiar todo en *Supabase → SQL Editor* y presionar **Run** (una sola vez).
    Crea `bd_filtros_precios` (lista de precios) y `bd_filtros` (filtros por marca/modelo), con sus permisos, y carga la
    planilla `filtros1234.xlsx` (108 códigos con precio, 12 proveedores, 269 precios). Si `bd_filtros` ya existía de la versión
    anterior, la ajusta sola (pasa sus precios a la lista). Se puede volver a ejecutar sin duplicar.
 4. **Bodega de Filtros + KITS** → abrir `sql/bodega_filtros.sql`, copiar todo en *Supabase → SQL Editor* y **Run** (una vez).
    Crea `bd_filtros_stock`, `bd_filtros_kits`, `bd_filtros_kits_items` y `bd_filtros_movimientos` con sus permisos.
-5. Verificar que las políticas RLS de `bd_programas_calendarios` y `bd_programas_items` permitan leer/escribir con la clave `anon` (como las demás tablas).
+5. **Seguridad** → ver la sección *🔒 Seguridad* (ejecutar `sql/seguridad_paso1_auth_rls.sql` al final, después de los otros scripts).
 
 ## Errores corregidos
 
@@ -166,13 +206,12 @@ Se crea desde *Config & Usuarios → Rol → Subadmin*. Los permisos están en `
 (`isAdmin`, `isSubadmin`, `puedeEditar`, `soloAdmin()`, `soloEditor()`), y además de ocultar botones
 cada acción se bloquea en su `*.service.js`.
 
-> ⚠️ Estas restricciones son del lado del navegador. Para seguridad total habría que aplicar también
-> políticas RLS en Supabase.
+> 🔒 Además de la app, la base de datos (RLS) bloquea lo principal: ver la sección Seguridad.
 
 ## Sesión
 - Al **actualizar la página** la sesión se mantiene y se vuelve a la **misma pestaña** (queda en la URL: `#inventario`, `#programas`…; también funcionan Atrás/Adelante).
 - La sesión se cierra con el botón **Salir** o tras **5 minutos sin actividad** (mouse, teclado, scroll o toque). Se cuenta la actividad de todas las pestañas abiertas del sistema; si se sale en una, se sale en todas.
-- Solo se guarda el nombre de usuario en el navegador (nunca la contraseña); el rol se vuelve a leer desde Supabase. El tiempo se cambia en `INACTIVIDAD_MS` de `js/core/sesion.js`.
+- La sesión es un token de Supabase Auth (nunca se guarda la contraseña); el rol se vuelve a leer desde la tabla `usuarios`. El tiempo se cambia en `INACTIVIDAD_MS` de `js/core/sesion.js`.
 - **¿Sigue saliendo al actualizar?** Revisa la versión que aparece abajo en el login (`v2026-10-30 b`). Si no aparece, el navegador u hosting sigue usando archivos antiguos: vuelve a subir la carpeta completa y actualiza con **Ctrl + F5**.
 
 ## Filtros

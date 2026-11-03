@@ -16,24 +16,24 @@ export default /* html */ `
         <label class="font-bold text-slate-700 block mb-1">Usuario</label>
         <div class="relative">
           <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
-          <input type="text" v-model="loginUser" placeholder="Ingresa tu usuario..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
+          <input type="text" v-model="loginUser" autocomplete="username" placeholder="Ingresa tu usuario..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
         </div>
       </div>
       <div>
         <label class="font-bold text-slate-700 block mb-1">Contraseña</label>
         <div class="relative">
           <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-lock"></i></span>
-          <input type="password" v-model="loginPass" placeholder="Ingresa tu contraseña..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
+          <input type="password" v-model="loginPass" autocomplete="current-password" placeholder="Ingresa tu contraseña..." required class="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800 outline-none">
         </div>
       </div>
       <p v-if="avisoSesion && !authError" class="text-amber-700 font-bold text-center bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs">
         <i class="fa-solid fa-clock mr-1"></i> {{ avisoSesion }}
       </p>
       <p v-if="authError" class="text-rose-600 font-bold text-center bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs">
-        <i class="fa-solid fa-triangle-exclamation mr-1"></i> Usuario o contraseña incorrectos
+        <i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ authMensaje || 'Usuario o contraseña incorrectos' }}
       </p>
-      <button type="submit" :style="primaryBtnStyle" class="w-full font-extrabold py-3.5 rounded-xl shadow-lg hover:brightness-110 transition flex items-center justify-center gap-2 text-sm uppercase tracking-wider">
-        <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+      <button type="submit" :disabled="ingresando" :style="primaryBtnStyle" class="disabled:opacity-60 w-full font-extrabold py-3.5 rounded-xl shadow-lg hover:brightness-110 transition flex items-center justify-center gap-2 text-sm uppercase tracking-wider">
+        <i :class="['fa-solid', ingresando ? 'fa-spinner fa-spin' : 'fa-right-to-bracket']"></i> {{ ingresando ? 'Ingresando...' : 'Iniciar Sesión' }}
       </button>
     </form>
     <div class="text-[11px] text-slate-400 font-medium">Acceso protegido - Sistema Operativo FRC · <span class="text-slate-300">v{{ APP_VERSION }}</span></div>

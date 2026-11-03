@@ -33,7 +33,8 @@ import { showModalNuevoEquipo } from './modules/inventario/inventario.service.js
 import { showFormMantencionModal, abrirFormularioNuevaMantencion } from './modules/historial/historial.service.js';
 import { showModalMovimiento } from './modules/movimientos/movimientos.service.js';
 import { showModalPrograma, showModalAsignarEquipo } from './modules/programas/programas.service.js';
-import { logout, headerStyle, bodyStyle, logoSrc, onLogoError, cargarConfiguracionGuardada, cargarUsuariosDesdeSupabase } from './modules/configuracion/configuracion.service.js';
+import { logout, headerStyle, bodyStyle, logoSrc, onLogoError, cargarConfiguracionGuardada, cargarUsuariosDesdeSupabase, abrirCambioClave } from './modules/configuracion/configuracion.service.js';
+import CambiarClave from './modules/configuracion/cambiar-clave.view.js';
 
 const { createApp, onMounted, onBeforeUnmount, watchEffect, ref, reactive, computed, watch } = Vue;
 
@@ -80,6 +81,7 @@ const template = /* html */ `
             <span v-else-if="isSubadmin" class="inline-block px-2.5 py-1 rounded-full bg-sky-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-gear mr-1"></i> {{ usuarioActivo.nombre }} (Subadmin {{ areaActual.label }})</span>
             <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap"><i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)</span>
           </div>
+          <button @click="abrirCambioClave" title="Cambiar mi contraseña" aria-label="Cambiar mi contraseña" class="bg-white/10 hover:bg-white/20 text-white px-2.5 py-1.5 rounded-lg text-xs transition border border-white/10"><i class="fa-solid fa-key"></i></button>
           <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
         </div>
       </div>
@@ -147,6 +149,7 @@ const template = /* html */ `
     <modal-programa v-if="showModalPrograma"></modal-programa>
     <modal-asignar-equipo v-if="showModalAsignarEquipo"></modal-asignar-equipo>
     <baja-equipo></baja-equipo>
+    <cambiar-clave></cambiar-clave>
   </template>
 `;
 
@@ -174,17 +177,23 @@ const app = createApp({
     window.addEventListener('keydown', onKey);
     onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 
+    // Los datos solo se pueden leer con sesión iniciada (RLS): se cargan al entrar o al recuperar la sesión
+    watch(usuarioActivo, async (u, antes) => {
+      if (u && !antes) {
+        await cargarUsuariosDesdeSupabase();
+        await cargarDatosDesdeSupabase();
+      }
+    });
+
     onMounted(async () => {
       cargarConfiguracionGuardada();
-      await cargarUsuariosDesdeSupabase();
-      restaurarSesion();   // si se actualizó la página con sesión vigente, se mantiene y vuelve a la misma pestaña
-      await cargarDatosDesdeSupabase();
+      await restaurarSesion();   // si se actualizó la página con sesión vigente, se mantiene y vuelve a la misma pestaña
     });
 
     return {
       usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: AREAS, switchTab,
       menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
-      showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
+      abrirCambioClave, showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };
   }
 });
@@ -211,5 +220,6 @@ app.component('ModalMovimiento', ModalMovimiento);
 app.component('ModalPrograma', ModalPrograma);
 app.component('ModalAsignarEquipo', ModalAsignarEquipo);
 app.component('BajaEquipo', BajaEquipo);
+app.component('CambiarClave', CambiarClave);
 
 app.mount('#app');

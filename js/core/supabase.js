@@ -4,7 +4,26 @@
 const SUPABASE_URL = "https://dxpfaweuiijumvfrykvl.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4cGZhd2V1aWlqdW12ZnJ5a3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODE5NDcsImV4cCI6MjEwODE1Nzk0N30.du61QLSaevcDVDd0GmlM2xTYmE_c4envzjmneocnHgc";
 
-export const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// La llave "anon" es pública por diseño: la seguridad real la dan Supabase Auth (login)
+// y las reglas RLS de la base de datos (ver sql/seguridad_paso1_auth_rls.sql).
+export const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'frc_auth' }
+});
+
+/** Dominio de los correos internos de Supabase Auth (no se envían correos a estas direcciones). */
+export const DOMINIO_USUARIOS = 'usuarios.frchile.cl';
+
+/**
+ * Correo interno de un usuario. DEBE coincidir con public.frc_email() del SQL.
+ * Ej: "Juan Pérez" → "juan_perez@usuarios.frchile.cl"
+ */
+export const emailDeUsuario = (usuario) => {
+  const de = 'áéíóúàèìòùäëïöüñç', a = 'aeiouaeiouaeiounc';
+  const base = String(usuario || '').trim().toLowerCase()
+    .split('').map(c => { const i = de.indexOf(c); return i >= 0 ? a[i] : c; }).join('')
+    .replace(/[^a-z0-9._-]/g, '_');
+  return `${base}@${DOMINIO_USUARIOS}`;
+};
 
 export const BUCKET_ARCHIVOS = 'archivos_frc';
 

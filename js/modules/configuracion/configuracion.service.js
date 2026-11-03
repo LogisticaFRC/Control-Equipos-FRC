@@ -1,7 +1,7 @@
 // =====================================================================
 // CONFIG & USUARIOS · Lógica (login, usuarios, personalización, exportación total)
 // =====================================================================
-import { supabaseClient } from '../../core/supabase.js';
+import { supabaseClient, emailDeUsuario } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
 import {
   usuarioActivo, currentTab, config, CONFIG_DEFAULT, LOGO_DEFAULT, LOGO_VERSION, dbUsuarios,
@@ -9,35 +9,100 @@ import {
 import { AREAS_PERMISOS } from '../../core/menu.js';
 export { permisosDe, nivelEnArea, NIVELES, AREAS_PERMISOS };
 import { placeholderImg } from '../../core/utils.js';
-import { iniciarSesion, cerrarSesion } from '../../core/sesion.js';
+import { iniciarSesion, cerrarSesion, cargarPerfil, debeCambiarClave, COLUMNAS_USUARIO } from '../../core/sesion.js';
 
 const { ref, computed } = Vue;
 
 const CONFIG_STORAGE_KEY = 'afi_config_custom';
 
-// ---------- Login ----------
-// NOTA: se mantiene el mismo mecanismo de login del original (a pedido).
+// ---------- Login (Supabase Auth: la contraseña se valida en el servidor) ----------
 export const loginUser = ref("");
 export const loginPass = ref("");
 export const authError = ref(false);
+export const authMensaje = ref("");
+export const ingresando = ref(false);
 
-export const login = () => {
-  const userEncontrado = dbUsuarios.value.find(u => String(u.usuario).toLowerCase() === loginUser.value.trim().toLowerCase() && u.clave === loginPass.value.trim());
-  if (userEncontrado) {
-    authError.value = false;
+export const login = async () => {
+  if (ingresando.value) return;
+  authError.value = false;
+  authMensaje.value = "";
+  ingresando.value = true;
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: emailDeUsuario(loginUser.value),
+      password: loginPass.value
+    });
+    if (error) {
+      authError.value = true;
+      authMensaje.value = (error.status === 429 || /rate|many/i.test(error.message || ''))
+        ? 'Demasiados intentos. Espera unos minutos y vuelve a intentar.'
+        : 'Usuario o contraseña incorrectos';
+      return;
+    }
+    const perfil = await cargarPerfil(data.user.id);
+    if (!perfil) {
+      await supabaseClient.auth.signOut().catch(() => {});
+      authError.value = true;
+      authMensaje.value = 'Tu cuenta no tiene perfil en el sistema. Contacta al Admin general.';
+      return;
+    }
     loginUser.value = "";
     loginPass.value = "";
-    iniciarSesion(userEncontrado);   // guarda la sesión (se mantiene al actualizar, se cierra tras 5 min sin actividad)
-  } else {
+    iniciarSesion(perfil);   // se mantiene al actualizar, se cierra tras 5 min sin actividad
+  } catch (err) {
     authError.value = true;
+    authMensaje.value = 'No se pudo conectar. Revisa tu conexión a internet.';
+    console.error(err);
+  } finally {
+    ingresando.value = false;
   }
 };
 
 export const logout = () => cerrarSesion();
 
+// ---------- Cambio de contraseña (propia) ----------
+export const MIN_CLAVE = 10;
+/** Devuelve el problema de la contraseña, o '' si cumple las reglas. */
+export const problemaClave = (clave, usuario = '') => {
+  const c = String(clave || '');
+  if (c.length < MIN_CLAVE) return `Debe tener al menos ${MIN_CLAVE} caracteres.`;
+  if (!/[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(c) || !/\d/.test(c)) return 'Debe incluir letras y números.';
+  if (usuario && c.toLowerCase().includes(String(usuario).toLowerCase())) return 'No puede contener tu nombre de usuario.';
+  return '';
+};
+
+export const mostrarCambioClave = ref(false);
+export const formClave = ref({ nueva: '', repetir: '' });
+export const errorClave = ref('');
+export const guardandoClave = ref(false);
+
+export const abrirCambioClave = () => { formClave.value = { nueva: '', repetir: '' }; errorClave.value = ''; mostrarCambioClave.value = true; };
+export const cerrarCambioClave = () => { if (!debeCambiarClave.value) mostrarCambioClave.value = false; };
+
+export const guardarNuevaClave = async () => {
+  const f = formClave.value;
+  const yo = usuarioActivo.value && usuarioActivo.value.usuario;
+  errorClave.value = problemaClave(f.nueva, yo) || (f.nueva !== f.repetir ? 'Las contraseñas no coinciden.' : '');
+  if (errorClave.value) return;
+  guardandoClave.value = true;
+  try {
+    const { error } = await supabaseClient.auth.updateUser({ password: f.nueva });
+    if (error) {
+      errorClave.value = /different|same/i.test(error.message || '') ? 'La nueva contraseña debe ser distinta de la actual.' : ('No se pudo cambiar: ' + error.message);
+      return;
+    }
+    await supabaseClient.rpc('frc_clave_cambiada');
+    debeCambiarClave.value = false;
+    if (usuarioActivo.value) usuarioActivo.value = { ...usuarioActivo.value, debe_cambiar_clave: false };
+    mostrarCambioClave.value = false;
+    alert('Contraseña actualizada.');
+  } finally {
+    guardandoClave.value = false;
+  }
+};
+
 // ---------- Usuarios (solo el ADMIN GENERAL los gestiona) ----------
 // tipo 'general' → rol 'admin' (todo).  tipo 'areas' → rol 'lectura' + permisos por área (columna jsonb `permisos`).
-const USUARIO_RESPALDO = [{ usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística FRC" }];
 /** Usuario principal: no se puede eliminar ni bajar de Admin general. */
 export const USUARIO_PRINCIPAL = 'logistica';
 const usuarioVacio = () => ({ usuario: "", clave: "", tipo: "areas", permisos: Object.fromEntries(AREAS_PERMISOS.map(a => [a.key, "lectura"])) });
@@ -54,10 +119,11 @@ const esMismoUsuario = (a, b) => a && b && String(a).toLowerCase() === String(b)
 
 export const cargarUsuariosDesdeSupabase = async () => {
   try {
-    const { data } = await supabaseClient.from(TABLAS.USUARIOS).select('*');
-    dbUsuarios.value = (data && data.length > 0) ? data : USUARIO_RESPALDO;
+    const { data, error } = await supabaseClient.from(TABLAS.USUARIOS).select(COLUMNAS_USUARIO).order('usuario');
+    if (error) throw error;
+    dbUsuarios.value = data || [];
   } catch (err) {
-    dbUsuarios.value = USUARIO_RESPALDO;
+    console.warn('No se pudieron leer los usuarios:', err);
   }
   // Si cambiaron los permisos del usuario conectado, se aplican al tiro
   if (usuarioActivo.value) {
@@ -69,16 +135,18 @@ export const cargarUsuariosDesdeSupabase = async () => {
 export const crearNuevoUsuario = async () => {
   if (!soloAdminGeneral()) return;
   const u = nuevoUsuario.value;
-  if (!u.usuario || !u.clave) return alert("Completa usuario y clave.");
+  if (!u.usuario.trim() || !u.clave) return alert("Completa usuario y contraseña inicial.");
+  const problema = problemaClave(u.clave, u.usuario.trim());
+  if (problema) return alert("Contraseña inicial: " + problema);
   const general = u.tipo === 'general';
-  const fila = { usuario: u.usuario.trim(), clave: u.clave.trim(), rol: general ? 'admin' : 'lectura', nombre: u.usuario.trim() };
-  const permisos = general ? {} : limpiarPermisos(u.permisos);
-  if (Object.keys(permisos).length) fila.permisos = permisos;
-  const { error } = await supabaseClient.from(TABLAS.USUARIOS).insert([fila]);
+  const { error } = await supabaseClient.rpc('frc_admin_crear_usuario', {
+    p_usuario: u.usuario.trim(), p_clave: u.clave, p_rol: general ? 'admin' : 'lectura',
+    p_permisos: general ? {} : limpiarPermisos(u.permisos)
+  });
   if (error) return avisarError('crear usuario', error);
   await cargarUsuariosDesdeSupabase();
   nuevoUsuario.value = usuarioVacio();
-  alert("¡Guardado!");
+  alert("¡Guardado! Entrégale la contraseña inicial al usuario: el sistema le pedirá cambiarla al entrar.");
 };
 
 /** Cambia el nivel de un usuario en un área (se guarda al tiro). */
@@ -113,9 +181,22 @@ export const eliminarUsuario = async (username) => {
   if (username === USUARIO_PRINCIPAL) return alert("El usuario principal no se puede eliminar.");
   if (esMismoUsuario(username, usuarioActivo.value && usuarioActivo.value.usuario)) return alert("No puedes eliminar tu propio usuario.");
   if (!confirm(`¿Eliminar al usuario ${username}?`)) return;
-  const { error } = await supabaseClient.from(TABLAS.USUARIOS).delete().eq('usuario', username);
+  const { error } = await supabaseClient.rpc('frc_admin_eliminar_usuario', { p_usuario: username });
   if (error) return alert("Error al eliminar usuario: " + (error.message || JSON.stringify(error)));
   await cargarUsuariosDesdeSupabase();
+};
+
+/** El Admin general asigna una contraseña temporal (el usuario deberá cambiarla al entrar). */
+export const restablecerClave = async (u) => {
+  if (!soloAdminGeneral()) return;
+  const clave = prompt(`Nueva contraseña temporal para ${u.usuario} (mínimo ${MIN_CLAVE} caracteres, letras y números):`);
+  if (clave === null) return;
+  const problema = problemaClave(clave, u.usuario);
+  if (problema) return alert(problema);
+  const { error } = await supabaseClient.rpc('frc_admin_cambiar_clave', { p_usuario: u.usuario, p_clave: clave });
+  if (error) return alert("Error al restablecer la contraseña: " + (error.message || JSON.stringify(error)));
+  await cargarUsuariosDesdeSupabase();
+  alert(`Listo. Se cerraron las sesiones de ${u.usuario}; al entrar con la clave temporal deberá crear una nueva.`);
 };
 
 // ---------- Personalización (se guarda en este navegador) ----------

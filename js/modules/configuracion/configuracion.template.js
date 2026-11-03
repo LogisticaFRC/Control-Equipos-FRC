@@ -26,7 +26,7 @@ export default /* html */ `
       <h4 class="font-bold text-slate-800 uppercase flex items-center gap-1.5"><i class="fa-solid fa-user-plus text-emerald-600"></i> Crear Nuevo Usuario</h4>
       <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <div><label class="block font-bold mb-1">Usuario</label><input type="text" v-model="nuevoUsuario.usuario" class="w-full p-2 border rounded-lg bg-white"></div>
-        <div><label class="block font-bold mb-1">Contraseña</label><input type="password" v-model="nuevoUsuario.clave" class="w-full p-2 border rounded-lg bg-white"></div>
+        <div><label class="block font-bold mb-1">Contraseña inicial</label><input type="password" v-model="nuevoUsuario.clave" autocomplete="new-password" class="w-full p-2 border rounded-lg bg-white"><p class="text-[10px] text-slate-500 mt-1">Mín. 10 caracteres, letras y números. Se le pedirá cambiarla al entrar.</p></div>
         <div>
           <label class="block font-bold mb-1">Tipo</label>
           <select v-model="nuevoUsuario.tipo" class="w-full p-2 border rounded-lg bg-white font-bold">
@@ -54,6 +54,7 @@ export default /* html */ `
             <th class="p-2.5">Usuario</th>
             <th class="p-2.5">Tipo</th>
             <th v-for="a in AREAS_PERMISOS" :key="a.key" class="p-2.5 whitespace-nowrap"><i :class="['fa-solid mr-1', a.icon]"></i>{{ a.label }}</th>
+            <th v-if="esAdminGeneral" class="p-2.5 text-center">Clave</th>
             <th v-if="esAdminGeneral" class="p-2.5 text-center">Eliminar</th>
           </tr>
         </thead>
@@ -75,6 +76,10 @@ export default /* html */ `
                 <option v-for="n in NIVELES" :key="n.key" :value="n.key">{{ n.label }}</option>
               </select>
               <span v-else :class="['px-2 py-0.5 rounded text-[10px] font-bold', claseNivel(nivelEnArea(a.key, u))]">{{ etiquetaNivel(nivelEnArea(a.key, u)) }}</span>
+            </td>
+            <td v-if="esAdminGeneral" class="p-2.5 text-center whitespace-nowrap">
+              <button @click="restablecerClave(u)" title="Asignar contraseña temporal" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold"><i class="fa-solid fa-key"></i></button>
+              <span v-if="u.debe_cambiar_clave" title="Aún no cambia su contraseña inicial" class="ml-1 text-[9px] font-bold text-amber-700">PENDIENTE</span>
             </td>
             <td v-if="esAdminGeneral" class="p-2.5 text-center">
               <button v-if="u.usuario !== USUARIO_PRINCIPAL" @click="eliminarUsuario(u.usuario)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-1 rounded font-bold"><i class="fa-solid fa-trash"></i></button>
