@@ -354,7 +354,7 @@ export default /* html */ `
                       <td class="p-1.5 text-center">{{ t.n_item || '-' }}</td>
                       <td class="p-1.5"><span class="font-bold">{{ t.seccion || '-' }}</span><span class="block text-slate-500">{{ t.area }}</span></td>
                       <td class="p-1.5">{{ t.personal || '-' }}</td>
-                      <td class="p-1.5 text-center font-mono">{{ t.fecha_compromiso ? formatDateForDisplay(t.fecha_compromiso) : 'Fecha minuta' }}</td>
+                      <td class="p-1.5 text-center font-mono">{{ formatDateForDisplay(t.fecha_compromiso) }}</td>
                       <td class="p-1.5 text-center font-mono">{{ t.fecha_estimada || !t.fecha_texto ? formatDateForDisplay(t.fecha_estimada) : '' }}<span v-if="t.fecha_texto" class="block font-sans font-bold text-indigo-700">{{ t.fecha_texto }}</span></td>
                       <td class="p-1.5 whitespace-pre-line">{{ t.tarea }}</td>
                       <td class="p-1.5 text-center"><span :class="['px-1.5 py-0.5 rounded-full border font-bold', ESTADO_ESTILO[t.estado].badge]">{{ t.estado }}</span></td>
@@ -381,7 +381,7 @@ export default /* html */ `
       </div>
 
       <div class="px-5 py-3 bg-slate-50 border-t flex flex-wrap items-center justify-between gap-2">
-        <p class="text-[10px] text-slate-500">Word: "Fecha de Compromiso" del Word → Fecha Estimada (plazo). Fecha Compromiso = fecha de la minuta donde apareció la tarea por primera vez. "Cumple": 1 = Realizado, 0 = No Realizado, vacío = Pendiente.</p>
+        <p class="text-[10px] text-slate-500">Word: "Fecha de Compromiso" del Word → Fecha Estimada (plazo). Sin Fecha Compromiso la tarea no se marca vencida. "Cumple": 1 = Realizado, 0 = No Realizado, vacío = Pendiente.</p>
         <div class="flex gap-2">
           <button @click="showModalImportar = false" :disabled="importacion.guardando" class="px-4 py-2 rounded-lg border text-xs font-bold text-slate-600 hover:bg-white">Cancelar</button>
           <button @click="confirmarImportacion" :disabled="importacion.leyendo || importacion.guardando || !archivosValidos.length" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-extrabold disabled:opacity-50">

@@ -136,8 +136,9 @@ export const itemsDeMinuta = (id) => dbMinutasItems.value.filter(i => i.minuta_i
 
 export const itemsSel = computed(() => minutaSel.value ? itemsDeMinuta(minutaSel.value.id) : []);
 
-/** Tarea vencida: pasó la fecha estimada y no está cerrada. */
-export const esVencida = (it) => Boolean(it.fecha_estimada && it.fecha_estimada < hoyISO() && (it.estado === 'Pendiente' || it.estado === 'Proceso'));
+/** Tarea vencida: tiene Fecha Compromiso, pasó la Fecha Estimada y no está cerrada.
+ *  Sin Fecha Compromiso NO se marca vencida (las minutas importadas del Word antiguo no traen ese dato). */
+export const esVencida = (it) => Boolean(it.fecha_compromiso && it.fecha_estimada && it.fecha_estimada < hoyISO() && (it.estado === 'Pendiente' || it.estado === 'Proceso'));
 
 export const itemsFiltrados = computed(() => {
   const q = busquedaMinuta.value.trim().toLowerCase();
@@ -638,18 +639,17 @@ export const confirmarImportacion = async () => {
   imp.guardando = true;
   try {
     // Realizado sin fecha en el documento (ej. Cumple = 1) → se toma la fecha de la minuta
-    // Fecha Compromiso (cuándo se adquirió): si la tarea ya estaba en una minuta anterior se mantiene la fecha
-    // de la primera vez que apareció; si es nueva, es la fecha de esta minuta.
+    // Fecha Compromiso (cuándo se adquirió): NO se inventa. Si el archivo no la trae, se usa la que ya tenga
+    // registrada esa misma tarea en una minuta anterior; si no hay, queda vacía (y la tarea no se marca vencida).
     const claveTarea = (t) => normK(String(t || '').split('\n')[0]).slice(0, 80);
     const primeraFecha = (tarea, fechaMinuta) => {
       const k = claveTarea(tarea);
-      if (!k || !fechaMinuta) return fechaMinuta || null;
-      let min = fechaMinuta;
+      if (!k) return null;
+      let min = null;
       dbMinutasItems.value.forEach(i => {
-        if (claveTarea(i.tarea) !== k) return;
+        if (claveTarea(i.tarea) !== k || !i.fecha_compromiso) return;
         const m = dbMinutas.value.find(x => x.id === i.minuta_id);
-        const f = i.fecha_compromiso || (m && m.fecha);
-        if (f && m && m.fecha <= fechaMinuta && f < min) min = f;
+        if (m && (!fechaMinuta || m.fecha <= fechaMinuta) && (!min || i.fecha_compromiso < min)) min = i.fecha_compromiso;
       });
       return min;
     };

@@ -249,7 +249,7 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
 
 - **Menú como Programas:** carpetas por año y mes (se arman solas con la fecha de la minuta). La más reciente lleva la etiqueta *ACTUAL*; cada una muestra su % de cumplimiento.
 - **Nueva Minuta = continúa desde la última:** copia todas sus tareas con estado y fechas (opcional: dejar fuera las cerradas). La minuta anterior queda guardada tal cual (histórico).
-- **Estados:** Proceso, Pendiente, Realizado, No Realizado. Al marcar **Realizado** se guarda el día (editable). *Vencida* = Pendiente/Proceso con Fecha Estimada pasada (fila en rojo).
+- **Estados:** Proceso, Pendiente, Realizado, No Realizado. Al marcar **Realizado** se guarda el día (editable). *Vencida* = Pendiente/Proceso **con Fecha Compromiso** y con Fecha Estimada pasada (fila en rojo). Sin Fecha Compromiso nunca se marca vencida.
 - **Permisos:** Admin crea/renombra/elimina minutas y corrige el histórico. Subadmin crea minutas y edita solo la minuta actual. Lectura solo ve.
 - **Historial de una tarea** (ícono 🕓): cómo fue cambiando en cada minuta.
 - **Dashboard:** totales y % por estado, vencidas, % realizadas a tiempo, gráfico por estado, por encargado y evolución semana a semana.
@@ -258,7 +258,7 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
   - *Minuta ACTUAL:* siempre es la de **fecha más reciente**, aunque se importe después una más antigua (esa queda como histórico).
   - *Formato Word de la minuta:* tabla con `N° (sin título) | Área | Responsable | Fecha de Compromiso | Tarea | Cumple`. Las filas con un solo texto (ej. **Seguridad**) son **secciones**. Varias personas en Responsable se guardan separadas por " / ". Las viñetas de la tarea se conservan.
   - *Cumple:* `1` = Realizado (con la fecha de esa minuta como día realizado), `0` = No Realizado, vacío = Pendiente.
-  - *Fechas:* la **"Fecha de Compromiso" del Word es el plazo → se guarda como Fecha Estimada**. La **Fecha Compromiso** del sistema (cuándo se adquirió el compromiso) aún no viene en el Word: se completa con la fecha de la minuta donde la tarea apareció por primera vez. Cuando el Word traiga las dos fechas (ej. "Fecha Ingreso" + "Fecha de Compromiso"), la otra columna se toma como Fecha Compromiso. Si trae "Fecha Estimada" o "Plazo", "Fecha Compromiso" se respeta tal cual.
+  - *Fechas:* la **"Fecha de Compromiso" del Word es el plazo → se guarda como Fecha Estimada**. La **Fecha Compromiso** del sistema (cuándo se adquirió el compromiso) aún no viene en el Word: queda vacía (o se toma la que ya tenga esa misma tarea en una minuta anterior). Cuando el Word traiga las dos fechas (ej. "Fecha Ingreso" + "Fecha de Compromiso"), la otra columna se toma como Fecha Compromiso. Si trae "Fecha Estimada" o "Plazo", "Fecha Compromiso" se respeta tal cual.
   - *Plazo que no es fecha* (ej. "Siempre") se guarda como texto y se muestra bajo la Fecha Estimada (esas tareas nunca quedan vencidas).
   - Destino: crear minuta(s) nueva(s) (una por archivo), o agregar / reemplazar las tareas de la minuta seleccionada.
   - Word antiguo (.doc): abrirlo en Word y guardarlo como .docx. La lectura de Word usa mammoth y JSZip (se descargan solos desde cdn.jsdelivr.net).
