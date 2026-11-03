@@ -105,6 +105,9 @@ export default /* html */ `
             <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención</label>
             <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!puedeEditar" class="w-full p-2.5 border-none rounded-lg bg-white/10 font-mono font-bold text-sm outline-none">
           </div>
+          <button v-if="puedeEditar" @click="actualizarHorometroPerfil" :disabled="actualizandoHorometro" class="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-extrabold py-2.5 rounded-lg shadow text-xs uppercase transition">
+            <i :class="['fa-solid', actualizandoHorometro ? 'fa-spinner fa-spin' : 'fa-rotate']"></i> {{ actualizandoHorometro ? 'Actualizando...' : 'Actualizar Horómetro' }}
+          </button>
         </div>
 
         <div class="w-full lg:w-2/3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
@@ -117,11 +120,17 @@ export default /* html */ `
             <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Mantención</span>
             <strong class="font-mono text-base text-blue-300 block">{{ perfilEquipo.horometros?.hUltimaMant || 0 }}h</strong>
             <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ formatDateForDisplay(perfilEquipo.horometros?.ultimaMantFecha) }}</span>
+            <span class="text-[9px] opacity-60 block mt-0.5">Penúltima: {{ perfilEquipo.horometros?.hPenultimaMant ? perfilEquipo.horometros.hPenultimaMant + 'h · ' + formatDateForDisplay(perfilEquipo.horometros.penultimaMantFecha) : 'sin registro' }}</span>
           </div>
           <div class="bg-white/10 p-3 rounded-xl border border-white/20">
             <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Horómetro Actual Aprox.</span>
             <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong>
             <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(2) + ' hrs/día' : 'Sin uso diario' }}</span>
+            <span v-if="perfilEquipo.horometros?.calc" class="text-[9px] opacity-70 block mt-0.5 leading-tight" :title="perfilEquipo.horometros.metodoCalculo">
+              ({{ perfilEquipo.horometros.calc.hHasta }} − {{ perfilEquipo.horometros.calc.hDesde }}) / {{ perfilEquipo.horometros.calc.dias }} días<br>
+              {{ formatDateForDisplay(perfilEquipo.horometros.calc.fDesde) }} → {{ formatDateForDisplay(perfilEquipo.horometros.calc.fHasta) }}
+            </span>
+            <span v-else class="text-[9px] opacity-70 block mt-0.5">Uso por defecto (sin datos)</span>
           </div>
           <div class="bg-white/10 p-3 rounded-xl border border-white/20">
             <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Próxima Mantención (Meta)</span>

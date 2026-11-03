@@ -5,7 +5,7 @@
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
 import { empresaDe, esFueraDeServicio, EMPRESA_TALLER } from './inventario.mapper.js';
 import { listaEmpresas } from '../../core/store.js';
-import { dbIntervenciones, cargarDatosDesdeSupabase, buscarEquipoPorAfi, soloEditor } from '../../core/store.js';
+import { dbIntervenciones, dbEquipos, cargarDatosDesdeSupabase, buscarEquipoPorAfi, soloEditor } from '../../core/store.js';
 import { normalizarFecha, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, parseNum, mismoAfi, hoyISO } from '../../core/utils.js';
 import { TABLA_INVENTARIO } from './inventario.mapper.js';
 import { insertarItemPrograma } from '../programas/programas.service.js';
@@ -94,6 +94,34 @@ export const guardarPerfilEquipo = async () => {
   await cargarDatosDesdeSupabase();
   showPerfilEquipoModal.value = false;
   alert("¡Perfil guardado correctamente!");
+};
+
+// ---------- Actualizar solo horómetro / fecha / frecuencia (sin cerrar el perfil) ----------
+export const actualizandoHorometro = ref(false);
+export const actualizarHorometroPerfil = async () => {
+  if (!soloEditor()) return;
+  const p = perfilEquipo.value;
+  const h = parseNum(p.horometroActual);
+  if (!(h > 0)) return alert("Ingresa el horómetro tomado (mayor a 0).");
+  if (!p.fechaHorometroManual) return alert("Ingresa la fecha del horómetro.");
+  const hMant = Number(p.horometros?.hUltimaMant) || 0;
+  if (hMant > 0 && h < hMant && !confirm(`El horómetro ingresado (${h}h) es MENOR que la última mantención (${hMant}h). ¿Guardar de todas formas?`)) return;
+  actualizandoHorometro.value = true;
+  try {
+    await sb(supabaseClient.from(TABLA_INVENTARIO).update({
+      horometroactual: h,
+      fecha_horometro_manual: formatIsoDateForSupabase(p.fechaHorometroManual),
+      frecuencia_mantencion: Math.round(parseNum(p.frecuenciaMantencion)) || 250
+    }).eq('id', p.id));
+    await cargarDatosDesdeSupabase();
+    // Refresca los cálculos del perfil abierto sin perder lo que se está editando
+    const eq = dbEquipos.value.find(e => e.id === p.id);
+    if (eq) p.horometros = JSON.parse(JSON.stringify(eq.horometros || {}));
+  } catch (err) {
+    alert("Error al actualizar horómetro: " + errMsg(err));
+  } finally {
+    actualizandoHorometro.value = false;
+  }
 };
 
 // ---------- Asignación a programa desde el perfil ----------

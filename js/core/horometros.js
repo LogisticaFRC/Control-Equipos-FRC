@@ -28,9 +28,10 @@ const agruparPorAfi = (intervenciones) => {
   return map;
 };
 
+/** Solo cuenta como mantención el registro que dice "MANTENCIÓN" (causa o tipo). */
 const esMantencionReal = (i) => {
   const c = sinTildes(i.causa), t = sinTildes(i.tipoMant);
-  return c.includes('MANTENCION') || c.includes('MANTENIMIENTO') || t.includes('MANTENCION') || t.includes('PREVENTIVA');
+  return c.includes('MANTENCION') || c.includes('MANTENIMIENTO') || t.includes('MANTENCION');
 };
 
 /** Suma años a una fecha ISO (29-feb → 28-feb si el año destino no es bisiesto). */
@@ -60,28 +61,54 @@ export const calcularHorometrosEquipo = (eq, histFull) => {
   const histMant = histConHorometro.filter(esMantencionReal);
 
   const ultimaMant = histMant.length > 0 ? histMant[histMant.length - 1] : null;
-  const penultimaMant = histMant.length >= 2 ? histMant[histMant.length - 2] : null;
-  const ultimoReg = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : (histFull.length > 0 ? histFull[histFull.length - 1] : null);
-
-  const hTomadoManual = Number(eq.horometroActual) || 0;
-  const hUltimoTomado = hTomadoManual > 0 ? hTomadoManual : (ultimoReg ? Number(ultimoReg.horometro) || 0 : 0);
-  const fechaUltimoHorometro = hTomadoManual > 0 && eq.fechaHorometroManual ? normalizarFecha(eq.fechaHorometroManual) : (ultimoReg ? ultimoReg.fecha : '-');
-
   const hUltimaMant = ultimaMant ? Number(ultimaMant.horometro) : 0;
   const ultimaMantFecha = ultimaMant ? ultimaMant.fecha : '-';
+  // Penúltima: la mantención anterior con horómetro MENOR y fecha ANTERIOR (ignora registros duplicados de la misma mantención)
+  const penultimaMant = ultimaMant
+    ? [...histMant].reverse().find(i => Number(i.horometro) < hUltimaMant && parseIsoDate(i.fecha) < parseIsoDate(ultimaMantFecha)) || null
+    : null;
+  const ultimoReg = histConHorometro.length > 0 ? histConHorometro[histConHorometro.length - 1] : (histFull.length > 0 ? histFull[histFull.length - 1] : null);
 
-  // Tasa de uso (hrs/día)
-  let rateHrsDia = 0;
-  if (ultimaMant && hUltimoTomado > Number(ultimaMant.horometro)) {
-    rateHrsDia = (hUltimoTomado - Number(ultimaMant.horometro)) / calcularDiasExactos(fechaUltimoHorometro, ultimaMantFecha);
-  } else if (ultimaMant && penultimaMant && hUltimoTomado === Number(ultimaMant.horometro)) {
-    rateHrsDia = (hUltimoTomado - Number(penultimaMant.horometro)) / calcularDiasExactos(fechaUltimoHorometro, penultimaMant.fecha);
-  } else if (histConHorometro.length >= 2) {
+  // Último horómetro tomado: el manual si existe y es más nuevo; si no, el último registro del historial
+  const hTomadoManual = Number(eq.horometroActual) || 0;
+  const fechaManual = normalizarFecha(eq.fechaHorometroManual);
+  const hReg = ultimoReg ? Number(ultimoReg.horometro) || 0 : 0;
+  const usarManual = hTomadoManual > 0 && fechaManual && hTomadoManual >= hReg;
+  let hUltimoTomado = usarManual ? hTomadoManual : hReg;
+  let fechaUltimoHorometro = usarManual ? fechaManual : (ultimoReg ? ultimoReg.fecha : '-');
+  // Nunca puede ser menor que la última mantención
+  if (ultimaMant && hUltimoTomado < hUltimaMant) { hUltimoTomado = hUltimaMant; fechaUltimoHorometro = ultimaMantFecha; }
+
+  // ---------- Tasa de uso (hrs/día) — misma lógica que el Excel ----------
+  // 1) (Último horómetro tomado − Última mantención) / (fecha horómetro − fecha mantención)
+  // 2) Si son iguales (recién mantenido, diferencia 0): (Última mant. − Penúltima mant.) / (fecha última − fecha penúltima)
+  let rateHrsDia = 0, metodoCalculo = 'POR DEFECTO', calc = null;
+  const dHTomado = hUltimoTomado - hUltimaMant;
+  const dDiasTomado = diasEntre(fechaUltimoHorometro, ultimaMantFecha);
+  if (ultimaMant && dHTomado > 0 && dDiasTomado > 0) {
+    rateHrsDia = dHTomado / dDiasTomado;
+    metodoCalculo = 'TOMADO vs ÚLT. MANT.';
+    calc = { hDesde: hUltimaMant, fDesde: ultimaMantFecha, hHasta: hUltimoTomado, fHasta: fechaUltimoHorometro, horas: dHTomado, dias: dDiasTomado };
+  } else if (ultimaMant && penultimaMant) {
+    const dH = hUltimaMant - Number(penultimaMant.horometro);
+    const dD = diasEntre(ultimaMantFecha, penultimaMant.fecha);
+    if (dH > 0 && dD > 0) {
+      rateHrsDia = dH / dD;
+      metodoCalculo = 'PENÚLT. vs ÚLT. MANT.';
+      calc = { hDesde: Number(penultimaMant.horometro), fDesde: penultimaMant.fecha, hHasta: hUltimaMant, fHasta: ultimaMantFecha, horas: dH, dias: dD };
+    }
+  }
+  if (!(rateHrsDia > 0) && histConHorometro.length >= 2) {
     const penultimoReg = histConHorometro[histConHorometro.length - 2];
     const dH = Number(ultimoReg.horometro) - Number(penultimoReg.horometro);
-    if (dH > 0) rateHrsDia = dH / calcularDiasExactos(ultimoReg.fecha, penultimoReg.fecha);
+    const dD = calcularDiasExactos(ultimoReg.fecha, penultimoReg.fecha);
+    if (dH > 0) {
+      rateHrsDia = dH / dD;
+      metodoCalculo = 'ÚLTIMOS 2 REGISTROS';
+      calc = { hDesde: Number(penultimoReg.horometro), fDesde: penultimoReg.fecha, hHasta: Number(ultimoReg.horometro), fHasta: ultimoReg.fecha, horas: dH, dias: dD };
+    }
   }
-  if (!(rateHrsDia > 0)) rateHrsDia = USO_POR_DEFECTO_HRS_DIA;
+  if (!(rateHrsDia > 0)) { rateHrsDia = USO_POR_DEFECTO_HRS_DIA; metodoCalculo = 'POR DEFECTO'; calc = null; }
 
   // Si no hay fecha válida del último horómetro, no se proyecta (antes daba NaN)
   const diasDesdeUltimo = Math.max(0, diasEntre(hoy, fechaUltimoHorometro) ?? 0);
@@ -107,7 +134,9 @@ export const calcularHorometrosEquipo = (eq, histFull) => {
   return {
     hTomado: hUltimoTomado, fechaUltimoHorometro, hUltimaMant, ultimaMantFecha,
     hAprox, hTarget, horasFaltantes: Math.round(faltan * 10) / 10,
-    estadoTexto, rateHrsDia, fechaEstimada,
+    estadoTexto, rateHrsDia, fechaEstimada, metodoCalculo, calc,
+    hPenultimaMant: penultimaMant ? Number(penultimaMant.horometro) : 0,
+    penultimaMantFecha: penultimaMant ? penultimaMant.fecha : '-',
     fechaBaseAnual: baseAnual, ...anual
   };
 };
