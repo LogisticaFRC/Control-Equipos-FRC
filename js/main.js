@@ -38,7 +38,8 @@ const { createApp, onMounted, onBeforeUnmount, watchEffect, ref, reactive, compu
 
 import EnConstruccionView from './modules/general/en-construccion.view.js';
 // Menú lateral agrupado por áreas (Operaciones, Ventas, Seguridad, RRHH, General) → ver core/menu.js
-import { AREAS, areaDeTab, moduloDeTab } from './core/menu.js';
+import { AREAS, areaDeTab, moduloDeTab, menuAbierto } from './core/menu.js';
+import InicioView from './modules/general/inicio.view.js';
 
 const template = /* html */ `
   <div v-if="restaurandoSesion" class="min-h-screen flex items-center justify-center bg-slate-900 w-full flex-grow text-slate-300 text-sm font-semibold">
@@ -55,9 +56,9 @@ const template = /* html */ `
             class="w-10 h-10 shrink-0 rounded-lg hover:bg-white/10 flex items-center justify-center transition border border-white/10">
             <i class="fa-solid fa-bars text-lg"></i>
           </button>
-          <div class="bg-white p-1 rounded-lg w-12 h-12 shrink-0 flex items-center justify-center overflow-hidden border border-slate-700 shadow-sm">
+          <button @click="switchTab('inicio')" title="Ir al inicio" class="bg-white p-1 rounded-lg w-12 h-12 shrink-0 flex items-center justify-center overflow-hidden border border-slate-700 shadow-sm hover:ring-2 hover:ring-white/40 transition">
             <img :src="logoSrc" @error="onLogoError" referrerpolicy="no-referrer" alt="Logo" class="max-h-full max-w-full object-contain">
-          </div>
+          </button>
           <div class="min-w-0">
             <h1 class="font-bold text-lg leading-tight truncate">{{ config.title }}</h1>
             <p class="text-xs text-slate-300 opacity-90 truncate">
@@ -93,6 +94,12 @@ const template = /* html */ `
       </div>
       <nav class="flex-1 overflow-y-auto py-2">
         <div v-for="a in areas" :key="a.key" class="px-2">
+          <!-- Área de un solo botón (Inicio) -->
+          <button v-if="a.directo" @click="switchTab(a.modulos[0].key)"
+            :class="['w-full flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-md text-xs font-extrabold uppercase tracking-wider transition', currentTab === a.modulos[0].key ? 'bg-white/15 text-white' : 'hover:bg-white/5']">
+            <i :class="['fa-solid w-4 text-center', a.icon, a.color]"></i>{{ a.label }}
+          </button>
+          <template v-else>
           <button @click="areasAbiertas[a.key] = !areasAbiertas[a.key]"
             class="w-full flex items-center justify-between px-3 py-2.5 rounded-md hover:bg-white/5 text-xs font-extrabold uppercase tracking-wider">
             <span class="flex items-center gap-2.5"><i :class="['fa-solid w-4 text-center', a.icon, a.color]"></i>{{ a.label }}</span>
@@ -107,12 +114,14 @@ const template = /* html */ `
               <span v-if="m.placeholder" class="text-[9px] font-bold uppercase text-amber-400/80">Pronto</span>
             </button>
           </div>
+          </template>
         </div>
       </nav>
       <div class="px-4 py-3 border-t border-slate-800 text-[11px] text-slate-500 truncate"><i class="fa-solid fa-user mr-1"></i>{{ usuarioActivo.nombre }}</div>
     </aside>
 
     <main class="max-w-[1400px] mx-auto px-4 py-6 flex-grow w-full">
+      <inicio-view v-if="currentTab === 'inicio'"></inicio-view>
       <dashboard-view v-if="currentTab === 'dashboard'"></dashboard-view>
       <inventario-view v-if="currentTab === 'inventario'"></inventario-view>
       <programas-view v-if="currentTab === 'programas'"></programas-view>
@@ -148,7 +157,6 @@ const app = createApp({
     });
 
     // ---- Menú lateral ----
-    const menuAbierto = ref(false);
     const areaActual = computed(() => areaDeTab(currentTab.value));
     const moduloActual = computed(() => moduloDeTab(currentTab.value));
     const enOperaciones = computed(() => areaActual.value.key === 'operaciones');   // "Agregar Mantención" solo aquí
@@ -188,6 +196,7 @@ app.component('ConfiguracionView', ConfiguracionView);
 app.component('FormatosView', FormatosView);
 app.component('FiltrosView', FiltrosView);
 app.component('BodegaView', BodegaView);
+app.component('InicioView', InicioView);                   // Bienvenida (primera pantalla)
 app.component('EnConstruccionView', EnConstruccionView);   // Ventas / Seguridad / RRHH (pendientes)
 app.component('DocumentosCarpeta', DocumentosCarpeta);   // carpeta de documentos reutilizable (Formatos y Ficha Técnica)
 app.component('PerfilEquipo', PerfilEquipo);

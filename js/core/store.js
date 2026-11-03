@@ -21,7 +21,7 @@ export const isAdmin = computed(() => Boolean(usuarioActivo.value && usuarioActi
 export const isSubadmin = computed(() => Boolean(usuarioActivo.value && usuarioActivo.value.rol === 'subadmin'));
 /** Admin o Subadmin: puede editar equipos, horómetros y mantenciones. */
 export const puedeEditar = computed(() => isAdmin.value || isSubadmin.value);
-export const currentTab = ref('dashboard');
+export const currentTab = ref('inicio');   // pantalla de Bienvenida (ver core/menu.js)
 
 /** Guardas de permisos (se usan en los services para bloquear acciones aunque se fuerce el botón). */
 export const soloAdmin = () => {

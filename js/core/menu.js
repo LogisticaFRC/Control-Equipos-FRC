@@ -8,7 +8,20 @@
 // =====================================================================
 import { dbEquipos, dbMovimientos, dbIntervenciones } from './store.js';
 
+const { ref } = Vue;
+
+/** Menú lateral abierto/cerrado (compartido: lo abre el header y también la pantalla de Inicio). */
+export const menuAbierto = ref(false);
+
+/** Pantalla que se muestra al iniciar sesión. */
+export const TAB_INICIO = 'inicio';
+
 export const AREAS = [
+  // directo: true → se muestra como un solo botón (sin grupo desplegable)
+  {
+    key: 'inicio', label: 'Inicio', icon: 'fa-house', color: 'text-white', directo: true,
+    modulos: [{ key: 'inicio', label: 'Bienvenida', icon: 'fa-house' }]
+  },
   {
     key: 'operaciones', label: 'Operaciones', icon: 'fa-gears', color: 'text-amber-400',
     modulos: [

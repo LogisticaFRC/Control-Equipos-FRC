@@ -8,7 +8,7 @@
 // - Solo se guarda el NOMBRE de usuario (nunca la contraseña). El rol se vuelve a leer desde Supabase.
 // =====================================================================
 import { usuarioActivo, currentTab, dbUsuarios } from './store.js';
-import { TABS_VALIDAS } from './menu.js';
+import { TABS_VALIDAS, TAB_INICIO } from './menu.js';
 
 const { ref, watch } = Vue;
 
@@ -99,7 +99,7 @@ export const iniciarSesion = (user) => {
   avisoSesion.value = '';
   ultimaGuardada = Date.now();
   escribir({ usuario: user.usuario, ultimaActividad: ultimaGuardada });
-  currentTab.value = tabDesdeUrl() || 'dashboard';
+  currentTab.value = TAB_INICIO;   // al iniciar sesión siempre se parte en la Bienvenida
   history.replaceState(null, '', '#' + currentTab.value);
 };
 
@@ -125,7 +125,7 @@ export const restaurarSesion = () => {
     usuarioActivo.value = user;
     ultimaGuardada = Date.now();
     escribir({ usuario: user.usuario, ultimaActividad: ultimaGuardada });
-    currentTab.value = tabDesdeUrl() || 'dashboard';
+    currentTab.value = tabDesdeUrl() || TAB_INICIO;   // F5: se queda en la pantalla donde estaba
   } finally {
     restaurandoSesion.value = false;
   }

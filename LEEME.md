@@ -32,7 +32,7 @@ js/
     filtros/                   ← FILTROS (referencia cruzada por marca/modelo, comparativo de precios por proveedor)
     bodega/                    ← BODEGA FILTROS (inventario general de filtros, ARMAR KIT, movimientos)
     formatos/                  ← FORMATOS (Área → Norma ISO) + carpeta de documentos reutilizable (también Ficha Técnica de equipos)
-    general/                   ← pantalla "En construcción" para áreas sin módulos aún
+    general/                   ← INICIO (bienvenida) + pantalla "En construcción" para áreas sin módulos aún
 ```
 
 ### Menú lateral por áreas
@@ -41,6 +41,7 @@ Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú s
 
 | Área | Módulos |
 |---|---|
+| Inicio | Bienvenida ("Bienvenido al Sistema de Gestión FRC" + logo grande). Es la primera pantalla al iniciar sesión; también se llega haciendo clic en el logo del header |
 | Operaciones | Dashboard, Inventario AFI, Programas, Movimientos, Historial, Control Aceites, Filtros, Bodega Filtros |
 | Ventas · Seguridad · RRHH · Finanzas · Administración | En construcción (pantalla "Próximamente") |
 | General | Formatos, Config & Usuarios |
