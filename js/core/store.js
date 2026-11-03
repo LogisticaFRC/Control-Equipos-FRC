@@ -10,28 +10,70 @@ import { mapMovimiento, TABLA_MOVIMIENTOS } from '../modules/movimientos/movimie
 import { mapIntervencion, TABLA_HISTORIAL } from '../modules/historial/historial.mapper.js';
 import { mapAplicacion, mapPrecio, TABLA_FILTROS, TABLA_FILTROS_PRECIOS } from '../modules/filtros/filtros.mapper.js';
 import { mapStock, mapKit, mapKitItem, mapMovBodega } from '../modules/bodega/bodega.mapper.js';
+import { areaDeTab } from './menu.js';
 
 const { ref, computed } = Vue;
 
 // ---------- Sesión y navegación ----------
 export const usuarioActivo = ref(null);
-export const isAdmin = computed(() => Boolean(usuarioActivo.value && usuarioActivo.value.rol === 'admin'));
-/** SUBADMIN: lectura + editar horómetros, registrar/editar mantenciones y equipos, y cambiar el estado
- *  "Realizado" en Programas. NO puede eliminar nada, ni crear/borrar programas, ni modificar fechas. */
-export const isSubadmin = computed(() => Boolean(usuarioActivo.value && usuarioActivo.value.rol === 'subadmin'));
-/** Admin o Subadmin: puede editar equipos, horómetros y mantenciones. */
-export const puedeEditar = computed(() => isAdmin.value || isSubadmin.value);
 export const currentTab = ref('inicio');   // pantalla de Bienvenida (ver core/menu.js)
+
+// ---------- Permisos por ÁREA ----------
+// usuarios.rol = 'admin'  → ADMIN GENERAL: todo en todas las áreas + gestiona usuarios y configuración.
+// Cualquier otro usuario  → su nivel depende del área, guardado en usuarios.permisos (jsonb), ej.:
+//     { "operaciones": "admin", "finanzas": "subadmin" }   (área que no aparece = solo lectura)
+// Niveles por área:
+//   admin    → Admin del área: agregar, modificar y eliminar todo dentro de esa área.
+//   subadmin → editar horómetros, mantenciones y equipos, estado "Realizado" en Programas (sin eliminar).
+//   lectura  → solo ver.
+export const NIVELES = [
+  { key: 'lectura', label: 'Solo lectura' },
+  { key: 'subadmin', label: 'Subadmin' },
+  { key: 'admin', label: 'Admin del área' }
+];
+
+/** Permisos de un usuario por área. Usuarios antiguos sin permisos: 'subadmin' = Subadmin en Operaciones. */
+export const permisosDe = (u) => {
+  if (!u) return {};
+  let p = u.permisos;
+  if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { p = null; } }
+  if (p && typeof p === 'object' && Object.keys(p).length) return p;
+  return u.rol === 'subadmin' ? { operaciones: 'subadmin' } : {};
+};
+/** Nivel ('admin' | 'subadmin' | 'lectura') de un usuario en un área. */
+export const nivelEnArea = (areaKey, u = usuarioActivo.value) => {
+  if (!u) return 'lectura';
+  if (u.rol === 'admin') return 'admin';
+  return permisosDe(u)[areaKey] || 'lectura';
+};
+
+/** Admin general (dueño del sistema). */
+export const esAdminGeneral = computed(() => Boolean(usuarioActivo.value && usuarioActivo.value.rol === 'admin'));
+/** Área de la pantalla actual y nivel del usuario en ella. */
+export const areaActualKey = computed(() => areaDeTab(currentTab.value).key);
+export const nivelActual = computed(() => nivelEnArea(areaActualKey.value));
+
+/** Admin en el área actual (el Admin general siempre lo es). Todos los módulos usan esto. */
+export const isAdmin = computed(() => nivelActual.value === 'admin');
+/** Subadmin en el área actual. */
+export const isSubadmin = computed(() => nivelActual.value === 'subadmin');
+/** Admin o Subadmin en el área actual. */
+export const puedeEditar = computed(() => isAdmin.value || isSubadmin.value);
 
 /** Guardas de permisos (se usan en los services para bloquear acciones aunque se fuerce el botón). */
 export const soloAdmin = () => {
   if (isAdmin.value) return true;
-  alert("Acción no permitida: requiere perfil Administrador.");
+  alert("Acción no permitida: requiere perfil Administrador de esta área.");
   return false;
 };
 export const soloEditor = () => {
   if (isAdmin.value || isSubadmin.value) return true;
-  alert("Acción no permitida: tu perfil es de solo lectura.");
+  alert("Acción no permitida: en esta área tu perfil es de solo lectura.");
+  return false;
+};
+export const soloAdminGeneral = () => {
+  if (esAdminGeneral.value) return true;
+  alert("Acción no permitida: requiere perfil Administrador general.");
   return false;
 };
 

@@ -5,7 +5,9 @@ import { supabaseClient } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
 import {
   usuarioActivo, currentTab, config, CONFIG_DEFAULT, LOGO_DEFAULT, LOGO_VERSION, dbUsuarios,
-  dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems, soloAdmin } from '../../core/store.js';
+  dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems, soloAdminGeneral, permisosDe, nivelEnArea, NIVELES } from '../../core/store.js';
+import { AREAS_PERMISOS } from '../../core/menu.js';
+export { permisosDe, nivelEnArea, NIVELES, AREAS_PERMISOS };
 import { placeholderImg } from '../../core/utils.js';
 import { iniciarSesion, cerrarSesion } from '../../core/sesion.js';
 
@@ -33,9 +35,22 @@ export const login = () => {
 
 export const logout = () => cerrarSesion();
 
-// ---------- Usuarios ----------
+// ---------- Usuarios (solo el ADMIN GENERAL los gestiona) ----------
+// tipo 'general' → rol 'admin' (todo).  tipo 'areas' → rol 'lectura' + permisos por área (columna jsonb `permisos`).
 const USUARIO_RESPALDO = [{ usuario: "logistica", clave: "frc", rol: "admin", nombre: "Logística FRC" }];
-export const nuevoUsuario = ref({ usuario: "", clave: "", rol: "lectura" });
+/** Usuario principal: no se puede eliminar ni bajar de Admin general. */
+export const USUARIO_PRINCIPAL = 'logistica';
+const usuarioVacio = () => ({ usuario: "", clave: "", tipo: "areas", permisos: Object.fromEntries(AREAS_PERMISOS.map(a => [a.key, "lectura"])) });
+export const nuevoUsuario = ref(usuarioVacio());
+
+/** Deja solo las áreas con nivel distinto de 'lectura'. */
+const limpiarPermisos = (p) => Object.fromEntries(Object.entries(p || {}).filter(([, n]) => n && n !== 'lectura'));
+const avisarError = (accion, error) => {
+  const msg = error.message || JSON.stringify(error);
+  if (/permisos/i.test(msg)) return alert(`Error al ${accion}: falta la columna "permisos" en la tabla usuarios.\nEjecuta el archivo sql/permisos_areas.sql en Supabase (SQL Editor).`);
+  alert(`Error al ${accion}: ${msg}`);
+};
+const esMismoUsuario = (a, b) => a && b && String(a).toLowerCase() === String(b).toLowerCase();
 
 export const cargarUsuariosDesdeSupabase = async () => {
   try {
@@ -44,21 +59,59 @@ export const cargarUsuariosDesdeSupabase = async () => {
   } catch (err) {
     dbUsuarios.value = USUARIO_RESPALDO;
   }
+  // Si cambiaron los permisos del usuario conectado, se aplican al tiro
+  if (usuarioActivo.value) {
+    const yo = dbUsuarios.value.find(u => esMismoUsuario(u.usuario, usuarioActivo.value.usuario));
+    if (yo) usuarioActivo.value = yo;
+  }
 };
 
 export const crearNuevoUsuario = async () => {
-  if (!soloAdmin()) return;
+  if (!soloAdminGeneral()) return;
   const u = nuevoUsuario.value;
   if (!u.usuario || !u.clave) return alert("Completa usuario y clave.");
-  const { error } = await supabaseClient.from(TABLAS.USUARIOS).insert([{ usuario: u.usuario.trim(), clave: u.clave.trim(), rol: u.rol, nombre: u.usuario.trim() }]);
-  if (error) return alert("Error al crear usuario: " + (error.message || JSON.stringify(error)));
+  const general = u.tipo === 'general';
+  const fila = { usuario: u.usuario.trim(), clave: u.clave.trim(), rol: general ? 'admin' : 'lectura', nombre: u.usuario.trim() };
+  const permisos = general ? {} : limpiarPermisos(u.permisos);
+  if (Object.keys(permisos).length) fila.permisos = permisos;
+  const { error } = await supabaseClient.from(TABLAS.USUARIOS).insert([fila]);
+  if (error) return avisarError('crear usuario', error);
   await cargarUsuariosDesdeSupabase();
-  nuevoUsuario.value = { usuario: "", clave: "", rol: "lectura" };
+  nuevoUsuario.value = usuarioVacio();
   alert("¡Guardado!");
 };
 
+/** Cambia el nivel de un usuario en un área (se guarda al tiro). */
+export const cambiarPermisoArea = async (u, areaKey, nivel) => {
+  if (!soloAdminGeneral()) return;
+  const permisos = limpiarPermisos({ ...permisosDe(u), [areaKey]: nivel });
+  const { error } = await supabaseClient.from(TABLAS.USUARIOS).update({ permisos, rol: 'lectura' }).eq('usuario', u.usuario);
+  if (error) avisarError('guardar permisos', error);
+  await cargarUsuariosDesdeSupabase();
+};
+
+/** Sube a Admin general o lo pasa a "permisos por área". */
+export const cambiarTipoUsuario = async (u, tipo) => {
+  if (!soloAdminGeneral()) return;
+  if (tipo !== 'general' && (u.usuario === USUARIO_PRINCIPAL || esMismoUsuario(u.usuario, usuarioActivo.value && usuarioActivo.value.usuario))) {
+    alert("No puedes quitarle el perfil Admin general a este usuario.");
+    return cargarUsuariosDesdeSupabase();
+  }
+  if (tipo === 'general' && !confirm(`¿Dar a ${u.usuario} acceso de Admin general (todo el sistema, incluidos usuarios)?`)) return cargarUsuariosDesdeSupabase();
+  const cambios = { rol: tipo === 'general' ? 'admin' : 'lectura' };
+  const { error } = await supabaseClient.from(TABLAS.USUARIOS).update(cambios).eq('usuario', u.usuario);
+  if (error) avisarError('cambiar el tipo de usuario', error);
+  await cargarUsuariosDesdeSupabase();
+};
+
+/** Colores y nombres de los niveles (para la tabla de usuarios). */
+export const claseNivel = (n) => n === 'admin' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : (n === 'subadmin' ? 'bg-sky-50 text-sky-800 border-sky-300' : 'bg-white text-slate-500');
+export const etiquetaNivel = (n) => (NIVELES.find(x => x.key === n) || NIVELES[0]).label;
+
 export const eliminarUsuario = async (username) => {
-  if (!soloAdmin()) return;
+  if (!soloAdminGeneral()) return;
+  if (username === USUARIO_PRINCIPAL) return alert("El usuario principal no se puede eliminar.");
+  if (esMismoUsuario(username, usuarioActivo.value && usuarioActivo.value.usuario)) return alert("No puedes eliminar tu propio usuario.");
   if (!confirm(`¿Eliminar al usuario ${username}?`)) return;
   const { error } = await supabaseClient.from(TABLAS.USUARIOS).delete().eq('usuario', username);
   if (error) return alert("Error al eliminar usuario: " + (error.message || JSON.stringify(error)));

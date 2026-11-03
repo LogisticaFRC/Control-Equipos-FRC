@@ -28,6 +28,7 @@ export const AREAS = [
       { key: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line' },
       { key: 'inventario', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.length },
       { key: 'programas', label: 'Programas', icon: 'fa-calendar-check' },
+      { key: 'minutas', label: 'Minutas', icon: 'fa-clipboard-list' },
       { key: 'movimientos', label: 'Movimientos', icon: 'fa-truck-ramp-box', count: () => dbMovimientos.value.length },
       { key: 'hojaVida', label: 'Historial', icon: 'fa-file-medical', count: () => dbIntervenciones.value.length },
       { key: 'aceites', label: 'Control Aceites', icon: 'fa-oil-can' },
@@ -63,6 +64,9 @@ export const AREAS = [
     ]
   }
 ];
+
+/** Áreas a las que se les asignan permisos (todas menos Inicio). */
+export const AREAS_PERMISOS = AREAS.filter(a => !a.directo);
 
 /** Todas las claves de pantalla válidas (para la URL #clave). */
 export const TABS_VALIDAS = AREAS.flatMap(a => a.modulos.map(m => m.key));

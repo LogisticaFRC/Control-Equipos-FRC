@@ -3,7 +3,7 @@
 // =====================================================================
 import template from './configuracion.template.js';
 import { comunes } from '../../core/comunes.js';
-import { config, dbUsuarios } from '../../core/store.js';
+import { config, dbUsuarios, esAdminGeneral } from '../../core/store.js';
 import * as S from './configuracion.service.js';
 import { importarInventarioFile } from '../inventario/inventario.service.js';
 import { importarMovimientosFile } from '../movimientos/movimientos.service.js';
@@ -14,7 +14,7 @@ export default {
   template,
   setup() {
     return {
-      ...comunes(), ...S, config, dbUsuarios,
+      ...comunes(), ...S, config, dbUsuarios, esAdminGeneral,
       importarInventarioFile, importarMovimientosFile, importarIntervencionesFile
     };
   }

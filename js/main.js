@@ -1,7 +1,7 @@
 // =====================================================================
 // MAIN · Punto de entrada: arma la app, el header/menú y registra los módulos
 // =====================================================================
-import { usuarioActivo, isAdmin, isSubadmin, puedeEditar, currentTab, config, cargarDatosDesdeSupabase } from './core/store.js';
+import { usuarioActivo, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, cargarDatosDesdeSupabase } from './core/store.js';
 
 // Módulos (pantallas)
 import DashboardView from './modules/dashboard/dashboard.view.js';
@@ -14,6 +14,7 @@ import ConfiguracionView from './modules/configuracion/configuracion.view.js';
 import FormatosView from './modules/formatos/formatos.view.js';
 import FiltrosView from './modules/filtros/filtros.view.js';
 import BodegaView from './modules/bodega/bodega.view.js';
+import MinutasView from './modules/minutas/minutas.view.js';
 import DocumentosCarpeta from './modules/formatos/documentos-carpeta.view.js';
 import LoginView from './modules/configuracion/login.view.js';
 import { restaurandoSesion, restaurarSesion } from './core/sesion.js';
@@ -73,8 +74,10 @@ const template = /* html */ `
             <i class="fa-solid fa-plus-circle text-sm"></i> Agregar Mantención
           </button>
           <div class="text-right text-xs">
-            <span v-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin)</span>
-            <span v-else-if="isSubadmin" class="inline-block px-2.5 py-1 rounded-full bg-sky-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-gear mr-1"></i> {{ usuarioActivo.nombre }} (Subadmin)</span>
+            <span v-if="esAdminGeneral" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-crown mr-1"></i> {{ usuarioActivo.nombre }} (Admin general)</span>
+            <span v-else-if="areaActual.directo" class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap"><i class="fa-solid fa-user mr-1"></i> {{ usuarioActivo.nombre }}</span>
+            <span v-else-if="isAdmin" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-shield mr-1"></i> {{ usuarioActivo.nombre }} (Admin {{ areaActual.label }})</span>
+            <span v-else-if="isSubadmin" class="inline-block px-2.5 py-1 rounded-full bg-sky-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-gear mr-1"></i> {{ usuarioActivo.nombre }} (Subadmin {{ areaActual.label }})</span>
             <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap"><i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)</span>
           </div>
           <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
@@ -125,6 +128,7 @@ const template = /* html */ `
       <dashboard-view v-if="currentTab === 'dashboard'"></dashboard-view>
       <inventario-view v-if="currentTab === 'inventario'"></inventario-view>
       <programas-view v-if="currentTab === 'programas'"></programas-view>
+      <minutas-view v-if="currentTab === 'minutas'"></minutas-view>
       <movimientos-view v-if="currentTab === 'movimientos'"></movimientos-view>
       <historial-view v-if="currentTab === 'hojaVida'"></historial-view>
       <aceites-view v-if="currentTab === 'aceites'"></aceites-view>
@@ -178,7 +182,7 @@ const app = createApp({
     });
 
     return {
-      usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, puedeEditar, currentTab, config, areas: AREAS, switchTab,
+      usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: AREAS, switchTab,
       menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };
@@ -196,6 +200,7 @@ app.component('ConfiguracionView', ConfiguracionView);
 app.component('FormatosView', FormatosView);
 app.component('FiltrosView', FiltrosView);
 app.component('BodegaView', BodegaView);
+app.component('MinutasView', MinutasView);
 app.component('InicioView', InicioView);                   // Bienvenida (primera pantalla)
 app.component('EnConstruccionView', EnConstruccionView);   // Ventas / Seguridad / RRHH (pendientes)
 app.component('DocumentosCarpeta', DocumentosCarpeta);   // carpeta de documentos reutilizable (Formatos y Ficha Técnica)

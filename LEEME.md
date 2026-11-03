@@ -25,6 +25,7 @@ js/
     dashboard/                 ← DASHBOARD
     inventario/                ← INVENTARIO AFI (+ Perfil de Equipo y modal Nuevo Equipo)
     programas/                 ← PROGRAMAS (+ modales Crear Programa / Asignar Equipo)
+    minutas/                   ← MINUTAS (mejora continua semanal: carpetas Año → Mes, dashboard, importar/exportar)
     movimientos/               ← MOVIMIENTOS (+ modal Registrar Movimiento)
     historial/                 ← HISTORIAL (+ formulario de Mantención)
     aceites/                   ← CONTROL ACEITES
@@ -42,13 +43,27 @@ Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú s
 | Área | Módulos |
 |---|---|
 | Inicio | Bienvenida ("Bienvenido al Sistema de Gestión FRC" + logo grande). Es la primera pantalla al iniciar sesión; también se llega haciendo clic en el logo del header |
-| Operaciones | Dashboard, Inventario AFI, Programas, Movimientos, Historial, Control Aceites, Filtros, Bodega Filtros |
+| Operaciones | Dashboard, Inventario AFI, Programas, Minutas, Movimientos, Historial, Control Aceites, Filtros, Bodega Filtros |
 | Ventas · Seguridad · RRHH · Finanzas · Administración | En construcción (pantalla "Próximamente") |
 | General | Formatos, Config & Usuarios |
 
 - El botón **Agregar Mantención** solo aparece en módulos de **Operaciones** (y para usuarios con permiso de edición).
 - Bajo el título del header se muestra el área y módulo actual (ej. *Operaciones › Inventario AFI*).
 - **Para agregar un módulo a un área:** sumarlo en `js/core/menu.js` (dentro de `modulos` del área; quitar el "Inicio …" con `placeholder` si ya no se necesita) y registrar su vista en `main.js`. La URL `#clave` queda válida automáticamente.
+
+### Permisos por área (usuarios)
+
+> ⚠️ Ejecutar una vez **`sql/permisos_areas.sql`** en Supabase (agrega la columna `permisos` a `usuarios` y pasa los Subadmin antiguos a "Subadmin de Operaciones").
+
+- **Admin general** (`rol = 'admin'`): todo en todas las áreas y es el **único** que crea/elimina usuarios y cambia permisos (Config & Usuarios). El usuario `logistica` es el principal: no se puede eliminar ni bajar.
+- **Usuario por área** (`rol = 'lectura'` + `permisos` jsonb, ej. `{"operaciones":"admin","finanzas":"subadmin"}`). En cada área tiene uno de estos niveles:
+  - **Admin del área** → agregar, modificar y eliminar todo dentro de esa área.
+  - **Subadmin** → lo que hacía el Subadmin (horómetros, mantenciones, equipos, estado "Realizado" en Programas; sin eliminar).
+  - **Solo lectura** → ve el área pero no modifica (área que no aparece en `permisos` = solo lectura).
+- Todos ven todas las áreas; los botones de edición aparecen solo donde el usuario tiene permiso.
+- En el header se muestra el nivel del usuario en el área actual (ej. *Juan (Admin Finanzas)*).
+- Implementación: `core/store.js` (`nivelEnArea`, `isAdmin`/`isSubadmin`/`puedeEditar` calculados según el área de la pantalla actual, `soloAdminGeneral()`). Los módulos no cambiaron: siguen usando `isAdmin`, `soloAdmin()`, `soloEditor()`.
+- Igual que antes, la validación es del lado del navegador; para seguridad real faltan políticas RLS en Supabase.
 
 Cada módulo tiene:
 - `*.template.js` → el HTML de la pantalla
@@ -222,3 +237,23 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
 - Arriba, un resumen por modelo: equipos pendientes vs kits en bodega y cuántos **faltan**.
 - Al marcar **Realizado** se descuenta **1 KIT** del modelo (el de más stock). Si no hay kit, pregunta si marcar igual.
   Al volver a **Pendiente** el kit se devuelve a bodega. Todo queda en *Bodega Filtros → Movimientos* (con referencia al ítem del programa).
+
+## Minutas (pestaña "Minutas" en Operaciones)
+
+> ⚠️ Ejecutar una vez **`sql/minutas.sql`** en Supabase (crea `bd_minutas` y `bd_minutas_items`).
+
+| Tabla | Qué guarda |
+|---|---|
+| `bd_minutas` | Cada minuta: nombre, **fecha** (define la carpeta Año → Mes), minuta de origen, quién la creó |
+| `bd_minutas_items` | Tareas: **N° Item, Personal Encargado, Fecha Compromiso, Fecha Estimada, Tareas, Estado, Fecha Realizado** |
+
+- **Menú como Programas:** carpetas por año y mes (se arman solas con la fecha de la minuta). La más reciente lleva la etiqueta *ACTUAL*; cada una muestra su % de cumplimiento.
+- **Nueva Minuta = continúa desde la última:** copia todas sus tareas con estado y fechas (opcional: dejar fuera las cerradas). La minuta anterior queda guardada tal cual (histórico).
+- **Estados:** Proceso, Pendiente, Realizado, No Realizado. Al marcar **Realizado** se guarda el día (editable). *Vencida* = Pendiente/Proceso con Fecha Estimada pasada (fila en rojo).
+- **Permisos:** Admin crea/renombra/elimina minutas y corrige el histórico. Subadmin crea minutas y edita solo la minuta actual. Lectura solo ve.
+- **Historial de una tarea** (ícono 🕓): cómo fue cambiando en cada minuta.
+- **Dashboard:** totales y % por estado, vencidas, % realizadas a tiempo, gráfico por estado, por encargado y evolución semana a semana.
+- **Importar Excel** (a la minuta seleccionada: reemplazar o agregar) o **Importar como nueva**. Columnas: `N° Item | Personal Encargado | Fecha Compromiso | Fecha Estimada | Tareas | Estado | Fecha Realizado` (botón *Plantilla*). También acepta los Excel exportados por el sistema.
+- **Exportar Minuta:** Excel con logo, resumen con cantidades y %, tabla con colores por estado y hoja *Dashboard* con gráficos.
+- **Exportar Todas (un archivo):** *Resumen General* (situación actual + evolución por minuta + promedio), *Dashboard*, *Histórico* consolidado y una hoja por minuta en orden cronológico.
+- La exportación usa ExcelJS (se descarga sola desde cdn.jsdelivr.net al exportar). El logo es el configurado en Config & Usuarios; si el servidor de la imagen no lo permite, el Excel sale sin logo.
