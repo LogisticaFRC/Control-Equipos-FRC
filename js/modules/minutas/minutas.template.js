@@ -143,11 +143,11 @@ export default /* html */ `
                       <input v-model="it.seccion" @change="guardarTarea(it)" type="text" placeholder="Sección" title="Sección (título que agrupa las tareas)" class="w-full p-1 border border-dashed rounded text-[10px] text-slate-500">
                     </td>
                     <td class="p-1"><textarea v-model="it.personal" @change="guardarTarea(it)" rows="2" class="w-full p-1 border rounded uppercase resize-y" title="Varios encargados: sepáralos con /"></textarea></td>
+                    <td class="p-1"><input v-model="it.fecha_compromiso" @change="guardarTarea(it)" type="date" class="w-full p-1 border rounded font-mono" title="Día en que se adquirió el compromiso"></td>
                     <td class="p-1 space-y-1">
-                      <input v-model="it.fecha_compromiso" @change="guardarTarea(it)" type="date" class="w-full p-1 border rounded font-mono">
+                      <input v-model="it.fecha_estimada" @change="guardarTarea(it)" type="date" :class="['w-full p-1 border rounded font-mono', esVencida(it) ? 'border-rose-400 text-rose-700 font-bold' : '']">
                       <input v-model="it.fecha_texto" @change="guardarTarea(it)" type="text" placeholder="o texto (ej. Siempre)" class="w-full p-1 border border-dashed rounded text-[10px] text-indigo-700 font-bold">
                     </td>
-                    <td class="p-1"><input v-model="it.fecha_estimada" @change="guardarTarea(it)" type="date" :class="['w-full p-1 border rounded font-mono', esVencida(it) ? 'border-rose-400 text-rose-700 font-bold' : '']"></td>
                     <td class="p-1"><textarea v-model="it.tarea" @change="guardarTarea(it)" :rows="Math.min(8, Math.max(2, String(it.tarea || '').split('\\n').length))" class="w-full p-1 border rounded resize-y"></textarea></td>
                     <td class="p-1">
                       <select v-model="it.estado" @change="guardarTarea(it)" :class="['w-full p-1 border rounded font-bold', ESTADO_ESTILO[it.estado].badge]">
@@ -170,8 +170,8 @@ export default /* html */ `
                     <td class="p-2 text-center font-bold">{{ it.n_item }}</td>
                     <td class="p-2 font-semibold">{{ it.area || '-' }}</td>
                     <td class="p-2 font-semibold whitespace-pre-line">{{ (it.personal || '-').split(' / ').join('\\n') }}</td>
-                    <td class="p-2 text-center font-mono">{{ formatDateForDisplay(it.fecha_compromiso) }}<span v-if="it.fecha_texto" class="block font-sans font-bold text-indigo-700">{{ it.fecha_texto }}</span></td>
-                    <td :class="['p-2 text-center font-mono', esVencida(it) ? 'text-rose-700 font-bold' : '']">{{ formatDateForDisplay(it.fecha_estimada) }}</td>
+                    <td class="p-2 text-center font-mono">{{ formatDateForDisplay(it.fecha_compromiso) }}</td>
+                    <td :class="['p-2 text-center font-mono', esVencida(it) ? 'text-rose-700 font-bold' : '']">{{ it.fecha_estimada || !it.fecha_texto ? formatDateForDisplay(it.fecha_estimada) : '' }}<span v-if="it.fecha_texto" class="block font-sans font-bold text-indigo-700">{{ it.fecha_texto }}</span></td>
                     <td class="p-2 whitespace-pre-line">{{ it.tarea }}</td>
                     <td class="p-2 text-center">
                       <span :class="['inline-block px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTADO_ESTILO[it.estado].badge]"><i :class="['fa-solid mr-1', ESTADO_ESTILO[it.estado].icon]"></i>{{ it.estado }}</span>
@@ -354,8 +354,8 @@ export default /* html */ `
                       <td class="p-1.5 text-center">{{ t.n_item || '-' }}</td>
                       <td class="p-1.5"><span class="font-bold">{{ t.seccion || '-' }}</span><span class="block text-slate-500">{{ t.area }}</span></td>
                       <td class="p-1.5">{{ t.personal || '-' }}</td>
-                      <td class="p-1.5 text-center font-mono">{{ formatDateForDisplay(t.fecha_compromiso) }}<span v-if="t.fecha_texto" class="block font-sans font-bold text-indigo-700">{{ t.fecha_texto }}</span></td>
-                      <td class="p-1.5 text-center font-mono">{{ formatDateForDisplay(t.fecha_estimada) }}</td>
+                      <td class="p-1.5 text-center font-mono">{{ t.fecha_compromiso ? formatDateForDisplay(t.fecha_compromiso) : 'Fecha minuta' }}</td>
+                      <td class="p-1.5 text-center font-mono">{{ t.fecha_estimada || !t.fecha_texto ? formatDateForDisplay(t.fecha_estimada) : '' }}<span v-if="t.fecha_texto" class="block font-sans font-bold text-indigo-700">{{ t.fecha_texto }}</span></td>
                       <td class="p-1.5 whitespace-pre-line">{{ t.tarea }}</td>
                       <td class="p-1.5 text-center"><span :class="['px-1.5 py-0.5 rounded-full border font-bold', ESTADO_ESTILO[t.estado].badge]">{{ t.estado }}</span></td>
                       <td class="p-1.5 text-center font-mono">{{ formatDateForDisplay(t.fecha_realizado) }}</td>
@@ -381,7 +381,7 @@ export default /* html */ `
       </div>
 
       <div class="px-5 py-3 bg-slate-50 border-t flex flex-wrap items-center justify-between gap-2">
-        <p class="text-[10px] text-slate-500">Word: se lee la tabla con columna "Tarea". Columna "Cumple": 1 = Realizado, 0 = No Realizado, vacío = Pendiente.</p>
+        <p class="text-[10px] text-slate-500">Word: "Fecha de Compromiso" del Word → Fecha Estimada (plazo). Fecha Compromiso = fecha de la minuta donde apareció la tarea por primera vez. "Cumple": 1 = Realizado, 0 = No Realizado, vacío = Pendiente.</p>
         <div class="flex gap-2">
           <button @click="showModalImportar = false" :disabled="importacion.guardando" class="px-4 py-2 rounded-lg border text-xs font-bold text-slate-600 hover:bg-white">Cancelar</button>
           <button @click="confirmarImportacion" :disabled="importacion.leyendo || importacion.guardando || !archivosValidos.length" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-extrabold disabled:opacity-50">

@@ -258,7 +258,8 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
   - *Minuta ACTUAL:* siempre es la de **fecha más reciente**, aunque se importe después una más antigua (esa queda como histórico).
   - *Formato Word de la minuta:* tabla con `N° (sin título) | Área | Responsable | Fecha de Compromiso | Tarea | Cumple`. Las filas con un solo texto (ej. **Seguridad**) son **secciones**. Varias personas en Responsable se guardan separadas por " / ". Las viñetas de la tarea se conservan.
   - *Cumple:* `1` = Realizado (con la fecha de esa minuta como día realizado), `0` = No Realizado, vacío = Pendiente.
-  - *Fecha que no es fecha* (ej. "Siempre") se guarda como texto y se muestra bajo la fecha.
+  - *Fechas:* la **"Fecha de Compromiso" del Word es el plazo → se guarda como Fecha Estimada**. La **Fecha Compromiso** del sistema (cuándo se adquirió el compromiso) aún no viene en el Word: se completa con la fecha de la minuta donde la tarea apareció por primera vez. Cuando el Word traiga las dos fechas (ej. "Fecha Ingreso" + "Fecha de Compromiso"), la otra columna se toma como Fecha Compromiso. Si trae "Fecha Estimada" o "Plazo", "Fecha Compromiso" se respeta tal cual.
+  - *Plazo que no es fecha* (ej. "Siempre") se guarda como texto y se muestra bajo la Fecha Estimada (esas tareas nunca quedan vencidas).
   - Destino: crear minuta(s) nueva(s) (una por archivo), o agregar / reemplazar las tareas de la minuta seleccionada.
   - Word antiguo (.doc): abrirlo en Word y guardarlo como .docx. La lectura de Word usa mammoth y JSZip (se descargan solos desde cdn.jsdelivr.net).
   - Columnas Excel / plantilla: `N° Item | Sección | Área | Personal Encargado | Fecha Compromiso | Fecha Estimada | Tareas | Estado | Fecha Realizado`. También acepta los Excel exportados por el sistema.

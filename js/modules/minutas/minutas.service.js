@@ -431,7 +431,23 @@ const tareasDeMatriz = (matriz) => {
     const mismaCabecera = mapa && tipos.join('|') === mapa.join('|');
     const pareceCabecera = !mapa && tipos.includes('tarea') && (tipos.filter(Boolean).length >= 2 || celdas.filter(c => String(c) !== '').length === 1)
       && !celdas.some(c => parseFechaTexto(c));
-    if (mismaCabecera || pareceCabecera) { mapa = tipos; continue; }   // encabezado (o repetido en otra página)
+    if (mismaCabecera || pareceCabecera) {   // encabezado (o repetido en otra página)
+      mapa = tipos;
+      // En el Word de la minuta "Fecha de Compromiso" es el PLAZO (= Fecha Estimada). Si la tabla tiene una sola
+      // columna de fecha y no hay "Fecha Estimada", esa columna se toma como Fecha Estimada.
+      //  · Word actual: solo "Fecha de Compromiso" → es la Fecha Estimada.
+      //  · Word nuevo con 2 fechas (ej. "Fecha Ingreso" + "Fecha de Compromiso") → "Fecha de Compromiso" = Estimada, la otra = Compromiso.
+      //  · Si trae "Fecha Estimada" / "Plazo" explícito, "Fecha Compromiso" se respeta como Fecha Compromiso.
+      if (!mapa.includes('fecha_estimada')) {
+        const idxComp = mapa.map((t, i) => (t === 'fecha_compromiso' ? i : -1)).filter(i => i >= 0);
+        if (idxComp.length === 1) mapa = mapa.map(t => (t === 'fecha_compromiso' ? 'fecha_estimada' : t));
+        else if (idxComp.length > 1) {
+          const iPlazo = idxComp.find(i => normK(celdas[i]).includes('compromiso')) ?? idxComp[idxComp.length - 1];
+          mapa = mapa.map((t, i) => (i === iPlazo ? 'fecha_estimada' : t));
+        }
+      }
+      continue;
+    }
     if (!mapa) continue;
     // Fila de sección: un solo texto en toda la fila
     const llenas = [...new Set(celdas.filter(c => String(c) !== ''))];
@@ -451,7 +467,7 @@ const tareasDeMatriz = (matriz) => {
     const fr = parseFechaTexto(v.fecha_realizado);
     const estado = v.estado !== undefined ? normalizarEstado(v.estado) : (fr ? 'Realizado' : 'Pendiente');
     const fc = parseFechaTexto(v.fecha_compromiso), fe = parseFechaTexto(v.fecha_estimada);
-    const textoNoFecha = [v.fecha_compromiso && !fc ? v.fecha_compromiso : '', v.fecha_estimada && !fe ? v.fecha_estimada : ''].filter(Boolean).join(' / ');
+    const textoNoFecha = v.fecha_estimada && !fe ? v.fecha_estimada : '';   // ej. plazo "Siempre"
     salida.push({
       n_item: parseInt(String(v.n_item || '').replace(/[^\d]/g, '')) || null,
       seccion: String(v.seccion || seccion || '').trim(),
@@ -622,11 +638,26 @@ export const confirmarImportacion = async () => {
   imp.guardando = true;
   try {
     // Realizado sin fecha en el documento (ej. Cumple = 1) → se toma la fecha de la minuta
+    // Fecha Compromiso (cuándo se adquirió): si la tarea ya estaba en una minuta anterior se mantiene la fecha
+    // de la primera vez que apareció; si es nueva, es la fecha de esta minuta.
+    const claveTarea = (t) => normK(String(t || '').split('\n')[0]).slice(0, 80);
+    const primeraFecha = (tarea, fechaMinuta) => {
+      const k = claveTarea(tarea);
+      if (!k || !fechaMinuta) return fechaMinuta || null;
+      let min = fechaMinuta;
+      dbMinutasItems.value.forEach(i => {
+        if (claveTarea(i.tarea) !== k) return;
+        const m = dbMinutas.value.find(x => x.id === i.minuta_id);
+        const f = i.fecha_compromiso || (m && m.fecha);
+        if (f && m && m.fecha <= fechaMinuta && f < min) min = f;
+      });
+      return min;
+    };
     const prepararItems = (tareas, minutaId, desde = 0, fechaMinuta = null) => {
       let sig = desde;
       return tareas.map(t => {
         const n = t.n_item || ++sig; sig = Math.max(sig, n);
-        return { minuta_id: minutaId, n_item: n, seccion: t.seccion || null, area: t.area || null, fecha_texto: t.fecha_texto || null, personal: t.personal, fecha_compromiso: t.fecha_compromiso || null, fecha_estimada: t.fecha_estimada || null, tarea: t.tarea, estado: t.estado, fecha_realizado: t.estado === 'Realizado' ? (t.fecha_realizado || fechaMinuta || null) : null };
+        return { minuta_id: minutaId, n_item: n, seccion: t.seccion || null, area: t.area || null, fecha_texto: t.fecha_texto || null, personal: t.personal, fecha_compromiso: t.fecha_compromiso || primeraFecha(t.tarea, fechaMinuta), fecha_estimada: t.fecha_estimada || null, tarea: t.tarea, estado: t.estado, fecha_realizado: t.estado === 'Realizado' ? (t.fecha_realizado || fechaMinuta || null) : null };
       });
     };
     let ultimaCreada = null;

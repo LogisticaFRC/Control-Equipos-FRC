@@ -177,8 +177,8 @@ const COLS_TABLA = [
   { t: 'N° ITEM', w: 8, v: it => (it.n_item === '' || it.n_item === null ? '' : Number(it.n_item)), al: 'center' },
   { t: 'ÁREA', w: 12, v: it => it.area || '', al: 'center' },
   { t: 'RESPONSABLE', w: 22, v: it => String(it.personal || '').split(' / ').join('\n'), al: 'left' },
-  { t: 'FECHA COMPROMISO', w: 14, v: it => fechaExcel(it.fecha_compromiso) || it.fecha_texto || '', al: 'center' },
-  { t: 'FECHA ESTIMADA', w: 14, v: it => fechaExcel(it.fecha_estimada), al: 'center', clave: 'estimada' },
+  { t: 'FECHA COMPROMISO', w: 14, v: it => fechaExcel(it.fecha_compromiso), al: 'center' },
+  { t: 'FECHA ESTIMADA', w: 14, v: it => fechaExcel(it.fecha_estimada) || it.fecha_texto || '', al: 'center', clave: 'estimada' },
   { t: 'TAREAS', w: 60, v: it => it.tarea || '', al: 'left' },
   { t: 'ESTADO', w: 14, v: it => it.estado, al: 'center', clave: 'estado' },
   { t: 'FECHA REALIZADO', w: 14, v: it => (it.estado === 'Realizado' ? fechaExcel(it.fecha_realizado) : ''), al: 'center', clave: 'realizado' }
