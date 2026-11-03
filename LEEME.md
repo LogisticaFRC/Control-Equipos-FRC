@@ -251,6 +251,7 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
 - **Nueva Minuta = continúa desde la última:** copia todas sus tareas con estado y fechas (opcional: dejar fuera las cerradas). La minuta anterior queda guardada tal cual (histórico).
 - **Estados:** Proceso, Pendiente, Realizado, No Realizado. Al marcar **Realizado** se guarda el día (editable). *Vencida* = Pendiente/Proceso **con Fecha Compromiso** y con Fecha Estimada pasada (fila en rojo). Sin Fecha Compromiso nunca se marca vencida.
 - **Permisos:** Admin crea/renombra/elimina minutas y corrige el histórico. Subadmin crea minutas y edita solo la minuta actual. Lectura solo ve.
+- **Agrupación por sección:** todas las tareas de una misma sección (ej. VENTANAS) se muestran juntas bajo un solo título, aunque en el Word estén separadas. Las secciones van en el orden en que aparecen por primera vez y dentro de cada una por N° Item (igual en el Excel exportado).
 - **Historial de una tarea** (ícono 🕓): cómo fue cambiando en cada minuta.
 - **Dashboard:** totales y % por estado, vencidas, % realizadas a tiempo, gráfico por estado, por encargado y evolución semana a semana.
 - **Importar (Word / Excel)**: se pueden elegir **varios archivos a la vez** (.docx, .xlsx, .csv). Antes de guardar se muestra una revisión con las tareas leídas y la **fecha de cada minuta**, que se puede cambiar.

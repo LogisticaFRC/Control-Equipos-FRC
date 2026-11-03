@@ -198,7 +198,7 @@ const tablaTareas = (ws, fila, items, { extra = [], agrupar = true } = {}) => {
   const filaCab = fila;
   let r = fila + 1, seccionAnt = null, par = 0;
   items.forEach((it) => {
-    const sec = String(it.seccion || '').trim();
+    const sec = String(it.seccion || '').trim().replace(/\s+/g, ' ').toUpperCase();
     if (agrupar && sec && sec !== seccionAnt) {
       ws.mergeCells(r, 1, r, cols.length);
       const c = ws.getCell(r, 1);

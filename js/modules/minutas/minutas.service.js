@@ -131,8 +131,19 @@ export const puedeEditarMinuta = computed(() => {
   return puedeEditar.value && esUltimaMinuta.value;
 });
 
-export const itemsDeMinuta = (id) => dbMinutasItems.value.filter(i => i.minuta_id === id)
-  .sort((a, b) => (Number(a.n_item) || 0) - (Number(b.n_item) || 0) || a.id - b.id);
+/** Clave de sección sin importar mayúsculas / espacios ("Ventanas" = "VENTANAS "). */
+export const claveSeccion = (it) => String(it.seccion || '').trim().replace(/\s+/g, ' ').toUpperCase();
+const porNumero = (a, b) => (Number(a.n_item) || 0) - (Number(b.n_item) || 0) || a.id - b.id;
+
+/** Tareas de una minuta AGRUPADAS POR SECCIÓN: todas las de "VENTANAS" juntas, aunque en el Word estén separadas.
+ *  Las secciones quedan en el orden en que aparecen por primera vez; dentro de cada una, por N° Item. */
+export const ordenarPorSeccion = (items) => {
+  const ordenados = [...items].sort(porNumero);
+  const orden = new Map();
+  ordenados.forEach(it => { const k = claveSeccion(it); if (!orden.has(k)) orden.set(k, orden.size); });
+  return ordenados.sort((a, b) => orden.get(claveSeccion(a)) - orden.get(claveSeccion(b)) || porNumero(a, b));
+};
+export const itemsDeMinuta = (id) => ordenarPorSeccion(dbMinutasItems.value.filter(i => i.minuta_id === id));
 
 export const itemsSel = computed(() => minutaSel.value ? itemsDeMinuta(minutaSel.value.id) : []);
 
@@ -186,14 +197,14 @@ export const resumenPorPersonal = computed(() => {
 /** Resumen por sección (minuta seleccionada). */
 export const resumenPorSeccion = computed(() => {
   const map = {};
-  itemsSel.value.forEach(it => { const k = String(it.seccion || '').trim().toUpperCase() || 'SIN SECCIÓN'; (map[k] = map[k] || []).push(it); });
+  itemsSel.value.forEach(it => { const k = claveSeccion(it) || 'SIN SECCIÓN'; (map[k] = map[k] || []).push(it); });
   return Object.entries(map).map(([seccion, list]) => ({ personal: seccion, ...resumenItems(list) }));
 });
 
 /** ¿Empieza una sección nueva en esta fila de la tabla? (para dibujar la fila de título como en el Word) */
 export const inicioSeccion = (lista, idx) => {
-  const s = String(lista[idx].seccion || '').trim();
-  return Boolean(s) && (idx === 0 || String(lista[idx - 1].seccion || '').trim() !== s);
+  const s = claveSeccion(lista[idx]);
+  return Boolean(s) && (idx === 0 || claveSeccion(lista[idx - 1]) !== s);
 };
 
 /** Evolución de cumplimiento por minuta (últimas 20). */
