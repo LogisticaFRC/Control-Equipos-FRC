@@ -121,6 +121,7 @@ export const minutaSel = computed(() => dbMinutas.value.find(m => m.id === minut
 export const esUltimaMinuta = computed(() => Boolean(minutaSel.value && ultimaMinuta.value && minutaSel.value.id === ultimaMinuta.value.id));
 export const seleccionarMinuta = (m) => {
   minutaSelId.value = m ? m.id : null;
+  if (m && vistaMinuta.value === 'general') vistaMinuta.value = 'tabla';   // al elegir una minuta se sale del Dashboard General
   if (m) { openAnios.value[anioDe(m)] = true; openMeses.value[claveMes(anioDe(m), mesDe(m))] = true; }
 };
 
@@ -216,12 +217,12 @@ export const realizadasRecientes = computed(() => itemsSel.value.filter(i => i.e
 
 // ---------- Crear minuta (copia la última) ----------
 export const showModalMinuta = ref(false);
-export const formMinuta = ref({ nombre: '', fecha: '', copiar: true, incluirCerradas: true });
+export const formMinuta = ref({ nombre: '', fecha: '', copiar: true });
 const nombreSugerido = (fecha) => `MINUTA SEMANA ${formatDateForDisplay(fecha)}`;
 export const abrirModalNuevaMinuta = () => {
   if (!soloEditor()) return;
   const f = hoyISO();
-  formMinuta.value = { nombre: nombreSugerido(f), fecha: f, copiar: Boolean(ultimaMinuta.value), incluirCerradas: true };
+  formMinuta.value = { nombre: nombreSugerido(f), fecha: f, copiar: Boolean(ultimaMinuta.value) };
   showModalMinuta.value = true;
 };
 export const actualizarNombreSugerido = () => {
@@ -230,7 +231,13 @@ export const actualizarNombreSugerido = () => {
 };
 export const itemsACopiar = computed(() => {
   if (!ultimaMinuta.value || !formMinuta.value.copiar) return [];
-  return itemsDeMinuta(ultimaMinuta.value.id).filter(it => formMinuta.value.incluirCerradas || it.estado === 'Pendiente' || it.estado === 'Proceso');
+  // Las tareas REALIZADAS no pasan a la minuta nueva (ya están listas; quedan guardadas en las minutas anteriores
+  // y en el Dashboard General). Pendiente, Proceso y No Realizado sí continúan.
+  return itemsDeMinuta(ultimaMinuta.value.id).filter(it => it.estado !== 'Realizado');
+});
+export const realizadasQueNoPasan = computed(() => {
+  if (!ultimaMinuta.value || !formMinuta.value.copiar) return 0;
+  return itemsDeMinuta(ultimaMinuta.value.id).filter(it => it.estado === 'Realizado').length;
 });
 
 export const guardandoMinuta = ref(false);

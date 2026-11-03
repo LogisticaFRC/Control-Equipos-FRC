@@ -54,6 +54,13 @@ export const cfgEvolucion = (evo) => ({
   }
 });
 
+export const cfgRealizadasMes = (datos) => ({
+  type: 'bar',
+  data: { labels: datos.map(d => { const [y, m] = d.mes.split('-'); return `${MESES_CORTO[Number(m) - 1]} ${y}`; }), datasets: [{ label: 'Tareas realizadas', data: datos.map(d => d.n), backgroundColor: '#10b981' }] },
+  options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display: false } } }
+});
+const MESES_CORTO = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
 /** Dibuja un gráfico fuera de pantalla y devuelve el PNG en base64. */
 const graficoPNG = (cfg, w = 900, h = 420) => {
   const cont = document.createElement('div');
@@ -409,6 +416,102 @@ export const exportarTodasExcel = async () => {
     hojaHistorico(wb, logo, minutas);
     minutas.forEach(m => hojaMinuta(wb, logo, m, m.nombre));   // orden cronológico
     await descargar(wb, `MINUTAS_COMPLETO_${formatDateForDisplay(hoyISO())}.xlsx`);
+  } catch (err) { alert('No se pudo exportar: ' + (err.message || err)); }
+  finally { exportando.value = false; }
+};
+
+// ---------------------------------------------------------------------
+// Dashboard GENERAL → Excel
+// ---------------------------------------------------------------------
+import { kpiGeneral, tareasUnicas, generalPorSeccion, generalPorPersonal, realizadasPorMes, filtrarLista, filtroGeneral, PERIODOS } from './minutas.general.js';
+
+const COLS_GENERAL = [
+  { t: 'SECCIÓN', w: 16, v: t => t.seccion || '', al: 'left' },
+  { t: 'ÁREA', w: 12, v: t => t.area || '', al: 'center' },
+  { t: 'RESPONSABLE', w: 22, v: t => String(t.personal || '').split(' / ').join('\n'), al: 'left' },
+  { t: 'TAREA', w: 60, v: t => t.tarea || '', al: 'left' },
+  { t: 'ESTADO', w: 14, v: t => t.estado, al: 'center', clave: 'estado' },
+  { t: 'FECHA COMPROMISO', w: 14, v: t => fechaExcel(t.fecha_compromiso), al: 'center' },
+  { t: 'FECHA ESTIMADA', w: 14, v: t => fechaExcel(t.fecha_estimada) || t.fecha_texto || '', al: 'center', clave: 'estimada' },
+  { t: 'FECHA REALIZADO', w: 14, v: t => (t.estado === 'Realizado' ? fechaExcel(t.fecha_realizado) : ''), al: 'center', clave: 'realizado' },
+  { t: 'DÍAS', w: 8, v: t => (t.dias ?? ''), al: 'center' },
+  { t: 'N° MINUTAS', w: 10, v: t => t.semanas, al: 'center' },
+  { t: 'PRIMERA MINUTA', w: 14, v: t => fechaExcel(t.primeraFecha), al: 'center' },
+  { t: 'ÚLTIMA MINUTA', w: 14, v: t => fechaExcel(t.ultimaMinuta.fecha), al: 'center' }
+];
+
+const hojaListaGeneral = (wb, logo, titulo, subtitulo, lista, color) => {
+  const ws = wb.addWorksheet(nombreHoja(titulo), { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 }, properties: { tabColor: { argb: color } } });
+  ws.columns = COLS_GENERAL.map(c => ({ width: c.w }));
+  let f = encabezado(wb, ws, logo, titulo.toUpperCase(), subtitulo, COLS_GENERAL.length);
+  f = tituloSeccion(ws, f, `${titulo.toUpperCase()} (${lista.length})`, COLS_GENERAL.length);
+  COLS_GENERAL.forEach((c, i) => { const cell = ws.getCell(f, i + 1); cell.value = c.t; cell.font = { bold: true, size: 9, color: { argb: C.blanco } }; cell.fill = fill(C.oscuro); cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; cell.border = bordeFino; });
+  ws.getRow(f).height = 28;
+  const filaCab = f;
+  lista.forEach((t, k) => {
+    const r = f + 1 + k;
+    COLS_GENERAL.forEach((c, i) => {
+      const cell = ws.getCell(r, i + 1); const v = c.v(t);
+      cell.value = v; cell.border = bordeFino; cell.font = { size: 9 };
+      cell.alignment = { vertical: 'top', horizontal: c.al, wrapText: true };
+      if (v instanceof Date) cell.numFmt = 'dd-mm-yyyy';
+      if (k % 2) cell.fill = fill('FFF8FAFC');
+      if (t.vencida) cell.fill = fill(C.rojoClaro);
+      if (c.clave === 'estado') { cell.fill = fill(FILL_ESTADO[t.estado]); cell.font = { bold: true, size: 9, color: { argb: FONT_ESTADO[t.estado] } }; }
+      if (c.clave === 'estimada' && t.vencida) cell.font = { bold: true, size: 9, color: { argb: 'FFBE123C' } };
+      if (c.clave === 'realizado' && t.estado === 'Realizado') cell.font = { bold: true, size: 9, color: { argb: 'FF047857' } };
+    });
+  });
+  ws.autoFilter = { from: { row: filaCab, column: 1 }, to: { row: filaCab + Math.max(lista.length, 1), column: COLS_GENERAL.length } };
+  ws.views = [{ state: 'frozen', ySplit: filaCab }];
+  return ws;
+};
+
+/** Excel del Dashboard General: Resumen + gráficos, y una hoja por lista (Abiertas, Vencidas, Realizadas, No realizadas, Todas). */
+export const exportarGeneralExcel = async () => {
+  const ts = tareasUnicas.value;
+  if (!ts.length) return alert('No hay tareas para exportar.');
+  exportando.value = true;
+  try {
+    const [wb, logo] = await Promise.all([nuevoLibro(), logoDataURL()]);
+    const k = kpiGeneral.value;
+    const f0 = filtroGeneral.value;
+    const filtros = [PERIODOS.find(p => p.k === f0.periodo)?.l || 'Todo', f0.seccion && `Sección: ${f0.seccion}`, f0.personal && `Encargado: ${f0.personal}`].filter(Boolean).join(' · ');
+
+    // Hoja 1: Resumen general con KPIs, tablas y gráficos
+    const ws = wb.addWorksheet(nombreHoja('Dashboard General'), { pageSetup: { orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 }, properties: { tabColor: { argb: C.oscuro } } });
+    ws.columns = [24, 10, 12, 12, 12, 14, 12, 4, 12, 12, 12, 12].map(w => ({ width: w }));
+    let f = encabezado(wb, ws, logo, 'DASHBOARD GENERAL DE MINUTAS', `${k.minutas} minuta(s) · ${k.total} tareas únicas · ${filtros}`, 12);
+    f = tituloSeccion(ws, f, 'RESUMEN (cada tarea contada una vez, con su último estado)', 12);
+    f = bloqueResumen(ws, f, k);
+    const extras = [['Tareas abiertas (Pendiente + Proceso)', k.abiertas], ['Días promedio en cerrar una tarea', k.promDiasCierre ?? '-'], ['Minutas promedio que lleva abierta una tarea', k.promSemanasAbiertas ?? '-'], ['Abiertas que ya no aparecen en la minuta actual', k.sinActual]];
+    extras.forEach(([a, b], i) => {
+      ws.mergeCells(f + i, 1, f + i, 5); ws.getCell(f + i, 1).value = a; ws.getCell(f + i, 1).font = { bold: true, size: 9 };
+      ws.getCell(f + i, 6).value = b; ws.getCell(f + i, 6).font = { bold: true, size: 11, color: { argb: C.teal } }; ws.getCell(f + i, 6).alignment = { horizontal: 'center' };
+      [1, 6].forEach(c => { ws.getCell(f + i, c).border = bordeFino; });
+    });
+    f += extras.length + 1;
+    f = tituloSeccion(ws, f, 'ESTADO DE TODAS LAS TAREAS', 12);
+    insertarImagen(wb, ws, graficoPNG(cfgEstados(k), 700, 340), f, 0, 520, 252); f += 14;
+    f = tituloSeccion(ws, f, 'EVOLUCIÓN SEMANA A SEMANA', 12);
+    insertarImagen(wb, ws, graficoPNG(cfgEvolucion(evolucionDe(dbMinutas.value.slice(-20))), 1000, 420), f, 0, 860, 360); f += 20;
+    const meses = realizadasPorMes.value;
+    if (meses.length) { f = tituloSeccion(ws, f, 'TAREAS REALIZADAS POR MES', 12); insertarImagen(wb, ws, graficoPNG(cfgRealizadasMes(meses), 1000, 320), f, 0, 860, 275); f += 16; }
+    f = tituloSeccion(ws, f, 'CUMPLIMIENTO POR SECCIÓN', 12);
+    f = tablaPersonal(ws, f, generalPorSeccion.value, 1, 'SECCIÓN');
+    f = tituloSeccion(ws, f, 'CUMPLIMIENTO POR ENCARGADO', 12);
+    f = tablaPersonal(ws, f, generalPorPersonal.value);
+    const pp = generalPorPersonal.value;
+    if (pp.length) insertarImagen(wb, ws, graficoPNG(cfgPersonal(pp), 900, Math.max(260, pp.length * 42 + 90)), f, 0, 760, Math.max(220, pp.length * 35 + 76));
+
+    // Hojas con las listas
+    hojaListaGeneral(wb, logo, 'Abiertas', 'Tareas en Pendiente o Proceso (las vencidas en rojo)', filtrarLista(ts, 'abiertas'), 'FFF59E0B');
+    hojaListaGeneral(wb, logo, 'Vencidas', 'Con Fecha Compromiso y plazo (Fecha Estimada) ya pasado', filtrarLista(ts, 'vencidas'), 'FFE11D48');
+    hojaListaGeneral(wb, logo, 'Realizadas', 'Tareas cumplidas, con su fecha de realización', filtrarLista(ts, 'Realizado'), 'FF10B981');
+    hojaListaGeneral(wb, logo, 'No Realizadas', 'Tareas marcadas como No Realizado', filtrarLista(ts, 'No Realizado'), 'FFBE123C');
+    hojaListaGeneral(wb, logo, 'Todas las tareas', 'Listado completo de tareas únicas', filtrarLista(ts, 'todas'), 'FF64748B');
+
+    await descargar(wb, `MINUTAS_DASHBOARD_GENERAL_${formatDateForDisplay(hoyISO())}.xlsx`);
   } catch (err) { alert('No se pudo exportar: ' + (err.message || err)); }
   finally { exportando.value = false; }
 };

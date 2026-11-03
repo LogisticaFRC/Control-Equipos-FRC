@@ -8,6 +8,9 @@ export default /* html */ `
       <p class="text-xs text-slate-500 mt-1">Cada minuta nueva continúa desde la última: se copian sus tareas y las anteriores quedan guardadas como histórico.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
+      <button @click="vistaMinuta = 'general'" :class="['text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2', vistaMinuta === 'general' ? 'bg-slate-900 text-white' : 'bg-slate-800 hover:bg-slate-900 text-white']">
+        <i class="fa-solid fa-chart-column text-sm"></i> Dashboard General
+      </button>
       <button v-if="puedeEditar" @click="abrirModalNuevaMinuta" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
         <i class="fa-solid fa-plus text-sm"></i> Nueva Minuta
       </button>
@@ -72,7 +75,105 @@ export default /* html */ `
 
     <!-- Panel principal -->
     <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 lg:h-[720px] flex flex-col min-w-0">
-      <template v-if="minutaSel">
+      <!-- ===================== DASHBOARD GENERAL (todas las minutas) ===================== -->
+      <template v-if="vistaMinuta === 'general'">
+        <div class="border-b pb-3 mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded bg-slate-800 text-white"><i class="fa-solid fa-chart-column mr-1"></i> Todas las minutas</span>
+            <h3 class="text-lg font-extrabold text-slate-800 mt-1">Dashboard General</h3>
+            <p class="text-[11px] text-slate-500">Cada tarea se cuenta una sola vez, con su último estado (aunque se repita en varias minutas).</p>
+          </div>
+          <div class="flex flex-wrap items-end gap-2 text-xs">
+            <label class="space-y-0.5"><span class="block text-[10px] font-bold text-slate-500 uppercase">Período</span>
+              <select v-model="filtroGeneral.periodo" class="p-1.5 border rounded-lg font-bold"><option v-for="p in PERIODOS" :key="p.k" :value="p.k">{{ p.l }}</option></select></label>
+            <label class="space-y-0.5"><span class="block text-[10px] font-bold text-slate-500 uppercase">Sección</span>
+              <select v-model="filtroGeneral.seccion" class="p-1.5 border rounded-lg font-bold max-w-[160px]"><option value="">Todas</option><option v-for="sc in seccionesGeneral" :key="sc" :value="sc">{{ sc }}</option></select></label>
+            <label class="space-y-0.5"><span class="block text-[10px] font-bold text-slate-500 uppercase">Encargado</span>
+              <select v-model="filtroGeneral.personal" class="p-1.5 border rounded-lg font-bold max-w-[160px]"><option value="">Todos</option><option v-for="pp in personasGeneral" :key="pp" :value="pp">{{ pp }}</option></select></label>
+            <button @click="exportarGeneralExcel" :disabled="exportando || !tareasUnicas.length" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5 disabled:opacity-60">
+              <i :class="['fa-solid', exportando ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar General</button>
+          </div>
+        </div>
+
+        <div v-if="!tareasUnicas.length" class="flex-grow flex items-center justify-center text-slate-400 text-sm">No hay tareas en el período / filtro elegido.</div>
+        <div v-else class="flex-grow overflow-y-auto space-y-4 pr-1">
+          <!-- KPIs -->
+          <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
+            <div class="rounded-xl border p-3 bg-slate-50"><p class="text-[10px] font-bold text-slate-500 uppercase">Minutas</p><p class="text-2xl font-extrabold text-slate-800">{{ kpiGeneral.minutas }}</p></div>
+            <div class="rounded-xl border p-3 bg-slate-50"><p class="text-[10px] font-bold text-slate-500 uppercase">Tareas</p><p class="text-2xl font-extrabold text-slate-800">{{ kpiGeneral.total }}</p></div>
+            <div @click="filtroGeneral.lista = 'Realizado'" class="rounded-xl border p-3 cursor-pointer hover:shadow bg-emerald-100 text-emerald-800 border-emerald-300"><p class="text-[10px] font-bold uppercase">Realizadas</p><p class="text-2xl font-extrabold">{{ kpiGeneral.Realizado }}</p></div>
+            <div @click="filtroGeneral.lista = 'No Realizado'" class="rounded-xl border p-3 cursor-pointer hover:shadow bg-rose-100 text-rose-800 border-rose-300"><p class="text-[10px] font-bold uppercase">No realizadas</p><p class="text-2xl font-extrabold">{{ kpiGeneral['No Realizado'] }}</p></div>
+            <div @click="filtroGeneral.lista = 'abiertas'" class="rounded-xl border p-3 cursor-pointer hover:shadow bg-amber-100 text-amber-800 border-amber-300"><p class="text-[10px] font-bold uppercase">Abiertas</p><p class="text-2xl font-extrabold">{{ kpiGeneral.abiertas }}</p><p class="text-[9px] opacity-80">{{ kpiGeneral.Pendiente }} pend. · {{ kpiGeneral.Proceso }} proceso</p></div>
+            <div @click="filtroGeneral.lista = 'vencidas'" class="rounded-xl border p-3 cursor-pointer hover:shadow bg-rose-600 text-white"><p class="text-[10px] font-bold uppercase">Vencidas</p><p class="text-2xl font-extrabold">{{ kpiGeneral.vencidas }}</p></div>
+            <div class="rounded-xl border p-3 bg-emerald-600 text-white"><p class="text-[10px] font-bold uppercase">% Cumplimiento</p><p class="text-2xl font-extrabold">{{ kpiGeneral.cumplimiento }}%</p><p class="text-[9px] opacity-80">{{ kpiGeneral.pctATiempo }}% a tiempo</p></div>
+            <div class="rounded-xl border p-3 bg-slate-800 text-white"><p class="text-[10px] font-bold uppercase">Días prom. en cerrar</p><p class="text-2xl font-extrabold">{{ kpiGeneral.promDiasCierre ?? '-' }}</p><p class="text-[9px] opacity-80">abiertas: {{ kpiGeneral.promSemanasAbiertas ?? '-' }} minutas prom.</p></div>
+          </div>
+
+          <!-- Gráficos -->
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div class="border rounded-xl p-3"><p class="text-xs font-bold text-slate-700 mb-2">Estado de todas las tareas</p><div class="h-56"><canvas id="chartGenEstados"></canvas></div></div>
+            <div class="border rounded-xl p-3 xl:col-span-2"><p class="text-xs font-bold text-slate-700 mb-2">Evolución semana a semana</p><div class="h-56"><canvas id="chartGenEvolucion"></canvas></div></div>
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div class="border rounded-xl p-3"><p class="text-xs font-bold text-slate-700 mb-2">Tareas por sección</p><div :style="{ height: Math.max(220, generalPorSeccion.length * 34 + 70) + 'px' }"><canvas id="chartGenSeccion"></canvas></div></div>
+            <div class="border rounded-xl p-3"><p class="text-xs font-bold text-slate-700 mb-2">Tareas por encargado</p><div :style="{ height: Math.max(220, generalPorPersonal.length * 30 + 70) + 'px' }"><canvas id="chartGenPersonal"></canvas></div></div>
+          </div>
+          <div class="border rounded-xl p-3"><p class="text-xs font-bold text-slate-700 mb-2">Tareas realizadas por mes</p><div class="h-48"><canvas id="chartGenMes"></canvas></div></div>
+
+          <!-- Ranking por encargado -->
+          <div class="border rounded-xl overflow-hidden">
+            <p class="text-xs font-bold text-slate-700 p-3 bg-slate-50 border-b">Cumplimiento por encargado</p>
+            <div class="overflow-x-auto"><table class="w-full text-xs">
+              <thead class="bg-slate-100 text-slate-600"><tr><th class="p-2 text-left">Encargado</th><th class="p-2">Tareas</th><th class="p-2">Realizadas</th><th class="p-2">No realizadas</th><th class="p-2">Abiertas</th><th class="p-2">Vencidas</th><th class="p-2 w-40">% Cumplimiento</th></tr></thead>
+              <tbody>
+                <tr v-for="p in generalPorPersonal" :key="p.personal" class="border-t">
+                  <td class="p-2 font-semibold">{{ p.personal }}</td><td class="p-2 text-center">{{ p.total }}</td>
+                  <td class="p-2 text-center text-emerald-700 font-bold">{{ p.Realizado }}</td><td class="p-2 text-center text-rose-700">{{ p['No Realizado'] }}</td>
+                  <td class="p-2 text-center">{{ p.Pendiente + p.Proceso }}</td><td :class="['p-2 text-center', p.vencidas ? 'text-rose-600 font-bold' : '']">{{ p.vencidas }}</td>
+                  <td class="p-2"><div class="flex items-center gap-2"><div class="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden"><div class="h-2 bg-emerald-500" :style="{ width: p.cumplimiento + '%' }"></div></div><span class="font-bold w-9 text-right">{{ p.cumplimiento }}%</span></div></td>
+                </tr>
+              </tbody>
+            </table></div>
+          </div>
+
+          <!-- Listas de tareas -->
+          <div class="border rounded-xl overflow-hidden">
+            <div class="p-3 bg-slate-50 border-b flex flex-wrap items-center gap-2">
+              <button v-for="l in LISTAS_GENERAL" :key="l.k" @click="filtroGeneral.lista = l.k"
+                :class="['text-[11px] font-bold px-2.5 py-1 rounded-full border transition', filtroGeneral.lista === l.k ? 'ring-2 ring-offset-1 ring-slate-800 ' + l.cls : l.cls + ' opacity-80 hover:opacity-100']">
+                <i :class="['fa-solid mr-1', l.icon]"></i>{{ l.l }} <span class="opacity-70">({{ cuentaLista(l.k) }})</span></button>
+              <div class="flex-grow"></div>
+              <input v-model="filtroGeneral.busqueda" type="text" placeholder="Buscar..." class="p-1.5 border rounded-lg text-xs w-48">
+            </div>
+            <div class="max-h-[420px] overflow-auto">
+              <table class="w-full text-xs min-w-[900px]">
+                <thead class="bg-slate-800 text-white sticky top-0"><tr>
+                  <th class="p-2 text-left">Sección / Área</th><th class="p-2 text-left">Encargado</th><th class="p-2 text-left min-w-[260px]">Tarea</th>
+                  <th class="p-2">Estado</th><th class="p-2">F. Compromiso</th><th class="p-2">F. Estimada</th><th class="p-2">F. Realizado</th>
+                  <th class="p-2" title="Días desde el compromiso (o primera aparición) hasta que se realizó / hasta hoy">Días</th><th class="p-2" title="En cuántas minutas apareció">Minutas</th><th class="p-2">Última minuta</th>
+                </tr></thead>
+                <tbody>
+                  <tr v-for="t in listaGeneral" :key="t.clave" @click="verTareaGeneral(t)" :class="['border-t align-top cursor-pointer hover:bg-sky-50', t.vencida ? 'bg-rose-50' : '']">
+                    <td class="p-2"><span class="font-bold">{{ t.seccion || '-' }}</span><span class="block text-slate-500">{{ t.area }}</span></td>
+                    <td class="p-2 whitespace-pre-line">{{ String(t.personal || '-').split(' / ').join('\\n') }}</td>
+                    <td class="p-2 whitespace-pre-line">{{ t.tarea }}<span v-if="!t.enActual && (t.estado === 'Pendiente' || t.estado === 'Proceso')" class="block text-[10px] text-amber-700 font-bold"><i class="fa-solid fa-circle-info"></i> Ya no aparece en la minuta actual</span></td>
+                    <td class="p-2 text-center"><span :class="['inline-block px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTADO_ESTILO[t.estado].badge]">{{ t.estado }}</span><span v-if="t.vencida" class="block text-[9px] text-rose-600 font-bold mt-0.5">Vencida</span></td>
+                    <td class="p-2 text-center font-mono">{{ formatDateForDisplay(t.fecha_compromiso) }}</td>
+                    <td :class="['p-2 text-center font-mono', t.vencida ? 'text-rose-700 font-bold' : '']">{{ textoPlazo(t) }}</td>
+                    <td class="p-2 text-center font-mono text-emerald-700 font-bold">{{ t.fecha_realizado ? formatDateForDisplay(t.fecha_realizado) : '-' }}<span v-if="t.aTiempo === false" class="block font-sans text-[9px] text-amber-700">atrasada</span></td>
+                    <td class="p-2 text-center font-bold">{{ t.dias ?? '-' }}</td>
+                    <td class="p-2 text-center">{{ t.semanas }}</td>
+                    <td class="p-2 text-center text-[10px]">{{ t.ultimaMinuta.nombre }}<span class="block font-mono text-slate-400">{{ formatDateForDisplay(t.ultimaMinuta.fecha) }}</span></td>
+                  </tr>
+                  <tr v-if="!listaGeneral.length"><td colspan="10" class="p-6 text-center text-slate-400 italic">No hay tareas en esta lista.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else-if="minutaSel">
         <div class="border-b pb-3 mb-3 flex flex-wrap items-end justify-between gap-3">
           <div>
             <span :class="['text-[10px] font-extrabold uppercase px-2.5 py-1 rounded', esUltimaMinuta ? 'bg-teal-100 text-teal-800' : 'bg-slate-200 text-slate-700']">
@@ -89,6 +190,7 @@ export default /* html */ `
             </div>
             <div class="flex bg-slate-100 rounded-lg p-1 text-xs font-bold">
               <button @click="vistaMinuta = 'tabla'" :class="['px-3 py-1.5 rounded-md', vistaMinuta === 'tabla' ? 'bg-white shadow text-slate-900' : 'text-slate-500']"><i class="fa-solid fa-table mr-1"></i> Tabla</button>
+              <button @click="vistaMinuta = 'general'" :class="['px-3 py-1.5 rounded-md', vistaMinuta === 'general' ? 'bg-white shadow text-slate-900' : 'text-slate-500']"><i class="fa-solid fa-chart-column mr-1"></i> General</button>
               <button @click="vistaMinuta = 'dashboard'" :class="['px-3 py-1.5 rounded-md', vistaMinuta === 'dashboard' ? 'bg-white shadow text-slate-900' : 'text-slate-500']"><i class="fa-solid fa-chart-pie mr-1"></i> Dashboard</button>
             </div>
           </div>
@@ -273,11 +375,8 @@ export default /* html */ `
             <input v-model="formMinuta.copiar" type="checkbox" class="w-4 h-4 accent-teal-600">
             Continuar desde la última minuta: <span class="underline">{{ ultimaMinuta.nombre }}</span>
           </label>
-          <label v-if="formMinuta.copiar" class="flex items-center gap-2 text-teal-800 cursor-pointer pl-6">
-            <input v-model="formMinuta.incluirCerradas" type="checkbox" class="w-4 h-4 accent-teal-600">
-            Incluir también las tareas cerradas (Realizado / No Realizado)
-          </label>
-          <p v-if="formMinuta.copiar" class="pl-6 text-teal-700">Se copiarán <b>{{ itemsACopiar.length }}</b> tarea(s) con su estado y fechas. La minuta anterior queda guardada sin cambios.</p>
+          <p v-if="formMinuta.copiar" class="pl-6 text-teal-700">Se copiarán <b>{{ itemsACopiar.length }}</b> tarea(s) pendientes (Pendiente, Proceso y No Realizado) con su estado y fechas.</p>
+          <p v-if="formMinuta.copiar && realizadasQueNoPasan" class="pl-6 text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i> {{ realizadasQueNoPasan }} tarea(s) <b>Realizadas</b> no pasan: ya están listas y quedan guardadas en la minuta anterior y en el Dashboard General.</p>
         </div>
         <p v-else class="text-slate-500">Es la primera minuta: se crea vacía (luego agrega tareas o importa un Excel).</p>
       </div>
@@ -388,6 +487,37 @@ export default /* html */ `
             <i :class="['fa-solid mr-1', importacion.guardando ? 'fa-spinner fa-spin' : 'fa-check']"></i> Importar {{ archivosValidos.reduce((s, a) => s + a.tareas.length, 0) }} tarea(s)
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+  <!-- ===================== MODAL TAREA (Dashboard General) ===================== -->
+  <div v-if="tareaGeneralSel" class="fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4" @click.self="tareaGeneralSel = null">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+      <div class="bg-slate-800 text-white px-5 py-3 flex items-center justify-between">
+        <h3 class="font-bold text-sm truncate"><i class="fa-solid fa-clock-rotate-left mr-2"></i> Recorrido de la tarea</h3>
+        <button @click="tareaGeneralSel = null" class="hover:bg-white/10 w-8 h-8 rounded"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5 space-y-3 text-xs max-h-[75vh] overflow-y-auto">
+        <p class="bg-slate-50 border rounded-lg p-3 whitespace-pre-line">{{ tareaGeneralSel.tarea }}</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div class="border rounded-lg p-2"><p class="text-[10px] text-slate-500 font-bold uppercase">Sección / Área</p><p class="font-bold">{{ tareaGeneralSel.seccion || '-' }} · {{ tareaGeneralSel.area || '-' }}</p></div>
+          <div class="border rounded-lg p-2"><p class="text-[10px] text-slate-500 font-bold uppercase">Encargado</p><p class="font-bold">{{ tareaGeneralSel.personal || '-' }}</p></div>
+          <div class="border rounded-lg p-2"><p class="text-[10px] text-slate-500 font-bold uppercase">Apareció</p><p class="font-bold">{{ formatDateForDisplay(tareaGeneralSel.primeraFecha) }}</p></div>
+          <div class="border rounded-lg p-2"><p class="text-[10px] text-slate-500 font-bold uppercase">Días</p><p class="font-bold">{{ tareaGeneralSel.dias ?? '-' }} {{ tareaGeneralSel.estado === 'Realizado' ? 'hasta realizarse' : 'abierta' }}</p></div>
+        </div>
+        <table class="w-full">
+          <thead class="bg-slate-100 text-slate-600"><tr><th class="p-2 text-left">Minuta</th><th class="p-2">Encargado</th><th class="p-2">F. Estimada</th><th class="p-2">Estado</th><th class="p-2">F. Realizado</th></tr></thead>
+          <tbody>
+            <tr v-for="h in tareaGeneralSel.historial" :key="h.minuta.id" class="border-t">
+              <td class="p-2"><span class="font-semibold">{{ h.minuta.nombre }}</span><br><span class="font-mono text-slate-400">{{ formatDateForDisplay(h.minuta.fecha) }}</span></td>
+              <td class="p-2 text-center">{{ h.item.personal || '-' }}</td>
+              <td class="p-2 text-center font-mono">{{ h.item.fecha_estimada ? formatDateForDisplay(h.item.fecha_estimada) : (h.item.fecha_texto || '-') }}</td>
+              <td class="p-2 text-center"><span :class="['inline-block px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTADO_ESTILO[h.estado].badge]">{{ h.estado }}</span></td>
+              <td class="p-2 text-center font-mono text-emerald-700 font-bold">{{ h.estado === 'Realizado' ? formatDateForDisplay(h.item.fecha_realizado) : '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <button @click="seleccionarMinuta(tareaGeneralSel.ultimaMinuta); vistaMinuta = 'tabla'; busquedaMinuta = String(tareaGeneralSel.tarea).split('\\n')[0]; tareaGeneralSel = null" class="font-bold text-teal-700 underline">Abrir en su última minuta</button>
       </div>
     </div>
   </div>

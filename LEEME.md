@@ -25,7 +25,7 @@ js/
     dashboard/                 ← DASHBOARD
     inventario/                ← INVENTARIO AFI (+ Perfil de Equipo y modal Nuevo Equipo)
     programas/                 ← PROGRAMAS (+ modales Crear Programa / Asignar Equipo)
-    minutas/                   ← MINUTAS (mejora continua semanal: carpetas Año → Mes, dashboard, importar/exportar)
+    minutas/                   ← MINUTAS (mejora continua semanal: carpetas Año → Mes, dashboard por minuta y general, importar Word/Excel, exportar)
     movimientos/               ← MOVIMIENTOS (+ modal Registrar Movimiento)
     historial/                 ← HISTORIAL (+ formulario de Mantención)
     aceites/                   ← CONTROL ACEITES
@@ -248,12 +248,18 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
 | `bd_minutas_items` | Tareas: **N° Item, Sección, Área, Personal Encargado, Fecha Compromiso (o texto, ej. Siempre), Fecha Estimada, Tareas, Estado, Fecha Realizado** |
 
 - **Menú como Programas:** carpetas por año y mes (se arman solas con la fecha de la minuta). La más reciente lleva la etiqueta *ACTUAL*; cada una muestra su % de cumplimiento.
-- **Nueva Minuta = continúa desde la última:** copia todas sus tareas con estado y fechas (opcional: dejar fuera las cerradas). La minuta anterior queda guardada tal cual (histórico).
+- **Nueva Minuta = continúa desde la última:** copia sus tareas **Pendiente, Proceso y No Realizado** con estado y fechas. Las **Realizadas no pasan** (ya están listas): quedan guardadas en la minuta anterior y en el Dashboard General. La minuta anterior queda guardada tal cual (histórico).
 - **Estados:** Proceso, Pendiente, Realizado, No Realizado. Al marcar **Realizado** se guarda el día (editable). *Vencida* = Pendiente/Proceso **con Fecha Compromiso** y con Fecha Estimada pasada (fila en rojo). Sin Fecha Compromiso nunca se marca vencida.
 - **Permisos:** Admin crea/renombra/elimina minutas y corrige el histórico. Subadmin crea minutas y edita solo la minuta actual. Lectura solo ve.
 - **Agrupación por sección:** todas las tareas de una misma sección (ej. VENTANAS) se muestran juntas bajo un solo título, aunque en el Word estén separadas. Las secciones van en el orden en que aparecen por primera vez y dentro de cada una por N° Item (igual en el Excel exportado).
 - **Historial de una tarea** (ícono 🕓): cómo fue cambiando en cada minuta.
 - **Dashboard:** totales y % por estado, vencidas, % realizadas a tiempo, gráfico por estado, por encargado y evolución semana a semana.
+- **Dashboard General** (botón negro arriba, o pestaña *General* en cualquier minuta): reúne **todas las minutas**. Como cada minuta copia las tareas de la anterior, cada tarea se cuenta **una sola vez** (se reconoce por la primera línea del texto) con su **último estado**.
+  - Filtros: período (todo, 30 días, 3 meses, 6 meses, este año), sección y encargado.
+  - Indicadores: minutas, tareas, realizadas, no realizadas, abiertas, vencidas, % cumplimiento, % a tiempo, días promedio en cerrar.
+  - Gráficos: estado, evolución semana a semana, por sección, por encargado y realizadas por mes. Tabla de cumplimiento por encargado.
+  - Listas: Abiertas, Vencidas, Realizadas (con fecha), No realizadas, Más tiempo abiertas y Todas. Cada tarea muestra cuántos días lleva o tardó, en cuántas minutas apareció y si ya no aparece en la minuta actual. Clic en una tarea = su recorrido minuta a minuta.
+  - **Exportar General:** Excel con hoja *Dashboard General* (logo, resumen con %, gráficos, cumplimiento por sección y encargado) + una hoja por lista (Abiertas, Vencidas, Realizadas, No Realizadas, Todas). Respeta los filtros elegidos.
 - **Importar (Word / Excel)**: se pueden elegir **varios archivos a la vez** (.docx, .xlsx, .csv). Antes de guardar se muestra una revisión con las tareas leídas y la **fecha de cada minuta**, que se puede cambiar.
   - *Fecha:* se busca en el documento ("FECHA" del encabezado de página del Word, "Fecha: …" o la tabla de encabezado), si no en el nombre del archivo, y si no se usa hoy (avisa para revisarla).
   - *Minuta ACTUAL:* siempre es la de **fecha más reciente**, aunque se importe después una más antigua (esa queda como histórico).
