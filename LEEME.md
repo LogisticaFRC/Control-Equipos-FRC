@@ -11,8 +11,9 @@ Aplicación Vue 3 + Supabase separada en módulos. **No requiere compilación**:
 index.html                     ← liviano: solo carga librerías y js/main.js
 css/styles.css                 ← estilos globales (parpadeo horómetro, scrollbars)
 js/
-  main.js                      ← arma la app: header, menú, pestañas y modales
+  main.js                      ← arma la app: header, menú lateral (hamburguesa), pantallas y modales
   core/
+    menu.js                    ← ÁREAS del menú lateral y sus módulos (Operaciones, Ventas, Seguridad, RRHH, Finanzas, Administración, General)
     supabase.js                ← conexión, helper sb() que detecta errores, subida de archivos
     tablas.js                  ← nombres EXACTOS de las tablas de Supabase
     store.js                   ← estado compartido (usuario, tablas cargadas) y carga de datos
@@ -31,7 +32,22 @@ js/
     filtros/                   ← FILTROS (referencia cruzada por marca/modelo, comparativo de precios por proveedor)
     bodega/                    ← BODEGA FILTROS (inventario general de filtros, ARMAR KIT, movimientos)
     formatos/                  ← FORMATOS (Área → Norma ISO) + carpeta de documentos reutilizable (también Ficha Técnica de equipos)
+    general/                   ← pantalla "En construcción" para áreas sin módulos aún
 ```
+
+### Menú lateral por áreas
+
+Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú se cierra al elegir un módulo, al hacer clic fuera o con `Esc`.
+
+| Área | Módulos |
+|---|---|
+| Operaciones | Dashboard, Inventario AFI, Programas, Movimientos, Historial, Control Aceites, Filtros, Bodega Filtros |
+| Ventas · Seguridad · RRHH · Finanzas · Administración | En construcción (pantalla "Próximamente") |
+| General | Formatos, Config & Usuarios |
+
+- El botón **Agregar Mantención** solo aparece en módulos de **Operaciones** (y para usuarios con permiso de edición).
+- Bajo el título del header se muestra el área y módulo actual (ej. *Operaciones › Inventario AFI*).
+- **Para agregar un módulo a un área:** sumarlo en `js/core/menu.js` (dentro de `modulos` del área; quitar el "Inicio …" con `placeholder` si ya no se necesita) y registrar su vista en `main.js`. La URL `#clave` queda válida automáticamente.
 
 Cada módulo tiene:
 - `*.template.js` → el HTML de la pantalla

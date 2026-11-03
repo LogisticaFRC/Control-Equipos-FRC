@@ -8,6 +8,7 @@
 // - Solo se guarda el NOMBRE de usuario (nunca la contraseña). El rol se vuelve a leer desde Supabase.
 // =====================================================================
 import { usuarioActivo, currentTab, dbUsuarios } from './store.js';
+import { TABS_VALIDAS } from './menu.js';
 
 const { ref, watch } = Vue;
 
@@ -16,7 +17,6 @@ const SESION_KEY = 'afi_sesion';                       // { usuario, ultimaActiv
 const GUARDAR_ACTIVIDAD_CADA_MS = 10 * 1000;           // no escribir en cada movimiento del mouse
 const REVISAR_CADA_MS = 15 * 1000;
 const EVENTOS_ACTIVIDAD = ['mousemove', 'mousedown', 'keydown', 'wheel', 'scroll', 'touchstart'];
-const TABS_VALIDAS = ['dashboard', 'inventario', 'programas', 'movimientos', 'hojaVida', 'aceites', 'filtros', 'bodega', 'formatos', 'configuracion'];
 
 /** true mientras se intenta recuperar la sesión al abrir/actualizar (evita que "parpadee" el login). */
 export const restaurandoSesion = ref(true);
