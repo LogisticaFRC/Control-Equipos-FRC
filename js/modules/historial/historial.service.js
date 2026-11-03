@@ -7,6 +7,7 @@ import { parseNum, parseStr, formatExcelDate, formatIsoDateForSupabase, parseIso
 import { TABLA_HISTORIAL, ACEITES, aceitesVacios, COL_FILTROS_ESCRITURA } from './historial.mapper.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
 import { registrarFiltrosDesdeMantencion, requeridosPorModelo, autocompletarFiltro } from '../filtros/filtros.service.js';
+import { sincronizarProgramaConHistorial } from '../programas/programas.service.js';
 
 const { ref, computed } = Vue;
 
@@ -187,6 +188,19 @@ export const guardarMantencionForm = async () => {
   }
 
   await cargarDatosDesdeSupabase();
+
+  // 4) Enlace con el Programa declarado: marca REALIZADO el ítem del equipo
+  //    (si el equipo está varias veces en el programa: la 1ª mantención → fecha más baja, la 2ª → la siguiente…)
+  if (payload.uso_de_art) {
+    try {
+      const { marcados, avisos } = await sincronizarProgramaConHistorial({ nombrePrograma: payload.uso_de_art, afi: afiLimpio });
+      if (marcados) aviso += `\n✔ Programa "${payload.uso_de_art}": AFI ${afiLimpio} marcado como REALIZADO.`;
+      if (avisos.length) aviso += '\n' + avisos.join('\n');
+    } catch (err) {
+      aviso += "\n(Atención: no se pudo actualizar el programa: " + errMsg(err) + ")";
+    }
+  }
+
   showFormMantencionModal.value = false;
   alert("¡Mantención guardada con éxito!" + aviso);
 };

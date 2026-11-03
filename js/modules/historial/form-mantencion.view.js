@@ -9,6 +9,7 @@ import {
   equipoFormMant, filtrosRequeridosFormMant, cargarFiltrosDelModelo, autocompletarFilaFiltro
 } from './historial.service.js';
 import { listaTiposFiltro, listaProveedoresFiltro, listaMarcasFiltro, fmtPrecio } from '../filtros/filtros.service.js';
+import { programasDelAfi } from '../programas/programas.service.js';
 
 export default {
   name: 'FormMantencion',
@@ -18,7 +19,7 @@ export default {
       ...comunes(), showFormMantencionModal, isEditingMantencion, formMant, guardarMantencionForm,
       agregarFilaFiltro, eliminarFilaFiltro, subirArchivoHistorial,
       equipoFormMant, filtrosRequeridosFormMant, cargarFiltrosDelModelo, autocompletarFilaFiltro,
-      listaTiposFiltro, listaProveedoresFiltro, listaMarcasFiltro, fmtPrecio
+      listaTiposFiltro, listaProveedoresFiltro, listaMarcasFiltro, fmtPrecio, programasDelAfi
     };
   }
 };

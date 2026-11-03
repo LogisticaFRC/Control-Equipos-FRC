@@ -7,6 +7,9 @@ export default /* html */ `
       <p class="text-xs text-slate-500 mt-1">Crea programas de Reparación o Mantención con sus rangos de fechas generales y asigna equipos.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2.5">
+      <button v-if="progSelect.id && puedeEditar" @click="sincronizarProgramaSeleccionado(progSelect)" :disabled="sincronizandoPrograma" title="Marca como realizados los equipos que ya tienen su mantención en el Historial con este programa" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2 disabled:opacity-60">
+        <i :class="['fa-solid text-sm', sincronizandoPrograma ? 'fa-spinner fa-spin' : 'fa-arrows-rotate']"></i> Sincronizar con Historial
+      </button>
       <button v-if="progSelect.id" @click="exportarProgramaGanttExcel(progSelect)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
         <i class="fa-solid fa-file-excel text-sm"></i> Exportar Programa (Excel)
       </button>
@@ -239,6 +242,9 @@ export default /* html */ `
                 <!-- Fecha Realizada -->
                 <td class="p-2.5 font-mono font-bold text-emerald-800 bg-emerald-50/50">
                   <input type="date" v-model="item.fecha_fin" :disabled="!isAdmin" @change="actualizarItemMantencionProgramado(item)" class="p-1 border rounded text-xs bg-white font-mono font-bold">
+                  <span v-if="mantencionDeItem(item)" class="block mt-1 text-[9px] font-bold text-indigo-700" :title="'Mantención del Historial: ' + (mantencionDeItem(item).tipoMant || '') + ' ' + (mantencionDeItem(item).descripcion || '')">
+                    <i class="fa-solid fa-link"></i> Historial {{ formatDateForDisplay(mantencionDeItem(item).fecha) }}<template v-if="mantencionDeItem(item).numeroOT"> · OT {{ mantencionDeItem(item).numeroOT }}</template>
+                  </span>
                 </td>
 
                 <!-- Horómetro -->

@@ -27,8 +27,14 @@ export default /* html */ `
                   <label class="block font-bold mb-1 text-indigo-700">Programa (Opcional)</label>
                   <select v-model="formMant.programaCorrespondiente" class="w-full p-2 border border-indigo-300 rounded-lg bg-indigo-50 font-bold text-indigo-900">
                     <option value="">-- Sin Programa --</option>
-                    <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.nombre_programa || p.mes">[{{ p.carpeta || p.tipo }}] {{ p.nombre_programa || p.mes }}</option>
+                    <optgroup v-if="programasDelAfi(formMant.afi).length" :label="'Programas con el AFI ' + formMant.afi">
+                      <option v-for="x in programasDelAfi(formMant.afi)" :key="'a' + x.prog.id" :value="x.nombre">[{{ x.prog.carpeta || x.prog.tipo }}] {{ x.nombre }}{{ x.pendientes.length ? ' · pendiente ' + formatDateForDisplay(x.pendientes[0]) : ' · ya realizado' }}</option>
+                    </optgroup>
+                    <optgroup label="Otros programas">
+                      <option v-for="p in dbProgramasCalendarios.filter(p => !programasDelAfi(formMant.afi).some(x => x.prog.id === p.id))" :key="p.id" :value="p.nombre_programa || p.mes">[{{ p.carpeta || p.tipo }}] {{ p.nombre_programa || p.mes }}</option>
+                    </optgroup>
                   </select>
+                  <p v-if="formMant.programaCorrespondiente" class="text-[10px] text-indigo-700 mt-0.5"><i class="fa-solid fa-link"></i> Al guardar se marca REALIZADO en el programa (fecha programada más baja pendiente).</p>
                 </div>
               </div>
             </div>

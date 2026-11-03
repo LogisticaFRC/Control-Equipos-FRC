@@ -1,6 +1,6 @@
 // =====================================================================
 // OT · Órdenes de Trabajo (formato FRC-RE-OPE-006)
-// - El folio es correlativo y lo asigna la base de datos (bd_ot_folio_seq, parte en 60).
+// - El folio se escribe a mano (no se puede repetir); se sugiere el mayor + 1.
 // - Al escribir el AFI se completan Equipo, Marca, Modelo y HRS ACTUAL desde el Inventario.
 // - Una OT queda "Realizada" cuando en el Historial existe una mantención con ese N° de OT.
 // - Exportar Excel: rellena la plantilla original (plantillas/FORMATO_OT.xlsx) → queda idéntica.
@@ -98,6 +98,8 @@ export const resumenOT = computed(() => {
 });
 
 // ---------- Editor ----------
+/** Folio sugerido: el mayor registrado + 1 (solo como ayuda; el folio se escribe a mano). */
+export const folioSugerido = computed(() => (dbOT.value.reduce((m, o) => Math.max(m, Number(o.folio) || 0), 0) || 59) + 1);
 export const nuevaOT = (afi = '') => {
   if (!soloEditor()) return;
   otActual.value = otVacia();
@@ -148,6 +150,7 @@ export const alternarTipo = (t) => { const ot = otActual.value; ot.tipo_mantenci
 export const alternarPauta = (p) => { const ot = otActual.value; ot.pauta = ot.pauta === p ? '' : p; };
 
 const payloadOT = (ot) => ({
+  folio: Number(ot.folio),
   fecha: ot.fecha || hoyISO(), afi: (equipoPorAfi(ot.afi) || {}).afi || limpiarAfi(ot.afi), equipo: ot.equipo, marca: ot.marca, modelo: ot.modelo,
   hrs_actual: String(ot.hrs_actual ?? ''), hrs_prox: String(ot.hrs_prox ?? ''),
   tipo_mantencion: ot.tipo_mantencion, pauta: ot.pauta,
@@ -159,6 +162,11 @@ const payloadOT = (ot) => ({
 export const guardarOT = async () => {
   if (!soloEditor()) return false;
   const ot = otActual.value;
+  const folio = Number(String(ot.folio ?? '').replace(/\D/g, ''));
+  if (!folio) { alert('Ingresa el N° de FOLIO de la OT (arriba a la derecha de la hoja).'); return false; }
+  ot.folio = folio;
+  const repetida = dbOT.value.find(o => Number(o.folio) === folio && o.id !== ot.id);
+  if (repetida) { alert(`Ya existe la OT N° ${folio} (AFI ${repetida.afi}). Usa otro folio.`); return false; }
   if (!ot.afi.trim()) { alert('Ingresa el AFI del equipo.'); return false; }
   guardandoOT.value = true;
   try {
@@ -167,14 +175,14 @@ export const guardarOT = async () => {
     } else {
       const u = usuarioActivo.value;
       const [fila] = await sb(supabaseClient.from(TABLA_OT).insert([{ ...payloadOT(ot), creado_por: (u && (u.nombre || u.usuario)) || '' }]).select());
-      ot.id = fila.id; ot.folio = fila.folio;
+      ot.id = fila.id;
     }
     const guardada = mapOT(JSON.parse(JSON.stringify(ot)));
     const i = dbOT.value.findIndex(o => o.id === ot.id);
     if (i >= 0) dbOT.value.splice(i, 1, guardada); else dbOT.value.unshift(guardada);
     return true;
   } catch (err) {
-    alert('Error al guardar la OT: ' + errMsg(err));
+    alert(/duplicate|unique/i.test(errMsg(err)) ? `Ya existe otra OT con el folio ${ot.folio}.` : 'Error al guardar la OT: ' + errMsg(err));
     return false;
   } finally {
     guardandoOT.value = false;

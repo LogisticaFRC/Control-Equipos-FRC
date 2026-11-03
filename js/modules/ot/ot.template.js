@@ -7,7 +7,7 @@ export default /* html */ `
     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
       <div>
         <h2 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-file-signature text-amber-600"></i> Órdenes de Trabajo</h2>
-        <p class="text-slate-500 mt-0.5">Formato FRC-RE-OPE-006 · el folio es correlativo y se asigna al guardar. Una OT queda <b>Realizada</b> cuando se registra en el Historial con su N° de OT.</p>
+        <p class="text-slate-500 mt-0.5">Formato FRC-RE-OPE-006 · el N° de folio se escribe a mano en la hoja (no se puede repetir). Una OT queda <b>Realizada</b> cuando se registra en el Historial con su N° de OT.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <label v-if="isAdmin" :class="['font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 cursor-pointer border', importandoOT ? 'bg-slate-200 text-slate-500' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300']" title="Uno o varios Excel con el formato de OT (FRC-RE-OPE-006)">
@@ -68,7 +68,7 @@ export default /* html */ `
     <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3 sticky top-[72px] z-30">
       <div class="flex items-center gap-3 flex-wrap">
         <button @click="cerrarOT" class="px-3 py-2 rounded-lg border font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-arrow-left mr-1"></i> Volver</button>
-        <span class="text-base font-extrabold text-slate-800">OT N° <span class="text-rose-700 font-mono">{{ otActual.folio || 'nueva (se asigna al guardar)' }}</span></span>
+        <span class="text-base font-extrabold text-slate-800">OT N° <span class="text-rose-700 font-mono">{{ otActual.folio || 'nueva — escribe el folio en la hoja' }}</span></span>
         <span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(otActual)]]">{{ estadoOT(otActual) }}</span>
         <label class="flex items-center gap-1 font-bold text-slate-600">Fecha OT <input type="date" v-model="otActual.fecha" :disabled="!puedeEditar" class="p-1.5 border rounded-lg"></label>
       </div>
@@ -118,7 +118,7 @@ export default /* html */ `
                 <template v-if="!c.k">{{ c.t }}</template>
                 <button v-else-if="c.k.startsWith('tipo:')" type="button" :disabled="!puedeEditar" @click="alternarTipo(c.k.slice(5))" class="ot-marca">{{ textoCelda(otActual, c.k) }}</button>
                 <button v-else-if="c.k.startsWith('pauta:')" type="button" :disabled="!puedeEditar" @click="alternarPauta(c.k.slice(6))" class="ot-marca">{{ textoCelda(otActual, c.k) }}</button>
-                <span v-else-if="c.k === 'folio'" class="font-extrabold text-rose-700 px-1">{{ otActual.folio || '—' }}</span>
+                <input v-else-if="c.k === 'folio'" type="text" inputmode="numeric" v-model="otActual.folio" :placeholder="'ej. ' + folioSugerido" :disabled="!puedeEditar" class="ot-in font-extrabold text-rose-700 text-center">
                 <input v-else-if="c.k === 'afi'" list="dl-ot-afi" v-model="otActual.afi" @change="autocompletarDesdeAfi" :disabled="!puedeEditar" class="ot-in font-bold uppercase">
                 <input v-else :type="tipoCampo(c.k)" :value="valorCampo(otActual, c.k)" @input="fijarCampo(otActual, c.k, $event.target.value)" :disabled="!puedeEditar"
                   :class="['ot-in', tipoCampo(c.k) !== 'text' ? 'ot-in-sm' : '']" :style="{ textAlign: c.al === 'c' ? 'center' : 'left' }">

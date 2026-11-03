@@ -65,22 +65,31 @@ Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú s
 - Implementación: `core/store.js` (`nivelEnArea`, `isAdmin`/`isSubadmin`/`puedeEditar` calculados según el área de la pantalla actual, `soloAdminGeneral()`). Los módulos no cambiaron: siguen usando `isAdmin`, `soloAdmin()`, `soloEditor()`.
 - Los permisos se validan en el navegador **y en la base de datos (RLS)**: ver la sección Seguridad.
 
+## 🔗 Programas de mantención ↔ Historial
+
+- Al guardar una mantención en el **Historial** con **Programa** seleccionado, el equipo queda **REALIZADO** en ese programa
+  (fecha realizada = fecha de la mantención, horómetro = el de la mantención; en programas de MANTENCIÓN descuenta el KIT como el switch).
+- Si el equipo está **varias veces** en el programa, las mantenciones se asignan en orden de fecha: 1 mantención → la fecha programada
+  más baja; 2 mantenciones → la más baja y la siguiente; etc.
+- En el formulario de mantención, la lista de programas muestra primero los que tienen ese AFI y su próxima fecha pendiente.
+- En el programa, bajo *Fecha Realizada* aparece el enlace al registro del Historial (fecha y N° OT).
+- Botón **Sincronizar con Historial** (en el programa): marca de una vez los equipos que ya tenían su mantención registrada.
+- Desmarcar sigue siendo manual (si se borra una mantención del Historial, el ítem no vuelve solo a Pendiente).
+
 ## 📝 Órdenes de Trabajo (OT) — Operaciones → Órdenes de Trabajo
 
-> ⚠️ Ejecutar una vez **`sql/ot.sql`** en Supabase (crea `bd_ot` con sus permisos). El folio parte en **60**.
-> Para cambiar el próximo folio: `select setval('public.bd_ot_folio_seq', 74);` → la siguiente OT será la 75.
+> ⚠️ Ejecutar una vez **`sql/ot.sql`** en Supabase (crea `bd_ot` con sus permisos).
 
 - **Formato FRC-RE-OPE-006** idéntico al Excel: el editor muestra la misma hoja; las celdas amarillas se rellenan.
 - Al escribir el **ID EQUIPO (AFI)** se completan Equipo, Marca, Modelo y Hrs actual desde el Inventario. Hrs prox. mant. se escribe a mano.
 - **Tipo de mantención** y **Pauta** (250/500/1000/5000): clic en el cuadro para marcar la X.
-- El **folio** lo asigna la base de datos al guardar (correlativo, no se repite aunque dos personas guarden a la vez).
+- El **folio se escribe a mano** en la celda FOLIO de la hoja (se sugiere el mayor + 1). No se puede repetir: si ya existe, avisa.
 - **Excel**: rellena la plantilla original `plantillas/FORMATO_OT.xlsx` (mismas combinaciones, bordes, logo y configuración de impresión).
 - **Imprimir**: abre la hoja lista para imprimir en carta vertical (80 %, como el Excel).
 - **Estado**: *Pendiente* → *Realizada* cuando en el **Historial** existe una mantención con ese **N° OT** (botón *Registrar en Historial*:
   abre el formulario de mantención con AFI, N° OT, tipo, horómetro, actividades y personal ya rellenados). En el Historial, el N° OT es un enlace que abre la OT.
 - **Importar OT (Excel)** (solo Admin): uno o varios archivos con el mismo formato. Lee todas las celdas del formato (fechas y horas
   incluidas). El folio sale de la celda FOLIO o, si está vacía, del nombre del archivo (ej. `OT 45.xlsx`). Si el folio ya existe, pregunta si reemplazar.
-  Al importar un folio mayor al próximo, el contador salta solo (trigger `frc_ot_ajustar_folio` en `sql/ot.sql`).
 - **Vinculados**: en la lista y dentro de la OT se ven las mantenciones del Historial con ese N° OT y su documento adjunto (botón *Ver documento*).
 - Permisos: crear/editar = Subadmin o Admin de Operaciones · anular/eliminar = Admin.
 - Si cambia el Excel del formato: reemplazar `plantillas/FORMATO_OT.xlsx` y ejecutar

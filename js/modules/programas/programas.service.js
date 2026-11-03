@@ -2,7 +2,7 @@
 // PROGRAMAS · Lógica (programas de Reparación / Mantención, Gantt, asignaciones)
 // =====================================================================
 import { supabaseClient, sb, errMsg, fetchAllRows } from '../../core/supabase.js';
-import { dbProgramasCalendarios, dbProgramasItems, cargarDatosDesdeSupabase, obtenerDetalleEquipoPorAfi, soloAdmin, soloEditor } from '../../core/store.js';
+import { dbProgramasCalendarios, dbProgramasItems, dbIntervenciones, cargarDatosDesdeSupabase, obtenerDetalleEquipoPorAfi, soloAdmin, soloEditor } from '../../core/store.js';
 import { normalizarFecha, formatDateForDisplay, parseNum, limpiarAfi, esFechaEnRango, hoyISO } from '../../core/utils.js';
 import { isAdmin } from '../../core/store.js';
 import { kitsEnBodegaAfi, kitConsumidoItem, consumirKitParaItem, devolverKitDeItem, filtrosRequeridosAfi } from '../bodega/bodega.service.js';
@@ -522,4 +522,99 @@ export const exportarProgramaGanttExcel = (prog) => {
   }
   if (!wb.SheetNames.length) return alert("El programa no tiene equipos asignados.");
   XLSX.writeFile(wb, `Programa_${prog.nombre_programa || prog.mes}.xlsx`);
+};
+
+// =====================================================================
+// ENLACE PROGRAMAS ↔ HISTORIAL DE MANTENCIONES
+// Una mantención del Historial con "Programa" = nombre del programa y el mismo AFI
+// realiza un ítem de ese programa. Si el equipo aparece varias veces en el programa,
+// las mantenciones se asignan en orden de fecha: la 1ª a la fecha programada más baja,
+// la 2ª a la siguiente, etc.
+// =====================================================================
+const upP = (v) => String(v || '').trim().toUpperCase();
+export const nombreDePrograma = (p) => upP(p?.nombre_programa || p?.mes);
+const mismoEquipo = (a, b) => upP(limpiarAfi(a)) === upP(limpiarAfi(b));
+const fechaItem = (i) => normalizarFecha(i.fecha_programada || i.fecha_inicio) || '9999-12-31';
+
+/** Mapa itemId → mantención del Historial enlazada, para un programa. */
+export const enlacesDePrograma = (programaId) => {
+  const prog = obtenerProgObj(programaId);
+  const mapa = new Map();
+  if (!prog) return mapa;
+  const nombre = nombreDePrograma(prog);
+  const mants = dbIntervenciones.value.filter(m => upP(m.programaCorrespondiente) === nombre);
+  if (!mants.length) return mapa;
+  const items = obtenerItemsPrograma(programaId);
+  const afis = [...new Set(items.map(i => upP(limpiarAfi(i.afi))))];
+  afis.forEach(afi => {
+    const its = items.filter(i => mismoEquipo(i.afi, afi)).sort((a, b) => fechaItem(a).localeCompare(fechaItem(b)) || (a.id - b.id));
+    const ms = mants.filter(m => mismoEquipo(m.afi, afi)).sort((a, b) => String(normalizarFecha(a.fecha)).localeCompare(String(normalizarFecha(b.fecha))) || (a.id - b.id));
+    its.forEach((it, k) => { if (ms[k]) mapa.set(it.id, ms[k]); });
+  });
+  return mapa;
+};
+/** Mantención del Historial enlazada a un ítem (o undefined). */
+export const mantencionDeItem = (item) => enlacesDePrograma(item.programa_id).get(item.id);
+
+/** Programas que tienen al AFI asignado, con sus fechas aún pendientes (para el formulario de mantención). */
+export const programasDelAfi = (afi) => {
+  if (!afi) return [];
+  return dbProgramasCalendarios.value.map(p => {
+    const its = obtenerItemsPrograma(p.id).filter(i => mismoEquipo(i.afi, afi));
+    if (!its.length) return null;
+    const enl = enlacesDePrograma(p.id);
+    const pendientes = its.filter(i => !enl.has(i.id) && !i.realizado).map(i => fechaItem(i));
+    return { prog: p, nombre: p.nombre_programa || p.mes, pendientes };
+  }).filter(Boolean).sort((a, b) => (b.pendientes.length > 0) - (a.pendientes.length > 0) || String(a.pendientes[0] || '').localeCompare(String(b.pendientes[0] || '')));
+};
+
+/**
+ * Marca como REALIZADOS los ítems enlazados (fecha realizada y horómetro de la mantención).
+ * En programas de MANTENCIÓN descuenta el KIT de bodega igual que el switch (si el descuento está activo y hay kit).
+ * @param nombrePrograma  si se indica, solo ese programa; si no, el programa con id `programaId`.
+ * @returns texto con avisos (vacío si todo bien)
+ */
+export const sincronizarProgramaConHistorial = async ({ nombrePrograma = '', programaId = null, afi = '' } = {}) => {
+  const progs = programaId ? [obtenerProgObj(programaId)].filter(Boolean)
+    : dbProgramasCalendarios.value.filter(p => nombreDePrograma(p) === upP(nombrePrograma));
+  let marcados = 0; const avisos = [];
+  for (const prog of progs) {
+    const esMant = esProgramaMantencion(prog);
+    const enl = enlacesDePrograma(prog.id);
+    for (const item of obtenerItemsPrograma(prog.id)) {
+      const m = enl.get(item.id);
+      if (!m || (afi && !mismoEquipo(item.afi, afi))) continue;
+      const fechaReal = normalizarFecha(m.fecha);
+      const horo = parseNum(m.horometro) || null;
+      const yaEstaba = item.realizado;
+      if (yaEstaba && normalizarFecha(item.fecha_fin) === fechaReal && (!horo || parseNum(item.horometro) === horo)) continue;
+      const base = { realizado: true, fecha_fin: fechaReal || null };
+      try {
+        try { await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ ...base, horometro: horo }).eq('id', item.id)); item.horometro = horo; }
+        catch (err) { if (!/horometro/i.test(errMsg(err))) throw err; await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update(base).eq('id', item.id)); }
+        item.realizado = true; item.fecha_fin = base.fecha_fin;
+        marcados++;
+      } catch (err) { avisos.push(`AFI ${item.afi} (${formatDateForDisplay(item.fecha_programada)}): ${errMsg(err)}`); continue; }
+      if (!yaEstaba && esMant && descuentaBodega(prog.id) && !kitConsumidoItem(item)) {
+        try {
+          const kit = await consumirKitParaItem(item);
+          if (!kit) avisos.push(`AFI ${item.afi}: realizado sin descontar KIT (no había en bodega).`);
+        } catch (err) { avisos.push(`AFI ${item.afi}: no se pudo descontar el KIT (${errMsg(err)}).`); }
+      }
+    }
+  }
+  return { marcados, avisos };
+};
+
+/** Botón del programa: sincroniza todo el programa con el Historial. */
+export const sincronizandoPrograma = ref(false);
+export const sincronizarProgramaSeleccionado = async (prog) => {
+  if (!soloEditor() || !prog || !prog.id) return;
+  sincronizandoPrograma.value = true;
+  try {
+    const { marcados, avisos } = await sincronizarProgramaConHistorial({ programaId: prog.id });
+    alert(`${marcados ? marcados + ' equipo(s) marcados como REALIZADOS según el Historial.' : 'Todo estaba al día con el Historial.'}` + (avisos.length ? '\n\nAvisos:\n' + avisos.join('\n') : ''));
+  } finally {
+    sincronizandoPrograma.value = false;
+  }
 };
