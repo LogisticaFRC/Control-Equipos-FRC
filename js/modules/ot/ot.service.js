@@ -342,3 +342,124 @@ export const irAOT = (numero) => {
   otActual.value = null;
   if (currentTab.value === 'ot') cargarOT(); else currentTab.value = 'ot';
 };
+
+// ---------- Importar OT desde Excel (mismo formato FRC-RE-OPE-006) ----------
+const pad2 = (n) => String(n).padStart(2, '0');
+/** Fecha de una celda (número de Excel o texto dd-mm-aaaa / dd/mm/aa) → aaaa-mm-dd. */
+const fechaDeCelda = (cel) => {
+  if (!cel || cel.v === undefined || cel.v === '') return '';
+  if (typeof cel.v === 'number' && window.XLSX) {
+    const d = XLSX.SSF.parse_date_code(cel.v);
+    if (d && d.y) return `${d.y}-${pad2(d.m)}-${pad2(d.d)}`;
+  }
+  const t = String(cel.w || cel.v).trim();
+  let m = t.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
+  if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${pad2(m[2])}-${pad2(m[1])}`; }
+  m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : t;
+};
+/** Hora de una celda (fracción de día de Excel o texto 8:30 / 08:30 hrs) → HH:MM. */
+const horaDeCelda = (cel) => {
+  if (!cel || cel.v === undefined || cel.v === '') return '';
+  if (typeof cel.v === 'number') {
+    const min = Math.round((cel.v % 1) * 24 * 60);
+    return `${pad2(Math.floor(min / 60) % 24)}:${pad2(min % 60)}`;
+  }
+  const m = String(cel.w || cel.v).match(/(\d{1,2})[:.](\d{2})/);
+  return m ? `${pad2(m[1])}:${m[2]}` : String(cel.v).trim();
+};
+const textoDeCelda = (cel) => (cel && cel.v !== undefined && cel.v !== null) ? String(cel.w ?? cel.v).trim() : '';
+
+/** Lee una hoja con el formato de OT. Devuelve la OT o null si la hoja no es el formato. */
+export const leerOTdesdeHoja = (ws, nombreArchivo = '') => {
+  const txt = (ref) => textoDeCelda(ws[ref]);
+  const titulo = (txt('K1') + ' ' + txt('AL2')).toUpperCase();
+  if (!titulo.includes('ORDEN DE TRABAJO') && !titulo.includes('FRC-RE-OPE-006')) return null;
+  const ot = otVacia();
+  ot.estado = 'ABIERTA';
+  FORMATO_OT.celdas.filter(c => c.k).forEach(c => {
+    const ref = COLS[c.c] + c.r, cel = ws[ref], k = c.k;
+    if (k === 'folio') { const n = numeroDe(txt(ref)); ot.folio = n; return; }
+    if (k.startsWith('tipo:')) { if (txt(ref)) ot.tipo_mantencion = k.slice(5); return; }
+    if (k.startsWith('pauta:')) { if (txt(ref)) ot.pauta = k.slice(6); return; }
+    const tipo = tipoCampo(k);
+    fijarCampo(ot, k, tipo === 'date' ? fechaDeCelda(cel) : (tipo === 'time' ? horaDeCelda(cel) : textoDeCelda(cel)));
+  });
+  if (!ot.folio) ot.folio = numeroDe(String(nombreArchivo).replace(/\.xls[xm]?$/i, ''));   // ej. "OT 45.xlsx"
+  // Datos del equipo que falten → desde el Inventario
+  const eq = equipoPorAfi(ot.afi);
+  if (eq) {
+    ot.afi = eq.afi;
+    ot.equipo = ot.equipo || eq.tipo; ot.marca = ot.marca || eq.marca; ot.modelo = ot.modelo || eq.modelo;
+  }
+  ot.afi = ot.afi ? limpiarAfi(ot.afi) : '';
+  // Fecha de la OT = primera fecha de inicio de las actividades (si no hay, hoy)
+  ot.fecha = ot.actividades.map(a => a.f_inicio).filter(f => /^\d{4}-\d{2}-\d{2}$/.test(f)).sort()[0] || hoyISO();
+  return ot;
+};
+
+export const importandoOT = ref(false);
+/** Importa uno o varios Excel de OT (una OT por hoja). Solo Admin. */
+export const importarOTExcel = async (event) => {
+  const input = event.target;
+  const archivos = [...(input.files || [])];
+  input.value = '';
+  if (!archivos.length || !soloAdmin()) return;
+  if (!window.XLSX) return alert('No se pudo cargar el lector de Excel (revisa la conexión a internet).');
+  importandoOT.value = true;
+  const leidas = [], errores = [];
+  try {
+    for (const f of archivos) {
+      try {
+        const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+        let alguna = false;
+        wb.SheetNames.forEach(nombre => {
+          const ot = leerOTdesdeHoja(wb.Sheets[nombre], wb.SheetNames.length > 1 ? '' : f.name);
+          if (!ot) return;
+          alguna = true;
+          if (!ot.folio) errores.push(`${f.name}${wb.SheetNames.length > 1 ? ' / ' + nombre : ''}: sin N° de folio (celda FOLIO vacía).`);
+          else if (!ot.afi) errores.push(`${f.name}: OT ${ot.folio} sin ID EQUIPO (AFI).`);
+          else leidas.push(ot);
+        });
+        if (!alguna) errores.push(`${f.name}: no tiene el formato de Orden de Trabajo.`);
+      } catch (e) { errores.push(`${f.name}: no se pudo leer (${errMsg(e)}).`); }
+    }
+    // Folios repetidos dentro de lo importado
+    const unicas = [...new Map(leidas.map(o => [o.folio, o])).values()];
+    if (unicas.length < leidas.length) errores.push(`Se repetían folios en los archivos: se usó el último de cada uno.`);
+    if (!unicas.length) return alert('No se importó ninguna OT.\n\n' + errores.join('\n'));
+
+    const existentes = unicas.filter(o => dbOT.value.some(x => Number(x.folio) === Number(o.folio)));
+    let reemplazar = false;
+    if (existentes.length) {
+      reemplazar = confirm(`Ya existen ${existentes.length} OT con estos folios: ${existentes.map(o => o.folio).join(', ')}.\n\n` +
+        `Aceptar = reemplazarlas con el Excel · Cancelar = dejarlas como están (solo se importan las nuevas).`);
+    }
+    let nuevas = 0, actualizadas = 0;
+    const u = usuarioActivo.value, quien = (u && (u.nombre || u.usuario)) || '';
+    for (const ot of unicas) {
+      const previa = dbOT.value.find(x => Number(x.folio) === Number(ot.folio));
+      try {
+        if (previa) {
+          if (!reemplazar) continue;
+          await sb(supabaseClient.from(TABLA_OT).update({ ...payloadOT(ot), estado: previa.estado }).eq('id', previa.id));
+          actualizadas++;
+        } else {
+          await sb(supabaseClient.from(TABLA_OT).insert([{ ...payloadOT(ot), folio: ot.folio, creado_por: quien + ' (importada)' }]));
+          nuevas++;
+        }
+      } catch (e) { errores.push(`OT ${ot.folio}: ${errMsg(e)}`); }
+    }
+    await cargarOT();
+    alert(`Importación terminada: ${nuevas} OT nuevas, ${actualizadas} reemplazadas.` + (errores.length ? '\n\nAvisos:\n' + errores.join('\n') : ''));
+  } finally {
+    importandoOT.value = false;
+  }
+};
+
+// ---------- Documentos vinculados por N° de folio ----------
+/** Mantenciones del Historial con ese N° OT, con su documento adjunto (link) si tiene. */
+export const documentosDeOT = (folio) => mantencionesDeOT(folio).map(m => ({
+  id: m.id, mantencion: m, fecha: m.fecha, tipo: m.tipoMant, causa: m.causa, afi: m.afi,
+  descripcion: m.descripcion, link: m.linkDrive
+}));

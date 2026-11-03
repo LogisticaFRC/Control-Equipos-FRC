@@ -5,6 +5,7 @@ import template from './ot.template.js';
 import { comunes } from '../../core/comunes.js';
 import * as S from './ot.service.js';
 import { FORMATO_OT } from './ot.formato.js';
+import { editarMantencion } from '../historial/historial.service.js';
 
 const { onMounted } = Vue;
 
@@ -24,6 +25,6 @@ export default {
       const nueva = !S.otActual.value.id;
       if (await S.guardarOT()) alert(nueva ? `OT guardada con el folio N° ${S.otActual.value.folio}.` : 'OT guardada.');
     };
-    return { ...comunes(), ...S, F: FORMATO_OT, E, filasFormato, anchoHoja, guardarYAvisar };
+    return { ...comunes(), ...S, editarMantencion, F: FORMATO_OT, E, filasFormato, anchoHoja, guardarYAvisar };
   }
 };

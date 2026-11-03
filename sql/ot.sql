@@ -56,6 +56,23 @@ create policy frc_modificar on public.bd_ot for update to authenticated
 create policy frc_eliminar on public.bd_ot for delete to authenticated
   using ((select public.frc_puede(array['operaciones'], 'admin')));
 
+-- Al importar OT antiguas con su folio: si se importa un folio igual o mayor al próximo,
+-- el contador salta para que las OT nuevas nunca repitan un folio.
+create or replace function public.frc_ot_ajustar_folio()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_max integer; v_ult bigint; v_llamado boolean;
+begin
+  select max(folio) into v_max from public.bd_ot;
+  select last_value, is_called into v_ult, v_llamado from public.bd_ot_folio_seq;
+  if v_max is not null and v_max >= (case when v_llamado then v_ult + 1 else v_ult end) then
+    perform setval('public.bd_ot_folio_seq', v_max, true);
+  end if;
+  return null;
+end $$;
+drop trigger if exists frc_ot_ajustar_folio on public.bd_ot;
+create trigger frc_ot_ajustar_folio after insert or update of folio on public.bd_ot
+  for each statement execute function public.frc_ot_ajustar_folio();
+
 -- Próximo folio que se asignará
 select case when is_called then last_value + 1 else last_value end as proximo_folio
 from public.bd_ot_folio_seq;

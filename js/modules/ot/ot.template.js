@@ -9,7 +9,13 @@ export default /* html */ `
         <h2 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-file-signature text-amber-600"></i> Órdenes de Trabajo</h2>
         <p class="text-slate-500 mt-0.5">Formato FRC-RE-OPE-006 · el folio es correlativo y se asigna al guardar. Una OT queda <b>Realizada</b> cuando se registra en el Historial con su N° de OT.</p>
       </div>
-      <button v-if="puedeEditar" @click="nuevaOT()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl shadow flex items-center gap-2"><i class="fa-solid fa-plus-circle"></i> Nueva OT</button>
+      <div class="flex items-center gap-2 flex-wrap">
+        <label v-if="isAdmin" :class="['font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 cursor-pointer border', importandoOT ? 'bg-slate-200 text-slate-500' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300']" title="Uno o varios Excel con el formato de OT (FRC-RE-OPE-006)">
+          <i :class="['fa-solid', importandoOT ? 'fa-spinner fa-spin' : 'fa-file-import']"></i> {{ importandoOT ? 'Importando...' : 'Importar OT (Excel)' }}
+          <input type="file" multiple accept=".xlsx,.xls,.xlsm" @change="importarOTExcel" :disabled="importandoOT" class="hidden">
+        </label>
+        <button v-if="puedeEditar" @click="nuevaOT()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl shadow flex items-center gap-2"><i class="fa-solid fa-plus-circle"></i> Nueva OT</button>
+      </div>
     </div>
 
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -28,7 +34,7 @@ export default /* html */ `
       <div class="overflow-x-auto">
         <table class="w-full text-left">
           <thead class="bg-slate-800 text-white uppercase text-[10px]">
-            <tr><th class="p-2.5">Folio</th><th class="p-2.5">Fecha</th><th class="p-2.5">AFI</th><th class="p-2.5">Equipo</th><th class="p-2.5">Tipo</th><th class="p-2.5">Actividades</th><th class="p-2.5">Estado</th><th class="p-2.5 text-center">Acciones</th></tr>
+            <tr><th class="p-2.5">Folio</th><th class="p-2.5">Fecha</th><th class="p-2.5">AFI</th><th class="p-2.5">Equipo</th><th class="p-2.5">Tipo</th><th class="p-2.5">Actividades</th><th class="p-2.5">Estado</th><th class="p-2.5 text-center">Vinculados</th><th class="p-2.5 text-center">Acciones</th></tr>
           </thead>
           <tbody class="divide-y">
             <tr v-for="o in listaOT" :key="o.id" class="hover:bg-slate-50 cursor-pointer" @click="abrirOT(o)">
@@ -39,13 +45,18 @@ export default /* html */ `
               <td class="p-2.5 font-semibold">{{ o.tipo_mantencion || '-' }}<span v-if="o.pauta" class="text-slate-500"> · {{ o.pauta }} h</span></td>
               <td class="p-2.5 max-w-[320px] truncate">{{ o.actividades.filter(a => a.descripcion).map(a => a.descripcion).join(' · ') || '-' }}</td>
               <td class="p-2.5"><span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(o)]]">{{ estadoOT(o) }}</span></td>
+              <td class="p-2.5 text-center whitespace-nowrap">
+                <span v-if="documentosDeOT(o.folio).length" class="font-bold text-emerald-700" :title="'Registros en Historial con N° OT ' + o.folio"><i class="fa-solid fa-clipboard-check mr-0.5"></i>{{ documentosDeOT(o.folio).length }}</span>
+                <span v-if="documentosDeOT(o.folio).some(d => d.link)" class="ml-2 font-bold text-blue-700" title="Tiene documento adjunto"><i class="fa-solid fa-paperclip"></i></span>
+                <span v-if="!documentosDeOT(o.folio).length" class="text-slate-300">—</span>
+              </td>
               <td class="p-2.5 text-center whitespace-nowrap" @click.stop>
                 <button @click="imprimirOT(o)" title="Imprimir" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200"><i class="fa-solid fa-print"></i></button>
                 <button @click="exportarOTExcel(o)" title="Exportar Excel" class="ml-1 px-2 py-1 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800"><i class="fa-solid fa-file-excel"></i></button>
                 <button v-if="isAdmin" @click="eliminarOT(o)" title="Eliminar" class="ml-1 px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-700"><i class="fa-solid fa-trash"></i></button>
               </td>
             </tr>
-            <tr v-if="!listaOT.length && !cargandoOT"><td colspan="8" class="p-8 text-center text-slate-400 italic">No hay OT{{ filtroOT.texto || filtroOT.estado ? ' con estos filtros' : ' todavía' }}.</td></tr>
+            <tr v-if="!listaOT.length && !cargandoOT"><td colspan="9" class="p-8 text-center text-slate-400 italic">No hay OT{{ filtroOT.texto || filtroOT.estado ? ' con estos filtros' : ' todavía' }}.</td></tr>
           </tbody>
         </table>
       </div>
@@ -70,9 +81,26 @@ export default /* html */ `
       </div>
     </div>
 
-    <div v-if="mantencionesDeOT(otActual.folio).length" class="bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl p-3 font-semibold">
-      <i class="fa-solid fa-circle-check mr-1"></i> Registrada en el Historial:
-      <span v-for="m in mantencionesDeOT(otActual.folio)" :key="m.id" class="ml-2">{{ formatDateForDisplay(m.fecha) }} · {{ m.tipoMant }} · {{ m.afi }}</span>
+    <div v-if="otActual.folio" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-4 py-2.5 border-b bg-slate-50 font-bold text-slate-700 flex items-center gap-2">
+        <i class="fa-solid fa-link text-blue-600"></i> Registros y documentos vinculados a la OT N° {{ otActual.folio }}
+        <span class="text-[10px] font-semibold text-slate-500">(mantenciones del Historial con N° OT = {{ otActual.folio }})</span>
+      </div>
+      <table v-if="documentosDeOT(otActual.folio).length" class="w-full text-left">
+        <thead class="text-[10px] uppercase text-slate-500"><tr><th class="px-4 py-2">Fecha</th><th class="px-2 py-2">AFI</th><th class="px-2 py-2">Tipo</th><th class="px-2 py-2">Causa</th><th class="px-2 py-2">Descripción</th><th class="px-2 py-2 text-center">Documento</th><th class="px-2 py-2"></th></tr></thead>
+        <tbody class="divide-y">
+          <tr v-for="d in documentosDeOT(otActual.folio)" :key="d.id">
+            <td class="px-4 py-2 whitespace-nowrap">{{ formatDateForDisplay(d.fecha) }}</td>
+            <td class="px-2 py-2 font-bold text-amber-800">{{ d.afi }}</td>
+            <td class="px-2 py-2 font-semibold text-blue-700">{{ d.tipo || '-' }}</td>
+            <td class="px-2 py-2">{{ d.causa || '-' }}</td>
+            <td class="px-2 py-2 max-w-[360px] truncate" :title="d.descripcion">{{ d.descripcion || '-' }}</td>
+            <td class="px-2 py-2 text-center"><a v-if="d.link" :href="d.link" target="_blank" rel="noopener" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-paperclip"></i> Ver documento</a><span v-else class="text-slate-400">Sin adjunto</span></td>
+            <td class="px-2 py-2 text-right"><button v-if="puedeEditar" @click="editarMantencion(d.mantencion)" class="px-2 py-1 rounded border font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-pen mr-1"></i> Abrir mantención</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="px-4 py-3 text-slate-500">Aún no hay mantenciones en el Historial con N° OT {{ otActual.folio }}. Usa <b>Registrar en Historial</b> cuando el trabajo esté hecho (ahí puedes adjuntar el documento).</p>
     </div>
     <p class="text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i> Escribe el <b>ID EQUIPO (AFI)</b> y se completan Equipo, Marca, Modelo y Hrs actual. Las celdas amarillas se rellenan; en <b>Tipo de mantención</b> y <b>Pauta</b> haz clic en el cuadro para marcar la X.
       <span v-if="otActual.afi && !equipoDeOT" class="text-rose-600 font-bold ml-1">El AFI {{ otActual.afi }} no está en el inventario.</span></p>

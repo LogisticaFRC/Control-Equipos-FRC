@@ -78,6 +78,10 @@ Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú s
 - **Imprimir**: abre la hoja lista para imprimir en carta vertical (80 %, como el Excel).
 - **Estado**: *Pendiente* → *Realizada* cuando en el **Historial** existe una mantención con ese **N° OT** (botón *Registrar en Historial*:
   abre el formulario de mantención con AFI, N° OT, tipo, horómetro, actividades y personal ya rellenados). En el Historial, el N° OT es un enlace que abre la OT.
+- **Importar OT (Excel)** (solo Admin): uno o varios archivos con el mismo formato. Lee todas las celdas del formato (fechas y horas
+  incluidas). El folio sale de la celda FOLIO o, si está vacía, del nombre del archivo (ej. `OT 45.xlsx`). Si el folio ya existe, pregunta si reemplazar.
+  Al importar un folio mayor al próximo, el contador salta solo (trigger `frc_ot_ajustar_folio` en `sql/ot.sql`).
+- **Vinculados**: en la lista y dentro de la OT se ven las mantenciones del Historial con ese N° OT y su documento adjunto (botón *Ver documento*).
 - Permisos: crear/editar = Subadmin o Admin de Operaciones · anular/eliminar = Admin.
 - Si cambia el Excel del formato: reemplazar `plantillas/FORMATO_OT.xlsx` y ejecutar
   `python tools/generar_formato_ot.py plantillas/FORMATO_OT.xlsx js/modules/ot/ot.formato.js` (las celdas de datos están definidas en ese script).
