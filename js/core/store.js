@@ -10,6 +10,7 @@ import { mapMovimiento, TABLA_MOVIMIENTOS } from '../modules/movimientos/movimie
 import { mapIntervencion, TABLA_HISTORIAL } from '../modules/historial/historial.mapper.js';
 import { mapAplicacion, mapPrecio, TABLA_FILTROS, TABLA_FILTROS_PRECIOS } from '../modules/filtros/filtros.mapper.js';
 import { mapStock, mapKit, mapKitItem, mapMovBodega } from '../modules/bodega/bodega.mapper.js';
+import { mapOC, TABLA_OC } from '../modules/oc/oc.mapper.js';
 import { areaDeTab } from './menu.js';
 
 const { ref, computed } = Vue;
@@ -104,6 +105,7 @@ export const dbFiltrosPrecios = ref([]);  // módulo Filtros: lista de precios p
 export const dbBodegaStock = ref([]);     // módulo Bodega: filtros sueltos (bd_filtros_stock)
 export const dbKits = ref([]);            // módulo Bodega: kits (bd_filtros_kits) con su composición en .items
 export const dbBodegaMov = ref([]);       // módulo Bodega: movimientos (bd_filtros_movimientos)
+export const dbOC = ref([]);              // módulo OC: órdenes de compra (bd_oc)
 
 /** Se incrementa cada vez que cambian los datos (los gráficos lo observan para redibujarse). */
 export const datosVersion = ref(0);
@@ -134,7 +136,7 @@ export const cargandoDatos = ref(false);
 export const cargarDatosDesdeSupabase = async () => {
   cargandoDatos.value = true;
   try {
-    const [eqData, movData, intData, calData, itemData, modData, fmtData, filData, preData, stkData, kitData, kitItData, bmovData] = await Promise.all([
+    const [eqData, movData, intData, calData, itemData, modData, fmtData, filData, preData, stkData, kitData, kitItData, bmovData, ocData] = await Promise.all([
       fetchAllRows(TABLA_INVENTARIO),
       fetchAllRows(TABLA_MOVIMIENTOS),
       fetchAllRows(TABLA_HISTORIAL),
@@ -147,7 +149,8 @@ export const cargarDatosDesdeSupabase = async () => {
       fetchAllRows(TABLAS.BODEGA_STOCK),
       fetchAllRows(TABLAS.BODEGA_KITS),
       fetchAllRows(TABLAS.BODEGA_KITS_ITEMS),
-      fetchAllRows(TABLAS.BODEGA_MOV)
+      fetchAllRows(TABLAS.BODEGA_MOV),
+      fetchAllRows(TABLA_OC)
     ]);
 
     dbEquipos.value = eqData.map(mapEquipo).sort((a, b) => compararAfi(a.afi, b.afi));
@@ -168,6 +171,7 @@ export const cargarDatosDesdeSupabase = async () => {
     const itemsKit = kitItData.map(mapKitItem);
     dbKits.value = kitData.map(r => ({ ...mapKit(r), items: itemsKit.filter(i => String(i.kitId) === String(r.id)) }));
     dbBodegaMov.value = bmovData.map(mapMovBodega).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+    dbOC.value = ocData.map(mapOC).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 
     recalcularHorometros();
   } catch (err) {

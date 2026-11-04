@@ -3,7 +3,10 @@
 // =====================================================================
 import { supabaseClient, sb, errMsg, fetchAllRows } from '../../core/supabase.js';
 import { dbProgramasCalendarios, dbProgramasItems, dbIntervenciones, cargarDatosDesdeSupabase, obtenerDetalleEquipoPorAfi, soloAdmin, soloEditor } from '../../core/store.js';
-import { normalizarFecha, formatDateForDisplay, parseNum, limpiarAfi, esFechaEnRango, hoyISO } from '../../core/utils.js';
+import { normalizarFecha, formatDateForDisplay, parseNum, limpiarAfi, esFechaEnRango, hoyISO, mismoAfi, parseIsoDate, diasEntre } from '../../core/utils.js';
+import { buscarEquipoPorAfi } from '../../core/store.js';
+import { empresaDe } from '../inventario/inventario.mapper.js';
+import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel, fill, COLOR } from '../../core/excel.js';
 import { isAdmin } from '../../core/store.js';
 import { kitsEnBodegaAfi, kitConsumidoItem, consumirKitParaItem, devolverKitDeItem, filtrosRequeridosAfi } from '../bodega/bodega.service.js';
 
@@ -456,72 +459,143 @@ export const eliminarItemPrograma = async (itemId) => {
   }
 };
 
-// ---------- Exportar Gantt a Excel ----------
-export const exportarProgramaGanttExcel = (prog) => {
-  if (!prog || !prog.id) return alert("Selecciona un programa primero.");
-  if (!window.XLSX) return alert("Librería SheetJS no disponible.");
-  const wb = XLSX.utils.book_new();
-  const det = obtenerDetalleEquipoPorAfi;
+// ---------- Última mantención y ubicación actual de cada equipo ----------
+/** Última mantención registrada en el Historial para un AFI (o null). */
+export const ultimaMantencionAfi = (afi) => {
+  let ult = null, tUlt = -1;
+  dbIntervenciones.value.forEach(i => {
+    if (!mismoAfi(i.afi, afi)) return;
+    const t = parseIsoDate(i.fecha);
+    if (t > tUlt) { tUlt = t; ult = i; }
+  });
+  return ult;
+};
+/** Días desde la última mantención (o null). */
+export const diasDesdeUltimaMantencion = (afi) => {
+  const u = ultimaMantencionAfi(afi);
+  return u ? diasEntre(hoyISO(), u.fecha) : null;
+};
+/** Ubicación actual del equipo (Inventario; la actualizan los Movimientos). */
+export const ubicacionActualAfi = (afi) => {
+  const e = buscarEquipoPorAfi(afi);
+  return e ? (String(e.ubicacion || '').trim() || '-') : '-';
+};
+export const empresaActualAfi = (afi) => {
+  const e = buscarEquipoPorAfi(afi);
+  return e ? empresaDe(e) : '';
+};
 
-  if (esProgramaMantencion(prog)) {
-    const rows = obtenerItemsPrograma(prog.id).map(item => ({
-      "EQUIPO AFI": `AFI ${item.afi}`,
-      "TIPO EQUIPO": det(item.afi, 'tipo'),
-      "MARCA / MODELO": `${det(item.afi, 'marca')} ${det(item.afi, 'modelo')}`,
-      "FECHA PROGRAMADA (FIJA)": formatDateForDisplay(item.fecha_programada),
-      "FECHA REALIZADA": formatDateForDisplay(item.fecha_fin),
-      "HORÓMETRO REALIZADO": item.horometro ? `${item.horometro} hrs` : '-',
-      "FILTROS REQUERIDOS": filtrosRequeridosAfi(item.afi).total || '-',
-      "KITS EN BODEGA": kitsEnBodegaAfi(item.afi).total,
-      "KIT DESCONTADO": kitConsumidoItem(item) || '-',
-      "ESTADO": item.realizado ? 'REALIZADO' : 'PENDIENTE'
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Mantencion");
-    const dias = generarDiasDelPrograma(prog);
-    const MARCA = { prog: '●', atrasado: '!', hecho: '✓', reprog: 'P' };
-    const gantt = obtenerItemsPrograma(prog.id).map(item => {
-      const r = { "AFI": `AFI ${item.afi}`, "TIPO EQUIPO": det(item.afi, 'tipo'), "MARCA / MODELO": `${det(item.afi, 'marca')} ${det(item.afi, 'modelo')}`, "ESTADO": item.realizado ? 'REALIZADO' : 'PENDIENTE' };
-      dias.forEach(d => { r[d.fechaStr] = MARCA[celdaGanttMant(item, d.fechaStr)] || ''; });
-      return r;
-    });
-    if (gantt.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gantt), "Gantt");
-  } else {
-    const diasArr = generarDiasDelPrograma(prog);
-    NAVES.forEach(nave => {
-      const items = obtenerItemsProgramaPorNave(prog.id, nave);
-      if (items.length === 0) return;
-      const rows = items.map(item => {
-        const rowObj = {
-          "TIPO EQUIPO": det(item.afi, 'tipo'),
-          "AFI": `AFI ${item.afi}`,
-          "MARCA": det(item.afi, 'marca'),
-          "MODELO": det(item.afi, 'modelo'),
-          "CONDICIÓN": item.condicion || 'Arriendo',
-          "INICIO": formatDateForDisplay(item.fecha_inicio),
-          "FIN": formatDateForDisplay(item.fecha_fin),
-          "ESTADO": item.realizado ? 'REPARADO (ON)' : 'PENDIENTE (OFF)'
-        };
-        diasArr.forEach(d => { rowObj[d.fechaStr] = esFechaEnRango(d.fechaStr, item.fecha_inicio, item.fecha_fin) ? "●" : ""; });
-        return rowObj;
-      });
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), nave.replace(' ', '_'));
-    });
+// ---------- Exportar programa a Excel (con logo, todo centrado) ----------
+export const exportandoPrograma = ref(false);
+const FILL_GANTT = { prog: 'FFC7D2FE', atrasado: 'FFFECACA', hecho: 'FFA7F3D0', reprog: 'FFFDE68A' };
+const MARCA_GANTT = { prog: '●', atrasado: '!', hecho: '✓', reprog: 'P' };
 
-    const fueraRango = obtenerItemsFueraDeRangoPrograma(prog.id);
-    if (fueraRango.length > 0) {
-      const rowsFuera = fueraRango.map(item => ({
-        "AFI": `AFI ${item.afi}`,
-        "TIPO EQUIPO": det(item.afi, 'tipo'),
-        "NAVE": item.nave || 'NAVE 1',
-        "INICIO": formatDateForDisplay(item.fecha_inicio),
-        "FIN": formatDateForDisplay(item.fecha_fin),
-        "OBSERVACIÓN": "Fuera de vigencia del programa"
-      }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsFuera), "Fuera_De_Rango");
+/** Colorea las celdas de días de un Gantt ya dibujado con hojaTabla. */
+const pintarGantt = (ws, nFilas, colInicio, valorACodigo) => {
+  for (let r = 7; r < 7 + nFilas; r++) {
+    for (let c = colInicio; c <= ws.columnCount; c++) {
+      const cell = ws.getCell(r, c);
+      const cod = valorACodigo(cell.value);
+      if (cod) { cell.fill = fill(FILL_GANTT[cod]); cell.font = { bold: true, size: 9 }; }
     }
   }
-  if (!wb.SheetNames.length) return alert("El programa no tiene equipos asignados.");
-  XLSX.writeFile(wb, `Programa_${prog.nombre_programa || prog.mes}.xlsx`);
+};
+
+export const exportarProgramaGanttExcel = async (prog) => {
+  if (!prog || !prog.id) return alert("Selecciona un programa primero.");
+  exportandoPrograma.value = true;
+  try {
+    const { wb, logo } = await nuevoLibro();
+    const det = obtenerDetalleEquipoPorAfi;
+    const nombre = prog.nombre_programa || prog.mes || 'Programa';
+    const vigencia = `Vigencia: ${formatDateForDisplay(prog.fecha_inicio_programa)} al ${formatDateForDisplay(prog.fecha_termino_programa)}`;
+    const dias = generarDiasDelPrograma(prog);
+    const colsDias = dias.map(d => ({ t: `${d.letraDia.toUpperCase()}\n${String(d.numDia).padStart(2, '0')}`, w: 4.2 }));
+    const estiloEstado = (realizado) => (realizado ? { font: { color: { argb: COLOR.verdeTxt } } } : null);
+
+    if (esProgramaMantencion(prog)) {
+      const items = obtenerItemsPrograma(prog.id);
+      if (!items.length) return alert("El programa no tiene equipos asignados.");
+      const filas = items.map((item, i) => {
+        const u = ultimaMantencionAfi(item.afi);
+        return [
+          i + 1, `AFI ${item.afi}`, det(item.afi, 'tipo'), `${det(item.afi, 'marca')} ${det(item.afi, 'modelo')}`,
+          ubicacionActualAfi(item.afi), empresaActualAfi(item.afi) || '-',
+          u ? fechaExcel(normalizarFecha(u.fecha)) : 'SIN REGISTRO', u ? (u.tipoMant || u.causa || '-') : '-', u && u.horometro ? Number(u.horometro) : '-',
+          fechaExcel(normalizarFecha(item.fecha_programada)) || '-', fechaExcel(normalizarFecha(item.fecha_fin)) || '-',
+          item.horometro ? Number(item.horometro) : '-',
+          filtrosRequeridosAfi(item.afi).total || '-', kitsEnBodegaAfi(item.afi).total, kitConsumidoItem(item) || '-',
+          item.realizado ? 'REALIZADO' : 'PENDIENTE'
+        ];
+      });
+      const realizados = items.filter(i => i.realizado).length;
+      const ws = hojaTabla(wb, logo, {
+        nombre: 'Mantención', titulo: `PROGRAMA DE MANTENCIÓN · ${nombre}`, subtitulo: `${vigencia} · ${items.length} equipos · ${realizados} realizados (${Math.round(realizados / items.length * 100)}%)`,
+        columnas: [
+          { t: 'N°', w: 5 }, { t: 'EQUIPO AFI', w: 11, bold: true }, { t: 'TIPO EQUIPO', w: 18 }, { t: 'MARCA / MODELO', w: 22 },
+          { t: 'UBICACIÓN ACTUAL', w: 20, bold: true }, { t: 'EMPRESA', w: 18 },
+          { t: 'ÚLTIMA MANTENCIÓN', w: 13, fmt: 'dd-mm-yyyy', bold: true }, { t: 'TIPO ÚLT. MANT.', w: 20 }, { t: 'HORÓMETRO ÚLT. MANT.', w: 12, fmt: '#,##0' },
+          { t: 'FECHA PROGRAMADA', w: 13, fmt: 'dd-mm-yyyy' }, { t: 'FECHA REALIZADA', w: 13, fmt: 'dd-mm-yyyy' }, { t: 'HORÓMETRO REALIZADO', w: 12, fmt: '#,##0' },
+          { t: 'FILTROS REQ.', w: 9 }, { t: 'KITS EN BODEGA', w: 9 }, { t: 'KIT DESCONTADO', w: 14 }, { t: 'ESTADO', w: 13, bold: true }
+        ],
+        filas
+      });
+      filas.forEach((f, i) => {
+        const c = ws.getCell(7 + i, 16);
+        c.fill = fill(f[15] === 'REALIZADO' ? COLOR.verde : COLOR.ambar);
+        c.font = { bold: true, size: 9, color: { argb: f[15] === 'REALIZADO' ? COLOR.verdeTxt : COLOR.ambarTxt } };
+      });
+
+      if (dias.length) {
+        const filasG = items.map(item => [
+          `AFI ${item.afi}`, det(item.afi, 'tipo'), ubicacionActualAfi(item.afi), item.realizado ? 'REALIZADO' : 'PENDIENTE',
+          ...dias.map(d => MARCA_GANTT[celdaGanttMant(item, d.fechaStr)] || '')
+        ]);
+        const wsG = hojaTabla(wb, logo, {
+          nombre: 'Carta Gantt', titulo: `CARTA GANTT · ${nombre}`, subtitulo: `${vigencia} · ● Programado   ! Atrasado   ✓ Realizado   P Reprogramado`,
+          columnas: [{ t: 'AFI', w: 10, bold: true }, { t: 'TIPO EQUIPO', w: 18 }, { t: 'UBICACIÓN ACTUAL', w: 18 }, { t: 'ESTADO', w: 12, bold: true }, ...colsDias],
+          filas: filasG, estiloFila: (f) => estiloEstado(f[3] === 'REALIZADO')
+        });
+        const inv = Object.fromEntries(Object.entries(MARCA_GANTT).map(([k, v]) => [v, k]));
+        pintarGantt(wsG, filasG.length, 5, v => inv[v]);
+      }
+    } else {
+      let hay = false;
+      NAVES.forEach(nave => {
+        const items = obtenerItemsProgramaPorNave(prog.id, nave);
+        if (!items.length) return;
+        hay = true;
+        const filas = items.map(item => [
+          det(item.afi, 'tipo'), `AFI ${item.afi}`, `${det(item.afi, 'marca')} ${det(item.afi, 'modelo')}`, ubicacionActualAfi(item.afi),
+          item.condicion || 'Arriendo', fechaExcel(normalizarFecha(item.fecha_inicio)) || '-', fechaExcel(normalizarFecha(item.fecha_fin)) || '-',
+          item.realizado ? 'REPARADO (ON)' : 'PENDIENTE (OFF)',
+          ...dias.map(d => (esFechaEnRango(d.fechaStr, item.fecha_inicio, item.fecha_fin) ? '●' : ''))
+        ]);
+        const ws = hojaTabla(wb, logo, {
+          nombre: nave, titulo: `PROGRAMA DE REPARACIÓN · ${nombre}`, subtitulo: `${nave} · ${vigencia}`,
+          columnas: [
+            { t: 'TIPO EQUIPO', w: 18 }, { t: 'AFI', w: 10, bold: true }, { t: 'MARCA / MODELO', w: 22 }, { t: 'UBICACIÓN ACTUAL', w: 18 },
+            { t: 'CONDICIÓN', w: 11 }, { t: 'INICIO', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'FIN', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'ESTADO', w: 15, bold: true }, ...colsDias
+          ],
+          filas, estiloFila: (f) => estiloEstado(f[7] === 'REPARADO (ON)')
+        });
+        pintarGantt(ws, filas.length, 9, v => (v === '●' ? 'prog' : ''));
+      });
+      const fueraRango = obtenerItemsFueraDeRangoPrograma(prog.id);
+      if (fueraRango.length) {
+        hay = true;
+        hojaTabla(wb, logo, {
+          nombre: 'Fuera de rango', titulo: `PROGRAMA DE REPARACIÓN · ${nombre}`, subtitulo: `Equipos fuera de la vigencia · ${vigencia}`, apaisado: false,
+          columnas: [{ t: 'AFI', w: 10, bold: true }, { t: 'TIPO EQUIPO', w: 18 }, { t: 'UBICACIÓN ACTUAL', w: 18 }, { t: 'NAVE', w: 10 }, { t: 'INICIO', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'FIN', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'OBSERVACIÓN', w: 30 }],
+          filas: fueraRango.map(item => [`AFI ${item.afi}`, det(item.afi, 'tipo'), ubicacionActualAfi(item.afi), item.nave || 'NAVE 1', fechaExcel(normalizarFecha(item.fecha_inicio)) || '-', fechaExcel(normalizarFecha(item.fecha_fin)) || '-', 'Fuera de vigencia del programa'])
+        });
+      }
+      if (!hay) return alert("El programa no tiene equipos asignados.");
+    }
+    await descargarLibro(wb, `Programa_${nombre}.xlsx`);
+  } catch (err) {
+    alert("Error al exportar el programa: " + errMsg(err));
+  } finally { exportandoPrograma.value = false; }
 };
 
 // =====================================================================

@@ -342,3 +342,29 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
 - **Exportar Minuta:** Excel con logo, resumen con cantidades y %, tabla con colores por estado agrupada por **sección** (como el Word) y hoja *Dashboard* con gráficos y cumplimiento por sección y por encargado.
 - **Exportar Todas (un archivo):** *Resumen General* (situación actual + evolución por minuta + promedio), *Dashboard*, *Histórico* consolidado y una hoja por minuta en orden cronológico.
 - La exportación usa ExcelJS (se descarga sola desde cdn.jsdelivr.net al exportar). El logo es el configurado en Config & Usuarios; si el servidor de la imagen no lo permite, el Excel sale sin logo.
+
+---
+
+## Módulo OC · Órdenes de Compra (Operaciones → OC)
+
+**Antes de usarlo:** ejecutar `sql/oc.sql` en Supabase → SQL Editor (crea la tabla `bd_oc` con sus permisos).
+
+| Tabla | Campos |
+|---|---|
+| `bd_oc` | **N° OC** (único), fecha, **AFI**, proveedor, descripción, **precio**, **documento** (`link` en Storage `archivos_frc/oc/…`), nombre del archivo, creado por |
+
+- **Registro histórico:** lista con filtros (texto, AFI, fechas, vinculadas / sin vincular), totales ($) y botón *Nueva OC*. Clic en una fila = ver / editar (subir o cambiar el documento PDF / imagen).
+- **Enlace con la mantención:** la columna **N° OC** de cada mantención (BD_HISTORIAL.`numero_oc`) ahora admite **varias OC** separadas por coma (`4521, 4533`). La OC queda vinculada a la mantención que tenga su número (se compara sin "OC", "N°", "#" ni espacios).
+  - Desde la **mantención**: bloque *Órdenes de Compra* → escribir el N° y *Agregar OC* (sugiere las OC del mismo AFI aún sin vincular). Muestra el precio de cada OC y el **Total OC**.
+  - Desde la **OC**: elegir *Mantención vinculada* (mantenciones del AFI); al guardar se agrega el N° a esa mantención. Botón 🔧 = registrar una mantención nueva que ya trae esa OC.
+  - N° escritos en mantenciones que no están registrados en el módulo aparecen en el aviso amarillo *OC sin registrar* (botón *Registrar*). Esas OC suman $0 hasta registrarlas.
+- **Historial:** columnas *N° OC* (cada OC con su precio, clic = abre la OC) y *TOTAL OC*.
+- **Perfil de equipo:** tarjeta **Total gastado en OC** y tabla *Órdenes de Compra del Equipo* (OC con ese AFI + las vinculadas a sus mantenciones).
+- **Exportar Excel** (con logo, todo centrado): hoja *OC* (respeta los filtros, con total) + hoja *Total por equipo*.
+- Permisos: Subadmin/Admin de Operaciones crea y edita; solo Admin elimina.
+
+## Programas de Mantención: última mantención, ubicación y exportación con formato
+
+- Tabla del programa de **Mantención**: nuevas columnas **UBICACIÓN ACTUAL** (Inventario, la actualizan los Movimientos, + empresa) y **ÚLTIMA MANTENCIÓN** (fecha, días transcurridos — en rojo si son más de 90 —, tipo y horómetro, tomada del Historial).
+- **Exportar Programa (Excel)** ahora sale con formato: logo, título centrado (empresa · programa · vigencia · % realizado), encabezados en color, **todas las celdas centradas** con bordes, filtros y estado coloreado. Mantención: hojas *Mantención* (incluye ubicación y última mantención) y *Carta Gantt* (días coloreados). Reparación: una hoja por nave (con Gantt coloreado) + *Fuera de rango*.
+- Las funciones de formato están en `js/core/excel.js` (`nuevoLibro`, `hojaTabla`, `descargarLibro`) para reutilizarlas en otros módulos.

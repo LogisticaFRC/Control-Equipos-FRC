@@ -178,7 +178,7 @@ export default /* html */ `
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-center">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
           <div class="bg-slate-50 p-3 rounded-xl border">
             <span class="text-[10px] text-slate-500 font-bold uppercase block">Total Intervenciones</span>
             <strong class="text-lg font-bold text-slate-800">{{ getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi).length }}</strong>
@@ -186,6 +186,11 @@ export default /* html */ `
           <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
             <span class="text-[10px] text-emerald-700 font-bold uppercase block">Costo Total Acumulado</span>
             <strong class="text-lg font-bold text-emerald-800">\${{ costoTotalIntervencionesFiltradasAFI(perfilEquipo.afi).toLocaleString('es-CL') }}</strong>
+          </div>
+          <div class="bg-teal-50 p-3 rounded-xl border-2 border-teal-400" title="Suma de todas las OC del equipo (módulo OC), sin filtros de fecha">
+            <span class="text-[10px] text-teal-800 font-bold uppercase block"><i class="fa-solid fa-file-invoice-dollar mr-1"></i>Total gastado en OC</span>
+            <strong class="text-lg font-extrabold text-teal-900">{{ fmtCLP(totalOCEquipo(perfilEquipo.afi)) }}</strong>
+            <span class="block text-[10px] text-teal-700">{{ ocsDelEquipo(perfilEquipo.afi).length }} OC</span>
           </div>
           <div class="bg-amber-50 p-3 rounded-xl border border-amber-200">
             <span class="text-[10px] text-amber-800 font-bold uppercase block">Causa Más Frecuente</span>
@@ -252,7 +257,9 @@ export default /* html */ `
                 <th class="p-2">Causa Detallada</th>
                 <th class="p-2">Descripción</th>
                 <th class="p-2">Costo</th>
-                <th class="p-2">OC / OT</th>
+                <th class="p-2 text-emerald-300">OC (precio)</th>
+                <th class="p-2 text-emerald-300">Total OC</th>
+                <th class="p-2">OT</th>
                 <th class="p-2 text-amber-300">Aceites</th>
               </tr>
             </thead>
@@ -276,10 +283,47 @@ export default /* html */ `
                 <td class="p-2 max-w-xs truncate">{{ i.causaDetallada || '-' }}</td>
                 <td class="p-2 max-w-xs truncate">{{ i.descripcion || '-' }}</td>
                 <td class="p-2 font-bold text-emerald-700">\${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
-                <td class="p-2 font-mono">OC: {{ i.numeroOC || '-' }} / OT: {{ i.numeroOT || '-' }}</td>
+                <td class="p-2 font-mono">
+                  <template v-if="detalleOCsMantencion(i).length">
+                    <button v-for="d in detalleOCsMantencion(i)" :key="d.numero" @click="irAOC(d.numero)" :class="['block underline font-bold', d.oc ? 'text-emerald-700' : 'text-amber-700']">{{ d.numero }} <span class="font-normal text-slate-500">{{ d.oc ? fmtCLP(d.precio) : '(sin registrar)' }}</span></button>
+                  </template>
+                  <span v-else>-</span>
+                </td>
+                <td class="p-2 font-mono font-extrabold text-emerald-800 bg-emerald-50/50">{{ detalleOCsMantencion(i).length ? fmtCLP(totalOCMantencion(i)) : '-' }}</td>
+                <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
                 <td class="p-2 text-amber-800 font-bold bg-amber-50">{{ i.aceites }}</td>
               </tr>
-              <tr v-if="getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi).length === 0"><td colspan="17" class="p-4 text-center text-slate-400">Sin registros de mantención para este filtro.</td></tr>
+              <tr v-if="getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi).length === 0"><td colspan="19" class="p-4 text-center text-slate-400">Sin registros de mantención para este filtro.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ÓRDENES DE COMPRA DEL EQUIPO (módulo OC) -->
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <h4 class="font-bold text-slate-800 uppercase flex items-center justify-between gap-2 border-b pb-2">
+          <span><i class="fa-solid fa-file-invoice-dollar text-teal-600 mr-1"></i> Órdenes de Compra del Equipo</span>
+          <span class="text-teal-900 bg-teal-100 px-3 py-1 rounded-lg text-xs font-extrabold">TOTAL: {{ fmtCLP(totalOCEquipo(perfilEquipo.afi)) }}</span>
+        </h4>
+        <div class="overflow-x-auto border rounded-lg bg-slate-50 max-h-60">
+          <table class="w-full text-left whitespace-nowrap text-[11px]">
+            <thead class="bg-slate-100 text-slate-700 sticky top-0 uppercase text-[9px] border-b">
+              <tr><th class="p-2">N° OC</th><th class="p-2">Fecha</th><th class="p-2">Proveedor</th><th class="p-2">Descripción</th><th class="p-2">Mantención</th><th class="p-2 text-right">Precio</th><th class="p-2 text-center">Doc.</th></tr>
+            </thead>
+            <tbody class="divide-y bg-white">
+              <tr v-for="o in ocsDelEquipo(perfilEquipo.afi)" :key="o.id">
+                <td class="p-2 font-mono font-extrabold"><button @click="irAOC(o.numero)" class="text-emerald-700 underline">{{ o.numero }}</button></td>
+                <td class="p-2 font-mono">{{ formatDateForDisplay(o.fecha) }}</td>
+                <td class="p-2">{{ o.proveedor || '-' }}</td>
+                <td class="p-2 max-w-xs truncate" :title="o.descripcion">{{ o.descripcion || '-' }}</td>
+                <td class="p-2">
+                  <span v-if="mantencionesDeOC(o).length" class="text-blue-700 font-bold"><i class="fa-solid fa-link mr-1"></i>{{ mantencionesDeOC(o).map(m => formatDateForDisplay(m.fecha) + ' ' + (m.tipoMant || '')).join(' / ') }}</span>
+                  <span v-else class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">SIN VINCULAR</span>
+                </td>
+                <td class="p-2 text-right font-mono font-bold text-emerald-800">{{ fmtCLP(o.precio) }}</td>
+                <td class="p-2 text-center"><a v-if="o.link" :href="o.link" target="_blank" rel="noopener" class="text-blue-700"><i class="fa-solid fa-paperclip"></i></a><span v-else class="text-slate-300">—</span></td>
+              </tr>
+              <tr v-if="!ocsDelEquipo(perfilEquipo.afi).length"><td colspan="7" class="p-4 text-center text-slate-400">Este equipo no tiene OC registradas.</td></tr>
             </tbody>
           </table>
         </div>

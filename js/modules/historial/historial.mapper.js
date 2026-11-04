@@ -4,6 +4,7 @@
 import { formatExcelDate } from '../../core/utils.js';
 
 import { TABLAS } from '../../core/tablas.js';
+import { ocsDeTexto } from '../oc/oc.mapper.js';
 export const TABLA_HISTORIAL = TABLAS.HISTORIAL;
 
 // Filtros utilizados: se guardan como JSON en la columna `kit_bodega`.
@@ -90,6 +91,7 @@ export const mapIntervencion = (item) => {
     empresaArriendo: String(item.empresa || ''),
     costo: Number(item.costo || 0),
     numeroOC: String(item.numero_oc || ''),
+    ocLista: ocsDeTexto(item.numero_oc),   // una mantención puede tener varias OC ("123, 456") → módulo OC
     numeroOT: String(item.numero_ot || ''),
     linkDrive: String(item.link || ''),
     filtrosLista,

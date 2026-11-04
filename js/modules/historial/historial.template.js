@@ -85,7 +85,8 @@ export default /* html */ `
             <th class="p-2">INTERFERENCIA</th>
             <th class="p-2">EMPRESA</th>
             <th class="p-2">COSTO</th>
-            <th class="p-2">N° OC</th>
+            <th class="p-2 text-emerald-300">N° OC</th>
+            <th class="p-2 text-emerald-300">TOTAL OC</th>
             <th class="p-2">N° OT</th>
             <th class="p-2 text-amber-300">CONSUMO ACEITES</th>
             <th class="p-2 text-center">LINK</th>
@@ -117,7 +118,14 @@ export default /* html */ `
             <td class="p-2">{{ i.interferencia || '-' }}</td>
             <td class="p-2">{{ i.empresaArriendo || '-' }}</td>
             <td class="p-2 font-bold text-emerald-700">\${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
-            <td class="p-2 font-mono">{{ i.numeroOC || '-' }}</td>
+            <td class="p-2 font-mono">
+              <template v-if="detalleOCsMantencion(i).length">
+                <button v-for="d in detalleOCsMantencion(i)" :key="d.numero" @click.stop="irAOC(d.numero)" :title="d.oc ? (d.oc.proveedor + ' · ' + fmtCLP(d.precio)) : 'OC no registrada en el módulo OC'"
+                  :class="['block font-bold underline whitespace-nowrap', d.oc ? 'text-emerald-700 hover:text-emerald-900' : 'text-amber-700']">{{ d.numero }} <span class="no-underline font-normal text-slate-500">{{ d.oc ? fmtCLP(d.precio) : '(sin registrar)' }}</span></button>
+              </template>
+              <span v-else>-</span>
+            </td>
+            <td class="p-2 font-mono font-extrabold text-emerald-800 bg-emerald-50/50">{{ detalleOCsMantencion(i).length ? fmtCLP(totalOCMantencion(i)) : '-' }}</td>
             <td class="p-2 font-mono"><button v-if="i.numeroOT" @click.stop="irAOT(i.numeroOT)" title="Abrir la OT" class="text-blue-700 font-bold underline hover:text-blue-900">{{ i.numeroOT }}</button><span v-else>-</span></td>
             <td class="p-2 text-amber-800 font-bold bg-amber-50">{{ i.aceites }}</td>
             <td class="p-2 text-center">
@@ -125,7 +133,7 @@ export default /* html */ `
               <span v-else class="text-slate-400 italic">-</span>
             </td>
           </tr>
-          <tr v-if="filteredIntervenciones.length === 0"><td colspan="25" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
+          <tr v-if="filteredIntervenciones.length === 0"><td colspan="26" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
         </tbody>
       </table>
     </div>

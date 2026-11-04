@@ -10,8 +10,8 @@ export default /* html */ `
       <button v-if="progSelect.id && puedeEditar" @click="sincronizarProgramaSeleccionado(progSelect)" :disabled="sincronizandoPrograma" title="Marca como realizados los equipos que ya tienen su mantención en el Historial con este programa" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2 disabled:opacity-60">
         <i :class="['fa-solid text-sm', sincronizandoPrograma ? 'fa-spinner fa-spin' : 'fa-arrows-rotate']"></i> Sincronizar con Historial
       </button>
-      <button v-if="progSelect.id" @click="exportarProgramaGanttExcel(progSelect)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
-        <i class="fa-solid fa-file-excel text-sm"></i> Exportar Programa (Excel)
+      <button v-if="progSelect.id" @click="exportarProgramaGanttExcel(progSelect)" :disabled="exportandoPrograma" class="disabled:opacity-60 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+        <i :class="['fa-solid text-sm', exportandoPrograma ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Programa (Excel)
       </button>
       <template v-if="isAdmin">
         <div class="flex items-center gap-1.5">
@@ -195,6 +195,8 @@ export default /* html */ `
                 <th class="p-2.5">EQUIPO AFI</th>
                 <th class="p-2.5">TIPO EQUIPO</th>
                 <th class="p-2.5">MARCA / MODELO</th>
+                <th class="p-2.5 text-sky-800 font-bold">UBICACIÓN ACTUAL</th>
+                <th class="p-2.5 text-rose-800 font-bold">ÚLTIMA MANTENCIÓN</th>
                 <th class="p-2.5 text-teal-800 font-bold text-center">FILTROS</th>
                 <th class="p-2.5 text-violet-800 font-bold">KIT EN BODEGA</th>
                 <th class="p-2.5 text-indigo-800 font-bold">FECHA PROGRAMADA (FIJA)</th>
@@ -209,6 +211,22 @@ export default /* html */ `
                 <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
                 <td class="p-2.5 font-semibold text-slate-800">{{ obtenerDetalleEquipoPorAfi(item.afi, 'tipo') }}</td>
                 <td class="p-2.5 text-slate-600">{{ obtenerDetalleEquipoPorAfi(item.afi, 'marca') }} {{ obtenerDetalleEquipoPorAfi(item.afi, 'modelo') }}</td>
+
+                <!-- Ubicación actual (Inventario / último movimiento) -->
+                <td class="p-2.5 bg-sky-50/40">
+                  <span class="font-bold text-sky-900"><i class="fa-solid fa-location-dot text-sky-600 mr-1"></i>{{ ubicacionActualAfi(item.afi) }}</span>
+                  <span v-if="empresaActualAfi(item.afi)" class="block text-[9px] text-slate-500">{{ empresaActualAfi(item.afi) }}</span>
+                </td>
+
+                <!-- Última mantención registrada en el Historial -->
+                <td class="p-2.5 bg-rose-50/30">
+                  <template v-if="ultimaMantencionAfi(item.afi)">
+                    <span class="font-mono font-bold text-slate-800">{{ formatDateForDisplay(ultimaMantencionAfi(item.afi).fecha) }}</span>
+                    <span class="ml-1 text-[9px] font-bold px-1.5 rounded" :class="diasDesdeUltimaMantencion(item.afi) > 90 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'">hace {{ diasDesdeUltimaMantencion(item.afi) }} d</span>
+                    <span class="block text-[9px] text-blue-700 font-semibold">{{ ultimaMantencionAfi(item.afi).tipoMant || ultimaMantencionAfi(item.afi).causa || '-' }}<template v-if="ultimaMantencionAfi(item.afi).horometro"> · {{ ultimaMantencionAfi(item.afi).horometro }} hrs</template></span>
+                  </template>
+                  <span v-else class="text-[10px] text-slate-400 italic">Sin registro</span>
+                </td>
 
                 <!-- Filtros que usa el equipo (módulo Filtros) -->
                 <td class="p-2.5 text-center" :title="filtrosRequeridosAfi(item.afi).detalle || 'Sin filtros enlazados al modelo en el módulo Filtros'">

@@ -21,5 +21,6 @@ export const TABLAS = {
   BODEGA_MOV: 'bd_filtros_movimientos',       // módulo BODEGA: registro de entradas / salidas
   MINUTAS: 'bd_minutas',                      // módulo MINUTAS: cabecera de cada minuta semanal
   MINUTAS_ITEMS: 'bd_minutas_items',          // módulo MINUTAS: tareas / compromisos de cada minuta
-  OT: 'bd_ot'                                 // módulo OT: órdenes de trabajo (formato FRC-RE-OPE-006)
+  OT: 'bd_ot',                                // módulo OT: órdenes de trabajo (formato FRC-RE-OPE-006)
+  OC: 'bd_oc'                                 // módulo OC: órdenes de compra (N° OC, precio, AFI, documento) ↔ BD_HISTORIAL.numero_oc
 };

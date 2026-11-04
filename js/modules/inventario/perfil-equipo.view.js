@@ -10,6 +10,7 @@ import { dbEquipos } from '../../core/store.js';
 import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.js';
 import { editarMantencion, eliminarMantencion } from '../historial/historial.service.js';
 import { requeridosPorModelo, irAFiltrosDelModelo, fmtPrecio } from '../filtros/filtros.service.js';
+import { fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC } from '../oc/oc.service.js';
 
 const { onMounted, onBeforeUnmount, watch, nextTick, computed } = Vue;
 
@@ -70,6 +71,7 @@ export default {
       ...comunes(), ...P, resetFiltrosPerfil, renderPerfilCharts,
       getHistorialMovimientosAFI, editarMantencion, eliminarMantencion,
       filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio,
+      fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC,
       abrirBajaEquipo, buscarEquipoPorId: (id) => dbEquipos.value.find(e => e.id === id)
     };
   }

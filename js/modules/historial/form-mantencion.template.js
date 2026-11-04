@@ -80,11 +80,42 @@ export default /* html */ `
                 <div><label class="block font-bold mb-1">Descripción del Trabajo</label><input type="text" v-model="formMant.descripcion" placeholder="Descripción..." class="w-full p-2 border rounded-lg bg-white"></div>
                 <div><label class="block font-bold mb-1">Interferencia</label><input type="text" v-model="formMant.interferencia" placeholder="Interferencia..." class="w-full p-2 border rounded-lg bg-white"></div>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 <div><label class="block font-bold mb-1">Empresa / Arriendo</label><input type="text" v-model="formMant.empresaArriendo" placeholder="Empresa..." class="w-full p-2 border rounded-lg bg-white"></div>
                 <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono"></div>
-                <div><label class="block font-bold mb-1">N° OC</label><input type="text" v-model="formMant.numeroOC" placeholder="OC..." class="w-full p-2 border rounded-lg bg-white font-mono"></div>
                 <div><label class="block font-bold mb-1">N° OT</label><input type="text" v-model="formMant.numeroOT" placeholder="OT..." class="w-full p-2 border rounded-lg bg-white font-mono"></div>
+              </div>
+
+              <!-- ÓRDENES DE COMPRA (una mantención puede tener varias OC → módulo OC) -->
+              <div class="bg-white border border-emerald-300 rounded-xl p-3 space-y-2 mt-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <h5 class="font-bold text-emerald-900 uppercase flex items-center gap-1.5"><i class="fa-solid fa-file-invoice-dollar"></i> Órdenes de Compra (OC) de esta mantención</h5>
+                  <span class="font-extrabold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg">Total OC: {{ fmtCLP(totalOcsFormMant) }}</span>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                  <input v-model="ocNuevaFormMant" list="dl-fm-oc" @keydown.enter.prevent="agregarOCFormMant" type="text" placeholder="N° OC (puedes poner varias: 123, 456)" class="p-2 border rounded-lg font-mono w-72">
+                  <datalist id="dl-fm-oc"><option v-for="o in dbOC" :key="o.id" :value="o.numero">{{ o.afi ? 'AFI ' + o.afi + ' · ' : '' }}{{ fmtCLP(o.precio) }} {{ o.proveedor }}</option></datalist>
+                  <button type="button" @click="agregarOCFormMant" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg font-bold"><i class="fa-solid fa-plus"></i> Agregar OC</button>
+                  <template v-if="ocsSugeridasFormMant.length">
+                    <span class="text-[10px] text-slate-500 ml-1">OC del AFI sin vincular:</span>
+                    <button v-for="o in ocsSugeridasFormMant" :key="o.id" type="button" @click="ocNuevaFormMant = o.numero; agregarOCFormMant()" class="text-[10px] font-bold px-2 py-1 rounded border border-dashed border-emerald-400 text-emerald-800 hover:bg-emerald-50">+ OC {{ o.numero }} ({{ fmtCLP(o.precio) }})</button>
+                  </template>
+                </div>
+                <table v-if="ocsFormMant.length" class="w-full text-left">
+                  <thead class="text-[10px] uppercase text-slate-500"><tr><th class="py-1">N° OC</th><th class="py-1">Proveedor</th><th class="py-1">Descripción</th><th class="py-1 text-right">Precio</th><th class="py-1 text-center">Doc.</th><th></th></tr></thead>
+                  <tbody class="divide-y">
+                    <tr v-for="d in ocsFormMant" :key="d.numero">
+                      <td class="py-1.5 font-mono font-extrabold text-emerald-700">{{ d.numero }}</td>
+                      <td class="py-1.5">{{ d.oc ? (d.oc.proveedor || '-') : '' }}<span v-if="!d.oc" class="text-amber-700 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> No registrada en el módulo OC (precio $0)</span></td>
+                      <td class="py-1.5 max-w-[260px] truncate">{{ d.oc?.descripcion || '' }}</td>
+                      <td class="py-1.5 text-right font-mono font-bold">{{ fmtCLP(d.precio) }}</td>
+                      <td class="py-1.5 text-center"><a v-if="d.oc?.link" :href="d.oc.link" target="_blank" rel="noopener" class="text-blue-700"><i class="fa-solid fa-paperclip"></i></a></td>
+                      <td class="py-1.5 text-right"><button type="button" @click="quitarOCFormMant(d.numero)" class="text-rose-500 hover:text-rose-700 px-1" title="Quitar OC"><i class="fa-solid fa-xmark"></i></button></td>
+                    </tr>
+                  </tbody>
+                  <tfoot><tr class="font-extrabold"><td colspan="3" class="pt-1.5 text-right uppercase text-[10px]">Total OC</td><td class="pt-1.5 text-right font-mono text-emerald-800">{{ fmtCLP(totalOcsFormMant) }}</td><td colspan="2"></td></tr></tfoot>
+                </table>
+                <p v-else class="text-slate-400 italic">Sin OC. Escribe el N° de la OC (registrada en el módulo OC) y presiona Agregar.</p>
               </div>
             </div>
 
