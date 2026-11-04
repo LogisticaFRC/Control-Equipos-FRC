@@ -6,7 +6,7 @@
 // salen automáticamente de aquí.
 //   placeholder: true → muestra la pantalla "En construcción" del área.
 // =====================================================================
-import { dbEquipos, dbMovimientos, dbIntervenciones, dbOC } from './store.js';
+import { dbEquipos, dbMovimientos, dbIntervenciones, dbOC, dbLocaciones } from './store.js';
 
 const { ref } = Vue;
 
@@ -31,6 +31,7 @@ export const AREAS = [
       { key: 'ot', label: 'Órdenes de Trabajo', icon: 'fa-file-signature' },
       { key: 'oc', label: 'OC', icon: 'fa-file-invoice-dollar', count: () => dbOC.value.length },
       { key: 'minutas', label: 'Minutas', icon: 'fa-clipboard-list' },
+      { key: 'areas', label: 'Áreas y Locaciones', icon: 'fa-sitemap', count: () => dbLocaciones.value.filter(n => n.tipo === 'LOCACION').length },
       { key: 'movimientos', label: 'Movimientos', icon: 'fa-truck-ramp-box', count: () => dbMovimientos.value.length },
       { key: 'hojaVida', label: 'Historial', icon: 'fa-file-medical', count: () => dbIntervenciones.value.length },
       { key: 'aceites', label: 'Control Aceites', icon: 'fa-oil-can' },

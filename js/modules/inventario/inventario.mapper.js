@@ -13,6 +13,7 @@ export const mapEquipo = (item) => ({
   marca: String(item.marca || ''),
   modelo: String(item.modelo || ''),
   ubicacion: String(item.ubicacion || ''),
+  locacionId: item.locacion_id ?? null,          // módulo ÁREAS (Empresa → Área → Locación)
   empresaArriendo: String(item.empresa_arriendo || '').trim().toUpperCase(),
   disponibilidad: normalizarClave(item.disponibilidad),
   anio: item.anio || 2023,

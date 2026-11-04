@@ -26,6 +26,7 @@ js/
     inventario/                ← INVENTARIO AFI (+ Perfil de Equipo y modal Nuevo Equipo)
     programas/                 ← PROGRAMAS (+ modales Crear Programa / Asignar Equipo)
     minutas/                   ← MINUTAS (mejora continua semanal: carpetas Año → Mes, dashboard por minuta y general, importar Word/Excel, exportar)
+    areas/                     ← ÁREAS Y LOCACIONES (Empresa → Área → Locación → AFI) + selector en cascada reutilizable
     movimientos/               ← MOVIMIENTOS (+ modal Registrar Movimiento)
     historial/                 ← HISTORIAL (+ formulario de Mantención)
     aceites/                   ← CONTROL ACEITES
@@ -43,7 +44,7 @@ Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú s
 | Área | Módulos |
 |---|---|
 | Inicio | Bienvenida ("Bienvenido al Sistema de Gestión FRC" + logo grande). Es la primera pantalla al iniciar sesión; también se llega haciendo clic en el logo del header |
-| Operaciones | Dashboard, Inventario AFI, Programas, Minutas, Movimientos, Historial, Control Aceites, Filtros, Bodega Filtros |
+| Operaciones | Dashboard, Inventario AFI, Programas, Minutas, Áreas y Locaciones, Movimientos, Historial, Control Aceites, Filtros, Bodega Filtros |
 | Ventas · Seguridad · RRHH · Finanzas · Administración | En construcción (pantalla "Próximamente") |
 | General | Formatos, Config & Usuarios |
 
@@ -368,3 +369,36 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
 - Tabla del programa de **Mantención**: nuevas columnas **UBICACIÓN ACTUAL** (Inventario, la actualizan los Movimientos, + empresa) y **ÚLTIMA MANTENCIÓN** (fecha, días transcurridos — en rojo si son más de 90 —, tipo y horómetro, tomada del Historial).
 - **Exportar Programa (Excel)** ahora sale con formato: logo, título centrado (empresa · programa · vigencia · % realizado), encabezados en color, **todas las celdas centradas** con bordes, filtros y estado coloreado. Mantención: hojas *Mantención* (incluye ubicación y última mantención) y *Carta Gantt* (días coloreados). Reparación: una hoja por nave (con Gantt coloreado) + *Fuera de rango*.
 - Las funciones de formato están en `js/core/excel.js` (`nuevoLibro`, `hojaTabla`, `descargarLibro`) para reutilizarlas en otros módulos.
+
+## Áreas y Locaciones (Operaciones → Áreas y Locaciones)
+
+**Antes de usarlo:** ejecutar `sql/areas.sql` en Supabase → SQL Editor (crea `bd_locaciones`, agrega `locacion_id` a `BD_INVENTARIO` y `BD_MOVIMIENTOS`, y crea la empresa TALLER FRC). Se puede repetir sin perder datos.
+
+| Nivel | Qué es | Guardado en |
+|---|---|---|
+| **Empresa** | Cliente / dueño del lugar (ej. CODELCO, TALLER FRC) | `bd_locaciones` tipo `EMPRESA` |
+| **Área** | Carpeta dentro de la empresa (ej. MINA SUR) | `bd_locaciones` tipo `AREA` (padre = empresa) |
+| **Locación** | Lugar físico donde están los equipos (ej. TALLER CAMIONES) | `bd_locaciones` tipo `LOCACION` (padre = área) |
+| **Equipos (AFI)** | Cada equipo apunta a una locación | `BD_INVENTARIO.locacion_id` |
+
+- **Explorador tipo carpetas:** árbol a la izquierda y carpetas/equipos a la derecha, con migas de pan, buscador (AFI, equipo, empresa, área o locación) y contadores. Carpeta especial **Sin locación** = equipos aún no ubicados (muestra su ubicación antigua en texto para ayudar a ubicarlos).
+- **Actualización manual:** en una locación → *Agregar equipos (AFI)* (selección múltiple; avisa si el equipo estaba en otra locación). Botón *Cambiar* en cada equipo = elegir Empresa → Área → Locación. ✕ = quitarlo (queda Sin locación). El Admin puede marcar *Registrar también en Movimientos*.
+- **Perfil de Equipo:** bloque *Ubicación actual del equipo* con las 3 listas en cascada. La **Empresa Arrendada** sale de la locación elegida (Fuera de Servicio → sigue siendo TALLER FRC).
+- **Movimientos:** el *Origen* se completa solo con la locación actual del equipo y el *Destino* se elige con Empresa → Área → Locación. Al guardar, el equipo queda en esa locación.
+- **¿No existe el lugar?** En cualquiera de las 3 listas elegir **➕ Crear nueva…** y escribir el nombre: si la empresa es nueva, el área y la locación también lo son. Se crean al guardar (perfil o movimiento) y aparecen en el módulo.
+- Para que el resto del sistema no cambie, al ubicar un equipo también se escribe `ubicacion = "ÁREA / LOCACIÓN"` y `empresa_arriendo = EMPRESA` (Inventario, Programas y Excel siguen leyendo esos textos). Al renombrar o mover una carpeta, esos textos se actualizan en sus equipos.
+- Renombrar ✏️ y mover ⇄ (área a otra empresa, locación a otra área): Subadmin/Admin. Eliminar: solo Admin y solo si la carpeta no tiene subcarpetas (los equipos de una locación eliminada quedan Sin locación).
+- Nombres en MAYÚSCULAS; no se repite el mismo nombre dentro de la misma carpeta.
+- **Exportar Excel:** Empresa | Área | Locación | AFI | equipo | estado | horómetro (de la carpeta abierta o de todo).
+
+### Georreferencia y mapa de equipos (Google Maps)
+
+> ⚠️ Ejecutar **`sql/areas_georef.sql`** en Supabase (agrega `lat`, `lng` y `maps_url` a `bd_locaciones`).
+
+- En cada **empresa, área o locación** → ✏️ → campo *Georreferencia Google Maps*: pegar el **link de Google Maps** o las **coordenadas** (`-33.4489, -70.6693`, también en grados `33°26'56"S 70°40'09"W`). Muestra las coordenadas leídas y un enlace *comprobar*.
+  - Para obtenerlas: en Google Maps, **clic derecho sobre el lugar → clic en las coordenadas** (se copian). Los links cortos `maps.app.goo.gl` no traen coordenadas: se guardan como enlace, pero el punto no sale en el mapa.
+- Una locación sin georreferencia propia usa la de su área o empresa (aparece como **"aprox."**, pin punteado).
+- La locación abierta muestra su **mapa de Google** embebido; en cada carpeta y en el **Perfil de Equipo** hay *Abrir / Ver en Google Maps*.
+- **Ver mapa de equipos** (botón arriba): todas las locaciones con sus equipos (o solo las de la empresa/área abierta). Pin con la cantidad de equipos, color por empresa, vista Mapa/Satélite. Clic en el pin = lista de AFI (clic en el AFI abre su perfil), *Abrir en Google Maps* y *Ver carpeta*. Abajo se listan las locaciones sin georreferencia para completarlas.
+- El mapa usa Leaflet + OpenStreetMap/Esri (gratis, sin API key; se carga desde cdnjs al abrirlo). Google Maps se usa para el mapa de cada locación y los enlaces. Un mapa de Google con todos los pines requiere una API key de Google Cloud (se puede agregar después).
+- El Excel exportado incluye la columna *GOOGLE MAPS* (coordenadas con enlace).

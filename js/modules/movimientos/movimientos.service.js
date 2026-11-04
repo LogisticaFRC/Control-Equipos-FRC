@@ -6,6 +6,7 @@ import { dbEquipos, dbMovimientos, cargarDatosDesdeSupabase, buscarEquipoPorAfi,
 import { normalizarClave, parseStr, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, limpiarAfi, mismoAfi, hoyISO, getVal, parseFileAnyFormat, resetInputFile } from '../../core/utils.js';
 import { TABLA_MOVIMIENTOS } from './movimientos.mapper.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
+import { selDesdeLocacion, selCompleta, selVacia, resolverSeleccion, rutaDe, rutaTexto, textoUbicacion, nodo } from '../areas/areas.service.js';
 
 const { ref, computed } = Vue;
 
@@ -35,33 +36,67 @@ export const getHistorialMovimientosAFI = (afi) => dbMovimientos.value
   .sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
 
 // ---------- Registrar movimiento ----------
-const MOV_DEFAULT = () => ({ afi: dbEquipos.value[0]?.afi || "", fecha: hoyISO(), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "" });
+// Destino = Empresa → Área → Locación del módulo ÁREAS (formMov.sel). Origen = dónde está hoy el equipo.
+const MOV_DEFAULT = () => ({ afi: "", fecha: hoyISO(), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "", sel: selDesdeLocacion(null) });
 export const showModalMovimiento = ref(false);
 export const formMov = ref(MOV_DEFAULT());
 
-export const abrirModalCrearMovimiento = () => {
+/** Texto de origen: locación actual del equipo (o su ubicación en texto si aún no tiene locación). */
+const origenDeEquipo = (eq) => {
+  if (!eq) return '';
+  return nodo(eq.locacionId) ? textoUbicacion(eq.locacionId) : (eq.ubicacion || '');
+};
+export const alCambiarAfiMov = () => {
+  const eq = buscarEquipoPorAfi(formMov.value.afi);
+  formMov.value.origen = origenDeEquipo(eq);
+};
+/** Ruta completa del origen (Empresa › Área › Locación), para mostrar bajo el campo. */
+export const origenRuta = computed(() => {
+  const eq = buscarEquipoPorAfi(formMov.value.afi);
+  return eq && nodo(eq.locacionId) ? rutaTexto(eq.locacionId) : '';
+});
+
+export const abrirModalCrearMovimiento = (afi = '') => {
   formMov.value = MOV_DEFAULT();
+  if (typeof afi === 'string' && afi) { formMov.value.afi = afi; alCambiarAfiMov(); }   // (desde un botón llega el evento, se ignora)
   showModalMovimiento.value = true;
 };
 
 export const guardarNuevoMovimiento = async () => {
   if (!soloAdmin()) return;
   const f = formMov.value;
+  const sel = f.sel;
+  if (!selVacia(sel) && !selCompleta(sel)) return alert("Completa el destino: Empresa → Área → Locación (o elige \"➕ Crear nueva…\" y escribe el nombre).");
+  if (selVacia(sel) && !confirm("No elegiste destino (Empresa → Área → Locación).\n¿Guardar el movimiento sin destino? La ubicación del equipo no cambiará.")) return;
+
+  // 1) Crea la empresa / área / locación nueva si corresponde
+  let locId = null;
+  if (selCompleta(sel)) {
+    try { locId = await resolverSeleccion(sel); }
+    catch (err) { return alert("No se pudo crear la locación de destino: " + errMsg(err)); }
+  }
+  const ruta = rutaDe(locId);
+
   const payload = {
     afi: limpiarAfi(f.afi),
     fecha: formatIsoDateForSupabase(f.fecha),
     tipo: parseStr(f.tipo),
     ubicacion_anterior: parseStr(f.origen),
-    ubicacion_actual: parseStr(f.destino),
-    empresa_arriendo: parseStr(f.empresa_arriendo),
+    ubicacion_actual: locId ? textoUbicacion(locId) : '',
+    empresa_arriendo: ruta.empresa ? ruta.empresa.nombre : '',
     estado: parseStr(f.estado),
     camion_encargado: parseStr(f.camion),
-    conductor_encargado: parseStr(f.conductor)
+    conductor_encargado: parseStr(f.conductor),
+    locacion_id: locId
   };
   try {
     await sb(supabaseClient.from(TABLA_MOVIMIENTOS).insert([payload]));
   } catch (err) {
-    return alert("Error al registrar el movimiento: " + errMsg(err));
+    // Si aún no se ejecutó sql/areas.sql (sin columna locacion_id), se guarda igual sin ella
+    if (!/locacion_id/i.test(errMsg(err))) return alert("Error al registrar el movimiento: " + errMsg(err));
+    delete payload.locacion_id;
+    try { await sb(supabaseClient.from(TABLA_MOVIMIENTOS).insert([payload])); }
+    catch (err2) { return alert("Error al registrar el movimiento: " + errMsg(err2)); }
   }
 
   // Actualiza ubicación y estado del equipo en el inventario
@@ -70,6 +105,7 @@ export const guardarNuevoMovimiento = async () => {
   if (eqRef) {
     const updateObj = {};
     if (payload.ubicacion_actual) updateObj.ubicacion = payload.ubicacion_actual;
+    if (locId) updateObj.locacion_id = locId;
     if (payload.estado) updateObj.disponibilidad = normalizarClave(payload.estado);
     // Empresa arrendada: Fuera de Servicio = TALLER FRC; si el movimiento trae empresa, pasa a ser la del equipo
     if (updateObj.disponibilidad === 'Fuera de Servicio') updateObj.empresa_arriendo = 'TALLER FRC';
@@ -79,10 +115,14 @@ export const guardarNuevoMovimiento = async () => {
         try { await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id)); }
         catch (err) {
           // Si aún no existe la columna empresa_arriendo, se actualiza igual ubicación y estado
-          if (!('empresa_arriendo' in updateObj) || !/empresa_arriendo/i.test(errMsg(err))) throw err;
-          delete updateObj.empresa_arriendo;
+          if (/locacion_id/i.test(errMsg(err)) && 'locacion_id' in updateObj) {
+            delete updateObj.locacion_id;
+            avisoEquipo = "\n(Atención: falta ejecutar sql/areas.sql en Supabase; el equipo no quedó enlazado a la locación)";
+          } else if (('empresa_arriendo' in updateObj) && /empresa_arriendo/i.test(errMsg(err))) {
+            delete updateObj.empresa_arriendo;
+            avisoEquipo = "\n(Atención: falta la columna empresa_arriendo en BD_INVENTARIO, ver sql/empresa_arriendo.sql)";
+          } else throw err;
           if (Object.keys(updateObj).length) await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id));
-          avisoEquipo = "\n(Atención: falta la columna empresa_arriendo en BD_INVENTARIO, ver sql/empresa_arriendo.sql)";
         }
       }
       catch (err) { avisoEquipo = "\n(Atención: no se pudo actualizar la ubicación/estado del equipo: " + errMsg(err) + ")"; }

@@ -21,7 +21,6 @@ export default /* html */ `
           <div><label class="block font-bold text-slate-700 mb-1">Tipo de Equipo</label><input type="text" v-model="perfilEquipo.tipo" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-bold text-slate-800"></div>
           <div><label class="block font-bold text-slate-700 mb-1">Marca</label><input type="text" v-model="perfilEquipo.marca" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50"></div>
           <div><label class="block font-bold text-slate-700 mb-1">Modelo</label><input type="text" v-model="perfilEquipo.modelo" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50"></div>
-          <div><label class="block font-bold text-slate-700 mb-1">Ubicación Actual</label><input type="text" v-model="perfilEquipo.ubicacion" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50"></div>
           <div>
             <label class="block font-bold text-slate-700 mb-1">Disponibilidad</label>
             <select v-model="perfilEquipo.disponibilidad" @change="alCambiarDisponibilidadPerfil" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
@@ -31,9 +30,12 @@ export default /* html */ `
           </div>
           <div>
             <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-building text-blue-500"></i> Empresa Arrendada</label>
-            <input type="text" list="dl-perfil-empresas" v-model="perfilEquipo.empresaArriendo" :disabled="!puedeEditar || esFueraDeServicio(perfilEquipo)" placeholder="Ej: CODELCO..."
+            <!-- Con locación elegida, la empresa sale de ella (módulo Áreas) -->
+            <input v-if="empresaDeSelPerfil && !esFueraDeServicio(perfilEquipo)" type="text" :value="empresaDeSelPerfil" disabled class="w-full p-2 border rounded-lg uppercase font-bold bg-blue-50 text-blue-800">
+            <input v-else type="text" list="dl-perfil-empresas" v-model="perfilEquipo.empresaArriendo" :disabled="!puedeEditar || esFueraDeServicio(perfilEquipo)" placeholder="Ej: CODELCO..."
               :class="['w-full p-2 border rounded-lg uppercase font-bold', esFueraDeServicio(perfilEquipo) ? 'bg-slate-200 text-slate-700' : 'bg-slate-50 text-blue-800']">
             <p v-if="esFueraDeServicio(perfilEquipo)" class="text-[10px] text-slate-500 mt-0.5"><i class="fa-solid fa-lock"></i> Fuera de Servicio → siempre TALLER FRC</p>
+            <p v-else-if="empresaDeSelPerfil" class="text-[10px] text-slate-500 mt-0.5"><i class="fa-solid fa-sitemap"></i> Según la locación elegida abajo</p>
             <datalist id="dl-perfil-empresas"><option v-for="emp in listaEmpresas" :key="emp" :value="emp"></option></datalist>
           </div>
           <div>
@@ -42,7 +44,22 @@ export default /* html */ `
               <option value="Instalado">Instalado</option><option value="Sin GPS">Sin GPS</option>
             </select>
           </div>
-          <div class="md:col-span-2"><label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label><input type="text" v-model="perfilEquipo.imei_gps" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-mono"></div>
+          <div><label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label><input type="text" v-model="perfilEquipo.imei_gps" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-mono"></div>
+        </div>
+
+        <!-- UBICACIÓN: Empresa → Área → Locación (módulo Áreas). Se actualiza a mano o con un Movimiento. -->
+        <div class="mt-4 p-4 rounded-xl border-2 border-emerald-200 bg-emerald-50/40 space-y-2">
+          <div class="flex flex-wrap justify-between items-center gap-2">
+            <h5 class="font-extrabold text-emerald-800 uppercase flex items-center gap-2"><i class="fa-solid fa-map-location-dot"></i> Ubicación actual del equipo</h5>
+            <div class="flex flex-wrap gap-3">
+              <a v-if="perfilEquipo.locacionId && googleMapsUrl(perfilEquipo.locacionId)" :href="googleMapsUrl(perfilEquipo.locacionId)" target="_blank" rel="noopener" class="text-[11px] font-bold text-blue-700 underline"><i class="fa-brands fa-google"></i> Ver en Google Maps</a>
+              <button v-if="perfilEquipo.locacionId && rutaTexto(perfilEquipo.locacionId)" @click="verLocacionEnAreas(perfilEquipo.locacionId)" class="text-[11px] font-bold text-emerald-700 underline"><i class="fa-solid fa-sitemap"></i> Ver en Áreas y Locaciones</button>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-600">Hoy: <b class="text-slate-800">{{ rutaTexto(perfilEquipo.locacionId) || 'Sin locación asignada' }}</b>
+            <span v-if="!rutaTexto(perfilEquipo.locacionId) && perfilEquipo.ubicacion" class="text-slate-500"> · texto anterior: "{{ perfilEquipo.ubicacion }}"</span></p>
+          <selector-locacion v-if="perfilEquipo.sel" :sel="perfilEquipo.sel" :disabled="!puedeEditar" :puede-crear="puedeEditar"></selector-locacion>
+          <p class="text-[10px] text-slate-500">Cambia la ubicación a mano (viendo el lugar y el AFI) y presiona <b>Guardar Cambios</b>. Los <b>Movimientos</b> también la actualizan. Si el lugar no existe, elige <b>➕ Crear nueva…</b></p>
         </div>
       </div>
 

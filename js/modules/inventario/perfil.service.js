@@ -9,6 +9,8 @@ import { dbIntervenciones, dbEquipos, cargarDatosDesdeSupabase, buscarEquipoPorA
 import { normalizarFecha, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, parseNum, mismoAfi, hoyISO } from '../../core/utils.js';
 import { TABLA_INVENTARIO } from './inventario.mapper.js';
 import { insertarItemPrograma } from '../programas/programas.service.js';
+import { selDesdeLocacion, selCompleta, selVacia, resolverSeleccion, rutaDe, textoUbicacion, rutaTexto, nombresSel, abrirNodo, googleMapsUrl, AVISO_SQL } from '../areas/areas.service.js';
+import { currentTab } from '../../core/store.js';
 
 const { ref, computed } = Vue;
 
@@ -61,6 +63,7 @@ export const abrirPerfilEquipo = (equipo) => {
   perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
   perfilEquipo.value.fechaHorometroManual = normalizarFecha(equipo.fechaHorometroManual) || hoyISO();
   perfilEquipo.value.empresaArriendo = empresaDe(equipo);
+  perfilEquipo.value.sel = selDesdeLocacion(equipo.locacionId);   // Empresa → Área → Locación (módulo Áreas)
   resetFiltrosPerfil();
   perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
   showPerfilEquipoModal.value = true;
@@ -75,25 +78,53 @@ export const verDetallePorAfiString = (afiStr) => {
 export const guardarPerfilEquipo = async () => {
   if (!soloEditor()) return;
   const p = perfilEquipo.value;
+  const sel = p.sel;
+  if (sel && !selVacia(sel) && !selCompleta(sel)) return alert("Completa la ubicación: Empresa → Área → Locación (o elige \"➕ Crear nueva…\" y escribe el nombre).");
+  // Crea la empresa / área / locación nueva si corresponde
+  let locId = null;
+  if (sel && selCompleta(sel)) {
+    try { locId = await resolverSeleccion(sel); }
+    catch (err) { return alert("No se pudo crear la locación: " + errMsg(err)); }
+  }
+  const ruta = rutaDe(locId);
+  const empresaTxt = ruta.empresa ? ruta.empresa.nombre : String(p.empresaArriendo || '').trim().toUpperCase();
   const payload = {
     afi: String(p.afi || '').trim(),
-    tipo: p.tipo, marca: p.marca, modelo: p.modelo, ubicacion: p.ubicacion,
+    tipo: p.tipo, marca: p.marca, modelo: p.modelo,
+    ubicacion: locId ? textoUbicacion(locId) : p.ubicacion,
     disponibilidad: p.disponibilidad, gps: p.gps, imei_gps: p.imei_gps,
-    empresa_arriendo: esFueraDeServicio(p) ? EMPRESA_TALLER : (String(p.empresaArriendo || '').trim().toUpperCase() || null),
+    empresa_arriendo: esFueraDeServicio(p) ? EMPRESA_TALLER : (empresaTxt || null),
     horometroactual: parseNum(p.horometroActual),
     fecha_horometro_manual: formatIsoDateForSupabase(p.fechaHorometroManual),
     frecuencia_mantencion: Math.round(parseNum(p.frecuenciaMantencion)) || 250
   };
+  // Solo se envía locacion_id si se eligió una o si se quitó la que tenía (así funciona aunque falte sql/areas.sql)
+  if (locId || p.locacionId != null) payload.locacion_id = locId;
   if (!payload.afi) return alert("El AFI no puede quedar vacío.");
   try {
     await sb(supabaseClient.from(TABLA_INVENTARIO).update(payload).eq('id', p.id));
   } catch (err) {
+    if (/locacion_id/i.test(errMsg(err))) return alert(AVISO_SQL);
     if (/empresa_arriendo/i.test(errMsg(err))) return alert("Falta la columna 'empresa_arriendo' en BD_INVENTARIO. Ejecuta en Supabase → SQL Editor el archivo sql/empresa_arriendo.sql:\n\nALTER TABLE public.\"BD_INVENTARIO\" ADD COLUMN IF NOT EXISTS empresa_arriendo text;\nNOTIFY pgrst, 'reload schema';");
     return alert("Error al guardar el perfil: " + errMsg(err));
   }
   await cargarDatosDesdeSupabase();
   showPerfilEquipoModal.value = false;
   alert("¡Perfil guardado correctamente!");
+};
+
+// ---------- Ubicación (módulo Áreas) ----------
+export { rutaTexto, googleMapsUrl };
+/** Empresa que sale de la selección Empresa → Área → Locación del perfil ('' si no hay). */
+export const empresaDeSelPerfil = computed(() => {
+  const sel = perfilEquipo.value?.sel;
+  return sel ? nombresSel(sel).empresa : '';
+});
+/** Abre el módulo Áreas en la locación del equipo. */
+export const verLocacionEnAreas = (locId) => {
+  showPerfilEquipoModal.value = false;
+  currentTab.value = 'areas';
+  abrirNodo(locId);
 };
 
 // ---------- Actualizar solo horómetro / fecha / frecuencia (sin cerrar el perfil) ----------

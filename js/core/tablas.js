@@ -22,5 +22,6 @@ export const TABLAS = {
   MINUTAS: 'bd_minutas',                      // módulo MINUTAS: cabecera de cada minuta semanal
   MINUTAS_ITEMS: 'bd_minutas_items',          // módulo MINUTAS: tareas / compromisos de cada minuta
   OT: 'bd_ot',                                // módulo OT: órdenes de trabajo (formato FRC-RE-OPE-006)
-  OC: 'bd_oc'                                 // módulo OC: órdenes de compra (N° OC, precio, AFI, documento) ↔ BD_HISTORIAL.numero_oc
+  OC: 'bd_oc',                                // módulo OC: órdenes de compra (N° OC, precio, AFI, documento) ↔ BD_HISTORIAL.numero_oc
+  LOCACIONES: 'bd_locaciones'                 // módulo ÁREAS: árbol Empresa → Área → Locación (equipos en BD_INVENTARIO.locacion_id)
 };
