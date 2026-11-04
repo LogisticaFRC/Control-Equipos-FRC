@@ -24,19 +24,23 @@ export const AREAS = [
   },
   {
     key: 'operaciones', label: 'Operaciones', icon: 'fa-gears', color: 'text-amber-400',
+    // grupo → subtítulo dentro del área (ver GRUPOS)
     modulos: [
-      { key: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line' },
-      { key: 'inventario', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.length },
-      { key: 'programas', label: 'Programas', icon: 'fa-calendar-check' },
-      { key: 'ot', label: 'Órdenes de Trabajo', icon: 'fa-file-signature' },
-      { key: 'oc', label: 'OC', icon: 'fa-file-invoice-dollar', count: () => dbOC.value.length },
-      { key: 'minutas', label: 'Minutas', icon: 'fa-clipboard-list' },
-      { key: 'areas', label: 'Áreas y Locaciones', icon: 'fa-sitemap', count: () => dbLocaciones.value.filter(n => n.tipo === 'LOCACION').length },
-      { key: 'movimientos', label: 'Movimientos', icon: 'fa-truck-ramp-box', count: () => dbMovimientos.value.length },
-      { key: 'hojaVida', label: 'Historial', icon: 'fa-file-medical', count: () => dbIntervenciones.value.length },
-      { key: 'aceites', label: 'Control Aceites', icon: 'fa-oil-can' },
-      { key: 'filtros', label: 'Filtros', icon: 'fa-filter' },
-      { key: 'bodega', label: 'Bodega Filtros', icon: 'fa-warehouse' }
+      { key: 'dashboard', grupo: 'gestion', label: 'Dashboard', icon: 'fa-chart-line' },
+      { key: 'programas', grupo: 'gestion', label: 'Programas', icon: 'fa-calendar-check' },
+      { key: 'minutas', grupo: 'gestion', label: 'Minutas', icon: 'fa-clipboard-list' },
+
+      { key: 'inventario', grupo: 'equipos', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.length },
+      { key: 'areas', grupo: 'equipos', label: 'Áreas y Locaciones', icon: 'fa-sitemap', count: () => dbLocaciones.value.filter(n => n.tipo === 'LOCACION').length },
+      { key: 'movimientos', grupo: 'equipos', label: 'Movimientos', icon: 'fa-truck-ramp-box', count: () => dbMovimientos.value.length },
+
+      { key: 'ot', grupo: 'mantenimiento', label: 'Órdenes de Trabajo', icon: 'fa-file-signature' },
+      { key: 'hojaVida', grupo: 'mantenimiento', label: 'Historial', icon: 'fa-file-medical', count: () => dbIntervenciones.value.length },
+      { key: 'aceites', grupo: 'mantenimiento', label: 'Control Aceites', icon: 'fa-oil-can' },
+
+      { key: 'oc', grupo: 'abastecimiento', label: 'OC', icon: 'fa-file-invoice-dollar', count: () => dbOC.value.length },
+      { key: 'filtros', grupo: 'abastecimiento', label: 'Filtros', icon: 'fa-filter' },
+      { key: 'bodega', grupo: 'abastecimiento', label: 'Bodega Filtros', icon: 'fa-warehouse' }
     ]
   },
   {
@@ -67,6 +71,26 @@ export const AREAS = [
     ]
   }
 ];
+
+/** Subtítulos dentro de un área (en el orden en que se muestran). */
+export const GRUPOS = {
+  gestion: { label: 'Gestión operacional', icon: 'fa-table-cells-large' },
+  equipos: { label: 'Equipos', icon: 'fa-truck' },
+  mantenimiento: { label: 'Mantenimiento', icon: 'fa-screwdriver-wrench' },
+  abastecimiento: { label: 'Abastecimiento y bodega', icon: 'fa-box' }
+};
+
+/** Módulos de un área agrupados por subtítulo: [{ key, label, icon, modulos }] (sin subtítulo → key null). */
+export const gruposDeArea = (area) => {
+  const out = [];
+  area.modulos.forEach(m => {
+    const k = m.grupo || null;
+    let g = out.find(x => x.key === k);
+    if (!g) { g = { key: k, ...(GRUPOS[k] || {}), modulos: [] }; out.push(g); }
+    g.modulos.push(m);
+  });
+  return out;
+};
 
 /** Áreas a las que se les asignan permisos (todas menos Inicio). */
 export const AREAS_PERMISOS = AREAS.filter(a => !a.directo);

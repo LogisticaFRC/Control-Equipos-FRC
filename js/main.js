@@ -44,7 +44,7 @@ const { createApp, onMounted, onBeforeUnmount, watchEffect, ref, reactive, compu
 
 import EnConstruccionView from './modules/general/en-construccion.view.js';
 // Menú lateral agrupado por áreas (Operaciones, Ventas, Seguridad, RRHH, General) → ver core/menu.js
-import { AREAS, areaDeTab, moduloDeTab, menuAbierto } from './core/menu.js';
+import { AREAS, areaDeTab, moduloDeTab, menuAbierto, gruposDeArea } from './core/menu.js';
 import InicioView from './modules/general/inicio.view.js';
 
 const template = /* html */ `
@@ -115,13 +115,18 @@ const template = /* html */ `
             <i :class="['fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform', areasAbiertas[a.key] ? 'rotate-180' : '']"></i>
           </button>
           <div v-show="areasAbiertas[a.key]" class="pb-2">
-            <button v-for="m in a.modulos" :key="m.key" @click="switchTab(m.key)"
+            <template v-for="g in gruposDeArea(a)" :key="g.key || 'sin'">
+            <div v-if="g.key" class="flex items-center gap-2 pl-6 pr-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+              <i :class="['fa-solid w-3 text-center', g.icon, a.color]"></i>{{ g.label }}
+            </div>
+            <button v-for="m in g.modulos" :key="m.key" @click="switchTab(m.key)"
               :class="['w-full flex items-center gap-2.5 pl-9 pr-3 py-2 rounded-md text-sm transition text-left', currentTab === m.key ? 'bg-white/15 text-white font-bold' : 'text-slate-300 hover:bg-white/5 hover:text-white']">
               <i :class="['fa-solid w-4 text-center text-xs', m.icon]"></i>
               <span class="flex-1">{{ m.label }}</span>
               <span v-if="m.count" class="text-[10px] font-bold bg-slate-800 text-slate-400 rounded-full px-2 py-0.5">{{ m.count() }}</span>
               <span v-if="m.placeholder" class="text-[9px] font-bold uppercase text-amber-400/80">Pronto</span>
             </button>
+            </template>
           </div>
           </template>
         </div>
@@ -198,7 +203,7 @@ const app = createApp({
     });
 
     return {
-      usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: AREAS, switchTab,
+      gruposDeArea, usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: AREAS, switchTab,
       menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       abrirCambioClave, showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };
