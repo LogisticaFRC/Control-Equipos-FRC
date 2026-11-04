@@ -26,7 +26,7 @@ js/
     inventario/                ← INVENTARIO AFI (+ Perfil de Equipo y modal Nuevo Equipo)
     programas/                 ← PROGRAMAS (+ modales Crear Programa / Asignar Equipo)
     minutas/                   ← MINUTAS (mejora continua semanal: carpetas Año → Mes, dashboard por minuta y general, importar Word/Excel, exportar)
-    areas/                     ← ÁREAS Y LOCACIONES (Empresa → Área → Locación → AFI) + selector en cascada reutilizable
+    areas/                     ← ÁREAS Y LOCACIONES (Empresa → Área → Sector → Locación → AFI) + selector en cascada reutilizable
     movimientos/               ← MOVIMIENTOS (+ modal Registrar Movimiento)
     historial/                 ← HISTORIAL (+ formulario de Mantención)
     aceites/                   ← CONTROL ACEITES
@@ -402,3 +402,13 @@ devuelve los filtros al inventario), editar / eliminar (Admin; la composición s
 - **Ver mapa de equipos** (botón arriba): todas las locaciones con sus equipos (o solo las de la empresa/área abierta). Pin con la cantidad de equipos, color por empresa, vista Mapa/Satélite. Clic en el pin = lista de AFI (clic en el AFI abre su perfil), *Abrir en Google Maps* y *Ver carpeta*. Abajo se listan las locaciones sin georreferencia para completarlas.
 - El mapa usa Leaflet + OpenStreetMap/Esri (gratis, sin API key; se carga desde cdnjs al abrirlo). Google Maps se usa para el mapa de cada locación y los enlaces. Un mapa de Google con todos los pines requiere una API key de Google Cloud (se puede agregar después).
 - El Excel exportado incluye la columna *GOOGLE MAPS* (coordenadas con enlace).
+
+### Nivel SECTOR (2026-11-04)
+
+La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos (AFI)**.
+- `sql/areas.sql` (script completo, se puede repetir) agrega el tipo `SECTOR`, una regla en la base de datos que obliga el orden correcto
+  (no se puede crear una locación directo en un área) y **migra** lo que ya existía: las locaciones que estaban directo en un área pasan a un sector **GENERAL** de esa área (los equipos se mantienen; luego se pueden renombrar o mover).
+- El texto de ubicación de los equipos queda `ÁREA / SECTOR / LOCACIÓN`.
+- Selector en Perfil, Movimientos y Cambiar: 4 listas (Empresa, Área, Sector, Locación), cada una con *➕ Crear nuevo…*. Si un nivel tiene una sola opción, se elige sola.
+- Mover: área → otra empresa, sector → otra área, locación → otro sector. El Excel incluye la columna SECTOR.
+- **Exportar Excel (Áreas):** hoja *Equipos* (Empresa, Área, Sector, Locación, AFI, equipo, estado, horómetro, **Latitud, Longitud, Georreferencia** propia/aprox./sin y enlace *Google Maps*) + hoja *Georreferencias* (cada empresa, área, sector y locación con sus coordenadas, cantidad de equipos y enlace). Respeta la carpeta abierta.

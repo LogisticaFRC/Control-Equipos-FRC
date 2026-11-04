@@ -530,26 +530,56 @@ export const exportarAreasExcel = async () => {
   try {
     const raiz = nodoAbierto.value === 'SIN' ? null : nodoActual.value;
     const locs = raiz ? locacionesBajo(raiz.id) : dbLocaciones.value.filter(n => n.tipo === TIPOS.LOCACION);
+    // Georreferencia de una locación: coordenadas (propias o heredadas) + link de Google Maps
+    const geo = (id) => {
+      const c = coordsDe(id); const url = googleMapsUrl(id);
+      return {
+        lat: c ? Number(c.lat.toFixed(6)) : '', lng: c ? Number(c.lng.toFixed(6)) : '',
+        origen: c ? (c.heredado ? `APROX. (de ${ETIQUETA[c.de.tipo].toUpperCase()} ${c.de.nombre})` : 'PROPIA') : (url ? 'SOLO LINK' : 'SIN GEORREFERENCIA'),
+        link: url ? { text: 'Abrir en Google Maps', hyperlink: url } : ''
+      };
+    };
     const filas = [];
     locs.map(l => ({ l, r: rutaDe(l.id) }))
       .sort((a, b) => rutaTexto(a.l.id).localeCompare(rutaTexto(b.l.id), 'es', { numeric: true }))
       .forEach(({ l, r }) => {
         const eqs = equiposDeLocacion(l.id);
-        const c = coordsDe(l.id);
-        const gm = c ? { text: fmtCoord(c) + (c.heredado ? ' (aprox.)' : ''), hyperlink: googleMapsUrl(l.id) } : '';
-        if (!eqs.length) filas.push([r.empresa?.nombre || '', r.area?.nombre || '', r.sector?.nombre || '', l.nombre, gm, '—', 'Sin equipos', '', '', '']);
-        eqs.forEach(e => filas.push([r.empresa?.nombre || '', r.area?.nombre || '', r.sector?.nombre || '', l.nombre, gm, e.afi, e.tipo, `${e.marca} ${e.modelo}`.trim(), e.disponibilidad, Math.round(e.horometroActual || 0)]));
+        const g = geo(l.id);
+        const base = [r.empresa?.nombre || '', r.area?.nombre || '', r.sector?.nombre || '', l.nombre];
+        const geoCols = [g.lat, g.lng, g.origen, g.link];
+        if (!eqs.length) filas.push([...base, '—', 'Sin equipos', '', '', '', ...geoCols]);
+        eqs.forEach(e => filas.push([...base, e.afi, e.tipo, `${e.marca} ${e.modelo}`.trim(), e.disponibilidad, Math.round(e.horometroActual || 0), ...geoCols]));
       });
-    if (!raiz) equiposSinLocacion.value.forEach(e => filas.push(['SIN LOCACIÓN', '', '', e.ubicacion || '', '', e.afi, e.tipo, `${e.marca} ${e.modelo}`.trim(), e.disponibilidad, Math.round(e.horometroActual || 0)]));
+    if (!raiz) equiposSinLocacion.value.forEach(e => filas.push(['SIN LOCACIÓN', '', '', e.ubicacion || '', e.afi, e.tipo, `${e.marca} ${e.modelo}`.trim(), e.disponibilidad, Math.round(e.horometroActual || 0), '', '', 'SIN LOCACIÓN', '']));
     if (!filas.length) return alert('No hay datos para exportar.');
+    const sub = (raiz ? migas.value.map(n => n.nombre).join(' › ') : 'Todas las empresas') + ` · ${formatDateForDisplay(hoyISO())}`;
     const { wb, logo } = await nuevoLibro();
-    hojaTabla(wb, logo, {
-      nombre: 'Áreas', titulo: 'EQUIPOS POR EMPRESA, ÁREA, SECTOR Y LOCACIÓN',
-      subtitulo: (raiz ? migas.value.map(n => n.nombre).join(' › ') : 'Todas las empresas') + ` · ${formatDateForDisplay(hoyISO())}`,
-      columnas: [{ t: 'EMPRESA', w: 22, bold: true }, { t: 'ÁREA', w: 22 }, { t: 'SECTOR', w: 22 }, { t: 'LOCACIÓN', w: 26, bold: true }, { t: 'GOOGLE MAPS', w: 24 }, { t: 'AFI', w: 9, bold: true },
-        { t: 'TIPO EQUIPO', w: 24 }, { t: 'MARCA / MODELO', w: 26 }, { t: 'ESTADO', w: 16 }, { t: 'HORÓMETRO', w: 12, fmt: '#,##0' }],
+    const COL_LINK = 13;
+    const ws = hojaTabla(wb, logo, {
+      nombre: 'Equipos', titulo: 'EQUIPOS POR EMPRESA, ÁREA, SECTOR Y LOCACIÓN', subtitulo: sub,
+      columnas: [{ t: 'EMPRESA', w: 20, bold: true }, { t: 'ÁREA', w: 18 }, { t: 'SECTOR', w: 18 }, { t: 'LOCACIÓN', w: 22, bold: true },
+        { t: 'AFI', w: 8, bold: true }, { t: 'TIPO EQUIPO', w: 20 }, { t: 'MARCA / MODELO', w: 22 }, { t: 'ESTADO', w: 14 }, { t: 'HORÓMETRO', w: 11, fmt: '#,##0' },
+        { t: 'LATITUD', w: 12, fmt: '0.000000' }, { t: 'LONGITUD', w: 12, fmt: '0.000000' }, { t: 'GEORREFERENCIA', w: 22 }, { t: 'GOOGLE MAPS', w: 20 }],
       filas
     });
+    filas.forEach((f, i) => { if (f[COL_LINK - 1]) ws.getCell(7 + i, COL_LINK).font = { size: 9, color: { argb: 'FF1D4ED8' }, underline: true }; });
+
+    // Hoja 2: georreferencia de cada empresa / área / sector / locación
+    const nodos = raiz
+      ? [...migas.value, ...dbLocaciones.value.filter(n => { let x = nodo(n.padreId); while (x) { if (String(x.id) === String(raiz.id)) return true; x = nodo(x.padreId); } return false; })]
+      : [...dbLocaciones.value];
+    const ruta = (n) => { const out = []; let x = nodo(n.padreId); while (x) { out.unshift(x.nombre); x = nodo(x.padreId); } return out.join(' › '); };
+    const orden = { EMPRESA: 0, AREA: 1, SECTOR: 2, LOCACION: 3 };
+    const filasGeo = [...new Map(nodos.map(n => [String(n.id), n])).values()]
+      .sort((a, b) => [ruta(a), a.nombre].filter(Boolean).join(' › ').localeCompare([ruta(b), b.nombre].filter(Boolean).join(' › '), 'es', { numeric: true }) || orden[a.tipo] - orden[b.tipo])
+      .map(n => { const g = geo(n.id); return [ETIQUETA[n.tipo].toUpperCase(), ruta(n) || '—', n.nombre, conteoEquipos(n.id), g.lat, g.lng, g.origen, g.link, n.descripcion || '']; });
+    const ws2 = hojaTabla(wb, logo, {
+      nombre: 'Georreferencias', titulo: 'GEORREFERENCIA DE EMPRESAS, ÁREAS, SECTORES Y LOCACIONES', subtitulo: sub,
+      columnas: [{ t: 'NIVEL', w: 12, bold: true }, { t: 'DENTRO DE', w: 34 }, { t: 'NOMBRE', w: 24, bold: true }, { t: 'EQUIPOS', w: 9 },
+        { t: 'LATITUD', w: 12, fmt: '0.000000' }, { t: 'LONGITUD', w: 12, fmt: '0.000000' }, { t: 'GEORREFERENCIA', w: 24 }, { t: 'GOOGLE MAPS', w: 20 }, { t: 'DESCRIPCIÓN', w: 28 }],
+      filas: filasGeo
+    });
+    filasGeo.forEach((f, i) => { if (f[7]) ws2.getCell(7 + i, 8).font = { size: 9, color: { argb: 'FF1D4ED8' }, underline: true }; });
     await descargarLibro(wb, `Areas_Locaciones_${hoyISO()}.xlsx`);
   } catch (err) {
     alert('Error al exportar: ' + errMsg(err));
