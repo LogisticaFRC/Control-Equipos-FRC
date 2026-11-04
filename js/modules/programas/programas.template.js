@@ -125,7 +125,9 @@ export default /* html */ `
               <i :class="['fa-solid mr-1', progSelect.carpeta === 'REPARACION' ? 'fa-wrench' : 'fa-oil-can']"></i> {{ progSelect.carpeta }}
             </span>
             <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2 mt-1"><i class="fa-solid fa-calendar-days text-rose-500"></i> Programa: {{ progSelect.nombre_programa || progSelect.mes }}</h3>
-            <p class="text-xs font-mono font-bold text-slate-600 mt-0.5"><i class="fa-solid fa-clock mr-1"></i> Vigencia Programa: {{ formatDateForDisplay(progSelect.fecha_inicio_programa) }} al {{ formatDateForDisplay(progSelect.fecha_termino_programa) }}</p>
+            <p class="text-xs font-mono font-bold text-slate-600 mt-0.5"><i class="fa-solid fa-clock mr-1"></i> Vigencia Programa: {{ formatDateForDisplay(progSelect.fecha_inicio_programa) }} al {{ formatDateForDisplay(progSelect.fecha_termino_programa) }}
+              <span v-if="programaCerrado(progSelect)" class="ml-2 font-sans text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-700 text-white" title="Vigencia terminada: solo se puede completar fecha realizada, horómetro y estado. La última mantención queda como estaba al cierre."><i class="fa-solid fa-lock mr-1"></i>Cerrado</span>
+            </p>
           </div>
           <!-- Switch: descontar KITS de bodega al marcar Realizado (solo Mantención) -->
           <div v-if="progSelect.carpeta === 'MANTENCION'" :class="['flex items-center gap-3 px-3 py-2 rounded-xl border', descuentaBodega(progSelect.id) ? 'bg-violet-50 border-violet-300' : 'bg-slate-100 border-slate-300']">
@@ -196,7 +198,7 @@ export default /* html */ `
                 <th class="p-2.5">TIPO EQUIPO</th>
                 <th class="p-2.5">MARCA / MODELO</th>
                 <th class="p-2.5 text-sky-800 font-bold">UBICACIÓN ACTUAL</th>
-                <th class="p-2.5 text-rose-800 font-bold">ÚLTIMA MANTENCIÓN</th>
+                <th class="p-2.5 text-rose-800 font-bold">ÚLTIMA MANTENCIÓN<span v-if="programaCerrado(progSelect)" class="block text-[8px] text-slate-500">al cierre ({{ formatDateForDisplay(progSelect.fecha_termino_programa) }})</span></th>
                 <th class="p-2.5 text-teal-800 font-bold text-center">FILTROS</th>
                 <th class="p-2.5 text-violet-800 font-bold">KIT EN BODEGA</th>
                 <th class="p-2.5 text-indigo-800 font-bold">FECHA PROGRAMADA (FIJA)</th>
@@ -220,12 +222,12 @@ export default /* html */ `
 
                 <!-- Última mantención registrada en el Historial -->
                 <td class="p-2.5 bg-rose-50/30">
-                  <template v-if="ultimaMantencionAfi(item.afi)">
-                    <span class="font-mono font-bold text-slate-800">{{ formatDateForDisplay(ultimaMantencionAfi(item.afi).fecha) }}</span>
-                    <span class="ml-1 text-[9px] font-bold px-1.5 rounded" :class="diasDesdeUltimaMantencion(item.afi) > 90 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'">hace {{ diasDesdeUltimaMantencion(item.afi) }} d</span>
-                    <span class="block text-[9px] text-blue-700 font-semibold">{{ ultimaMantencionAfi(item.afi).tipoMant || ultimaMantencionAfi(item.afi).causa || '-' }}<template v-if="ultimaMantencionAfi(item.afi).horometro"> · {{ ultimaMantencionAfi(item.afi).horometro }} hrs</template></span>
+                  <template v-if="ultimaMantencionAfi(item.afi, fechaCorteProg(progSelect))">
+                    <span class="font-mono font-bold text-slate-800">{{ formatDateForDisplay(ultimaMantencionAfi(item.afi, fechaCorteProg(progSelect)).fecha) }}</span>
+                    <span class="ml-1 text-[9px] font-bold px-1.5 rounded" :class="diasDesdeUltimaMantencion(item.afi, fechaCorteProg(progSelect)) > 90 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'">{{ programaCerrado(progSelect) ? diasDesdeUltimaMantencion(item.afi, fechaCorteProg(progSelect)) + ' d al cierre' : 'hace ' + diasDesdeUltimaMantencion(item.afi) + ' d' }}</span>
+                    <span class="block text-[9px] text-blue-700 font-semibold">{{ ultimaMantencionAfi(item.afi, fechaCorteProg(progSelect)).tipoMant || 'MANTENCION' }}<template v-if="ultimaMantencionAfi(item.afi, fechaCorteProg(progSelect)).horometro"> · {{ ultimaMantencionAfi(item.afi, fechaCorteProg(progSelect)).horometro }} hrs</template></span>
                   </template>
-                  <span v-else class="text-[10px] text-slate-400 italic">Sin registro</span>
+                  <span v-else class="text-[10px] font-bold text-slate-500 italic">No hay mantenciones anteriores</span>
                 </td>
 
                 <!-- Filtros que usa el equipo (módulo Filtros) -->
@@ -254,7 +256,7 @@ export default /* html */ `
                 
                 <!-- Fecha Programada Fija -->
                 <td class="p-2.5 font-mono font-bold text-indigo-900 bg-indigo-50/50">
-                  <input type="date" v-model="item.fecha_programada" :disabled="!isAdmin" @change="actualizarItemMantencionProgramado(item)" class="p-1 border rounded text-xs bg-white font-mono font-bold">
+                  <input type="date" v-model="item.fecha_programada" :disabled="!isAdmin || programaCerrado(progSelect)" :title="programaCerrado(progSelect) ? 'Programa cerrado: la fecha programada no se modifica' : ''" @change="actualizarItemMantencionProgramado(item)" class="p-1 border rounded text-xs bg-white font-mono font-bold">
                 </td>
 
                 <!-- Fecha Realizada -->
@@ -282,7 +284,8 @@ export default /* html */ `
                   </div>
                 </td>
                 <td v-if="isAdmin" class="p-2.5 text-center">
-                  <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                  <button v-if="!programaCerrado(progSelect)" @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                  <i v-else class="fa-solid fa-lock text-slate-300" title="Programa cerrado"></i>
                 </td>
               </tr>
             </tbody>

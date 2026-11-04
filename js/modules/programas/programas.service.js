@@ -460,20 +460,37 @@ export const eliminarItemPrograma = async (itemId) => {
 };
 
 // ---------- Última mantención y ubicación actual de cada equipo ----------
-/** Última mantención registrada en el Historial para un AFI (o null). */
-export const ultimaMantencionAfi = (afi) => {
+/** MANTENCIÓN ≠ INTERVENCIÓN.
+ *  Mantención = solo los registros del Historial con causa MANTENCION (incluye "MANTENCION INTERMEDIA").
+ *  Intervención = todo lo demás (reparación, implementación, falla, inspección...). */
+const sinTildes = (s) => String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+export const esMantencion = (i) => sinTildes(i.causa).includes('MANTENCION');
+
+/** Última MANTENCIÓN (causa = Mantención) registrada en el Historial para un AFI (o null). No cuenta intervenciones. */
+// ---------- Programas CERRADOS (vigencia terminada) ----------
+/** Un programa queda CERRADO cuando su fecha de término ya pasó. */
+export const programaCerrado = (prog) => {
+  const fin = normalizarFecha(prog?.fecha_termino_programa);
+  return Boolean(fin && fin < hoyISO());
+};
+/** Fecha de corte para "Última mantención": cerrado → su fecha de término (queda congelado); vigente → hoy (null). */
+export const fechaCorteProg = (prog) => (programaCerrado(prog) ? normalizarFecha(prog.fecha_termino_programa) : null);
+
+/** Última MANTENCIÓN de un AFI. hasta = fecha de corte (ISO): no cuenta mantenciones posteriores. */
+export const ultimaMantencionAfi = (afi, hasta = null) => {
   let ult = null, tUlt = -1;
   dbIntervenciones.value.forEach(i => {
-    if (!mismoAfi(i.afi, afi)) return;
+    if (!mismoAfi(i.afi, afi) || !esMantencion(i)) return;
+    if (hasta && normalizarFecha(i.fecha) > hasta) return;
     const t = parseIsoDate(i.fecha);
     if (t > tUlt) { tUlt = t; ult = i; }
   });
   return ult;
 };
-/** Días desde la última mantención (o null). */
-export const diasDesdeUltimaMantencion = (afi) => {
-  const u = ultimaMantencionAfi(afi);
-  return u ? diasEntre(hoyISO(), u.fecha) : null;
+/** Días desde la última mantención hasta hoy (o hasta la fecha de corte). */
+export const diasDesdeUltimaMantencion = (afi, hasta = null) => {
+  const u = ultimaMantencionAfi(afi, hasta);
+  return u ? diasEntre(hasta || hoyISO(), u.fecha) : null;
 };
 /** Ubicación actual del equipo (Inventario; la actualizan los Movimientos). */
 export const ubicacionActualAfi = (afi) => {
@@ -514,14 +531,15 @@ export const exportarProgramaGanttExcel = async (prog) => {
     const estiloEstado = (realizado) => (realizado ? { font: { color: { argb: COLOR.verdeTxt } } } : null);
 
     if (esProgramaMantencion(prog)) {
+      const corte = fechaCorteProg(prog);
       const items = obtenerItemsPrograma(prog.id);
       if (!items.length) return alert("El programa no tiene equipos asignados.");
       const filas = items.map((item, i) => {
-        const u = ultimaMantencionAfi(item.afi);
+        const u = ultimaMantencionAfi(item.afi, corte);
         return [
           i + 1, `AFI ${item.afi}`, det(item.afi, 'tipo'), `${det(item.afi, 'marca')} ${det(item.afi, 'modelo')}`,
           ubicacionActualAfi(item.afi), empresaActualAfi(item.afi) || '-',
-          u ? fechaExcel(normalizarFecha(u.fecha)) : 'SIN REGISTRO', u ? (u.tipoMant || u.causa || '-') : '-', u && u.horometro ? Number(u.horometro) : '-',
+          u ? fechaExcel(normalizarFecha(u.fecha)) : 'NO HAY MANTENCIONES ANTERIORES', u ? (u.tipoMant || 'MANTENCION') : '-', u && u.horometro ? Number(u.horometro) : '-',
           fechaExcel(normalizarFecha(item.fecha_programada)) || '-', fechaExcel(normalizarFecha(item.fecha_fin)) || '-',
           item.horometro ? Number(item.horometro) : '-',
           filtrosRequeridosAfi(item.afi).total || '-', kitsEnBodegaAfi(item.afi).total, kitConsumidoItem(item) || '-',
@@ -530,11 +548,11 @@ export const exportarProgramaGanttExcel = async (prog) => {
       });
       const realizados = items.filter(i => i.realizado).length;
       const ws = hojaTabla(wb, logo, {
-        nombre: 'Mantención', titulo: `PROGRAMA DE MANTENCIÓN · ${nombre}`, subtitulo: `${vigencia} · ${items.length} equipos · ${realizados} realizados (${Math.round(realizados / items.length * 100)}%)`,
+        nombre: 'Mantención', titulo: `PROGRAMA DE MANTENCIÓN · ${nombre}`, subtitulo: `${vigencia}${corte ? ' (CERRADO)' : ''} · ${items.length} equipos · ${realizados} realizados (${Math.round(realizados / items.length * 100)}%)`,
         columnas: [
           { t: 'N°', w: 5 }, { t: 'EQUIPO AFI', w: 11, bold: true }, { t: 'TIPO EQUIPO', w: 18 }, { t: 'MARCA / MODELO', w: 22 },
           { t: 'UBICACIÓN ACTUAL', w: 20, bold: true }, { t: 'EMPRESA', w: 18 },
-          { t: 'ÚLTIMA MANTENCIÓN', w: 13, fmt: 'dd-mm-yyyy', bold: true }, { t: 'TIPO ÚLT. MANT.', w: 20 }, { t: 'HORÓMETRO ÚLT. MANT.', w: 12, fmt: '#,##0' },
+          { t: corte ? 'ÚLTIMA MANTENCIÓN (AL CIERRE)' : 'ÚLTIMA MANTENCIÓN', w: 14, fmt: 'dd-mm-yyyy', bold: true }, { t: 'TIPO ÚLT. MANT.', w: 20 }, { t: 'HORÓMETRO ÚLT. MANT.', w: 12, fmt: '#,##0' },
           { t: 'FECHA PROGRAMADA', w: 13, fmt: 'dd-mm-yyyy' }, { t: 'FECHA REALIZADA', w: 13, fmt: 'dd-mm-yyyy' }, { t: 'HORÓMETRO REALIZADO', w: 12, fmt: '#,##0' },
           { t: 'FILTROS REQ.', w: 9 }, { t: 'KITS EN BODEGA', w: 9 }, { t: 'KIT DESCONTADO', w: 14 }, { t: 'ESTADO', w: 13, bold: true }
         ],
