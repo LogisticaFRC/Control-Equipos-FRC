@@ -30,11 +30,11 @@ export default /* html */ `
         <input type="text" v-model="formMov.origen" placeholder="Ubicación anterior..." class="w-full p-2 border rounded-lg bg-slate-50 font-semibold text-slate-700">
         <p v-if="origenRuta" class="text-[10px] text-slate-500 mt-0.5"><i class="fa-solid fa-sitemap"></i> {{ origenRuta }}</p>
       </div>
-      <!-- DESTINO: Empresa → Área → Locación (o crear nueva) -->
+      <!-- DESTINO: Empresa → Área → Sector → Locación (o crear nueva) -->
       <div class="p-3 rounded-lg border-2 border-emerald-200 bg-emerald-50/40 space-y-1">
         <label class="block font-extrabold text-emerald-800 uppercase text-[11px]"><i class="fa-solid fa-flag-checkered"></i> Destino</label>
         <selector-locacion :sel="formMov.sel" compacto></selector-locacion>
-        <p class="text-[10px] text-slate-500">¿No existe? Elige <b>➕ Crear nueva…</b> en la lista que corresponda (empresa, área o locación) y escribe el nombre: se crea al guardar el movimiento y queda en el módulo Áreas.</p>
+        <p class="text-[10px] text-slate-500">¿No existe? Elige <b>➕ Crear nueva…</b> en la lista que corresponda (empresa, área, sector o locación) y escribe el nombre: se crea al guardar el movimiento y queda en el módulo Áreas.</p>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>

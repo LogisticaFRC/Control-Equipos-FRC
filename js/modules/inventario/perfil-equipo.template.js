@@ -47,7 +47,7 @@ export default /* html */ `
           <div><label class="block font-bold text-slate-700 mb-1">IMEI del GPS</label><input type="text" v-model="perfilEquipo.imei_gps" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-mono"></div>
         </div>
 
-        <!-- UBICACIÓN: Empresa → Área → Locación (módulo Áreas). Se actualiza a mano o con un Movimiento. -->
+        <!-- UBICACIÓN: Empresa → Área → Sector → Locación (módulo Áreas). Se actualiza a mano o con un Movimiento. -->
         <div class="mt-4 p-4 rounded-xl border-2 border-emerald-200 bg-emerald-50/40 space-y-2">
           <div class="flex flex-wrap justify-between items-center gap-2">
             <h5 class="font-extrabold text-emerald-800 uppercase flex items-center gap-2"><i class="fa-solid fa-map-location-dot"></i> Ubicación actual del equipo</h5>

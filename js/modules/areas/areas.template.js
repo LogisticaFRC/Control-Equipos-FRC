@@ -1,11 +1,11 @@
-// Plantilla HTML del módulo ÁREAS (Empresa → Área → Locación → Equipos)
+// Plantilla HTML del módulo ÁREAS (Empresa → Área → Sector → Locación → Equipos)
 export default /* html */ `
 <section class="space-y-4">
   <!-- Encabezado + resumen -->
   <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
     <div class="flex flex-wrap justify-between items-center gap-3">
       <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-sitemap text-amber-500"></i> Áreas y Locaciones de Equipos
-        <span class="text-[11px] font-semibold text-slate-500">Empresa › Área › Locación › AFI</span></h2>
+        <span class="text-[11px] font-semibold text-slate-500">Empresa › Área › Sector › Locación › AFI</span></h2>
       <div class="flex flex-wrap items-center gap-2">
         <button v-if="puedeEditar" @click="abrirCrearNodo('EMPRESA', null)" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-building"></i> Nueva Empresa</button>
         <button @click="vistaMapa = !vistaMapa" :class="['text-xs font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5', vistaMapa ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-800 hover:bg-slate-50']">
@@ -14,9 +14,10 @@ export default /* html */ `
           <i :class="['fa-solid', exportandoAreas ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
       </div>
     </div>
-    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+    <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-xs">
       <div class="bg-blue-50 border border-blue-100 rounded-lg p-2"><p class="text-lg font-extrabold text-blue-800">{{ resumenAreas.empresas }}</p><p class="font-bold text-blue-700 uppercase text-[10px]">Empresas</p></div>
       <div class="bg-amber-50 border border-amber-100 rounded-lg p-2"><p class="text-lg font-extrabold text-amber-800">{{ resumenAreas.areas }}</p><p class="font-bold text-amber-700 uppercase text-[10px]">Áreas</p></div>
+      <div class="bg-violet-50 border border-violet-100 rounded-lg p-2"><p class="text-lg font-extrabold text-violet-800">{{ resumenAreas.sectores }}</p><p class="font-bold text-violet-700 uppercase text-[10px]">Sectores</p></div>
       <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-2"><p class="text-lg font-extrabold text-emerald-800">{{ resumenAreas.locaciones }}</p><p class="font-bold text-emerald-700 uppercase text-[10px]">Locaciones</p></div>
       <div class="bg-slate-50 border rounded-lg p-2"><p class="text-lg font-extrabold text-slate-800">{{ resumenAreas.conLocacion }}</p><p class="font-bold text-slate-600 uppercase text-[10px]">Equipos ubicados</p></div>
       <button @click="abrirNodo('SIN')" :class="['rounded-lg p-2 border', resumenAreas.sinLocacion ? 'bg-rose-50 border-rose-200 hover:bg-rose-100' : 'bg-slate-50']">
@@ -24,7 +25,7 @@ export default /* html */ `
     </div>
     <div class="relative">
       <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-      <input v-model="busquedaAreas" placeholder="Buscar AFI, equipo, empresa, área o locación…" class="w-full pl-8 p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
+      <input v-model="busquedaAreas" placeholder="Buscar AFI, equipo, empresa, área, sector o locación…" class="w-full pl-8 p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
     </div>
   </div>
 
@@ -72,10 +73,20 @@ export default /* html */ `
               <span class="text-[10px] px-1.5 opacity-70">{{ conteoEquipos(ar.id) }}</span>
             </div>
             <div v-show="expandidos[ar.id]" class="ml-5 border-l pl-1">
-              <button v-for="lo in hijos(ar.id)" :key="lo.id" @click="abrirNodo(lo.id)"
-                :class="['w-full flex items-center text-left px-1.5 py-1 rounded', esAbierto(lo) ? 'bg-emerald-600 text-white font-bold' : 'hover:bg-emerald-50']">
-                <i class="fa-solid fa-location-dot mr-1.5 text-[10px]"></i><span class="flex-1 truncate">{{ lo.nombre }}</span><span class="text-[10px] opacity-70">{{ equiposDeLocacion(lo.id).length }}</span></button>
-              <p v-if="!hijos(ar.id).length" class="text-[10px] text-slate-400 italic px-1.5 py-0.5">Sin locaciones</p>
+              <div v-for="se in hijos(ar.id)" :key="se.id">
+                <div :class="['flex items-center rounded', esAbierto(se) ? 'bg-violet-600 text-white' : 'hover:bg-violet-50']">
+                  <button @click="expandidos[se.id] = !expandidos[se.id]" class="w-5 h-6 shrink-0"><i :class="['fa-solid text-[9px]', expandidos[se.id] ? 'fa-chevron-down' : 'fa-chevron-right']"></i></button>
+                  <button @click="abrirNodo(se.id)" class="flex-1 text-left py-1 truncate"><i class="fa-solid fa-layer-group mr-1 text-violet-500"></i>{{ se.nombre }}</button>
+                  <span class="text-[10px] px-1.5 opacity-70">{{ conteoEquipos(se.id) }}</span>
+                </div>
+                <div v-show="expandidos[se.id]" class="ml-4 border-l pl-1">
+                  <button v-for="lo in hijos(se.id)" :key="lo.id" @click="abrirNodo(lo.id)"
+                    :class="['w-full flex items-center text-left px-1.5 py-1 rounded', esAbierto(lo) ? 'bg-emerald-600 text-white font-bold' : 'hover:bg-emerald-50']">
+                    <i class="fa-solid fa-location-dot mr-1.5 text-[10px]"></i><span class="flex-1 truncate">{{ lo.nombre }}</span><span class="text-[10px] opacity-70">{{ equiposDeLocacion(lo.id).length }}</span></button>
+                  <p v-if="!hijos(se.id).length" class="text-[10px] text-slate-400 italic px-1.5 py-0.5">Sin locaciones</p>
+                </div>
+              </div>
+              <p v-if="!hijos(ar.id).length" class="text-[10px] text-slate-400 italic px-1.5 py-0.5">Sin sectores</p>
             </div>
           </div>
           <p v-if="!hijos(emp.id).length" class="text-[10px] text-slate-400 italic px-1.5 py-0.5">Sin áreas</p>
@@ -116,12 +127,12 @@ export default /* html */ `
               <span v-if="!tieneGeo(nodoActual)" class="text-slate-400"><i class="fa-solid fa-map-pin mr-1"></i>Sin georreferencia propia
                 <button v-if="puedeEditar" @click="abrirEditarNodo(nodoActual)" class="ml-1 font-bold text-blue-700 underline">Agregar</button></span>
             </p>
-            <p v-if="nodoAbierto === 'SIN'" class="text-slate-500 mt-0.5">Equipos que aún no tienen Empresa › Área › Locación. Se muestra la ubicación en texto que tenían antes.</p>
+            <p v-if="nodoAbierto === 'SIN'" class="text-slate-500 mt-0.5">Equipos que aún no tienen Empresa › Área › Sector › Locación. Se muestra la ubicación en texto que tenían antes.</p>
           </div>
           <div v-if="nodoActual" class="flex flex-wrap gap-1.5">
             <button v-if="puedeEditar && HIJO_DE[nodoActual.tipo]" @click="abrirCrearNodo(HIJO_DE[nodoActual.tipo], nodoActual.id)"
-              :class="['font-bold px-3 py-1.5 rounded-lg shadow text-white', HIJO_DE[nodoActual.tipo] === 'AREA' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700']">
-              <i class="fa-solid fa-plus"></i> Nueva {{ ETIQUETA[HIJO_DE[nodoActual.tipo]] }}</button>
+              :class="['font-bold px-3 py-1.5 rounded-lg shadow text-white', ({ AREA: 'bg-amber-500 hover:bg-amber-600', SECTOR: 'bg-violet-600 hover:bg-violet-700' }[HIJO_DE[nodoActual.tipo]] || 'bg-emerald-600 hover:bg-emerald-700')]">
+              <i class="fa-solid fa-plus"></i> {{ NUEVO[HIJO_DE[nodoActual.tipo]] }} {{ ETIQUETA[HIJO_DE[nodoActual.tipo]] }}</button>
             <button v-if="puedeEditar && nodoActual.tipo === 'LOCACION'" @click="abrirAsignar(nodoActual.id)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg shadow"><i class="fa-solid fa-truck-monster"></i> Agregar equipos (AFI)</button>
             <button v-if="puedeEditar" @click="abrirEditarNodo(nodoActual)" class="bg-slate-100 hover:bg-slate-200 font-bold px-3 py-1.5 rounded-lg border" title="Renombrar"><i class="fa-solid fa-pen"></i></button>
             <button v-if="puedeEditar && nodoActual.tipo !== 'EMPRESA'" @click="abrirMoverNodo(nodoActual)" class="bg-slate-100 hover:bg-slate-200 font-bold px-3 py-1.5 rounded-lg border" title="Mover a otra carpeta"><i class="fa-solid fa-right-left"></i></button>
@@ -150,7 +161,7 @@ export default /* html */ `
             <p class="font-bold text-amber-800 mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Locaciones sin georreferencia ({{ puntosMapa.sin.length }}) — no aparecen en el mapa</p>
             <div class="flex flex-wrap gap-1.5">
               <button v-for="p in puntosMapa.sin" :key="p.loc.id" @click="puedeEditar ? abrirEditarNodo(p.loc) : abrirNodo(p.loc.id)" class="px-2 py-1 rounded bg-white border border-amber-200 hover:bg-amber-100 font-semibold">
-                {{ p.ruta.empresa?.nombre }} › {{ p.ruta.area?.nombre }} › <b>{{ p.loc.nombre }}</b> ({{ p.equipos.length }}) <i v-if="puedeEditar" class="fa-solid fa-pen text-[9px] ml-0.5"></i></button>
+                {{ p.ruta.empresa?.nombre }} › {{ p.ruta.area?.nombre }} › {{ p.ruta.sector?.nombre }} › <b>{{ p.loc.nombre }}</b> ({{ p.equipos.length }}) <i v-if="puedeEditar" class="fa-solid fa-pen text-[9px] ml-0.5"></i></button>
             </div>
           </div>
         </div>
@@ -169,12 +180,12 @@ export default /* html */ `
             <p class="font-extrabold text-slate-800 mt-1 uppercase leading-tight break-words">{{ c.nombre }}
               <i v-if="tieneGeo(c)" class="fa-solid fa-location-dot text-rose-500 text-[10px] ml-0.5" title="Tiene georreferencia"></i></p>
             <p class="text-[10px] text-slate-500 mt-0.5">
-              <span v-if="c.tipo !== 'LOCACION'">{{ hijos(c.id).length }} {{ c.tipo === 'EMPRESA' ? 'área(s)' : 'locación(es)' }} · </span>{{ conteoEquipos(c.id) }} equipo(s)</p>
+              <span v-if="c.tipo !== 'LOCACION'">{{ hijos(c.id).length }} {{ { EMPRESA: 'área(s)', AREA: 'sector(es)', SECTOR: 'locación(es)' }[c.tipo] }} · </span>{{ conteoEquipos(c.id) }} equipo(s)</p>
           </button>
         </div>
         <div v-else-if="nodoActual && nodoActual.tipo !== 'LOCACION'" class="text-center text-slate-400 p-6 border-2 border-dashed rounded-xl">
-          <i :class="['fa-solid text-3xl mb-2', nodoActual.tipo === 'EMPRESA' ? 'fa-folder-plus' : 'fa-location-dot']"></i>
-          <p>{{ nodoActual.tipo === 'EMPRESA' ? 'Esta empresa aún no tiene áreas.' : 'Esta área aún no tiene locaciones.' }}</p>
+          <i :class="['fa-solid text-3xl mb-2', ICONO[HIJO_DE[nodoActual.tipo]]]"></i>
+          <p>{{ { EMPRESA: 'Esta empresa aún no tiene áreas.', AREA: 'Esta área aún no tiene sectores.', SECTOR: 'Este sector aún no tiene locaciones.' }[nodoActual.tipo] }}</p>
           <button v-if="puedeEditar" @click="abrirCrearNodo(HIJO_DE[nodoActual.tipo], nodoActual.id)" class="mt-2 font-bold text-blue-700 underline">Crear {{ ETIQUETA[HIJO_DE[nodoActual.tipo]].toLowerCase() }}</button>
         </div>
         <p v-else-if="!nodoActual && nodoAbierto !== 'SIN' && !empresas.length" class="text-center text-slate-400 p-6">Aún no hay empresas creadas. (Si aparece un error al crear, falta ejecutar <b>sql/areas.sql</b> en Supabase.)</p>
@@ -221,11 +232,11 @@ export default /* html */ `
   <div v-if="formNodo" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4" @click.self="formNodo = null">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden text-xs">
       <div class="bg-slate-800 text-white px-5 py-3 font-extrabold uppercase flex items-center gap-2">
-        <i :class="['fa-solid', ICONO[formNodo.tipo]]"></i> {{ formNodo.modo === 'crear' ? 'Nueva' : 'Modificar' }} {{ ETIQUETA[formNodo.tipo] }}</div>
+        <i :class="['fa-solid', ICONO[formNodo.tipo]]"></i> {{ formNodo.modo === 'crear' ? NUEVO[formNodo.tipo] : 'Modificar' }} {{ ETIQUETA[formNodo.tipo] }}</div>
       <div class="p-5 space-y-3">
         <p v-if="formNodo.padreId" class="text-slate-500">Dentro de: <b class="text-slate-800">{{ rutaNodo(nodo(formNodo.padreId)) }}</b></p>
         <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre</label>
-          <input v-model="formNodo.nombre" @keyup.enter="guardarNodo" :placeholder="formNodo.tipo === 'EMPRESA' ? 'Ej: CODELCO' : formNodo.tipo === 'AREA' ? 'Ej: MINA SUR' : 'Ej: TALLER CAMIONES'" class="w-full p-2.5 border rounded-lg uppercase font-bold" autofocus></div>
+          <input v-model="formNodo.nombre" @keyup.enter="guardarNodo" :placeholder="{ EMPRESA: 'Ej: CODELCO', AREA: 'Ej: MINA SUR', SECTOR: 'Ej: SECTOR NORTE', LOCACION: 'Ej: TALLER CAMIONES' }[formNodo.tipo]" class="w-full p-2.5 border rounded-lg uppercase font-bold" autofocus></div>
         <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Descripción / referencia (opcional)</label>
           <input v-model="formNodo.descripcion" placeholder="Dirección, faena, contacto…" class="w-full p-2.5 border rounded-lg"></div>
         <div class="p-3 rounded-lg border border-rose-200 bg-rose-50/50 space-y-1.5">
@@ -236,7 +247,7 @@ export default /* html */ `
           <p v-else-if="formNodo.geo && formNodo.geo.trim()" class="text-amber-700 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> No se leen coordenadas (un link corto maps.app.goo.gl no las trae). Mejor pega las coordenadas.</p>
           <p class="text-[10px] text-slate-500">Cómo obtenerlas: en Google Maps haz <b>clic derecho sobre el lugar</b> → clic en las coordenadas (se copian) → pégalas aquí.
             <a :href="buscarEnGoogleMaps([formNodo.nombre, formNodo.descripcion].filter(Boolean).join(' '))" target="_blank" rel="noopener" class="text-blue-700 underline font-semibold">Buscar "{{ formNodo.nombre || 'lugar' }}" en Google Maps</a></p>
-          <p v-if="formNodo.tipo !== 'LOCACION'" class="text-[10px] text-slate-500">Las locaciones de adentro sin georreferencia propia usan esta (aparecen como "aprox." en el mapa).</p>
+          <p v-if="formNodo.tipo !== 'LOCACION'" class="text-[10px] text-slate-500">Lo que está adentro sin georreferencia propia usa esta (aparecen como "aprox." en el mapa).</p>
         </div>
       </div>
       <div class="px-5 py-3 border-t flex justify-end gap-2">
@@ -251,7 +262,7 @@ export default /* html */ `
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden text-xs">
       <div class="bg-slate-800 text-white px-5 py-3 font-extrabold uppercase"><i class="fa-solid fa-right-left mr-1"></i> Mover {{ ETIQUETA[formMover.nodo.tipo] }} "{{ formMover.nodo.nombre }}"</div>
       <div class="p-5 space-y-2">
-        <label class="block font-bold text-slate-700 uppercase text-[11px]">Mover a {{ formMover.nodo.tipo === 'AREA' ? 'la empresa' : 'el área' }}</label>
+        <label class="block font-bold text-slate-700 uppercase text-[11px]">Mover a {{ { AREA: 'la empresa', SECTOR: 'el área', LOCACION: 'el sector' }[formMover.nodo.tipo] }}</label>
         <select v-model="formMover.destinoId" class="w-full p-2.5 border rounded-lg font-bold">
           <option v-for="d in destinosMover" :key="d.id" :value="d.id">{{ d.texto }}</option>
         </select>

@@ -36,7 +36,7 @@ export const getHistorialMovimientosAFI = (afi) => dbMovimientos.value
   .sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha));
 
 // ---------- Registrar movimiento ----------
-// Destino = Empresa → Área → Locación del módulo ÁREAS (formMov.sel). Origen = dónde está hoy el equipo.
+// Destino = Empresa → Área → Sector → Locación del módulo ÁREAS (formMov.sel). Origen = dónde está hoy el equipo.
 const MOV_DEFAULT = () => ({ afi: "", fecha: hoyISO(), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "", sel: selDesdeLocacion(null) });
 export const showModalMovimiento = ref(false);
 export const formMov = ref(MOV_DEFAULT());
@@ -50,7 +50,7 @@ export const alCambiarAfiMov = () => {
   const eq = buscarEquipoPorAfi(formMov.value.afi);
   formMov.value.origen = origenDeEquipo(eq);
 };
-/** Ruta completa del origen (Empresa › Área › Locación), para mostrar bajo el campo. */
+/** Ruta completa del origen (Empresa › Área › Sector › Locación), para mostrar bajo el campo. */
 export const origenRuta = computed(() => {
   const eq = buscarEquipoPorAfi(formMov.value.afi);
   return eq && nodo(eq.locacionId) ? rutaTexto(eq.locacionId) : '';
@@ -66,8 +66,8 @@ export const guardarNuevoMovimiento = async () => {
   if (!soloAdmin()) return;
   const f = formMov.value;
   const sel = f.sel;
-  if (!selVacia(sel) && !selCompleta(sel)) return alert("Completa el destino: Empresa → Área → Locación (o elige \"➕ Crear nueva…\" y escribe el nombre).");
-  if (selVacia(sel) && !confirm("No elegiste destino (Empresa → Área → Locación).\n¿Guardar el movimiento sin destino? La ubicación del equipo no cambiará.")) return;
+  if (!selVacia(sel) && !selCompleta(sel)) return alert("Completa el destino: Empresa → Área → Sector → Locación (o elige \"➕ Crear nueva…\" y escribe el nombre).");
+  if (selVacia(sel) && !confirm("No elegiste destino (Empresa → Área → Sector → Locación).\n¿Guardar el movimiento sin destino? La ubicación del equipo no cambiará.")) return;
 
   // 1) Crea la empresa / área / locación nueva si corresponde
   let locId = null;

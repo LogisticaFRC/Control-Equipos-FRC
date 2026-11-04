@@ -1,5 +1,5 @@
 // =====================================================================
-// ÁREAS · Componente (explorador Empresa → Área → Locación → Equipos + mapa)
+// ÁREAS · Componente (explorador Empresa → Área → Sector → Locación → Equipos + mapa)
 // =====================================================================
 import template from './areas.template.js';
 import { comunes } from '../../core/comunes.js';
@@ -23,8 +23,8 @@ export default {
       return n.tipo === 'LOCACION' ? S.equiposDeLocacion(n.id) : S.equiposBajo(n.id);
     });
     const esAbierto = (n) => String(S.nodoAbierto.value) === String(n.id);
-    const colorTipo = (t) => ({ EMPRESA: 'text-blue-600', AREA: 'text-amber-500', LOCACION: 'text-emerald-600' }[t] || '');
-    const fondoTipo = (t) => ({ EMPRESA: 'bg-blue-50/60 border-blue-100 hover:border-blue-400', AREA: 'bg-amber-50/60 border-amber-100 hover:border-amber-400', LOCACION: 'bg-emerald-50/60 border-emerald-100 hover:border-emerald-400' }[t] || '');
+    const colorTipo = (t) => ({ EMPRESA: 'text-blue-600', AREA: 'text-amber-500', SECTOR: 'text-violet-600', LOCACION: 'text-emerald-600' }[t] || '');
+    const fondoTipo = (t) => ({ EMPRESA: 'bg-blue-50/60 border-blue-100 hover:border-blue-400', AREA: 'bg-amber-50/60 border-amber-100 hover:border-amber-400', SECTOR: 'bg-violet-50/60 border-violet-100 hover:border-violet-400', LOCACION: 'bg-emerald-50/60 border-emerald-100 hover:border-emerald-400' }[t] || '');
     const rutaNodo = (n) => {
       const out = []; let x = n;
       while (x) { out.unshift(x.nombre); x = S.nodo(x.padreId); }
@@ -64,7 +64,7 @@ export default {
           <td style="padding:2px 6px 2px 0"><a href="#" data-afi="${esc(e.id)}" style="font-weight:800;color:#b45309">${esc(e.afi)}</a></td>
           <td style="padding:2px 6px 2px 0">${esc(e.tipo)}</td><td style="padding:2px 0;color:#64748b">${esc(e.disponibilidad)}</td></tr>`).join('');
       return `<div style="font:12px system-ui;min-width:220px;max-width:300px">
-        <div style="font-size:10px;color:#64748b;font-weight:700">${esc(r.empresa?.nombre)} › ${esc(r.area?.nombre)}</div>
+        <div style="font-size:10px;color:#64748b;font-weight:700">${esc(r.empresa?.nombre)} › ${esc(r.area?.nombre)} › ${esc(r.sector?.nombre)}</div>
         <div style="font-weight:800;font-size:13px;margin-bottom:2px">${esc(p.loc.nombre)}</div>
         ${p.coords.heredado ? `<div style="font-size:10px;color:#b45309">Ubicación aprox. (de ${esc(p.coords.de.nombre)})</div>` : ''}
         <div style="max-height:180px;overflow:auto;margin:6px 0;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0">

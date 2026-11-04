@@ -63,7 +63,7 @@ export const abrirPerfilEquipo = (equipo) => {
   perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
   perfilEquipo.value.fechaHorometroManual = normalizarFecha(equipo.fechaHorometroManual) || hoyISO();
   perfilEquipo.value.empresaArriendo = empresaDe(equipo);
-  perfilEquipo.value.sel = selDesdeLocacion(equipo.locacionId);   // Empresa → Área → Locación (módulo Áreas)
+  perfilEquipo.value.sel = selDesdeLocacion(equipo.locacionId);   // Empresa → Área → Sector → Locación (módulo Áreas)
   resetFiltrosPerfil();
   perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
   showPerfilEquipoModal.value = true;
@@ -79,7 +79,7 @@ export const guardarPerfilEquipo = async () => {
   if (!soloEditor()) return;
   const p = perfilEquipo.value;
   const sel = p.sel;
-  if (sel && !selVacia(sel) && !selCompleta(sel)) return alert("Completa la ubicación: Empresa → Área → Locación (o elige \"➕ Crear nueva…\" y escribe el nombre).");
+  if (sel && !selVacia(sel) && !selCompleta(sel)) return alert("Completa la ubicación: Empresa → Área → Sector → Locación (o elige \"➕ Crear nueva…\" y escribe el nombre).");
   // Crea la empresa / área / locación nueva si corresponde
   let locId = null;
   if (sel && selCompleta(sel)) {
@@ -115,7 +115,7 @@ export const guardarPerfilEquipo = async () => {
 
 // ---------- Ubicación (módulo Áreas) ----------
 export { rutaTexto, googleMapsUrl };
-/** Empresa que sale de la selección Empresa → Área → Locación del perfil ('' si no hay). */
+/** Empresa que sale de la selección Empresa → Área → Sector → Locación del perfil ('' si no hay). */
 export const empresaDeSelPerfil = computed(() => {
   const sel = perfilEquipo.value?.sel;
   return sel ? nombresSel(sel).empresa : '';

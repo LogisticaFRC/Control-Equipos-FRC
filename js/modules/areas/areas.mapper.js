@@ -1,11 +1,11 @@
 // =====================================================================
 // ÁREAS · Conversión fila Supabase (bd_locaciones) -> objeto de la app
-// tipo: EMPRESA (sin padre) → AREA (padre = empresa) → LOCACION (padre = área)
+// tipo: EMPRESA (sin padre) → AREA (padre = empresa) → SECTOR (padre = área) → LOCACION (padre = sector)
 // =====================================================================
 import { TABLAS } from '../../core/tablas.js';
 export const TABLA_LOCACIONES = TABLAS.LOCACIONES;
 
-export const TIPOS = { EMPRESA: 'EMPRESA', AREA: 'AREA', LOCACION: 'LOCACION' };
+export const TIPOS = { EMPRESA: 'EMPRESA', AREA: 'AREA', SECTOR: 'SECTOR', LOCACION: 'LOCACION' };
 
 /** Nombre normalizado: MAYÚSCULAS y sin espacios repetidos. */
 export const normNombre = (s) => String(s ?? '').trim().replace(/\s+/g, ' ').toUpperCase();

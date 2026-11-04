@@ -1,9 +1,9 @@
 // =====================================================================
-// ÁREAS · Lógica: árbol Empresa → Área → Locación → Equipos (AFI)
+// ÁREAS · Lógica: árbol Empresa → Área → Sector → Locación → Equipos (AFI)
 // ---------------------------------------------------------------------
 // - Las locaciones se guardan en bd_locaciones (ver sql/areas.sql).
 // - Cada equipo guarda su locacion_id en BD_INVENTARIO y además, para que el
-//   resto del sistema siga igual: ubicacion = "ÁREA / LOCACIÓN" y
+//   resto del sistema siga igual: ubicacion = "ÁREA / SECTOR / LOCACIÓN" y
 //   empresa_arriendo = EMPRESA (Fuera de Servicio → siempre TALLER FRC).
 // - Se usa desde: módulo Áreas, Perfil de Equipo y Registrar Movimiento.
 // =====================================================================
@@ -20,9 +20,13 @@ const { ref, computed, reactive } = Vue;
 export { TIPOS };
 export const NUEVA = '__NUEVA__';   // valor de los <select> para "➕ Crear nueva…"
 
-export const ETIQUETA = { EMPRESA: 'Empresa', AREA: 'Área', LOCACION: 'Locación' };
-export const ICONO = { EMPRESA: 'fa-building', AREA: 'fa-folder', LOCACION: 'fa-location-dot' };
-export const HIJO_DE = { EMPRESA: 'AREA', AREA: 'LOCACION', LOCACION: null };
+export const ETIQUETA = { EMPRESA: 'Empresa', AREA: 'Área', SECTOR: 'Sector', LOCACION: 'Locación' };
+export const ICONO = { EMPRESA: 'fa-building', AREA: 'fa-folder', SECTOR: 'fa-layer-group', LOCACION: 'fa-location-dot' };
+export const HIJO_DE = { EMPRESA: 'AREA', AREA: 'SECTOR', SECTOR: 'LOCACION', LOCACION: null };
+/** Tipo del padre de cada nivel (para mover carpetas). */
+export const PADRE_DE = { AREA: 'EMPRESA', SECTOR: 'AREA', LOCACION: 'SECTOR' };
+/** Género para los textos ("Nueva área", "Nuevo sector"…). */
+export const NUEVO = { EMPRESA: 'Nueva', AREA: 'Nueva', SECTOR: 'Nuevo', LOCACION: 'Nueva' };
 
 const AVISO_SQL = "Falta crear la estructura del módulo Áreas en la base de datos.\n\nEjecuta en Supabase → SQL Editor el archivo sql/areas.sql (una sola vez) y actualiza la página.";
 const faltaSQL = (err) => /bd_locaciones|locacion_id|schema cache|does not exist/i.test(errMsg(err));
@@ -36,24 +40,25 @@ export const nodo = (id) => (id == null || id === '' ? null : dbLocaciones.value
 export const hijos = (padreId) => dbLocaciones.value.filter(n => String(n.padreId ?? '') === String(padreId ?? '') && (padreId != null || n.tipo === TIPOS.EMPRESA)).sort(porNombre);
 export const empresas = computed(() => dbLocaciones.value.filter(n => n.tipo === TIPOS.EMPRESA).sort(porNombre));
 
-/** { empresa, area, locacion } (nodos) de una locación. */
+/** { empresa, area, sector, locacion } (nodos) de una locación. */
 export const rutaDe = (locId) => {
   const loc = nodo(locId);
-  if (!loc || loc.tipo !== TIPOS.LOCACION) return { empresa: null, area: null, locacion: null };
-  const area = nodo(loc.padreId);
+  if (!loc || loc.tipo !== TIPOS.LOCACION) return { empresa: null, area: null, sector: null, locacion: null };
+  const sector = nodo(loc.padreId);
+  const area = sector ? nodo(sector.padreId) : null;
   const empresa = area ? nodo(area.padreId) : null;
-  return { empresa, area, locacion: loc };
+  return { empresa, area, sector, locacion: loc };
 };
-/** Texto que se guarda en BD_INVENTARIO.ubicacion y en el destino del movimiento: "ÁREA / LOCACIÓN". */
+/** Texto que se guarda en BD_INVENTARIO.ubicacion y en el destino del movimiento: "ÁREA / SECTOR / LOCACIÓN". */
 export const textoUbicacion = (locId) => {
   const r = rutaDe(locId);
   if (!r.locacion) return '';
-  return [r.area?.nombre, r.locacion.nombre].filter(Boolean).join(' / ');
+  return [r.area?.nombre, r.sector?.nombre, r.locacion.nombre].filter(Boolean).join(' / ');
 };
-/** Ruta completa para mostrar: "EMPRESA › ÁREA › LOCACIÓN". */
+/** Ruta completa para mostrar: "EMPRESA › ÁREA › SECTOR › LOCACIÓN". */
 export const rutaTexto = (locId) => {
   const r = rutaDe(locId);
-  return [r.empresa?.nombre, r.area?.nombre, r.locacion?.nombre].filter(Boolean).join(' › ');
+  return [r.empresa?.nombre, r.area?.nombre, r.sector?.nombre, r.locacion?.nombre].filter(Boolean).join(' › ');
 };
 
 /** Equipos agrupados por locación (id → [equipos]). */
@@ -83,28 +88,29 @@ export const conteoEquipos = (id) => locacionesBajo(id).reduce((s, l) => s + equ
 
 // ---------------------------------------------------------------------
 // Selección en cascada (componente <selector-locacion>)
-//   sel = { empresaId, areaId, locacionId, nuevaEmpresa, nuevaArea, nuevaLocacion }
-//   empresaId / areaId / locacionId pueden valer NUEVA → se escribe el nombre.
+//   sel = { empresaId, areaId, sectorId, locacionId, nuevaEmpresa, nuevaArea, nuevoSector, nuevaLocacion }
+//   cualquiera de los *Id puede valer NUEVA → se escribe el nombre.
 // ---------------------------------------------------------------------
 export const selDesdeLocacion = (locId) => {
   const r = rutaDe(locId);
   return reactive({
-    empresaId: r.empresa?.id ?? '', areaId: r.area?.id ?? '', locacionId: r.locacion?.id ?? '',
-    nuevaEmpresa: '', nuevaArea: '', nuevaLocacion: ''
+    empresaId: r.empresa?.id ?? '', areaId: r.area?.id ?? '', sectorId: r.sector?.id ?? '', locacionId: r.locacion?.id ?? '',
+    nuevaEmpresa: '', nuevaArea: '', nuevoSector: '', nuevaLocacion: ''
   });
 };
 /** Nombre elegido o escrito en cada nivel. */
 export const nombresSel = (s) => ({
   empresa: s.empresaId === NUEVA ? normNombre(s.nuevaEmpresa) : (nodo(s.empresaId)?.nombre || ''),
   area: s.areaId === NUEVA ? normNombre(s.nuevaArea) : (nodo(s.areaId)?.nombre || ''),
+  sector: s.sectorId === NUEVA ? normNombre(s.nuevoSector) : (nodo(s.sectorId)?.nombre || ''),
   locacion: s.locacionId === NUEVA ? normNombre(s.nuevaLocacion) : (nodo(s.locacionId)?.nombre || '')
 });
 /** La selección llega hasta una locación (existente o nueva con nombre). */
-export const selCompleta = (s) => { const n = nombresSel(s); return Boolean(s && n.empresa && n.area && n.locacion); };
+export const selCompleta = (s) => { const n = nombresSel(s); return Boolean(s && n.empresa && n.area && n.sector && n.locacion); };
 /** La selección no tiene nada elegido. */
-export const selVacia = (s) => !s || (!s.empresaId && !s.areaId && !s.locacionId);
+export const selVacia = (s) => !s || (!s.empresaId && !s.areaId && !s.sectorId && !s.locacionId);
 /** Algo de la selección se va a crear. */
-export const selCreaAlgo = (s) => s && [s.empresaId, s.areaId, s.locacionId].includes(NUEVA);
+export const selCreaAlgo = (s) => s && [s.empresaId, s.areaId, s.sectorId, s.locacionId].includes(NUEVA);
 
 /** Crea (si no existe) un nodo y devuelve su id. Si ya hay uno con ese nombre en la misma carpeta, devuelve ese. */
 export const crearNodo = async (tipo, nombre, padreId = null, descripcion = '') => {
@@ -127,11 +133,12 @@ export const crearNodo = async (tipo, nombre, padreId = null, descripcion = '') 
 
 /** Crea lo que falte de la selección (empresa → área → locación) y devuelve el id de la locación. */
 export const resolverSeleccion = async (s) => {
-  if (!selCompleta(s)) throw new Error('Completa Empresa, Área y Locación.');
-  let empresaId = s.empresaId, areaId = s.areaId, locId = s.locacionId;
+  if (!selCompleta(s)) throw new Error('Completa Empresa, Área, Sector y Locación.');
+  let empresaId = s.empresaId, areaId = s.areaId, sectorId = s.sectorId, locId = s.locacionId;
   if (empresaId === NUEVA) { empresaId = await crearNodo(TIPOS.EMPRESA, s.nuevaEmpresa, null); s.empresaId = empresaId; s.nuevaEmpresa = ''; }
   if (areaId === NUEVA) { areaId = await crearNodo(TIPOS.AREA, s.nuevaArea, empresaId); s.areaId = areaId; s.nuevaArea = ''; }
-  if (locId === NUEVA) { locId = await crearNodo(TIPOS.LOCACION, s.nuevaLocacion, areaId); s.locacionId = locId; s.nuevaLocacion = ''; }
+  if (sectorId === NUEVA) { sectorId = await crearNodo(TIPOS.SECTOR, s.nuevoSector, areaId); s.sectorId = sectorId; s.nuevoSector = ''; }
+  if (locId === NUEVA) { locId = await crearNodo(TIPOS.LOCACION, s.nuevaLocacion, sectorId); s.locacionId = locId; s.nuevaLocacion = ''; }
   return locId;
 };
 
@@ -183,12 +190,13 @@ export const carpetasVisibles = computed(() => {
 export const resumenAreas = computed(() => ({
   empresas: empresas.value.length,
   areas: dbLocaciones.value.filter(n => n.tipo === TIPOS.AREA).length,
+  sectores: dbLocaciones.value.filter(n => n.tipo === TIPOS.SECTOR).length,
   locaciones: dbLocaciones.value.filter(n => n.tipo === TIPOS.LOCACION).length,
   conLocacion: dbEquipos.value.length - equiposSinLocacion.value.length,
   sinLocacion: equiposSinLocacion.value.length
 }));
 
-/** Búsqueda global: AFI / equipo / nombre de empresa, área o locación. */
+/** Búsqueda global: AFI / equipo / nombre de empresa, área, sector o locación. */
 export const resultadosBusqueda = computed(() => {
   const q = busquedaAreas.value.trim().toUpperCase();
   if (!q) return null;
@@ -396,9 +404,10 @@ export const abrirMoverNodo = (n) => {
 };
 export const destinosMover = computed(() => {
   const f = formMover.value; if (!f) return [];
-  const tipoPadre = f.nodo.tipo === TIPOS.AREA ? TIPOS.EMPRESA : TIPOS.AREA;
+  const tipoPadre = PADRE_DE[f.nodo.tipo];
+  const ruta = (n) => { const out = []; let x = n; while (x) { out.unshift(x.nombre); x = nodo(x.padreId); } return out.join(' › '); };
   return dbLocaciones.value.filter(n => n.tipo === tipoPadre)
-    .map(n => ({ id: n.id, texto: tipoPadre === TIPOS.AREA ? `${nodo(n.padreId)?.nombre || '?'} › ${n.nombre}` : n.nombre }))
+    .map(n => ({ id: n.id, texto: ruta(n) }))
     .sort((a, b) => a.texto.localeCompare(b.texto, 'es'));
 });
 export const guardarMover = async () => {
@@ -502,7 +511,7 @@ export const abrirAsignacionRapida = (e) => {
 };
 export const guardarAsignacionRapida = async () => {
   const f = formRapido.value; if (!f) return;
-  if (!selCompleta(f.sel)) return alert('Completa Empresa, Área y Locación (o crea una nueva).');
+  if (!selCompleta(f.sel)) return alert('Completa Empresa, Área, Sector y Locación (o crea uno nuevo).');
   asignando.value = true;
   try {
     const locId = await resolverSeleccion(f.sel);
@@ -528,16 +537,16 @@ export const exportarAreasExcel = async () => {
         const eqs = equiposDeLocacion(l.id);
         const c = coordsDe(l.id);
         const gm = c ? { text: fmtCoord(c) + (c.heredado ? ' (aprox.)' : ''), hyperlink: googleMapsUrl(l.id) } : '';
-        if (!eqs.length) filas.push([r.empresa?.nombre || '', r.area?.nombre || '', l.nombre, gm, '—', 'Sin equipos', '', '', '']);
-        eqs.forEach(e => filas.push([r.empresa?.nombre || '', r.area?.nombre || '', l.nombre, gm, e.afi, e.tipo, `${e.marca} ${e.modelo}`.trim(), e.disponibilidad, Math.round(e.horometroActual || 0)]));
+        if (!eqs.length) filas.push([r.empresa?.nombre || '', r.area?.nombre || '', r.sector?.nombre || '', l.nombre, gm, '—', 'Sin equipos', '', '', '']);
+        eqs.forEach(e => filas.push([r.empresa?.nombre || '', r.area?.nombre || '', r.sector?.nombre || '', l.nombre, gm, e.afi, e.tipo, `${e.marca} ${e.modelo}`.trim(), e.disponibilidad, Math.round(e.horometroActual || 0)]));
       });
-    if (!raiz) equiposSinLocacion.value.forEach(e => filas.push(['SIN LOCACIÓN', '', e.ubicacion || '', '', e.afi, e.tipo, `${e.marca} ${e.modelo}`.trim(), e.disponibilidad, Math.round(e.horometroActual || 0)]));
+    if (!raiz) equiposSinLocacion.value.forEach(e => filas.push(['SIN LOCACIÓN', '', '', e.ubicacion || '', '', e.afi, e.tipo, `${e.marca} ${e.modelo}`.trim(), e.disponibilidad, Math.round(e.horometroActual || 0)]));
     if (!filas.length) return alert('No hay datos para exportar.');
     const { wb, logo } = await nuevoLibro();
     hojaTabla(wb, logo, {
-      nombre: 'Áreas', titulo: 'EQUIPOS POR EMPRESA, ÁREA Y LOCACIÓN',
+      nombre: 'Áreas', titulo: 'EQUIPOS POR EMPRESA, ÁREA, SECTOR Y LOCACIÓN',
       subtitulo: (raiz ? migas.value.map(n => n.nombre).join(' › ') : 'Todas las empresas') + ` · ${formatDateForDisplay(hoyISO())}`,
-      columnas: [{ t: 'EMPRESA', w: 22, bold: true }, { t: 'ÁREA', w: 22 }, { t: 'LOCACIÓN', w: 26, bold: true }, { t: 'GOOGLE MAPS', w: 24 }, { t: 'AFI', w: 9, bold: true },
+      columnas: [{ t: 'EMPRESA', w: 22, bold: true }, { t: 'ÁREA', w: 22 }, { t: 'SECTOR', w: 22 }, { t: 'LOCACIÓN', w: 26, bold: true }, { t: 'GOOGLE MAPS', w: 24 }, { t: 'AFI', w: 9, bold: true },
         { t: 'TIPO EQUIPO', w: 24 }, { t: 'MARCA / MODELO', w: 26 }, { t: 'ESTADO', w: 16 }, { t: 'HORÓMETRO', w: 12, fmt: '#,##0' }],
       filas
     });
