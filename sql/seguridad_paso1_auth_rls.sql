@@ -300,6 +300,7 @@ begin
       ('bd_filtros_movimientos',   array['operaciones'],                 'subadmin', 'subadmin', 'admin'),
       ('bd_ot',                    array['operaciones'],                 'subadmin', 'subadmin', 'admin'),
       ('bd_taller_reparaciones',   array['operaciones'],                 'subadmin', 'subadmin', 'admin'),
+      ('bd_taller_problemas',      array['operaciones'],                 'subadmin', 'admin',    'admin'),
       ('bd_formatos',              array['general', 'operaciones'],      'admin',    'admin',    'admin'),
       ('bd_modelos_ficha',         array['general', 'operaciones'],      'admin',    'admin',    'admin')
     ) as t(tabla, areas, ins, upd, del)
