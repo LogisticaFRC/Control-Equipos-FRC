@@ -24,5 +24,6 @@ export const TABLAS = {
   OT: 'bd_ot',                                // módulo OT: órdenes de trabajo (formato FRC-RE-OPE-006)
   OC: 'bd_oc',                                // módulo OC: órdenes de compra (N° OC, precio, AFI, documento) ↔ BD_HISTORIAL.numero_oc
   LOCACIONES: 'bd_locaciones',                // módulo ÁREAS: árbol Empresa → Área → Locación (equipos en BD_INVENTARIO.locacion_id)
+  TALLER_PROBLEMAS: 'bd_taller_problemas',    // TALLER: "nuevo problema para OT" que envía el mecánico y procesa el Admin
   TALLER: 'bd_taller_reparaciones'            // PROGRAMAS REPARACIÓN → Taller: equipos en naves / sin programa / con faltantes (bd_ot.reparacion_id)
 };

@@ -74,7 +74,7 @@ export const cargarReparaciones = async () => {
 export const recargarTaller = async () => {
   cargandoTaller.value = true;
   try {
-    await Promise.all([cargarReparaciones(), cargarOT()]);
+    await Promise.all([cargarReparaciones(), cargarOT(), cargarProblemas()]);
     ultimaActualizacion.value = new Date();
   } finally { cargandoTaller.value = false; }
 };
@@ -281,9 +281,11 @@ export const ingresarANave = async (nave, origen) => {
     }
     if (!rep) return false;
     if (rep.estado === ESTADO_REP.EN_NAVE) { alert(`El AFI ${rep.afi} ya está en la ${rep.nave}.`); return false; }
+    const eqAntes = equipoDe(rep.afi);
     await actualizarRep(rep, {
       nave, estado: ESTADO_REP.EN_NAVE, fecha_ingreso: new Date().toISOString(), fecha_salida: null,
-      historial: evento(rep, { tipo: 'INGRESO', nave })
+      // se guarda cómo estaba antes, para poder deshacer con "Sacar por error / prueba"
+      historial: evento(rep, { tipo: 'INGRESO', nave, estado_anterior: rep.estado, fecha_salida_anterior: rep.fecha_salida || null, disp_anterior: eqAntes ? (eqAntes.disponibilidad || '') : '' })
     });
     await fijarDisponibilidad(rep.afi, 'En Mantencion');
     return true;
@@ -327,6 +329,33 @@ export const sacarDeNave = async (rep, { reparado, faltante = '', agregarAOT = t
   } catch (err) { avisoError(err, 'sacar el equipo'); return false; }
 };
 
+/**
+ * SACAR POR ERROR / PRUEBA (solo Admin): deshace el último ingreso a la nave.
+ * No marca reparado ni faltantes: el equipo vuelve a como estaba antes de entrar (estado y disponibilidad del Inventario).
+ * Si la reparación se había creado solo para ese ingreso (sin OT, sin problemas, sin otros movimientos), se borra.
+ */
+export const sacarPorError = async (rep) => {
+  if (!soloAdmin()) return false;
+  if (!confirm(`¿Sacar el AFI ${rep.afi} de la ${rep.nave} POR ERROR / PRUEBA?\n\nNo se marca reparado ni con faltantes: vuelve a como estaba antes de entrar.`)) return false;
+  const ingreso = [...(rep.historial || [])].reverse().find(e => e.tipo === 'INGRESO') || {};
+  const nave = rep.nave;
+  try {
+    const sinNadaMas = !otsDeRep(rep).length && !problemasDeRep(rep).length && (rep.historial || []).length <= 1;
+    if (sinNadaMas) {
+      await sb(supabaseClient.from(TABLA_TALLER).delete().eq('id', rep.id));
+      dbReparaciones.value = dbReparaciones.value.filter(r => r.id !== rep.id);
+    } else {
+      await actualizarRep(rep, {
+        nave: null, estado: ingreso.estado_anterior && ingreso.estado_anterior !== ESTADO_REP.EN_NAVE ? ingreso.estado_anterior : ESTADO_REP.ESPERA,
+        fecha_ingreso: null, fecha_salida: ingreso.fecha_salida_anterior || null,
+        historial: evento(rep, { tipo: 'SALIDA_ERROR', nave })
+      });
+    }
+    if (ingreso.disp_anterior) await fijarDisponibilidad(rep.afi, ingreso.disp_anterior);
+    return true;
+  } catch (err) { avisoError(err, 'sacar el equipo'); return false; }
+};
+
 /** Quita una reparación del taller (solo Admin). Las OT quedan, pero sin enlace. */
 export const quitarReparacion = async (rep) => {
   if (!soloAdmin()) return;
@@ -347,7 +376,7 @@ const guardarActividades = async (ot) => {
 };
 /** Crea una OT enlazada a la reparación (folio manual, tipo CORRECTIVA). */
 export const crearOTParaRep = async (rep, { folio, tipo = 'CORRECTIVA', mecanico = '' } = {}) => {
-  if (!soloEditor()) return null;
+  if (!soloAdmin()) return null;   // el mecánico no crea OT: la une con una ya creada
   const n = Number(String(folio ?? '').replace(/\D/g, ''));
   if (!n) { alert('Escribe el N° de FOLIO de la OT.'); return null; }
   const repetida = dbOT.value.find(o => Number(o.folio) === n);
@@ -395,7 +424,7 @@ export const alternarActividad = async (ot, i) => {
 };
 /** Agrega una actividad en la primera fila libre de la OT. */
 export const agregarActividad = async (ot, descripcion, ejecutante = '') => {
-  if (!soloEditor()) return false;
+  if (!soloAdmin()) return false;   // el mecánico envía "nuevo problema" y el Admin lo agrega
   const t = String(descripcion || '').trim();
   if (!t) return false;
   const i = ot.actividades.findIndex(a => !String(a.descripcion || '').trim());
@@ -406,7 +435,7 @@ export const agregarActividad = async (ot, descripcion, ejecutante = '') => {
 };
 /** Quita una actividad (las de abajo suben una fila). */
 export const quitarActividad = async (ot, i) => {
-  if (!soloEditor()) return;
+  if (!soloAdmin()) return;
   if (!confirm(`¿Quitar la actividad "${ot.actividades[i].descripcion}"?`)) return;
   const copia = JSON.parse(JSON.stringify(ot.actividades));
   const vacia = Object.fromEntries(Object.keys(ot.actividades[i]).map(k => [k, '']));
@@ -419,6 +448,97 @@ export const quitarActividad = async (ot, i) => {
 export const guardarEjecutante = async (ot) => {
   if (!soloEditor()) return;
   try { await guardarActividades(ot); } catch (err) { alert('No se pudo guardar: ' + errMsg(err)); }
+};
+
+// ---------- Lo que completa el mecánico en la OT ----------
+/** Último guardado de la OT en el taller (para mostrar "Guardado ✓"). */
+export const guardadoOT = ref({ id: null, hora: '', error: '' });
+const SQL_FIRMAS = 'Falta ejecutar sql/taller_firmas_problemas.sql en Supabase (columna firmas de bd_ot y tabla de problemas).';
+/**
+ * Guarda columnas de la OT: grupo = 'actividades' | 'insumos' | 'personal' | 'pauta' | 'mecanico' | 'supervisor' | 'firmas'.
+ * (Se guarda al cambiar cada dato: no hay botón "Guardar").
+ */
+export const guardarOTTaller = async (ot, ...grupos) => {
+  if (!soloEditor()) return false;
+  const cambios = Object.fromEntries(grupos.map(g => [g, ot[g] ?? null]));
+  try {
+    await sb(supabaseClient.from(TABLA_OT).update({ ...cambios, updated_at: new Date().toISOString() }).eq('id', ot.id));
+    guardadoOT.value = { id: ot.id, hora: ahoraHHMM(), error: '' };
+    return true;
+  } catch (err) {
+    const m = errMsg(err);
+    guardadoOT.value = { id: ot.id, hora: '', error: m };
+    alert(/firmas/i.test(m) ? SQL_FIRMAS : 'No se pudo guardar la OT: ' + m);
+    return false;
+  }
+};
+/** Firma (imagen) de la OT. clave = 'mecanico' | 'supervisor' | 'per.0'..'per.3'. */
+export const firmaDe = (ot, clave) => {
+  if (!ot) return '';
+  if (clave.startsWith('per.')) return (ot.personal[Number(clave.slice(4))] || {}).firma || '';
+  return (ot.firmas && ot.firmas[clave]) || '';
+};
+export const fijarFirma = async (ot, clave, dataUrl) => {
+  if (clave.startsWith('per.')) {
+    ot.personal[Number(clave.slice(4))].firma = dataUrl || '';
+    return guardarOTTaller(ot, 'personal');
+  }
+  ot.firmas = { ...(ot.firmas || {}), [clave]: dataUrl || '' };
+  return guardarOTTaller(ot, 'firmas');
+};
+export const alternarPautaOT = (ot, p) => { ot.pauta = ot.pauta === p ? '' : p; return guardarOTTaller(ot, 'pauta'); };
+
+// ---------- "Enviar nuevo problema para OT" (mecánico → Admin) ----------
+export const TABLA_PROBLEMAS = TABLAS.TALLER_PROBLEMAS;
+export const dbProblemas = ref([]);
+export const faltaTablaProblemas = ref(false);
+export const cargarProblemas = async () => {
+  try {
+    const data = await sb(supabaseClient.from(TABLA_PROBLEMAS).select('*').order('id', { ascending: true }));
+    dbProblemas.value = data;
+    faltaTablaProblemas.value = false;
+  } catch (err) {
+    if (/bd_taller_problemas|schema cache|does not exist/i.test(errMsg(err))) faltaTablaProblemas.value = true;
+    else console.warn('[Taller] No se pudieron leer los problemas:', errMsg(err));
+  }
+};
+export const problemasDeRep = (rep) => (rep ? dbProblemas.value.filter(p => String(p.reparacion_id) === String(rep.id)) : []);
+export const problemasPendientesRep = (rep) => problemasDeRep(rep).filter(p => p.estado === 'PENDIENTE');
+/** Problemas que el Admin aún no procesa (todo el taller). */
+export const problemasPendientes = computed(() => dbProblemas.value.filter(p => p.estado === 'PENDIENTE'));
+
+export const enviarProblema = async (rep, ot, texto) => {
+  if (!soloEditor()) return false;
+  const t = String(texto || '').trim();
+  if (!t) return false;
+  try {
+    const [fila] = await sb(supabaseClient.from(TABLA_PROBLEMAS).insert([{
+      reparacion_id: rep.id, ot_id: ot ? ot.id : null, afi: rep.afi, nave: rep.nave || null, descripcion: t, reportado_por: quien(), estado: 'PENDIENTE'
+    }]).select());
+    dbProblemas.value.push(fila);
+    return true;
+  } catch (err) {
+    alert(/bd_taller_problemas|schema cache|does not exist/i.test(errMsg(err)) ? SQL_FIRMAS : 'No se pudo enviar: ' + errMsg(err));
+    return false;
+  }
+};
+/** Admin: agrega el problema como actividad de la OT (texto editable). */
+export const agregarProblemaAOT = async (prob, ot, texto) => {
+  if (!soloAdmin()) return false;
+  if (!ot) { alert('La reparación no tiene OT. Primero une o crea la OT.'); return false; }
+  if (!(await agregarActividad(ot, texto || prob.descripcion, ''))) return false;
+  return marcarProblema(prob, 'AGREGADO', `Agregado a la OT ${ot.folio}`, ot.id);
+};
+export const rechazarProblema = async (prob) => {
+  if (!soloAdmin()) return false;
+  const motivo = prompt('Motivo (opcional, lo verá el mecánico):', '');
+  if (motivo === null) return false;
+  return marcarProblema(prob, 'RECHAZADO', motivo);
+};
+const marcarProblema = async (prob, estado, respuesta, otId = null) => {
+  const cambios = { estado, respuesta: respuesta || null, procesado_por: quien(), procesado_at: new Date().toISOString(), ...(otId ? { ot_id: otId } : {}) };
+  try { await sb(supabaseClient.from(TABLA_PROBLEMAS).update(cambios).eq('id', prob.id)); Object.assign(prob, cambios); return true; }
+  catch (err) { alert('No se pudo actualizar: ' + errMsg(err)); return false; }
 };
 
 const lineas = (txt) => String(txt || '').split(/\r?\n/).map(s => s.replace(/^[\s•\-*·]+/, '').trim()).filter(Boolean);

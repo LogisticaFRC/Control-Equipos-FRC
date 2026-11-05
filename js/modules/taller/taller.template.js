@@ -69,11 +69,13 @@ export default /* html */ `
               </div>
               <p class="text-xs text-slate-500 font-semibold mt-1">{{ progresoRep(repEnNave(nave)).sinOT ? 'Presiona REPARAR para crear la OT' : progresoRep(repEnNave(nave)).done + ' de ' + progresoRep(repEnNave(nave)).total + ' actividades terminadas' }}</p>
             </div>
+            <div v-if="problemasPendientesRep(repEnNave(nave)).length" class="text-xs bg-violet-100 border border-violet-300 text-violet-900 rounded-lg p-2 font-bold"><i class="fa-solid fa-bell mr-1"></i>{{ problemasPendientesRep(repEnNave(nave)).length }} problema(s) nuevo(s) enviado(s) por el mecánico{{ isAdmin ? ' · revisar en REPARAR' : ' · esperando al Admin' }}</div>
             <div v-if="repEnNave(nave).faltante" class="text-xs bg-rose-50 border border-rose-200 text-rose-800 rounded-lg p-2 whitespace-pre-line"><b><i class="fa-solid fa-triangle-exclamation mr-1"></i>Le faltaba:</b> {{ repEnNave(nave).faltante }}</div>
             <div class="flex gap-3 pt-1 mt-auto">
               <button @click="abrirReparar(repEnNave(nave))" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-lg font-black py-3.5 rounded-2xl shadow"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>REPARAR</button>
               <button v-if="puedeEditar" @click="abrirSalida(repEnNave(nave))" class="bg-slate-800 hover:bg-slate-900 text-white text-base font-bold px-5 py-3.5 rounded-2xl shadow"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sacar</button>
             </div>
+            <button v-if="isAdmin" @click="sacarError(repEnNave(nave))" class="w-full text-xs font-bold text-slate-500 hover:text-slate-800 border border-dashed border-slate-300 hover:border-slate-500 rounded-xl py-2"><i class="fa-solid fa-rotate-left mr-1"></i>Sacar por error / prueba (Admin)</button>
           </div>
         </div>
 
@@ -96,6 +98,22 @@ export default /* html */ `
 
     <!-- ===================== COLUMNA DERECHA ===================== -->
     <div class="space-y-5">
+      <!-- Problemas nuevos enviados por los mecánicos (los procesa el Admin) -->
+      <div v-if="problemasPendientes.length" class="bg-white rounded-2xl shadow-sm border-2 border-violet-300 overflow-hidden">
+        <div class="bg-violet-700 text-white px-4 py-3 font-extrabold text-sm flex items-center justify-between">
+          <span><i class="fa-solid fa-bell mr-1.5"></i> Problemas nuevos para OT</span>
+          <span class="bg-white/20 rounded-full px-2 text-xs">{{ problemasPendientes.length }}</span>
+        </div>
+        <div class="divide-y max-h-[320px] overflow-y-auto">
+          <div v-for="p in problemasPendientes" :key="p.id" class="p-3 space-y-1">
+            <p class="text-xs font-black text-slate-800">AFI {{ p.afi }}<span v-if="p.nave" class="ml-1 text-amber-700">· {{ p.nave }}</span></p>
+            <p class="text-sm text-slate-700">{{ p.descripcion }}</p>
+            <p class="text-[11px] text-slate-500">{{ p.reportado_por }} · {{ fechaHora(p.created_at) }}</p>
+            <button v-if="isAdmin && repPorId(p.reparacion_id)" @click="abrirReparar(repPorId(p.reparacion_id))" class="text-xs font-bold text-violet-700 hover:underline"><i class="fa-solid fa-arrow-right mr-1"></i>Revisar y agregar a la OT</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Equipos reparación sin programa -->
       <div class="bg-white rounded-2xl shadow-sm border-2 border-violet-200 overflow-hidden">
         <div class="bg-violet-600 text-white px-4 py-3 font-extrabold text-sm flex items-center justify-between">
@@ -119,7 +137,7 @@ export default /* html */ `
               <div v-if="r.estado !== 'EN_NAVE' && puedeEditar" class="flex gap-1.5 pt-0.5">
                 <select v-model="naveDestino[r.id]" class="flex-1 p-1.5 border rounded-lg text-xs font-bold"><option value="">Ingresar a nave...</option><option v-for="n in navesLibres" :key="n" :value="n">{{ n }}</option></select>
                 <button @click="ingresarDesdeLista(r)" :disabled="!naveDestino[r.id] || ocupado" class="bg-emerald-600 text-white rounded-lg px-2.5 text-xs font-bold disabled:opacity-40"><i class="fa-solid fa-arrow-right-to-bracket"></i></button>
-                <button @click="abrirReparar(r)" class="bg-amber-100 text-amber-900 rounded-lg px-2.5 text-xs font-bold" title="Ver / crear OT"><i class="fa-solid fa-file-signature"></i></button>
+                <button @click="abrirReparar(r)" class="bg-amber-100 text-amber-900 rounded-lg px-2.5 text-xs font-bold" title="Ver / unir OT"><i class="fa-solid fa-file-signature"></i></button>
                 <button v-if="isAdmin" @click="quitarReparacion(r)" class="text-rose-500 hover:text-rose-700 px-1.5" title="Quitar de la lista"><i class="fa-solid fa-trash"></i></button>
               </div>
             </div>
@@ -279,17 +297,20 @@ export default /* html */ `
     </div>
   </div>
 
-  <!-- ===================== MODAL: REPARAR (OT + ACTIVIDADES) ===================== -->
+  <!-- ===================== MODAL: REPARAR (OT que completa el mecánico) ===================== -->
   <div v-if="repTrabajo" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-start justify-center p-3 overflow-y-auto">
-    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden my-2">
-      <div class="bg-amber-500 text-slate-950 px-6 py-4 flex items-center justify-between">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-7xl overflow-hidden my-2">
+      <div class="bg-amber-500 text-slate-950 px-6 py-4 flex items-center justify-between gap-3">
         <h3 class="text-xl md:text-2xl font-black"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>REPARAR · AFI {{ repTrabajo.afi }}<span v-if="repTrabajo.estado === 'EN_NAVE'" class="ml-2 text-base bg-slate-900 text-amber-300 px-3 py-0.5 rounded-full align-middle">{{ repTrabajo.nave }}</span></h3>
-        <button @click="cerrarReparar" class="text-slate-900/70 hover:text-slate-950 text-3xl leading-none"><i class="fa-solid fa-xmark"></i></button>
+        <div class="flex items-center gap-3">
+          <span v-if="otSel && guardadoOT.id === otSel.id && guardadoOT.hora" class="text-xs font-bold bg-white/60 rounded-full px-3 py-1"><i class="fa-solid fa-check mr-1 text-emerald-700"></i>Guardado {{ guardadoOT.hora }}</span>
+          <button @click="cerrarReparar" class="text-slate-900/70 hover:text-slate-950 text-3xl leading-none"><i class="fa-solid fa-xmark"></i></button>
+        </div>
       </div>
-      <div class="grid grid-cols-1 lg:grid-cols-3">
+      <div class="grid grid-cols-1 lg:grid-cols-4">
         <!-- Equipo -->
         <div class="bg-slate-50 border-r p-5 space-y-3">
-          <img :src="fotoDe(repTrabajo.afi)" class="w-full h-48 object-cover rounded-2xl bg-slate-800" alt="">
+          <img :src="fotoDe(repTrabajo.afi)" class="w-full h-44 object-cover rounded-2xl bg-slate-800" alt="">
           <p class="text-2xl font-black text-slate-800">AFI {{ repTrabajo.afi }}</p>
           <p class="text-sm text-slate-600 font-semibold">{{ descEquipo(repTrabajo.afi) }}</p>
           <p class="text-xs font-bold"><span :class="['px-2 py-0.5 rounded-full border', ESTILO_ESTADO[repTrabajo.estado]]">{{ ubicacionRep(repTrabajo) }}</span>
@@ -302,84 +323,159 @@ export default /* html */ `
           <div v-if="repTrabajo.faltante" class="text-xs bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-2.5 whitespace-pre-line"><b><i class="fa-solid fa-triangle-exclamation mr-1"></i>Le faltaba:</b> {{ repTrabajo.faltante }}</div>
           <div class="flex flex-col gap-2 pt-2">
             <button v-if="puedeEditar && repTrabajo.estado === 'EN_NAVE'" @click="abrirSalida(repTrabajo)" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sacar de la nave</button>
+            <button v-if="isAdmin && repTrabajo.estado === 'EN_NAVE'" @click="sacarError(repTrabajo)" class="w-full border-2 border-dashed border-slate-400 text-slate-600 hover:bg-white font-bold py-2.5 rounded-xl text-sm"><i class="fa-solid fa-rotate-left mr-2"></i>Sacar por error / prueba</button>
             <button @click="verDetallePorAfiString(repTrabajo.afi)" class="w-full border font-bold py-2.5 rounded-xl text-slate-600 hover:bg-white"><i class="fa-solid fa-id-card mr-2"></i>Perfil del equipo</button>
           </div>
         </div>
 
-        <!-- OT / actividades -->
-        <div class="lg:col-span-2 p-5 space-y-4">
-          <!-- Pestañas de OT -->
+        <!-- OT -->
+        <div class="lg:col-span-3 p-5 space-y-5 min-w-0">
           <div class="flex flex-wrap items-center gap-2">
             <button v-for="o in otsDeRep(repTrabajo)" :key="o.id" @click="otSel = o"
               :class="['px-4 py-2 rounded-xl font-black text-sm border-2', otSel && otSel.id === o.id ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-rose-700 border-rose-200 hover:border-rose-400']">OT {{ o.folio }} · {{ progresoOT(o).pct }}%</button>
-            <button v-if="otSel && puedeEditar" @click="otSel = null" class="px-3 py-2 rounded-xl text-xs font-bold border-2 border-dashed border-slate-300 text-slate-500 hover:border-slate-400"><i class="fa-solid fa-plus mr-1"></i>Otra OT</button>
+            <button v-if="otSel && puedeEditar" @click="otSel = null" class="px-3 py-2 rounded-xl text-xs font-bold border-2 border-dashed border-slate-300 text-slate-500 hover:border-slate-400"><i class="fa-solid fa-link mr-1"></i>Unir otra OT</button>
           </div>
 
-          <!-- Crear / enlazar OT -->
-          <div v-if="!otSel" class="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 p-5 space-y-4">
-            <p class="text-lg font-black text-amber-900"><i class="fa-solid fa-file-circle-plus mr-2"></i>Crear OT para reparar el AFI {{ repTrabajo.afi }}</p>
-            <div v-if="puedeEditar" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <label class="text-xs font-bold text-slate-600">N° FOLIO
-                <input v-model="formOT.folio" inputmode="numeric" class="mt-1 w-full p-3 border-2 rounded-xl text-xl font-black text-rose-700 text-center">
-              </label>
-              <label class="text-xs font-bold text-slate-600">Tipo
-                <select v-model="formOT.tipo" class="mt-1 w-full p-3 border-2 rounded-xl text-base font-bold"><option>CORRECTIVA</option><option>PREVENTIVA</option><option>PREDICTIVA</option></select>
-              </label>
-              <label class="text-xs font-bold text-slate-600">Mecánico a cargo
-                <input v-model="formOT.mecanico" class="mt-1 w-full p-3 border-2 rounded-xl text-base font-bold">
-              </label>
-            </div>
-            <p v-if="repTrabajo.faltante" class="text-xs text-amber-900">Lo que le faltaba entra como actividades de la OT.</p>
-            <button v-if="puedeEditar" @click="crearOT" :disabled="ocupado || !formOT.folio" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 text-lg font-black py-3.5 rounded-2xl disabled:opacity-50"><i class="fa-solid fa-play mr-2"></i>Crear OT y empezar</button>
-            <div v-if="puedeEditar && otsLibresDelAfi(repTrabajo.afi).length" class="pt-2 border-t border-amber-200">
-              <p class="text-xs font-bold text-slate-600 mb-2">O enlazar una OT que ya existe del AFI {{ repTrabajo.afi }}:</p>
-              <div class="flex flex-wrap gap-2">
-                <button v-for="o in otsLibresDelAfi(repTrabajo.afi)" :key="o.id" @click="enlazarOT(o)" class="px-3 py-2 rounded-xl bg-white border-2 border-rose-200 hover:border-rose-400 text-sm font-bold text-rose-700"><i class="fa-solid fa-link mr-1"></i>OT {{ o.folio }} · {{ formatDateForDisplay(o.fecha) }}</button>
+          <!-- ===== Sin OT: unir una OT ya creada ===== -->
+          <div v-if="!otSel" class="space-y-4">
+            <div class="rounded-2xl border-2 border-rose-200 bg-rose-50/50 p-5 space-y-3">
+              <p class="text-lg font-black text-rose-900"><i class="fa-solid fa-link mr-2"></i>Unir con la OT del AFI {{ repTrabajo.afi }}</p>
+              <div v-if="otsLibresDelAfi(repTrabajo.afi).length" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div v-for="o in otsLibresDelAfi(repTrabajo.afi)" :key="o.id" class="bg-white rounded-2xl border-2 border-rose-200 p-4 space-y-2">
+                  <p class="text-xl font-black text-rose-700">OT N° {{ o.folio }}</p>
+                  <p class="text-xs text-slate-500 font-semibold">{{ formatDateForDisplay(o.fecha) }} · {{ o.tipo_mantencion || 'Sin tipo' }} · {{ o.actividades.filter(a => a.descripcion).length }} actividades</p>
+                  <p class="text-xs text-slate-600 line-clamp-2">{{ o.actividades.filter(a => a.descripcion).map(a => a.descripcion).join(' · ') || '—' }}</p>
+                  <button v-if="puedeEditar" @click="enlazarOT(o)" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 rounded-xl"><i class="fa-solid fa-link mr-1"></i>Unir esta OT</button>
+                </div>
+              </div>
+              <div v-else class="text-sm text-rose-900 bg-white rounded-xl border border-rose-200 p-3">
+                <i class="fa-solid fa-circle-info mr-1"></i>Todavía no hay una OT creada para el AFI {{ repTrabajo.afi }}. Operaciones la crea en <b>Órdenes de Trabajo</b> y la une a este equipo; apenas lo haga, aparece aquí.
               </div>
             </div>
-            <p v-if="!puedeEditar" class="text-sm text-slate-500">Esta reparación aún no tiene OT.</p>
+            <!-- Solo Admin: crear OT desde el taller -->
+            <details v-if="isAdmin" class="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 p-4">
+              <summary class="font-black text-amber-900 cursor-pointer"><i class="fa-solid fa-file-circle-plus mr-2"></i>Crear la OT aquí (Admin)</summary>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                <label class="text-xs font-bold text-slate-600">N° FOLIO<input v-model="formOT.folio" inputmode="numeric" class="mt-1 w-full p-3 border-2 rounded-xl text-xl font-black text-rose-700 text-center"></label>
+                <label class="text-xs font-bold text-slate-600">Tipo<select v-model="formOT.tipo" class="mt-1 w-full p-3 border-2 rounded-xl text-base font-bold"><option>CORRECTIVA</option><option>PREVENTIVA</option><option>PREDICTIVA</option></select></label>
+                <label class="text-xs font-bold text-slate-600">Mecánico a cargo<input v-model="formOT.mecanico" class="mt-1 w-full p-3 border-2 rounded-xl text-base font-bold"></label>
+              </div>
+              <button @click="crearOT" :disabled="ocupado || !formOT.folio" class="mt-3 w-full bg-amber-500 hover:bg-amber-600 text-slate-950 text-lg font-black py-3 rounded-2xl disabled:opacity-50"><i class="fa-solid fa-plus mr-2"></i>Crear OT y unirla</button>
+            </details>
           </div>
 
-          <!-- Actividades de la OT seleccionada -->
+          <!-- ===== OT unida: lo que completa el mecánico ===== -->
           <template v-else>
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p class="text-lg font-black text-slate-800">OT N° <span class="text-rose-700 font-mono">{{ otSel.folio }}</span> <span class="text-sm font-bold text-slate-500">· {{ otSel.tipo_mantencion || 'Sin tipo' }} · {{ formatDateForDisplay(otSel.fecha) }}</span></p>
-                <p class="text-xs text-slate-500 font-semibold">{{ progresoOT(otSel).done }} de {{ progresoOT(otSel).total }} terminadas · toca el cuadro para marcar / desmarcar</p>
+                <p class="text-xl font-black text-slate-800">OT N° <span class="text-rose-700 font-mono">{{ otSel.folio }}</span> <span class="text-sm font-bold text-slate-500">· {{ otSel.tipo_mantencion || 'Sin tipo' }} · {{ formatDateForDisplay(otSel.fecha) }}</span></p>
+                <p class="text-xs text-slate-500 font-semibold">Todo se guarda solo al escribir. Toca el cuadro grande para marcar una actividad terminada.</p>
               </div>
               <div class="flex gap-2">
                 <button @click="imprimirOT(otSel)" class="px-3 py-2 rounded-xl border font-bold text-sm text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-print mr-1"></i>Imprimir</button>
-                <button @click="abrirFormatoOT(otSel)" class="px-3 py-2 rounded-xl border font-bold text-sm text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>Formato OT</button>
+                <button v-if="isAdmin" @click="abrirFormatoOT(otSel)" class="px-3 py-2 rounded-xl border font-bold text-sm text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>Formato OT</button>
               </div>
             </div>
 
-            <div class="space-y-2 max-h-[52vh] overflow-y-auto pr-1">
-              <template v-for="(a, i) in otSel.actividades" :key="i">
-                <div v-if="a.descripcion && a.descripcion.trim()" :class="['flex items-center gap-3 rounded-2xl border-2 p-3 transition', actividadHecha(a) ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200']">
-                  <button @click="alternarActividad(otSel, i)" :disabled="!puedeEditar"
-                    :class="['w-14 h-14 shrink-0 rounded-xl border-4 flex items-center justify-center text-3xl transition', actividadHecha(a) ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-slate-300 text-transparent hover:border-emerald-400']">
-                    <i class="fa-solid fa-check"></i>
-                  </button>
-                  <div class="flex-1 min-w-0">
-                    <p :class="['text-lg font-bold leading-snug', actividadHecha(a) ? 'text-emerald-800 line-through decoration-2' : 'text-slate-800']">{{ a.descripcion }}</p>
-                    <p class="text-xs text-slate-500 font-semibold">
-                      <span v-if="a.f_inicio">Inicio {{ formatDateForDisplay(a.f_inicio) }} {{ a.h_inicio }}</span>
-                      <span v-if="actividadHecha(a)" class="text-emerald-700"> · Terminada {{ formatDateForDisplay(a.f_term) }} {{ a.h_term }}</span>
-                    </p>
+            <!-- 1. ACTIVIDADES -->
+            <section class="space-y-2">
+              <h4 class="text-sm font-black uppercase text-slate-700 bg-slate-100 rounded-lg px-3 py-2"><i class="fa-solid fa-list-check mr-1"></i>Actividades a realizar · {{ progresoOT(otSel).done }}/{{ progresoOT(otSel).total }}</h4>
+              <template v-for="(a, i) in otSel.actividades" :key="'a' + i">
+                <div v-if="a.descripcion && a.descripcion.trim()" :class="['rounded-2xl border-2 p-3 transition', actividadHecha(a) ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200']">
+                  <div class="flex items-center gap-3">
+                    <button @click="alternarActividad(otSel, i)" :disabled="!puedeEditar"
+                      :class="['w-14 h-14 shrink-0 rounded-xl border-4 flex items-center justify-center text-3xl transition', actividadHecha(a) ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-slate-300 text-transparent hover:border-emerald-400']">
+                      <i class="fa-solid fa-check"></i>
+                    </button>
+                    <input v-if="isAdmin" v-model="a.descripcion" @change="guardarOTTaller(otSel, 'actividades')" class="flex-1 min-w-0 p-2 border-2 border-transparent hover:border-slate-200 rounded-xl text-lg font-bold" :class="actividadHecha(a) ? 'text-emerald-800' : 'text-slate-800'">
+                    <p v-else :class="['flex-1 min-w-0 text-lg font-bold leading-snug', actividadHecha(a) ? 'text-emerald-800' : 'text-slate-800']">{{ i + 1 }}. {{ a.descripcion }}</p>
+                    <button v-if="isAdmin" @click="quitarActividad(otSel, i)" class="text-slate-300 hover:text-rose-600 text-lg px-1" title="Quitar actividad (Admin)"><i class="fa-solid fa-trash"></i></button>
                   </div>
-                  <input v-model="a.ejecutante" @change="guardarEjecutante(otSel)" :disabled="!puedeEditar" placeholder="Ejecutante" class="w-36 md:w-44 p-2.5 border-2 rounded-xl text-sm font-bold">
-                  <button v-if="puedeEditar" @click="quitarActividad(otSel, i)" class="text-slate-300 hover:text-rose-600 text-lg px-1" title="Quitar actividad"><i class="fa-solid fa-trash"></i></button>
+                  <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 md:pl-[68px]">
+                    <label class="text-[10px] font-bold uppercase text-slate-500 col-span-2 md:col-span-1">Ejecutante<input v-model="a.ejecutante" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold normal-case"></label>
+                    <label class="text-[10px] font-bold uppercase text-slate-500">F. inicio<input type="date" v-model="a.f_inicio" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
+                    <label class="text-[10px] font-bold uppercase text-slate-500">F. término<input type="date" v-model="a.f_term" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
+                    <label class="text-[10px] font-bold uppercase text-slate-500">H. inicio<input type="time" v-model="a.h_inicio" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
+                    <label class="text-[10px] font-bold uppercase text-slate-500">H. término<input type="time" v-model="a.h_term" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
+                  </div>
                 </div>
               </template>
-              <p v-if="!progresoOT(otSel).total" class="text-sm text-slate-400 italic p-2">La OT no tiene actividades. Agrega la primera abajo.</p>
-            </div>
+              <p v-if="!progresoOT(otSel).total" class="text-sm text-slate-400 italic p-2">La OT no tiene actividades todavía.</p>
+              <div v-if="isAdmin" class="rounded-2xl bg-slate-100 p-3 flex flex-wrap gap-2">
+                <input v-model="nuevaAct.descripcion" @keyup.enter="agregarAct" placeholder="Nueva actividad (Admin)" class="flex-1 min-w-[220px] p-3 border-2 rounded-xl text-base font-semibold">
+                <button @click="agregarAct" :disabled="!nuevaAct.descripcion.trim()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 rounded-xl text-base disabled:opacity-50"><i class="fa-solid fa-plus mr-1"></i>Agregar</button>
+              </div>
+            </section>
 
-            <div v-if="puedeEditar" class="rounded-2xl bg-slate-100 p-3 flex flex-wrap gap-2">
-              <input v-model="nuevaAct.descripcion" @keyup.enter="agregarAct" placeholder="Nueva actividad (ej. Cambiar bomba hidráulica)" class="flex-1 min-w-[220px] p-3 border-2 rounded-xl text-base font-semibold">
-              <input v-model="nuevaAct.ejecutante" @keyup.enter="agregarAct" placeholder="Ejecutante" class="w-44 p-3 border-2 rounded-xl text-base font-semibold">
-              <button @click="agregarAct" :disabled="!nuevaAct.descripcion.trim()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 rounded-xl text-base disabled:opacity-50"><i class="fa-solid fa-plus mr-1"></i>Agregar</button>
-              <p class="w-full text-[11px] text-slate-500">Máximo {{ N_ACTIVIDADES }} actividades por OT (igual que el formato en papel).</p>
-            </div>
+            <!-- 2. NUEVO PROBLEMA -->
+            <section class="rounded-2xl border-2 border-violet-200 bg-violet-50 p-4 space-y-3">
+              <h4 class="text-sm font-black uppercase text-violet-900"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Enviar nuevo problema para OT</h4>
+              <p v-if="faltaTablaProblemas" class="text-xs text-rose-700 font-semibold">Falta ejecutar sql/taller_firmas_problemas.sql en Supabase.</p>
+              <div v-if="puedeEditar" class="flex flex-wrap gap-2">
+                <textarea v-model="nuevoProblema" rows="2" placeholder="Ej: Fuga de aceite en cilindro de levante, falta cambiar sello" class="flex-1 min-w-[240px] p-3 border-2 border-violet-200 rounded-xl text-base"></textarea>
+                <button @click="enviarProb" :disabled="!nuevoProblema.trim() || ocupado" class="bg-violet-600 hover:bg-violet-700 text-white font-black px-6 rounded-xl text-base disabled:opacity-50"><i class="fa-solid fa-paper-plane mr-1"></i>Enviar</button>
+              </div>
+              <p class="text-[11px] text-violet-800">El Admin lo revisa y, si corresponde, lo agrega como actividad de la OT.</p>
+              <div v-for="p in problemasDeRep(repTrabajo)" :key="p.id" class="bg-white rounded-xl border p-3 space-y-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span class="text-sm font-bold text-slate-800">{{ p.descripcion }}</span>
+                  <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', p.estado === 'PENDIENTE' ? 'bg-amber-100 text-amber-800 border-amber-300' : p.estado === 'AGREGADO' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-500 border-slate-300']">{{ p.estado === 'PENDIENTE' ? 'Esperando al Admin' : p.estado === 'AGREGADO' ? 'Agregado a la OT' : 'Rechazado' }}</span>
+                </div>
+                <p class="text-[11px] text-slate-500">{{ p.reportado_por }} · {{ fechaHora(p.created_at) }}<template v-if="p.respuesta"> · <b>{{ p.respuesta }}</b></template></p>
+                <div v-if="isAdmin && p.estado === 'PENDIENTE'" class="flex flex-wrap gap-2">
+                  <input v-model="textoProblema[p.id]" :placeholder="p.descripcion" class="flex-1 min-w-[200px] p-2 border-2 rounded-lg text-sm" title="Texto de la actividad (puedes corregirlo)">
+                  <button @click="agregarProblemaAOT(p, otSel, textoProblema[p.id] || p.descripcion)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-sm"><i class="fa-solid fa-plus mr-1"></i>Agregar a OT {{ otSel.folio }}</button>
+                  <button @click="rechazarProblema(p)" class="border font-bold px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Rechazar</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- 3. INSUMOS -->
+            <section class="space-y-2">
+              <h4 class="text-sm font-black uppercase text-slate-700 bg-slate-100 rounded-lg px-3 py-2"><i class="fa-solid fa-oil-can mr-1"></i>Insumos utilizados</h4>
+              <div class="hidden md:grid grid-cols-[2rem_minmax(0,1fr)_minmax(0,2fr)_9.5rem_minmax(0,1fr)] gap-2 px-1 text-[10px] font-bold uppercase text-slate-500"><span>#</span><span>Aceites / Lts</span><span>Repuestos</span><span>Fecha</span><span>Retira</span></div>
+              <div v-for="(x, i) in otSel.insumos" :key="'i' + i" class="grid grid-cols-2 md:grid-cols-[2rem_minmax(0,1fr)_minmax(0,2fr)_9.5rem_minmax(0,1fr)] gap-2 items-center">
+                <span class="hidden md:block text-sm font-bold text-slate-400 text-center">{{ i + 1 }}</span>
+                <input v-model="x.aceites" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Aceite / lts" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <input v-model="x.repuestos" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Repuesto" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <input type="date" v-model="x.fecha" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <input v-model="x.retira" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Retira" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+              </div>
+            </section>
+
+            <!-- 4. PERSONAL ASIGNADO -->
+            <section class="space-y-2">
+              <h4 class="text-sm font-black uppercase text-slate-700 bg-slate-100 rounded-lg px-3 py-2"><i class="fa-solid fa-users mr-1"></i>Personal asignado</h4>
+              <div v-for="(p, i) in otSel.personal" :key="'p' + i" class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center">
+                <input v-model="p.nombre" @change="guardarOTTaller(otSel, 'personal')" :disabled="!puedeEditar" :placeholder="'Nombre ' + (i + 1)" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <input v-model="p.cargo" @change="guardarOTTaller(otSel, 'personal')" :disabled="!puedeEditar" placeholder="Cargo" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <firma-pad compacto :firma="p.firma || ''" :titulo="'Firma de ' + (p.nombre || 'personal ' + (i + 1))" :disabled="!puedeEditar || !p.nombre" @guardar="u => fijarFirma(otSel, 'per.' + i, u)"></firma-pad>
+              </div>
+              <p class="text-[11px] text-slate-400">Escribe el nombre para poder firmar.</p>
+            </section>
+
+            <!-- PAUTA -->
+            <section class="space-y-2">
+              <h4 class="text-sm font-black uppercase text-slate-700 bg-slate-100 rounded-lg px-3 py-2"><i class="fa-solid fa-gauge mr-1"></i>Pauta de mantención</h4>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <button v-for="pa in ['250', '500', '1000', '5000']" :key="pa" @click="alternarPautaOT(otSel, pa)" :disabled="!puedeEditar"
+                  :class="['py-3 rounded-xl border-2 font-black', otSel.pauta === pa ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400']">{{ pa }} horas</button>
+              </div>
+            </section>
+
+            <!-- 5. RESPONSABLES Y FIRMAS -->
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="rounded-2xl border-2 p-4 space-y-2">
+                <h4 class="text-sm font-black uppercase text-slate-700">Mecánico responsable</h4>
+                <input v-model="otSel.mecanico" @change="guardarOTTaller(otSel, 'mecanico')" :disabled="!puedeEditar" placeholder="Nombre" class="w-full p-2.5 border-2 rounded-lg text-base font-bold">
+                <firma-pad :firma="firmaDe(otSel, 'mecanico')" :titulo="'Firma mecánico responsable · OT ' + otSel.folio" :disabled="!puedeEditar" @guardar="u => fijarFirma(otSel, 'mecanico', u)"></firma-pad>
+              </div>
+              <div class="rounded-2xl border-2 p-4 space-y-2">
+                <h4 class="text-sm font-black uppercase text-slate-700">Supervisor responsable</h4>
+                <input v-model="otSel.supervisor" @change="guardarOTTaller(otSel, 'supervisor')" :disabled="!puedeEditar" placeholder="Nombre" class="w-full p-2.5 border-2 rounded-lg text-base font-bold">
+                <firma-pad :firma="firmaDe(otSel, 'supervisor')" :titulo="'Firma supervisor responsable · OT ' + otSel.folio" :disabled="!puedeEditar" @guardar="u => fijarFirma(otSel, 'supervisor', u)"></firma-pad>
+              </div>
+            </section>
           </template>
         </div>
       </div>

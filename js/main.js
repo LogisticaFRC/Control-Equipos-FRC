@@ -9,6 +9,7 @@ import InventarioView from './modules/inventario/inventario.view.js';
 import ProgramasView from './modules/programas/programas.view.js';
 import ReparacionView from './modules/taller/reparacion.view.js';
 import TallerView from './modules/taller/taller.view.js';
+import FirmaPad from './core/firma-pad.js';
 import MovimientosView from './modules/movimientos/movimientos.view.js';
 import HistorialView from './modules/historial/historial.view.js';
 import AceitesView from './modules/aceites/aceites.view.js';
@@ -219,6 +220,7 @@ app.component('InventarioView', InventarioView);
 app.component('ProgramasView', ProgramasView);
 app.component('ReparacionView', ReparacionView);   // Programas Reparación: pestañas Taller (naves) | Programas y Gantt
 app.component('TallerView', TallerView);
+app.component('FirmaPad', FirmaPad);   // firma dibujada con mouse / touch (OT)
 app.component('MovimientosView', MovimientosView);
 app.component('HistorialView', HistorialView);
 app.component('AceitesView', AceitesView);

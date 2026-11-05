@@ -29,6 +29,8 @@ export default {
     const afiSinProg = ref('');             // agregar a "Equipos reparación sin programa"
     const naveDestino = ref({});            // rep.id → nave elegida en las listas laterales
     const ocupado = ref(false);
+    const nuevoProblema = ref('');           // "Enviar nuevo problema para OT"
+    const textoProblema = ref({});           // Admin: texto corregido antes de agregarlo a la OT
     const pantallaCompleta = ref(Boolean(document.fullscreenElement));
 
     const hayModal = computed(() => Boolean(naveIngreso.value || repTrabajo.value || repSalida.value));
@@ -97,6 +99,19 @@ export default {
       return { done, total: acts.length, pct: acts.length ? Math.round(done / acts.length * 100) : 0 };
     };
     const abrirFormatoOT = (ot) => { cerrarReparar(); irAOT(ot.folio); };
+    const enviarProb = async () => {
+      ocupado.value = true;
+      try { if (await S.enviarProblema(repTrabajo.value, otSel.value, nuevoProblema.value)) nuevoProblema.value = ''; }
+      finally { ocupado.value = false; }
+    };
+    const fechaHora = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
+
+    // ---------- Sacar por error / prueba (Admin) ----------
+    const sacarError = async (rep) => {
+      ocupado.value = true;
+      try { if (await S.sacarPorError(rep)) { if (repTrabajo.value && repTrabajo.value.id === rep.id) cerrarReparar(); } }
+      finally { ocupado.value = false; }
+    };
 
     // ---------- Sacar de nave ----------
     const abrirSalida = (rep) => {
@@ -120,6 +135,7 @@ export default {
       pantallaCompleta, alternarPantallaCompleta, actualizarTodo, horaActualizacion,
       abrirIngreso, ingresar, ingresarDesdeLista, agregarSinProg,
       abrirReparar, cerrarReparar, crearOT, enlazarOT, agregarAct, progresoOT, abrirFormatoOT,
+      nuevoProblema, textoProblema, enviarProb, fechaHora, sacarError,
       abrirSalida, confirmarSalida
     };
   }

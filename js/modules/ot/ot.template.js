@@ -129,6 +129,7 @@ export default /* html */ `
     <div class="overflow-x-auto bg-slate-300/60 p-4 rounded-2xl">
       <div class="bg-white mx-auto shadow-xl" :style="{ position: 'relative', width: anchoHoja * E + 'px' }">
         <img :src="F.logo.src" alt="" class="pointer-events-none" :style="{ position: 'absolute', left: F.logo.left * E + 'px', top: F.logo.top * E + 'px', width: F.logo.width * E + 'px', height: F.logo.height * E + 'px' }">
+        <img v-for="fz in firmasEnHoja(otActual)" :key="fz.k" :src="fz.src" alt="Firma" class="pointer-events-none" :style="{ position: 'absolute', zIndex: 5, objectFit: 'contain', left: fz.left * E + 'px', top: fz.top * E + 'px', width: fz.width * E + 'px', height: fz.height * E + 'px' }">
         <table class="ot-hoja" :style="{ width: anchoHoja * E + 'px' }">
           <colgroup><col v-for="(w, i) in F.cols" :key="i" :style="{ width: w * E + 'px' }"></colgroup>
           <tbody>
@@ -146,6 +147,22 @@ export default /* html */ `
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- Firmas dibujadas (mouse / touch) -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-3">
+      <p class="font-extrabold text-slate-700"><i class="fa-solid fa-signature mr-1 text-slate-500"></i> Firmas <span class="font-normal text-slate-500">(se ven en la hoja y al imprimir; se guardan con <b>Guardar</b>)</span></p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div><p class="text-[11px] font-bold text-slate-600 mb-1">Mecánico responsable: {{ otActual.mecanico || '—' }}</p>
+          <firma-pad :firma="(otActual.firmas || {}).mecanico || ''" :titulo="'Firma mecánico responsable · OT ' + (otActual.folio || '')" :disabled="!puedeEditar" @guardar="u => fijarFirmaEditor(otActual, 'mecanico', u)"></firma-pad></div>
+        <div><p class="text-[11px] font-bold text-slate-600 mb-1">Supervisor responsable: {{ otActual.supervisor || '—' }}</p>
+          <firma-pad :firma="(otActual.firmas || {}).supervisor || ''" :titulo="'Firma supervisor responsable · OT ' + (otActual.folio || '')" :disabled="!puedeEditar" @guardar="u => fijarFirmaEditor(otActual, 'supervisor', u)"></firma-pad></div>
+        <template v-for="(p, i) in otActual.personal" :key="'f' + i">
+          <div v-if="p.nombre"><p class="text-[11px] font-bold text-slate-600 mb-1">Personal: {{ p.nombre }}</p>
+            <firma-pad :firma="p.firma || ''" :titulo="'Firma de ' + p.nombre" :disabled="!puedeEditar" @guardar="u => fijarFirmaEditor(otActual, 'per.' + i, u)"></firma-pad></div>
+        </template>
+      </div>
+      <p class="text-[11px] text-slate-400">La exportación a Excel no incluye las firmas (usa Imprimir → Guardar como PDF).</p>
     </div>
   </template>
 </section>

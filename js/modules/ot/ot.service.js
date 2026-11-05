@@ -158,6 +158,8 @@ export const payloadOT = (ot) => ({
   mecanico: ot.mecanico, supervisor: ot.supervisor, estado: ot.estado || 'ABIERTA',
   // Enlace al Taller de reparación: solo se envía si la OT lo tiene (así funciona aunque falte ejecutar sql/taller.sql)
   ...(('reparacion_id' in ot) ? { reparacion_id: ot.reparacion_id ?? null } : {}),
+  // Firmas dibujadas del mecánico / supervisor (columna de sql/taller_firmas_problemas.sql): solo si la OT las tiene
+  ...(('firmas' in ot) ? { firmas: ot.firmas || {} } : {}),
   updated_at: new Date().toISOString()
 });
 
@@ -308,6 +310,29 @@ export const estiloCelda = (c, escala = 1) => {
 const css = (o) => Object.entries(o).map(([k, v]) => k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()) + ':' + v).join(';');
 const htmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+// ---------- Firmas dibujadas sobre la hoja ----------
+/** Posición (px, tamaño real) de un rango de celdas del formato: fila r, columna c (desde 1). */
+export const rectCelda = (r, c, rs = 1, cs = 1) => {
+  const F = FORMATO_OT, suma = (arr, a, b) => arr.slice(a, b).reduce((x, y) => x + y, 0);
+  return { left: suma(F.cols, 0, c - 1), top: suma(F.rows, 0, r - 1), width: suma(F.cols, c - 1, c - 1 + cs), height: suma(F.rows, r - 1, r - 1 + rs) };
+};
+/** Firmas de la OT con su lugar en la hoja: mecánico (B65), supervisor (W65) y "Firma" del personal asignado (U57..U60). */
+export const firmasEnHoja = (ot) => {
+  if (!ot) return [];
+  const out = [];
+  const f = ot.firmas || {};
+  if (f.mecanico) out.push({ k: 'mecanico', src: f.mecanico, ...rectCelda(65, 2, 2, 15) });
+  if (f.supervisor) out.push({ k: 'supervisor', src: f.supervisor, ...rectCelda(65, 23, 2, 18) });
+  (ot.personal || []).forEach((p, i) => { if (p && p.firma) out.push({ k: 'per' + i, src: p.firma, ...rectCelda(57 + i, 21, 1, 7) }); });
+  return out;
+};
+
+/** Pone una firma en la OT abierta en el editor (se guarda con "Guardar"). */
+export const fijarFirmaEditor = (ot, clave, url) => {
+  if (clave.startsWith('per.')) ot.personal[Number(clave.slice(4))].firma = url || '';
+  else ot.firmas = { ...(ot.firmas || {}), [clave]: url || '' };
+};
+
 /** HTML de la hoja completa con los datos de la OT. */
 export const htmlHojaOT = (ot) => {
   const F = FORMATO_OT;
@@ -325,6 +350,7 @@ export const htmlHojaOT = (ot) => {
   const L = F.logo, ancho = F.cols.reduce((a, b) => a + b, 0);
   return `<div class="hoja" style="position:relative;width:${ancho}px">
     <img src="${L.src}" style="position:absolute;left:${L.left}px;top:${L.top}px;width:${L.width}px;height:${L.height}px">
+    ${firmasEnHoja(ot).map(x => `<img src="${x.src}" style="position:absolute;left:${x.left}px;top:${x.top}px;width:${x.width}px;height:${x.height}px;object-fit:contain">`).join('')}
     <table style="width:${ancho}px"><colgroup>${F.cols.map(w => `<col style="width:${w}px">`).join('')}</colgroup><tbody>${filasHtml}</tbody></table></div>`;
 };
 
