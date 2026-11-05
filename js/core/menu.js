@@ -50,7 +50,7 @@ export const AREAS = [
   },
   {
     key: 'seguridad', label: 'Seguridad', icon: 'fa-helmet-safety', color: 'text-orange-400',
-    modulos: [{ key: 'seguridad', label: 'Inicio Seguridad', icon: 'fa-house', placeholder: true }]
+    modulos: [{ key: 'epp', label: 'Control Entrega EPP', icon: 'fa-vest' }]
   },
   {
     key: 'rrhh', label: 'RRHH', icon: 'fa-users', color: 'text-sky-400',

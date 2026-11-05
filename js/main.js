@@ -20,6 +20,7 @@ import BodegaView from './modules/bodega/bodega.view.js';
 import MinutasView from './modules/minutas/minutas.view.js';
 import OtView from './modules/ot/ot.view.js';
 import OcView from './modules/oc/oc.view.js';
+import EppView from './modules/epp/epp.view.js';
 import AreasView from './modules/areas/areas.view.js';
 import SelectorLocacion from './modules/areas/selector-locacion.view.js';
 import DocumentosCarpeta from './modules/formatos/documentos-carpeta.view.js';
@@ -146,6 +147,7 @@ const template = /* html */ `
       <minutas-view v-if="currentTab === 'minutas'"></minutas-view>
       <ot-view v-if="currentTab === 'ot'"></ot-view>
       <oc-view v-if="currentTab === 'oc'"></oc-view>
+      <epp-view v-if="currentTab === 'epp'"></epp-view>
       <areas-view v-if="currentTab === 'areas'"></areas-view>
       <movimientos-view v-if="currentTab === 'movimientos'"></movimientos-view>
       <historial-view v-if="currentTab === 'hojaVida'"></historial-view>
@@ -243,6 +245,7 @@ app.component('BodegaView', BodegaView);
 app.component('MinutasView', MinutasView);
 app.component('OtView', OtView);
 app.component('OcView', OcView);
+app.component('EppView', EppView);   // Seguridad → Control Entrega EPP
 app.component('AreasView', AreasView);
 app.component('SelectorLocacion', SelectorLocacion);   // Empresa → Área → Locación (Perfil, Movimientos, Áreas)
 app.component('InicioView', InicioView);                   // Bienvenida (primera pantalla)

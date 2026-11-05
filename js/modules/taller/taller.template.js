@@ -213,14 +213,14 @@ export default /* html */ `
   <!-- ===================== OT DEL TALLER ===================== -->
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
     <div class="px-5 py-3 border-b flex items-center justify-between">
-      <h3 class="text-lg font-black text-slate-800"><i class="fa-solid fa-file-signature text-rose-600 mr-2"></i>OT de reparación</h3>
-      <span class="text-xs font-bold text-slate-500">{{ otsTaller.length }} OT enlazadas al taller</span>
+      <h3 class="text-lg font-black text-slate-800"><i class="fa-solid fa-file-signature text-rose-600 mr-2"></i>OT de reparación <span class="text-amber-600">· {{ programaTaller ? nombreProg(programaTaller) : 'sin programa' }}</span></h3>
+      <span class="text-xs font-bold text-slate-500">{{ otsTallerPrograma.length }} OT enlazadas a este programa</span>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full text-left text-sm">
         <thead class="bg-slate-800 text-white text-[11px] uppercase"><tr><th class="p-3">Folio</th><th class="p-3">AFI</th><th class="p-3">Equipo</th><th class="p-3">Dónde está</th><th class="p-3">Programa</th><th class="p-3 w-48">Avance OT</th><th class="p-3">Estado OT</th><th class="p-3"></th></tr></thead>
         <tbody class="divide-y">
-          <tr v-for="o in otsTaller" :key="o.id" class="hover:bg-slate-50">
+          <tr v-for="o in otsTallerPrograma" :key="o.id" class="hover:bg-slate-50">
             <td class="p-3 font-mono font-black text-rose-700">{{ o.folio }}</td>
             <td class="p-3 font-bold text-amber-800">{{ o.afi }}</td>
             <td class="p-3 text-slate-600">{{ o.equipo }} <span class="text-slate-400">{{ o.marca }} {{ o.modelo }}</span></td>
@@ -234,7 +234,7 @@ export default /* html */ `
               <button v-if="puedeEditar" @click="desenlazarOT(o)" title="Quitar del taller (la OT no se borra)" class="ml-1 px-2.5 py-1 rounded-lg border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50"><i class="fa-solid fa-link-slash mr-1"></i>Quitar</button>
             </td>
           </tr>
-          <tr v-if="!otsTaller.length"><td colspan="8" class="p-6 text-center text-slate-400 italic">Aún no hay OT enlazadas. Se crean con el botón REPARAR de cada nave o se enlazan desde Órdenes de Trabajo.</td></tr>
+          <tr v-if="!otsTallerPrograma.length"><td colspan="8" class="p-6 text-center text-slate-400 italic">Este programa aún no tiene OT enlazadas. Se crean con el botón REPARAR de cada nave o se enlazan desde Órdenes de Trabajo.</td></tr>
         </tbody>
       </table>
     </div>

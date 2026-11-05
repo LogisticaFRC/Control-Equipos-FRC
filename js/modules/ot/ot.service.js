@@ -10,6 +10,7 @@ import { TABLAS } from '../../core/tablas.js';
 import { usuarioActivo, currentTab, dbIntervenciones, buscarEquipoPorAfi, soloAdmin, soloEditor } from '../../core/store.js';
 import { hoyISO, limpiarAfi } from '../../core/utils.js';
 import { FORMATO_OT } from './ot.formato.js';
+import { registrarEnlaceOT } from '../taller/enlaces.service.js';
 import { abrirFormularioNuevaMantencion, formMant } from '../historial/historial.service.js';
 
 const { ref, computed } = Vue;
@@ -182,6 +183,7 @@ export const guardarOT = async () => {
       const u = usuarioActivo.value;
       const [fila] = await sb(supabaseClient.from(TABLA_OT).insert([{ ...payloadOT(ot), creado_por: (u && (u.nombre || u.usuario)) || '' }]).select());
       ot.id = fila.id;
+      if (ot.reparacion_id != null) registrarEnlaceOT('CREADA', ot, null, { detalle: 'Creada en Órdenes de Trabajo' });
     }
     const guardada = mapOT(JSON.parse(JSON.stringify(ot)));
     const i = dbOT.value.findIndex(o => o.id === ot.id);

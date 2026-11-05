@@ -19,6 +19,7 @@ import { usuarioActivo, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPo
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, formatDateForDisplay, placeholderImg } from '../../core/utils.js';
 import { NAVES, carpetaDe, obtenerItemsPrograma, obtenerProgObj } from '../programas/programas.service.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
+import { registrarEnlaceOT } from './enlaces.service.js';
 import { dbOT, cargarOT, otVacia, mapOT, payloadOT, folioSugerido, N_ACTIVIDADES, N_ACEITES, TABLA_OT, estadoOT } from '../ot/ot.service.js';
 
 const { ref, computed } = Vue;
@@ -202,8 +203,16 @@ export const repsEnEsperaFueraDelPrograma = computed(() => {
   const progId = programaTaller.value ? String(programaTaller.value.id) : null;
   return dbReparaciones.value.filter(r => [ESTADO_REP.ESPERA, ESTADO_REP.FALTANTES].includes(r.estado) && String(r.programa_id ?? '') !== progId);
 });
-/** OT enlazadas al taller. */
+/** OT enlazadas al taller (todas, de cualquier programa). Vista completa: solo Admin (pestaña "OT enlazadas"). */
 export const otsTaller = computed(() => dbOT.value.filter(o => o.reparacion_id != null && o.estado !== 'ANULADA'));
+/** OT enlazadas a equipos del programa que se está viendo en el taller (tabla "OT de reparación"). */
+export const otsTallerPrograma = computed(() => {
+  const prog = programaTaller.value;
+  if (!prog) return [];
+  return otsTaller.value.filter(o => { const r = repPorId(o.reparacion_id); return r && String(r.programa_id ?? '') === String(prog.id); });
+});
+/** Texto del programa de una reparación (para la bitácora). */
+const programaTextoRep = (rep) => (rep ? (rep.programa_id != null ? nombreProgId(rep.programa_id) : 'Sin programa') : '');
 export const ubicacionRep = (rep) => {
   if (!rep) return '-';
   if (rep.estado === ESTADO_REP.EN_NAVE) return rep.nave;
@@ -364,6 +373,7 @@ export const quitarReparacion = async (rep) => {
   try {
     const ots = otsDeRep(rep);
     if (ots.length) await sb(supabaseClient.from(TABLA_OT).update({ reparacion_id: null }).eq('reparacion_id', rep.id));
+    for (const o of ots) await registrarEnlaceOT('QUITADA', o, rep, { programa: programaTextoRep(rep), detalle: 'Equipo quitado de la lista del taller' });
     ots.forEach(o => { o.reparacion_id = null; });
     await sb(supabaseClient.from(TABLA_TALLER).delete().eq('id', rep.id));
     dbReparaciones.value = dbReparaciones.value.filter(r => r.id !== rep.id);
@@ -394,6 +404,7 @@ export const crearOTParaRep = async (rep, { folio, tipo = 'CORRECTIVA', mecanico
     const [fila] = await sb(supabaseClient.from(TABLA_OT).insert([{ ...payloadOT(ot), creado_por: quien() + ' (taller)' }]).select());
     const nueva = mapOT(fila);
     dbOT.value.unshift(nueva);
+    registrarEnlaceOT('CREADA', nueva, rep, { programa: programaTextoRep(rep), detalle: 'Creada desde el taller' });
     return nueva;
   } catch (err) {
     if (/duplicate|unique/i.test(errMsg(err))) alert(`Ya existe otra OT con el folio ${n}.`);
@@ -407,6 +418,7 @@ export const enlazarOTExistente = async (rep, ot) => {
   try {
     await sb(supabaseClient.from(TABLA_OT).update({ reparacion_id: rep.id }).eq('id', ot.id));
     ot.reparacion_id = rep.id;
+    registrarEnlaceOT('ENLAZADA', ot, rep, { programa: programaTextoRep(rep), detalle: 'Unida desde la nave' });
   } catch (err) { avisoError(err, 'enlazar la OT'); }
 };
 /** OT del AFI que todavía no están enlazadas al taller (cualquier fecha). */
@@ -437,7 +449,9 @@ export const desenlazarOT = async (ot) => {
   if (!soloEditor() || !ot) return false;
   if (!confirm(`¿Quitar la OT N° ${ot.folio} (AFI ${ot.afi}) del taller?\nLa OT no se borra; solo deja de contar en el avance de la reparación.`)) return false;
   try {
+    const repAntes = repPorId(ot.reparacion_id);
     await sb(supabaseClient.from(TABLA_OT).update({ reparacion_id: null }).eq('id', ot.id));
+    registrarEnlaceOT('QUITADA', ot, repAntes, { programa: programaTextoRep(repAntes), detalle: 'Botón Quitar' });
     const enLista = dbOT.value.find(o => o.id === ot.id);
     if (enLista) enLista.reparacion_id = null;
     ot.reparacion_id = null;
@@ -677,8 +691,13 @@ export const enlazarOT = async (ot, valor) => {
     }
     const nuevoId = rep ? rep.id : null;
     if (ot.id) {
+      const repAntes = ot.reparacion_id != null ? repPorId(ot.reparacion_id) : null;
       await sb(supabaseClient.from(TABLA_OT).update({ reparacion_id: nuevoId }).eq('id', ot.id));
       const enLista = dbOT.value.find(o => o.id === ot.id); if (enLista) enLista.reparacion_id = nuevoId;
+      if (String(repAntes?.id ?? '') !== String(nuevoId ?? '')) {
+        if (repAntes) registrarEnlaceOT('QUITADA', ot, repAntes, { programa: programaTextoRep(repAntes), detalle: rep ? 'Cambiada de enlace desde Órdenes de Trabajo' : 'Desde Órdenes de Trabajo' });
+        if (rep) registrarEnlaceOT('ENLAZADA', ot, rep, { programa: programaTextoRep(rep), detalle: 'Desde Órdenes de Trabajo' });
+      }
     }
     ot.reparacion_id = nuevoId;
   } catch (err) { avisoError(err, 'enlazar la OT'); }
