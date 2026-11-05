@@ -123,14 +123,17 @@ const encabezado = (wb, ws, logo, titulo, subtitulo, ultimaCol) => {
   ws.getRow(1).height = 26; ws.getRow(2).height = 20; ws.getRow(3).height = 18; ws.getRow(4).height = 6;
   if (logo) {
     const id = wb.addImage({ base64: logo.url, extension: 'png' });
-    // El logo cabe en las columnas A-B (no tapa el título, que parte en C)
-    const anchoMax = ((ws.getColumn(1).width || 9) + (ws.getColumn(2).width || 9)) * 7 - 8;
+    // El logo usa como máximo ~24 de ancho a la izquierda (el título va centrado, no lo tapa)
+    let anchoCols = 0;
+    for (let k = 1; k <= ultimaCol && anchoCols < 24; k++) anchoCols += ws.getColumn(k).width || 9;
+    const anchoMax = Math.min(anchoCols, 26) * 7 - 8;
     const alto = Math.min(62, anchoMax / (logo.ratio || 1));
     ws.addImage(id, { tl: { col: 0.1, row: 0.15 }, ext: { width: Math.round(alto * (logo.ratio || 1)), height: Math.round(alto) }, editAs: 'oneCell' });
   }
+  // Títulos centrados sobre todo el ancho de la hoja (el logo queda a la izquierda, encima)
   const fila = (r, texto, font) => {
-    ws.mergeCells(r, 3, r, ultimaCol);
-    const c = ws.getCell(r, 3); c.value = texto; c.font = font; c.alignment = { vertical: 'middle', horizontal: 'left' };
+    ws.mergeCells(r, 1, r, ultimaCol);
+    const c = ws.getCell(r, 1); c.value = texto; c.font = font; c.alignment = { vertical: 'middle', horizontal: 'center' };
   };
   fila(1, `${EMPRESA} · ${titulo}`, { bold: true, size: 15, color: { argb: C.oscuro } });
   fila(2, subtitulo, { bold: true, size: 11, color: { argb: C.teal } });
@@ -259,23 +262,223 @@ const tablaPersonal = (ws, fila, porPersonal, col0 = 1, titulo = 'ENCARGADO') =>
 
 const insertarImagen = (wb, ws, dataUrl, fila, col, w, h) => {
   const id = wb.addImage({ base64: dataUrl, extension: 'png' });
+  if (col === 0) col = colCentrada(ws, w);   // centrado en el ancho de la hoja
   ws.addImage(id, { tl: { col, row: fila - 1 }, ext: { width: w, height: h } });
   return fila + Math.ceil(h / 20) + 1;
+};
+
+/** Columna (fraccionaria) donde debe partir una imagen de w px para quedar centrada. */
+const PX_POR_ANCHO = 7.2;
+const colCentrada = (ws, wPx) => {
+  const anchos = (ws.columns || []).map(c => c.width || 9);
+  const total = anchos.reduce((a, b) => a + b, 0) * PX_POR_ANCHO;
+  let falta = Math.max(0, (total - wPx) / 2), col = 0;
+  for (const a of anchos) { const px = a * PX_POR_ANCHO; if (falta < px) return col + falta / px; falta -= px; col++; }
+  return 0;
 };
 
 // ---------------------------------------------------------------------
 // Hojas
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// HOJA MINUTA (formato para ENVIAR): todo centrado sobre una grilla de 40 columnas
+// angostas, así los bloques (datos, indicadores, responsables y tareas) quedan
+// simétricos y alineados. Las celdas con texto largo ajustan su alto solas.
+// ---------------------------------------------------------------------
+const GRILLA = 40, ANCHO_GRILLA = 4;
+const diasEntreISO = (a, b) => { const f = (s) => { const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return Date.UTC(y, m - 1, d); }; return Math.round((f(a) - f(b)) / 86400000); };
+const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+
+/** Texto de la situación de una tarea (columna SITUACIÓN). Devuelve { texto, color }. */
+export const situacionTarea = (it) => {
+  const hoy = hoyISO();
+  if (it.estado === 'Realizado') {
+    if (it.fecha_realizado && it.fecha_estimada) {
+      const d = diasEntreISO(it.fecha_realizado, it.fecha_estimada);
+      return d <= 0 ? { texto: '✔ Realizada a tiempo', color: 'FF047857' } : { texto: `Realizada con ${plural(d, 'día', 'días')} de atraso`, color: 'FFB45309' };
+    }
+    return { texto: '✔ Realizada', color: 'FF047857' };
+  }
+  if (it.estado === 'No Realizado') return { texto: '✖ No realizada', color: 'FFBE123C' };
+  if (it.fecha_estimada) {
+    const d = diasEntreISO(it.fecha_estimada, hoy);
+    if (d < 0) return esVencida(it) ? { texto: `⚠ VENCIDA hace ${plural(-d, 'día', 'días')}`, color: 'FFBE123C' } : { texto: `Plazo pasado hace ${plural(-d, 'día', 'días')}`, color: 'FFB45309' };
+    if (d === 0) return { texto: '⚠ Vence HOY', color: 'FFB45309' };
+    return { texto: `Vence en ${plural(d, 'día', 'días')}`, color: d <= 3 ? 'FFB45309' : 'FF475569' };
+  }
+  if (it.fecha_texto) return { texto: String(it.fecha_texto), color: 'FF475569' };
+  return { texto: 'Sin fecha estimada', color: 'FF94A3B8' };
+};
+
+/** Columnas de la tabla de tareas en la grilla: span = n° de columnas de la grilla (suman 40). */
+const COLS_MINUTA = [
+  { t: 'N°', span: 2, al: 'center', v: it => (it.n_item === '' || it.n_item === null || it.n_item === undefined ? '' : Number(it.n_item)) },
+  { t: 'ÁREA', span: 3, al: 'center', v: it => it.area || '' },
+  { t: 'RESPONSABLE', span: 5, al: 'center', v: it => String(it.personal || '').split(' / ').join('\n') },
+  { t: 'TAREA / COMPROMISO', span: 12, al: 'left', v: it => it.tarea || '' },
+  { t: 'FECHA COMPROMISO', span: 3, al: 'center', v: it => fechaExcel(it.fecha_compromiso) },
+  { t: 'FECHA ESTIMADA', span: 3, al: 'center', v: it => fechaExcel(it.fecha_estimada) || it.fecha_texto || '', clave: 'estimada' },
+  { t: 'ESTADO', span: 3, al: 'center', v: it => String(it.estado || '').toUpperCase(), clave: 'estado' },
+  { t: 'FECHA REALIZADO', span: 3, al: 'center', v: it => (it.estado === 'Realizado' ? fechaExcel(it.fecha_realizado) : ''), clave: 'realizado' },
+  { t: 'SITUACIÓN', span: 6, al: 'center', v: it => situacionTarea(it).texto, clave: 'situacion' }
+];
+
+/** Escribe un valor en un rango de la grilla (une las celdas y aplica estilo). */
+const celdaGrilla = (ws, r, c1, span, valor, estilo = {}) => {
+  const c2 = c1 + span - 1;
+  if (span > 1) ws.mergeCells(r, c1, r, c2);
+  const c = ws.getCell(r, c1);
+  c.value = valor === undefined || valor === null ? '' : valor;
+  c.font = estilo.font || { size: 9 };
+  c.alignment = { horizontal: estilo.al || 'center', vertical: 'middle', wrapText: true, ...(estilo.indent ? { indent: estilo.indent } : {}) };
+  if (estilo.numFmt) c.numFmt = estilo.numFmt;
+  for (let k = c1; k <= c2; k++) {
+    const x = ws.getCell(r, k);
+    if (estilo.fill) x.fill = fill(estilo.fill);
+    if (estilo.border !== false) x.border = estilo.border || bordeFino;
+  }
+  return c;
+};
+
+/** Alto de fila según el texto más largo (Excel no ajusta solo las celdas unidas). */
+const altoPorTexto = (textos, base = 18, tam = 9) => {
+  let lineas = 1;
+  textos.forEach(([txt, span]) => {
+    const porLinea = Math.max(4, Math.floor(span * ANCHO_GRILLA * (10 / tam) * 1.05));
+    const n = String(txt ?? '').split('\n').reduce((s, p) => s + Math.max(1, Math.ceil(p.length / porLinea)), 0);
+    lineas = Math.max(lineas, n);
+  });
+  return Math.max(base, lineas * (tam + 4) + 6);
+};
+
+const bandaTitulo = (ws, r, texto, color = C.teal) => {
+  celdaGrilla(ws, r, 1, GRILLA, texto, { font: { bold: true, size: 11, color: { argb: C.blanco } }, fill: color, border: false });
+  ws.getRow(r).height = 22;
+  return r + 1;
+};
+
 const hojaMinuta = (wb, logo, m, nombre = 'Minuta') => {
   const items = itemsDeMinuta(m.id);
   const r = resumenItems(items);
-  const ws = wb.addWorksheet(nombreHoja(nombre), { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 }, properties: { tabColor: { argb: C.teal } } });
-  anchosTabla(ws);
-  let f = encabezado(wb, ws, logo, 'MINUTA DE MEJORA CONTINUA', `${m.nombre}  ·  Fecha: ${formatDateForDisplay(m.fecha)}`, 8);
-  f = tituloSeccion(ws, f, 'RESUMEN', 8);
-  f = bloqueResumen(ws, f, r);
-  f = tituloSeccion(ws, f, `DETALLE DE TAREAS (${items.length})`, 8);
-  tablaTareas(ws, f, items);
+  const ws = wb.addWorksheet(nombreHoja(nombre), {
+    views: [{ showGridLines: false }],
+    pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true,
+      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.5, header: 0.2, footer: 0.25 } },
+    headerFooter: { oddFooter: `&L&8${EMPRESA} · ${String(m.nombre).replace(/&/g, '&&')}&R&8Página &P de &N` },
+    properties: { tabColor: { argb: C.teal } }
+  });
+  ws.columns = Array.from({ length: GRILLA }, () => ({ width: ANCHO_GRILLA }));
+
+  let f = encabezado(wb, ws, logo, 'MINUTA DE MEJORA CONTINUA', `${m.nombre}`, GRILLA);
+
+  // --- Datos de la minuta (4 bloques iguales) ---
+  const responsables = new Set(items.map(it => String(it.personal || '').trim().toUpperCase()).filter(Boolean)).size;
+  const secciones = new Set(items.map(it => String(it.seccion || '').trim().toUpperCase()).filter(Boolean)).size;
+  const datos = [['FECHA DE REUNIÓN', formatDateForDisplay(m.fecha)], ['TOTAL DE TAREAS', r.total], ['RESPONSABLES', responsables], ['SECCIONES', secciones || '-']];
+  datos.forEach(([etq, val], i) => {
+    const c1 = i * 10 + 1;
+    celdaGrilla(ws, f, c1 + 1, 8, etq, { font: { bold: true, size: 8, color: { argb: 'FF64748B' } }, fill: C.gris });
+    celdaGrilla(ws, f + 1, c1 + 1, 8, val, { font: { bold: true, size: 13, color: { argb: C.oscuro } } });
+  });
+  ws.getRow(f).height = 16; ws.getRow(f + 1).height = 24;
+  f += 3;
+
+  // --- Indicadores (8 tarjetas iguales) ---
+  f = bandaTitulo(ws, f, 'RESUMEN DE CUMPLIMIENTO');
+  f++;
+  const colorCumpl = r.cumplimiento >= 80 ? 'FF047857' : r.cumplimiento >= 50 ? 'FFB45309' : 'FFBE123C';
+  const tarjetas = [
+    ['TOTAL', r.total, 1, C.oscuro], ['REALIZADO', r.Realizado, pct(r.Realizado, r.total), 'FF047857'],
+    ['EN PROCESO', r.Proceso, pct(r.Proceso, r.total), 'FF0369A1'], ['PENDIENTE', r.Pendiente, pct(r.Pendiente, r.total), 'FFB45309'],
+    ['NO REALIZADO', r['No Realizado'], pct(r['No Realizado'], r.total), 'FFBE123C'], ['VENCIDAS', r.vencidas, pct(r.vencidas, r.total), 'FFE11D48'],
+    ['A TIEMPO', r.aTiempo, r.pctATiempo / 100, C.teal], ['CUMPLIMIENTO', r.cumplimiento / 100, null, colorCumpl]
+  ];
+  tarjetas.forEach(([etq, n, p, color], i) => {
+    const c1 = i * 5 + 1;
+    const marco = { top: { style: 'thin', color: { argb: color } }, bottom: { style: 'thin', color: { argb: color } }, left: { style: 'thin', color: { argb: color } }, right: { style: 'thin', color: { argb: color } } };
+    celdaGrilla(ws, f, c1, 5, etq, { font: { bold: true, size: 8, color: { argb: C.blanco } }, fill: color, border: marco });
+    celdaGrilla(ws, f + 1, c1, 5, n, { font: { bold: true, size: 18, color: { argb: color } }, fill: C.blanco, border: marco, numFmt: etq === 'CUMPLIMIENTO' ? '0%' : undefined });
+    celdaGrilla(ws, f + 2, c1, 5, p === null ? 'tareas realizadas' : p, { font: { size: 9, bold: true, color: { argb: 'FF64748B' } }, fill: C.gris, border: marco, numFmt: p === null ? undefined : '0%' });
+  });
+  ws.getRow(f).height = 18; ws.getRow(f + 1).height = 32; ws.getRow(f + 2).height = 16;
+  f += 4;
+  // Barra de avance centrada
+  const barra = Math.round(r.cumplimiento / 2.5);
+  celdaGrilla(ws, f, 6, 30, `${'█'.repeat(barra)}${'░'.repeat(40 - barra)}   ${r.cumplimiento}% cumplido`, { font: { size: 11, color: { argb: colorCumpl }, bold: true }, border: false });
+  ws.getRow(f).height = 20;
+  f += 2;
+
+  // --- Resumen por responsable (tabla centrada) ---
+  const porPersonal = resumenPorPersonalDe(items);
+  if (porPersonal.length) {
+    f = bandaTitulo(ws, f, 'RESUMEN POR RESPONSABLE');
+    f++;
+    const cab = [['RESPONSABLE', 10], ['TOTAL', 4], ['REALIZADO', 4], ['EN PROCESO', 4], ['PENDIENTE', 4], ['NO REALIZADO', 4], ['VENCIDAS', 4], ['% CUMPLIMIENTO', 6]];
+    let c = 1;
+    cab.forEach(([t, span]) => { celdaGrilla(ws, f, c, span, t, { font: { bold: true, size: 8, color: { argb: C.blanco } }, fill: C.oscuro }); c += span; });
+    ws.getRow(f).height = 22;
+    porPersonal.forEach((p, k) => {
+      const rr = f + 1 + k;
+      const vals = [p.personal, p.total, p.Realizado, p.Proceso, p.Pendiente, p['No Realizado'], p.vencidas, p.cumplimiento / 100];
+      let cc = 1;
+      vals.forEach((v, i) => {
+        const [, span] = cab[i];
+        const col = p.cumplimiento >= 80 ? 'FF047857' : p.cumplimiento >= 50 ? 'FFB45309' : 'FFBE123C';
+        celdaGrilla(ws, rr, cc, span, v === 0 && i > 0 && i < 7 ? '-' : v, {
+          font: { size: 9, bold: i === 0 || i === 7, color: { argb: i === 7 ? col : (i === 6 && v ? 'FFBE123C' : C.oscuro) } },
+          fill: k % 2 ? 'FFF8FAFC' : C.blanco, al: i === 0 ? 'left' : 'center', indent: i === 0 ? 1 : 0, numFmt: i === 7 ? '0%' : undefined
+        });
+        cc += span;
+      });
+      ws.getRow(rr).height = altoPorTexto([[p.personal, 10]], 18);
+    });
+    f += porPersonal.length + 2;
+  }
+
+  // --- Detalle de tareas, agrupado por sección ---
+  f = bandaTitulo(ws, f, `DETALLE DE TAREAS (${items.length})`);
+  f++;
+  let c = 1;
+  COLS_MINUTA.forEach(col => { celdaGrilla(ws, f, c, col.span, col.t, { font: { bold: true, size: 9, color: { argb: C.blanco } }, fill: C.oscuro }); c += col.span; });
+  ws.getRow(f).height = 30;
+  const filaCab = f;
+  let rr = f + 1, seccionAnt = null, par = 0;
+  items.forEach((it) => {
+    const sec = String(it.seccion || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    if (sec && sec !== seccionAnt) {
+      const n = items.filter(x => String(x.seccion || '').trim().replace(/\s+/g, ' ').toUpperCase() === sec);
+      const rs = resumenItems(n);
+      celdaGrilla(ws, rr, 1, GRILLA, `${sec}   ·   ${plural(n.length, 'tarea', 'tareas')}   ·   ${rs.cumplimiento}% cumplido`, { font: { bold: true, size: 10, color: { argb: C.oscuro } }, fill: 'FFFDE68A' });
+      ws.getRow(rr).height = 20; rr++; par = 0;
+    }
+    seccionAnt = sec;
+    const vencida = esVencida(it);
+    const fondo = vencida ? C.rojoClaro : (par % 2 ? 'FFF8FAFC' : C.blanco);
+    let cc = 1;
+    const textos = [];
+    COLS_MINUTA.forEach(col => {
+      const v = col.v(it);
+      const estilo = { font: { size: 9, color: { argb: C.oscuro } }, fill: fondo, al: col.al, indent: col.al === 'left' ? 1 : 0, numFmt: v instanceof Date ? 'dd-mm-yyyy' : undefined };
+      if (col.clave === 'estado') { estilo.fill = FILL_ESTADO[it.estado] || fondo; estilo.font = { bold: true, size: 9, color: { argb: FONT_ESTADO[it.estado] || C.oscuro } }; }
+      if (col.clave === 'estimada' && vencida) estilo.font = { bold: true, size: 9, color: { argb: 'FFBE123C' } };
+      if (col.clave === 'realizado' && it.estado === 'Realizado') estilo.font = { bold: true, size: 9, color: { argb: 'FF047857' } };
+      if (col.clave === 'situacion') estilo.font = { bold: true, size: 9, color: { argb: situacionTarea(it).color } };
+      if (col.t === 'N°') estilo.font = { bold: true, size: 9, color: { argb: 'FF64748B' } };
+      celdaGrilla(ws, rr, cc, col.span, v, estilo);
+      if (!(v instanceof Date)) textos.push([v, col.span]);
+      cc += col.span;
+    });
+    ws.getRow(rr).height = altoPorTexto(textos, 20);
+    rr++; par++;
+  });
+  if (!items.length) { celdaGrilla(ws, rr, 1, GRILLA, 'Esta minuta no tiene tareas.', { font: { italic: true, size: 9, color: { argb: 'FF94A3B8' } } }); rr++; }
+
+  // Leyenda
+  rr++;
+  celdaGrilla(ws, rr, 1, GRILLA, 'Filas en rojo = tareas VENCIDAS (Pendiente o En proceso con la fecha estimada ya pasada).   ·   Cumplimiento = tareas Realizadas / total de tareas.', { font: { italic: true, size: 8, color: { argb: 'FF64748B' } }, border: false });
+
+  // Al imprimir, el encabezado de la tabla se repite en cada página
+  ws.pageSetup.printTitlesRow = `${filaCab}:${filaCab}`;
   return ws;
 };
 
