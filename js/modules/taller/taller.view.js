@@ -72,7 +72,12 @@ export default {
     };
 
     // ---------- Reparar (OT + actividades) ----------
+    const nuevoRepuesto = ref({ repuesto: '', fecha: '', retira: '' });
+    const agregarRep = async () => {
+      if (await S.agregarRepuesto(otSel.value, nuevoRepuesto.value)) nuevoRepuesto.value = { repuesto: '', fecha: '', retira: nuevoRepuesto.value.retira };
+    };
     const abrirReparar = (rep) => {
+      S.cargarProblemas();   // por si recién se ejecutó el SQL (no hace falta actualizar la página)
       repTrabajo.value = rep;
       otSel.value = S.otPrincipal(rep);
       nuevaAct.value = { descripcion: '', ejecutante: '' };
@@ -135,7 +140,7 @@ export default {
       pantallaCompleta, alternarPantallaCompleta, actualizarTodo, horaActualizacion,
       abrirIngreso, ingresar, ingresarDesdeLista, agregarSinProg,
       abrirReparar, cerrarReparar, crearOT, enlazarOT, agregarAct, progresoOT, abrirFormatoOT,
-      nuevoProblema, textoProblema, enviarProb, fechaHora, sacarError,
+      nuevoProblema, textoProblema, enviarProb, fechaHora, sacarError, nuevoRepuesto, agregarRep,
       abrirSalida, confirmarSalida
     };
   }

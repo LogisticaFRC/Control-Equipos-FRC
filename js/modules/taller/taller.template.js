@@ -430,17 +430,36 @@ export default /* html */ `
               </div>
             </section>
 
-            <!-- 3. INSUMOS -->
+            <!-- 3. ACEITES (filas 1-4 del formato) -->
             <section class="space-y-2">
-              <h4 class="text-sm font-black uppercase text-slate-700 bg-slate-100 rounded-lg px-3 py-2"><i class="fa-solid fa-oil-can mr-1"></i>Insumos utilizados</h4>
-              <div class="hidden md:grid grid-cols-[2rem_minmax(0,1fr)_minmax(0,2fr)_9.5rem_minmax(0,1fr)] gap-2 px-1 text-[10px] font-bold uppercase text-slate-500"><span>#</span><span>Aceites / Lts</span><span>Repuestos</span><span>Fecha</span><span>Retira</span></div>
-              <div v-for="(x, i) in otSel.insumos" :key="'i' + i" class="grid grid-cols-2 md:grid-cols-[2rem_minmax(0,1fr)_minmax(0,2fr)_9.5rem_minmax(0,1fr)] gap-2 items-center">
+              <h4 class="text-sm font-black uppercase text-slate-700 bg-slate-100 rounded-lg px-3 py-2"><i class="fa-solid fa-oil-can mr-1"></i>Aceites utilizados</h4>
+              <div class="hidden md:grid grid-cols-[2rem_minmax(0,2fr)_9.5rem_minmax(0,1fr)] gap-2 px-1 text-[10px] font-bold uppercase text-slate-500"><span>#</span><span>Aceite / Lts</span><span>Fecha</span><span>Retira</span></div>
+              <div v-for="(x, i) in filasAceites(otSel)" :key="'ac' + i" class="grid grid-cols-2 md:grid-cols-[2rem_minmax(0,2fr)_9.5rem_minmax(0,1fr)] gap-2 items-center">
                 <span class="hidden md:block text-sm font-bold text-slate-400 text-center">{{ i + 1 }}</span>
-                <input v-model="x.aceites" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Aceite / lts" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
-                <input v-model="x.repuestos" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Repuesto" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <input v-model="x.aceites" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Ej: 15W40 · 12 lts" class="col-span-2 md:col-span-1 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
                 <input type="date" v-model="x.fecha" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
                 <input v-model="x.retira" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Retira" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <p v-if="x.repuestos" class="col-span-2 md:col-start-2 md:col-span-3 text-[11px] text-slate-500 -mt-1">Repuesto en esta fila (OT antigua): {{ x.repuestos }}</p>
               </div>
+            </section>
+
+            <!-- 3b. REPUESTOS (filas 5 en adelante; se pueden agregar más) -->
+            <section class="space-y-2">
+              <h4 class="text-sm font-black uppercase text-slate-700 bg-slate-100 rounded-lg px-3 py-2 flex justify-between"><span><i class="fa-solid fa-gears mr-1"></i>Repuestos utilizados</span><span class="font-bold normal-case text-slate-500">{{ filasRepuestos(otSel).length }}</span></h4>
+              <div v-for="r in filasRepuestos(otSel)" :key="'rp' + r.i" class="grid grid-cols-2 md:grid-cols-[minmax(0,2fr)_9.5rem_minmax(0,1fr)_2.5rem] gap-2 items-center">
+                <input v-model="r.x.repuestos" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" class="col-span-2 md:col-span-1 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <input type="date" v-model="r.x.fecha" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <input v-model="r.x.retira" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Retira" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <button v-if="puedeEditar" @click="quitarRepuesto(otSel, r.i)" class="text-slate-300 hover:text-rose-600 text-lg" title="Quitar repuesto"><i class="fa-solid fa-trash"></i></button>
+              </div>
+              <p v-if="!filasRepuestos(otSel).length" class="text-sm text-slate-400 italic px-1">Sin repuestos todavía.</p>
+              <div v-if="puedeEditar" class="rounded-2xl bg-slate-100 p-3 grid grid-cols-2 md:grid-cols-[minmax(0,2fr)_9.5rem_minmax(0,1fr)_auto] gap-2 items-center">
+                <input v-model="nuevoRepuesto.repuesto" @keyup.enter="agregarRep" placeholder="Repuesto (ej. Sello cilindro 2 un.)" class="col-span-2 md:col-span-1 w-full min-w-0 p-2.5 border-2 rounded-xl text-sm font-semibold">
+                <input type="date" v-model="nuevoRepuesto.fecha" title="Vacío = hoy" class="w-full min-w-0 p-2.5 border-2 rounded-xl text-sm font-semibold">
+                <input v-model="nuevoRepuesto.retira" @keyup.enter="agregarRep" placeholder="Retira" class="w-full min-w-0 p-2.5 border-2 rounded-xl text-sm font-semibold">
+                <button @click="agregarRep" :disabled="!nuevoRepuesto.repuesto.trim()" class="col-span-2 md:col-span-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-2.5 rounded-xl disabled:opacity-50"><i class="fa-solid fa-plus mr-1"></i>Agregar repuesto</button>
+              </div>
+              <p class="text-[11px] text-slate-400">En la hoja de la OT caben 6 repuestos (filas 5 a 10); los demás salen en una hoja anexa al imprimir.</p>
             </section>
 
             <!-- 4. PERSONAL ASIGNADO -->

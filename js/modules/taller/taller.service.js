@@ -19,7 +19,7 @@ import { usuarioActivo, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPo
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, formatDateForDisplay, placeholderImg } from '../../core/utils.js';
 import { NAVES, carpetaDe, obtenerItemsPrograma, obtenerProgObj } from '../programas/programas.service.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
-import { dbOT, cargarOT, otVacia, mapOT, payloadOT, folioSugerido, N_ACTIVIDADES, TABLA_OT } from '../ot/ot.service.js';
+import { dbOT, cargarOT, otVacia, mapOT, payloadOT, folioSugerido, N_ACTIVIDADES, N_ACEITES, TABLA_OT } from '../ot/ot.service.js';
 
 const { ref, computed } = Vue;
 
@@ -468,7 +468,7 @@ export const guardarOTTaller = async (ot, ...grupos) => {
   } catch (err) {
     const m = errMsg(err);
     guardadoOT.value = { id: ot.id, hora: '', error: m };
-    alert(/firmas/i.test(m) ? SQL_FIRMAS : 'No se pudo guardar la OT: ' + m);
+    alert((/firmas/i.test(m) ? SQL_FIRMAS + '\n\nDetalle de Supabase: ' : 'No se pudo guardar la OT: ') + m);
     return false;
   }
 };
@@ -487,6 +487,31 @@ export const fijarFirma = async (ot, clave, dataUrl) => {
   return guardarOTTaller(ot, 'firmas');
 };
 export const alternarPautaOT = (ot, p) => { ot.pauta = ot.pauta === p ? '' : p; return guardarOTTaller(ot, 'pauta'); };
+
+// ---------- Insumos: ACEITES (filas 1-4 del formato) y REPUESTOS (filas 5 en adelante, se pueden agregar más) ----------
+const filaInsumoVacia = () => ({ aceites: '', repuestos: '', fecha: '', retira: '' });
+export const filasAceites = (ot) => (ot?.insumos || []).slice(0, N_ACEITES);
+/** Repuestos: [{ x, i }] con i = índice real en ot.insumos (desde la fila 5). */
+export const filasRepuestos = (ot) => (ot?.insumos || []).map((x, i) => ({ x, i })).filter(r => r.i >= N_ACEITES && String(r.x.repuestos || '').trim());
+/** Agrega un repuesto en la primera fila libre (desde la 5) o en una fila nueva al final. */
+export const agregarRepuesto = async (ot, { repuesto, fecha, retira }) => {
+  if (!soloEditor()) return false;
+  const t = String(repuesto || '').trim();
+  if (!t) return false;
+  while (ot.insumos.length < N_ACEITES) ot.insumos.push(filaInsumoVacia());
+  let i = ot.insumos.findIndex((x, k) => k >= N_ACEITES && !String(x.repuestos || '').trim() && !String(x.aceites || '').trim());
+  if (i < 0) { ot.insumos.push(filaInsumoVacia()); i = ot.insumos.length - 1; }
+  Object.assign(ot.insumos[i], { repuestos: t, fecha: fecha || hoyISO(), retira: String(retira || '').trim() });
+  return guardarOTTaller(ot, 'insumos');
+};
+/** Quita un repuesto (los de abajo suben; nunca toca las filas de aceites). */
+export const quitarRepuesto = async (ot, i) => {
+  if (!soloEditor() || i < N_ACEITES) return;
+  if (!confirm(`¿Quitar el repuesto "${ot.insumos[i].repuestos}"?`)) return;
+  ot.insumos.splice(i, 1);
+  while (ot.insumos.length < 10) ot.insumos.push(filaInsumoVacia());
+  return guardarOTTaller(ot, 'insumos');
+};
 
 // ---------- "Enviar nuevo problema para OT" (mecánico → Admin) ----------
 export const TABLA_PROBLEMAS = TABLAS.TALLER_PROBLEMAS;
@@ -518,7 +543,8 @@ export const enviarProblema = async (rep, ot, texto) => {
     dbProblemas.value.push(fila);
     return true;
   } catch (err) {
-    alert(/bd_taller_problemas|schema cache|does not exist/i.test(errMsg(err)) ? SQL_FIRMAS : 'No se pudo enviar: ' + errMsg(err));
+    const m = errMsg(err);
+    alert((/bd_taller_problemas|schema cache|does not exist/i.test(m) ? SQL_FIRMAS + '\nSi ya lo ejecutaste, actualiza la página con Ctrl + F5.\n\nDetalle de Supabase: ' : 'No se pudo enviar: ') + m);
     return false;
   }
 };

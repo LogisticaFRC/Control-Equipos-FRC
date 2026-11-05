@@ -16,6 +16,8 @@ const { ref, computed } = Vue;
 
 export const TABLA_OT = TABLAS.OT;
 export const N_ACTIVIDADES = 20, N_INSUMOS = 10, N_PERSONAL = 4;
+/** Filas de insumos del formato usadas para ACEITES (las demás son repuestos; se pueden agregar más filas que las 10 del papel). */
+export const N_ACEITES = 4;
 export const TIPOS_OT = ['PREVENTIVA', 'CORRECTIVA', 'PREDICTIVA'];
 export const PAUTAS_OT = ['250', '500', '1000', '5000'];
 const PLANTILLA_URL = 'plantillas/FORMATO_OT.xlsx';
@@ -36,7 +38,7 @@ export const otVacia = () => ({
 export const mapOT = (r) => ({
   ...otVacia(), ...r,
   fecha: r.fecha || '', hrs_actual: r.hrs_actual ?? '', hrs_prox: r.hrs_prox ?? '',
-  actividades: completar(r.actividades, actVacia()), insumos: completar(r.insumos, insVacio()), personal: completar(r.personal, perVacio())
+  actividades: completar(r.actividades, actVacia()), insumos: [...completar(r.insumos, insVacio()), ...(Array.isArray(r.insumos) ? r.insumos.slice(N_INSUMOS) : [])],   /* filas extra = repuestos adicionales */ personal: completar(r.personal, perVacio())
 });
 
 // ---------- Estado ----------
@@ -354,6 +356,18 @@ export const htmlHojaOT = (ot) => {
     <table style="width:${ancho}px"><colgroup>${F.cols.map(w => `<col style="width:${w}px">`).join('')}</colgroup><tbody>${filasHtml}</tbody></table></div>`;
 };
 
+/** Repuestos que no caben en las 10 filas del formato → hoja anexa al imprimir. */
+export const repuestosExtra = (ot) => (ot?.insumos || []).slice(N_INSUMOS).filter(x => x && (String(x.repuestos || '').trim() || String(x.aceites || '').trim()));
+const htmlAnexoRepuestos = (ot) => {
+  const extra = repuestosExtra(ot);
+  if (!extra.length) return '';
+  const td = 'border:1px solid #000;padding:4px 6px;font:12px Arial';
+  const filas = extra.map((x, i) => `<tr><td style="${td};text-align:center">${N_INSUMOS + i + 1}</td><td style="${td}">${htmlEsc(x.repuestos || x.aceites || '')}</td><td style="${td};text-align:center">${htmlEsc(fmtFecha(x.fecha))}</td><td style="${td}">${htmlEsc(x.retira || '')}</td></tr>`).join('');
+  return `<div style="page-break-before:always;font-family:Arial;padding-top:10px">
+    <h3 style="margin:0 0 8px">OT N° ${htmlEsc(ot.folio || '')} · AFI ${htmlEsc(ot.afi || '')} — Repuestos utilizados (continuación)</h3>
+    <table style="border-collapse:collapse;width:100%"><thead><tr><th style="${td}">Itm</th><th style="${td}">Repuesto</th><th style="${td}">Fecha</th><th style="${td}">Retira</th></tr></thead><tbody>${filas}</tbody></table></div>`;
+};
+
 export const imprimirOT = (ot) => {
   const w = window.open('', '_blank');
   if (!w) return alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');
@@ -366,6 +380,7 @@ export const imprimirOT = (ot) => {
   td { padding: 0 1px; overflow: hidden; white-space: nowrap; line-height: 1.05; box-sizing: border-box; }
   @media screen { body { padding: 20px; background: #e2e8f0; } .hoja { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.2); zoom: 1; } }
 </style></head><body>${htmlHojaOT(ot)}
+${htmlAnexoRepuestos(ot)}
 <script>window.onload = function () { setTimeout(function () { window.print(); }, 300); };<\/script></body></html>`);
   w.document.close();
 };

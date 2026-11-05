@@ -179,6 +179,18 @@ const app = createApp({
       document.body.style.backgroundColor = bodyStyle.value.backgroundColor;
     });
 
+    // Favicon (ícono de la pestaña) = logo de la empresa configurado
+    watchEffect(() => {
+      let link = document.getElementById('favicon');
+      if (!link) {
+        link = document.createElement('link');
+        link.id = 'favicon';
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = logoSrc.value;
+    });
+
     // ---- Menú lateral ----
     const areaActual = computed(() => areaDeTab(currentTab.value));
     const moduloActual = computed(() => moduloDeTab(currentTab.value));
