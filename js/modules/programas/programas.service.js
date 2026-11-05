@@ -341,7 +341,7 @@ export const insertarItemPrograma = async ({ programa_id, afi, tipo, nave, condi
 };
 
 export const showModalAsignarEquipo = ref(false);
-export const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', nave: 'NAVE 1', condicion: 'Arriendo', fecha_programada: '', fecha_fin: '', tipoFiltro: '' });
+export const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', nave: 'NAVE 1', condicion: 'Arriendo', fecha_programada: '', fecha_fin: '', tipoFiltro: '', editandoId: null });
 
 /** Programas que se muestran en el modal "Asignar Equipo" (solo los del submódulo desde donde se abrió). */
 export const programasParaAsignar = computed(() => dbProgramasCalendarios.value
@@ -361,9 +361,47 @@ export const abrirModalAsignarEquipo = (tipoCarpeta = '') => {
     nave: 'NAVE 1',
     condicion: 'Arriendo',
     fecha_programada: selProg ? selProg.fecha_inicio_programa : hoyISO(),
-    fecha_fin: selProg ? selProg.fecha_termino_programa : hoyISO()
+    fecha_fin: selProg ? selProg.fecha_termino_programa : hoyISO(),
+    editandoId: null
   };
   showModalAsignarEquipo.value = true;
+};
+
+/** Abre el mismo modal con los datos de un equipo ya asignado (programas de REPARACIÓN) para editarlo. */
+export const abrirEditarItemPrograma = (item) => {
+  if (!soloEditor()) return;
+  const prog = obtenerProgObj(item.programa_id);
+  formAsignar.value = {
+    tipoFiltro: carpetaDe(prog),
+    programa_id: item.programa_id,
+    afi: buscarEquipoPorAfi(item.afi)?.afi ?? item.afi,   // mismo valor que la lista de equipos del modal
+    tipo: item.tipo || 'Reparación',
+    nave: item.nave || 'NAVE 1',
+    condicion: item.condicion || 'Arriendo',
+    fecha_programada: normalizarFecha(item.fecha_inicio || item.fecha_programada) || '',
+    fecha_fin: normalizarFecha(item.fecha_fin) || '',
+    editandoId: item.id
+  };
+  showModalAsignarEquipo.value = true;
+};
+
+/** Guarda los cambios de un equipo ya asignado. */
+const actualizarItemPrograma = async (f) => {
+  const fechaFin = f.fecha_fin || f.fecha_programada;
+  if (fechaFin < f.fecha_programada) throw new Error('La fecha fin no puede ser anterior a la fecha inicio.');
+  const cambios = {
+    programa_id: f.programa_id,
+    afi: limpiarAfi(f.afi),
+    tipo: (f.tipo || 'Reparación').trim() || 'Reparación',
+    nave: f.nave || 'NAVE 1',
+    condicion: f.condicion || 'Arriendo',
+    fecha_programada: f.fecha_programada,
+    fecha_inicio: f.fecha_programada,
+    fecha_fin: fechaFin
+  };
+  const data = await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update(cambios).eq('id', f.editandoId).select());
+  const nuevo = (data && data[0]) || { ...cambios, id: f.editandoId };
+  dbProgramasItems.value = dbProgramasItems.value.map(i => (i.id === f.editandoId ? { ...i, ...nuevo } : i));
 };
 
 export const actualizarTipoSegunProgramaSeleccionado = () => {
@@ -381,6 +419,18 @@ export const actualizarTipoSegunProgramaSeleccionado = () => {
 export const guardarAsignacionEquipo = async () => {
   if (!soloEditor()) return;
   const f = formAsignar.value;
+  if (f.editandoId) {
+    try {
+      await actualizarItemPrograma(f);
+      showModalAsignarEquipo.value = false;
+      const prog = obtenerProgObj(f.programa_id);
+      if (prog) seleccionarProgramaObj(prog);
+      alert("¡Cambios guardados!");
+    } catch (err) {
+      alert("Error al guardar los cambios: " + errMsg(err));
+    }
+    return;
+  }
   try {
     const prog = await insertarItemPrograma({
       programa_id: f.programa_id, afi: f.afi, tipo: f.tipo, nave: f.nave, condicion: f.condicion,

@@ -3,7 +3,7 @@ export default /* html */ `
 <div v-if="showModalAsignarEquipo" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl border w-full max-w-lg overflow-hidden flex flex-col">
     <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
-      <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i class="fa-solid fa-truck-monster"></i> Asignar Equipo al Programa</h3>
+      <h3 class="font-bold uppercase tracking-wide flex items-center gap-2"><i :class="['fa-solid', formAsignar.editandoId ? 'fa-pen-to-square' : 'fa-truck-monster']"></i> {{ formAsignar.editandoId ? 'Editar Equipo del Programa' : 'Asignar Equipo al Programa' }}</h3>
       <button @click="showModalAsignarEquipo=false" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
     </div>
     <div class="p-6 space-y-4 text-xs bg-slate-50">
@@ -38,6 +38,10 @@ export default /* html */ `
             </select>
           </div>
         </div>
+        <div v-if="formAsignar.editandoId">
+          <label class="block font-bold text-slate-700 mb-1">Tipo Trabajo</label>
+          <input type="text" v-model="formAsignar.tipo" class="w-full p-2.5 border rounded-lg bg-white font-semibold" placeholder="Reparación">
+        </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-bold text-slate-700 mb-1">Fecha Inicio (Rango)</label>
@@ -60,7 +64,7 @@ export default /* html */ `
     </div>
     <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
       <button @click="showModalAsignarEquipo=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
-      <button @click="guardarAsignacionEquipo" :disabled="!formAsignar.programa_id || !formAsignar.afi || !formAsignar.fecha_programada" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md text-xs">Guardar en Calendario</button>
+      <button @click="guardarAsignacionEquipo" :disabled="!formAsignar.programa_id || !formAsignar.afi || !formAsignar.fecha_programada" class="px-5 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-md text-xs">{{ formAsignar.editandoId ? 'Guardar Cambios' : 'Guardar en Calendario' }}</button>
     </div>
   </div>
 </div>

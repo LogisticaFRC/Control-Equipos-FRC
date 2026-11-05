@@ -315,7 +315,7 @@ export default /* html */ `
                     <th class="p-2.5">FECHA FIN</th>
                     <th class="p-2.5">ESTADO (ON/OFF)</th>
                     <th class="p-2.5">TALLER</th>
-                    <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
+                    <th v-if="puedeEditar" class="p-2.5 text-center">ACCIONES</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y text-[11px]">
@@ -340,8 +340,9 @@ export default /* html */ `
                       </div>
                     </td>
                     <td class="p-2.5"><span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', ESTILO_ESTADO[estadoItemTaller(item)]]">{{ tallerDeItem(item) }}</span></td>
-                    <td v-if="isAdmin" class="p-2.5 text-center">
-                      <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
+                    <td v-if="puedeEditar" class="p-2.5 text-center whitespace-nowrap">
+                      <button @click="abrirEditarItemPrograma(item)" class="text-blue-600 hover:text-blue-800 p-1" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                      <button v-if="isAdmin" @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                     </td>
                   </tr>
                 </tbody>
