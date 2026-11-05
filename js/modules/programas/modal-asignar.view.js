@@ -3,12 +3,12 @@
 // =====================================================================
 import template from './modal-asignar.template.js';
 import { comunes } from '../../core/comunes.js';
-import { showModalAsignarEquipo, formAsignar, guardarAsignacionEquipo, actualizarTipoSegunProgramaSeleccionado } from './programas.service.js';
+import { showModalAsignarEquipo, formAsignar, guardarAsignacionEquipo, actualizarTipoSegunProgramaSeleccionado, programasParaAsignar, NAVES } from './programas.service.js';
 
 export default {
   name: 'ModalAsignarEquipo',
   template,
   setup() {
-    return { ...comunes(), showModalAsignarEquipo, formAsignar, guardarAsignacionEquipo, actualizarTipoSegunProgramaSeleccionado };
+    return { ...comunes(), showModalAsignarEquipo, formAsignar, guardarAsignacionEquipo, actualizarTipoSegunProgramaSeleccionado, programasParaAsignar, NAVES };
   }
 };

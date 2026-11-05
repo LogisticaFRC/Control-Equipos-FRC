@@ -341,11 +341,20 @@ export const insertarItemPrograma = async ({ programa_id, afi, tipo, nave, condi
 };
 
 export const showModalAsignarEquipo = ref(false);
-export const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', nave: 'NAVE 1', condicion: 'Arriendo', fecha_programada: '', fecha_fin: '' });
+export const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', nave: 'NAVE 1', condicion: 'Arriendo', fecha_programada: '', fecha_fin: '', tipoFiltro: '' });
 
-export const abrirModalAsignarEquipo = () => {
-  const selProg = obtenerProgObj(progSelect.value.id) || dbProgramasCalendarios.value[0];
+/** Programas que se muestran en el modal "Asignar Equipo" (solo los del submódulo desde donde se abrió). */
+export const programasParaAsignar = computed(() => dbProgramasCalendarios.value
+  .filter(p => !formAsignar.value.tipoFiltro || carpetaDe(p) === formAsignar.value.tipoFiltro));
+
+/** tipoCarpeta: 'REPARACION' | 'MANTENCION' (submódulo actual) → el modal solo ofrece programas de ese tipo. */
+export const abrirModalAsignarEquipo = (tipoCarpeta = '') => {
+  const tf = String(tipoCarpeta || '').toUpperCase();
+  const actual = obtenerProgObj(progSelect.value.id);
+  const selProg = (actual && (!tf || carpetaDe(actual) === tf)) ? actual
+    : (dbProgramasCalendarios.value.find(p => !tf || carpetaDe(p) === tf) || null);
   formAsignar.value = {
+    tipoFiltro: tf,
     programa_id: selProg ? selProg.id : '',
     afi: '',
     tipo: esProgramaMantencion(selProg) ? 'Mantención' : 'Reparación',

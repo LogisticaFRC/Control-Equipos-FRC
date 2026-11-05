@@ -11,7 +11,7 @@ export default /* html */ `
         <label class="block font-bold text-slate-700 mb-1">Seleccionar Programa</label>
         <select v-model="formAsignar.programa_id" @change="actualizarTipoSegunProgramaSeleccionado" class="w-full p-2.5 border rounded-lg bg-white font-bold">
           <option value="">-- Elige Programa --</option>
-          <option v-for="p in dbProgramasCalendarios" :key="p.id" :value="p.id">[{{ p.carpeta || p.tipo }}] {{ p.nombre_programa || p.mes }} ({{ formatDateForDisplay(p.fecha_inicio_programa) }} al {{ formatDateForDisplay(p.fecha_termino_programa) }})</option>
+          <option v-for="p in programasParaAsignar" :key="p.id" :value="p.id">[{{ p.carpeta || p.tipo }}] {{ p.nombre_programa || p.mes }} ({{ formatDateForDisplay(p.fecha_inicio_programa) }} al {{ formatDateForDisplay(p.fecha_termino_programa) }})</option>
         </select>
       </div>
       <div>
@@ -28,10 +28,7 @@ export default /* html */ `
           <div>
             <label class="block font-bold text-slate-700 mb-1">Nave</label>
             <select v-model="formAsignar.nave" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
-              <option value="NAVE 1">Nave 1</option>
-              <option value="NAVE 2">Nave 2</option>
-              <option value="NAVE 3">Nave 3</option>
-              <option value="NAVE 4">Nave 4</option>
+              <option v-for="n in NAVES" :key="n" :value="n">{{ n }}</option>
             </select>
           </div>
           <div>

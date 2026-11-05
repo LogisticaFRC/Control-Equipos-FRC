@@ -7,6 +7,8 @@ import { usuarioActivo, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, curren
 import DashboardView from './modules/dashboard/dashboard.view.js';
 import InventarioView from './modules/inventario/inventario.view.js';
 import ProgramasView from './modules/programas/programas.view.js';
+import ReparacionView from './modules/taller/reparacion.view.js';
+import TallerView from './modules/taller/taller.view.js';
 import MovimientosView from './modules/movimientos/movimientos.view.js';
 import HistorialView from './modules/historial/historial.view.js';
 import AceitesView from './modules/aceites/aceites.view.js';
@@ -138,7 +140,8 @@ const template = /* html */ `
       <inicio-view v-if="currentTab === 'inicio'"></inicio-view>
       <dashboard-view v-if="currentTab === 'dashboard'"></dashboard-view>
       <inventario-view v-if="currentTab === 'inventario'"></inventario-view>
-      <programas-view v-if="currentTab === 'programas'"></programas-view>
+      <programas-view v-if="currentTab === 'progMantencion'" tipo="MANTENCION"></programas-view>
+      <reparacion-view v-if="currentTab === 'progReparacion'"></reparacion-view>
       <minutas-view v-if="currentTab === 'minutas'"></minutas-view>
       <ot-view v-if="currentTab === 'ot'"></ot-view>
       <oc-view v-if="currentTab === 'oc'"></oc-view>
@@ -214,6 +217,8 @@ app.component('LoginView', LoginView);
 app.component('DashboardView', DashboardView);
 app.component('InventarioView', InventarioView);
 app.component('ProgramasView', ProgramasView);
+app.component('ReparacionView', ReparacionView);   // Programas Reparación: pestañas Taller (naves) | Programas y Gantt
+app.component('TallerView', TallerView);
 app.component('MovimientosView', MovimientosView);
 app.component('HistorialView', HistorialView);
 app.component('AceitesView', AceitesView);

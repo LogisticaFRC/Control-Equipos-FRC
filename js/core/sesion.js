@@ -49,7 +49,8 @@ del(sessionStorage, AVISO_KEY);
 
 // ---------- Pestaña actual en la URL (#inventario, #programas...) ----------
 const tabDesdeUrl = () => {
-  const t = decodeURIComponent((location.hash || '').replace(/^#\/?/, ''));
+  let t = decodeURIComponent((location.hash || '').replace(/^#\/?/, ''));
+  if (t === 'programas') t = 'progMantencion';   // enlace antiguo (antes Programas era un solo módulo)
   return TABS_VALIDAS.includes(t) ? t : null;
 };
 

@@ -3,22 +3,22 @@ export default /* html */ `
 <section class="space-y-4">
   <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
     <div>
-      <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-rose-500"></i> PROGRAMAS - Planificación y Carta Gantt</h2>
-      <p class="text-xs text-slate-500 mt-1">Crea programas de Reparación o Mantención con sus rangos de fechas generales y asigna equipos.</p>
+      <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i :class="['fa-solid', tipoProg === 'REPARACION' ? 'fa-wrench text-amber-600' : 'fa-oil-can text-indigo-600']"></i> PROGRAMAS DE {{ tipoProg === 'REPARACION' ? 'REPARACIÓN' : 'MANTENCIÓN' }} - Planificación y Carta Gantt</h2>
+      <p class="text-xs text-slate-500 mt-1">{{ tipoProg === 'REPARACION' ? 'Crea programas de reparación por nave con sus rangos de fechas y asigna equipos. El avance en vivo se ve en la pestaña Taller.' : 'Crea programas de mantención con su vigencia y asigna equipos con su fecha programada.' }}</p>
     </div>
     <div class="flex flex-wrap items-center gap-2.5">
-      <button v-if="progSelect.id && puedeEditar" @click="sincronizarProgramaSeleccionado(progSelect)" :disabled="sincronizandoPrograma" title="Marca como realizados los equipos que ya tienen su mantención en el Historial con este programa" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2 disabled:opacity-60">
+      <button v-if="progDelTipo && puedeEditar" @click="sincronizarProgramaSeleccionado(progSelect)" :disabled="sincronizandoPrograma" title="Marca como realizados los equipos que ya tienen su mantención en el Historial con este programa" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2 disabled:opacity-60">
         <i :class="['fa-solid text-sm', sincronizandoPrograma ? 'fa-spinner fa-spin' : 'fa-arrows-rotate']"></i> Sincronizar con Historial
       </button>
-      <button v-if="progSelect.id" @click="exportarProgramaGanttExcel(progSelect)" :disabled="exportandoPrograma" class="disabled:opacity-60 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+      <button v-if="progDelTipo" @click="exportarProgramaGanttExcel(progSelect)" :disabled="exportandoPrograma" class="disabled:opacity-60 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
         <i :class="['fa-solid text-sm', exportandoPrograma ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Programa (Excel)
       </button>
       <template v-if="isAdmin">
         <div class="flex items-center gap-1.5">
-          <button @click="abrirModalCrearPrograma('REPARACION')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-2.5 rounded-xl transition shadow flex items-center gap-1.5">
+          <button v-if="tipoProg === 'REPARACION'" @click="abrirModalCrearPrograma('REPARACION')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-2.5 rounded-xl transition shadow flex items-center gap-1.5">
             <i class="fa-solid fa-wrench text-sm"></i> + Programa Reparación
           </button>
-          <button @click="abrirModalCrearPrograma('MANTENCION')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold px-3 py-2.5 rounded-xl transition shadow flex items-center gap-1.5">
+          <button v-if="tipoProg === 'MANTENCION'" @click="abrirModalCrearPrograma('MANTENCION')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold px-3 py-2.5 rounded-xl transition shadow flex items-center gap-1.5">
             <i class="fa-solid fa-oil-can text-sm"></i> + Programa Mantención
           </button>
         </div>
@@ -35,12 +35,12 @@ export default /* html */ `
     <!-- Sidebar: Listado por Carpetas (Reparación / Mantención) -->
     <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[680px] overflow-y-auto space-y-4">
       <h3 class="text-xs font-bold text-slate-800 uppercase border-b pb-2 flex items-center justify-between">
-        <span><i class="fa-solid fa-folder-tree text-amber-500"></i> Programas por Tipo</span>
-        <span class="text-[10px] text-slate-400 font-mono">Global: {{ cumplimientoGlobalTotal }}%</span>
+        <span><i class="fa-solid fa-folder-tree text-amber-500"></i> Programas</span>
+        <span class="text-[10px] text-slate-400 font-mono">Global: {{ cumplimientoTipo }}%</span>
       </h3>
 
       <!-- Carpetas REPARACIÓN / MANTENCIÓN con subcarpetas (ej. NOVIEMBRE). El Admin arrastra un programa a una subcarpeta para moverlo. -->
-      <div v-for="f in [{ key: 'REPARACION', label: 'REPARACIÓN', icono: 'text-amber-600', iconoTipo: 'fa-wrench', cab: 'bg-amber-50 border-amber-200 hover:bg-amber-100', linea: 'border-amber-200', sub: 'bg-amber-50/60 border-amber-200 text-amber-900' }, { key: 'MANTENCION', label: 'MANTENCIÓN', icono: 'text-indigo-600', iconoTipo: 'fa-oil-can', cab: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100', linea: 'border-indigo-200', sub: 'bg-indigo-50/60 border-indigo-200 text-indigo-900' }]" :key="f.key" class="space-y-1">
+      <div v-for="f in carpetasVisibles" :key="f.key" class="space-y-1">
         <div @click="toggleFolder(f.key)" :class="['font-bold text-xs text-slate-800 border p-2.5 rounded cursor-pointer flex justify-between items-center shadow-sm', f.cab]">
           <span><i :class="['fa-solid mr-1.5', f.iconoTipo, f.icono]"></i> {{ f.label }} ({{ obtenerProgramasDeCarpeta(f.key).length }})</span>
           <span class="flex items-center gap-2">
@@ -118,7 +118,7 @@ export default /* html */ `
 
     <!-- Main Panel: Detalles y Vista Calendario / Gantt o Tabla de Mantención -->
     <div class="lg:col-span-3 bg-white p-5 rounded-xl shadow-sm border border-slate-200 h-[680px] flex flex-col">
-      <template v-if="progSelect.id">
+      <template v-if="progDelTipo">
         <div class="border-b pb-4 mb-4 flex flex-wrap items-end justify-between gap-4">
           <div>
             <span :class="['text-[10px] font-extrabold uppercase px-2.5 py-1 rounded', progSelect.carpeta === 'REPARACION' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800']">
@@ -314,6 +314,7 @@ export default /* html */ `
                     <th class="p-2.5">FECHA INICIO</th>
                     <th class="p-2.5">FECHA FIN</th>
                     <th class="p-2.5">ESTADO (ON/OFF)</th>
+                    <th class="p-2.5">TALLER</th>
                     <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
                   </tr>
                 </thead>
@@ -338,6 +339,7 @@ export default /* html */ `
                         </span>
                       </div>
                     </td>
+                    <td class="p-2.5"><span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', ESTILO_ESTADO[estadoItemTaller(item)]]">{{ tallerDeItem(item) }}</span></td>
                     <td v-if="isAdmin" class="p-2.5 text-center">
                       <button @click="eliminarItemPrograma(item.id)" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
                     </td>

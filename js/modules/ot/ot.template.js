@@ -34,7 +34,7 @@ export default /* html */ `
       <div class="overflow-x-auto">
         <table class="w-full text-left">
           <thead class="bg-slate-800 text-white uppercase text-[10px]">
-            <tr><th class="p-2.5">Folio</th><th class="p-2.5">Fecha</th><th class="p-2.5">AFI</th><th class="p-2.5">Equipo</th><th class="p-2.5">Tipo</th><th class="p-2.5">Actividades</th><th class="p-2.5">Estado</th><th class="p-2.5 text-center">Vinculados</th><th class="p-2.5 text-center">Acciones</th></tr>
+            <tr><th class="p-2.5">Folio</th><th class="p-2.5">Fecha</th><th class="p-2.5">AFI</th><th class="p-2.5">Equipo</th><th class="p-2.5">Tipo</th><th class="p-2.5">Actividades</th><th class="p-2.5">Estado</th><th class="p-2.5">Taller</th><th class="p-2.5 text-center">Vinculados</th><th class="p-2.5 text-center">Acciones</th></tr>
           </thead>
           <tbody class="divide-y">
             <tr v-for="o in listaOT" :key="o.id" class="hover:bg-slate-50 cursor-pointer" @click="abrirOT(o)">
@@ -45,6 +45,7 @@ export default /* html */ `
               <td class="p-2.5 font-semibold">{{ o.tipo_mantencion || '-' }}<span v-if="o.pauta" class="text-slate-500"> · {{ o.pauta }} h</span></td>
               <td class="p-2.5 max-w-[320px] truncate">{{ o.actividades.filter(a => a.descripcion).map(a => a.descripcion).join(' · ') || '-' }}</td>
               <td class="p-2.5"><span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(o)]]">{{ estadoOT(o) }}</span></td>
+              <td class="p-2.5 whitespace-nowrap"><span v-if="etiquetaTallerOT(o)" class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold" :title="'Enlazada al taller de reparación'"><i class="fa-solid fa-warehouse mr-1"></i>{{ etiquetaTallerOT(o) }}</span><span v-else class="text-slate-300">—</span></td>
               <td class="p-2.5 text-center whitespace-nowrap">
                 <span v-if="documentosDeOT(o.folio).length" class="font-bold text-emerald-700" :title="'Registros en Historial con N° OT ' + o.folio"><i class="fa-solid fa-clipboard-check mr-0.5"></i>{{ documentosDeOT(o.folio).length }}</span>
                 <span v-if="documentosDeOT(o.folio).some(d => d.link)" class="ml-2 font-bold text-blue-700" title="Tiene documento adjunto"><i class="fa-solid fa-paperclip"></i></span>
@@ -56,7 +57,7 @@ export default /* html */ `
                 <button v-if="isAdmin" @click="eliminarOT(o)" title="Eliminar" class="ml-1 px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-700"><i class="fa-solid fa-trash"></i></button>
               </td>
             </tr>
-            <tr v-if="!listaOT.length && !cargandoOT"><td colspan="9" class="p-8 text-center text-slate-400 italic">No hay OT{{ filtroOT.texto || filtroOT.estado ? ' con estos filtros' : ' todavía' }}.</td></tr>
+            <tr v-if="!listaOT.length && !cargandoOT"><td colspan="10" class="p-8 text-center text-slate-400 italic">No hay OT{{ filtroOT.texto || filtroOT.estado ? ' con estos filtros' : ' todavía' }}.</td></tr>
           </tbody>
         </table>
       </div>
@@ -79,6 +80,24 @@ export default /* html */ `
         <button v-if="puedeEditar && estadoOT(otActual) === 'PENDIENTE'" @click="registrarEnHistorial(otActual)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-clipboard-check mr-1"></i> Registrar en Historial</button>
         <button v-if="isAdmin && otActual.id" @click="anularOT(otActual)" class="px-3 py-2 rounded-lg border font-bold text-slate-600 hover:bg-slate-50">{{ otActual.estado === 'ANULADA' ? 'Reactivar' : 'Anular' }}</button>
       </div>
+    </div>
+
+    <!-- Enlace con el Taller / Programa de reparación -->
+    <div class="bg-amber-50 rounded-2xl shadow-sm border-2 border-amber-200 p-4 flex flex-wrap items-center gap-3">
+      <span class="font-extrabold text-amber-900 flex items-center gap-2"><i class="fa-solid fa-warehouse"></i> Programa de reparación / Taller</span>
+      <template v-if="faltaTablaTaller"><span class="text-rose-700 font-semibold">Falta ejecutar sql/taller.sql en Supabase para enlazar OT al taller.</span></template>
+      <template v-else-if="!otActual.afi"><span class="text-slate-500">Escribe primero el AFI de la OT.</span></template>
+      <template v-else>
+        <select :value="valorEnlaceOT(otActual)" @change="enlazarOT(otActual, $event.target.value)" :disabled="!puedeEditar" class="p-2 border-2 border-amber-300 rounded-lg font-bold bg-white min-w-[280px] max-w-full">
+          <option value="">Sin enlace (OT normal)</option>
+          <option v-for="op in opcionesEnlaceOT(otActual.afi)" :key="op.valor" :value="op.valor">{{ op.etiqueta }}</option>
+        </select>
+        <template v-if="otActual.reparacion_id != null && repPorId(otActual.reparacion_id)">
+          <span class="px-2 py-1 rounded-lg bg-white border border-amber-300 font-bold text-amber-900">{{ ubicacionRep(repPorId(otActual.reparacion_id)) }} · avance {{ progresoRep(repPorId(otActual.reparacion_id)).pct }}%</span>
+          <button @click="irAlTaller" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold"><i class="fa-solid fa-arrow-right mr-1"></i>Ver en el taller</button>
+        </template>
+        <span class="w-full text-[11px] text-amber-900/80">Elige el equipo del programa de reparación, o si no está en el programa usa <b>“+ Agregar a Equipos reparación sin programa”</b>. Las actividades terminadas de esta OT suman al % de avance de la nave.</span>
+      </template>
     </div>
 
     <div v-if="otActual.folio" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">

@@ -33,7 +33,7 @@ export const otVacia = () => ({
   mecanico: '', supervisor: '', estado: 'ABIERTA'
 });
 
-const mapOT = (r) => ({
+export const mapOT = (r) => ({
   ...otVacia(), ...r,
   fecha: r.fecha || '', hrs_actual: r.hrs_actual ?? '', hrs_prox: r.hrs_prox ?? '',
   actividades: completar(r.actividades, actVacia()), insumos: completar(r.insumos, insVacio()), personal: completar(r.personal, perVacio())
@@ -149,13 +149,15 @@ export const equipoDeOT = computed(() => otActual.value ? equipoPorAfi(otActual.
 export const alternarTipo = (t) => { const ot = otActual.value; ot.tipo_mantencion = ot.tipo_mantencion === t ? '' : t; };
 export const alternarPauta = (p) => { const ot = otActual.value; ot.pauta = ot.pauta === p ? '' : p; };
 
-const payloadOT = (ot) => ({
+export const payloadOT = (ot) => ({
   folio: Number(ot.folio),
   fecha: ot.fecha || hoyISO(), afi: (equipoPorAfi(ot.afi) || {}).afi || limpiarAfi(ot.afi), equipo: ot.equipo, marca: ot.marca, modelo: ot.modelo,
   hrs_actual: String(ot.hrs_actual ?? ''), hrs_prox: String(ot.hrs_prox ?? ''),
   tipo_mantencion: ot.tipo_mantencion, pauta: ot.pauta,
   actividades: ot.actividades, insumos: ot.insumos, personal: ot.personal,
   mecanico: ot.mecanico, supervisor: ot.supervisor, estado: ot.estado || 'ABIERTA',
+  // Enlace al Taller de reparación: solo se envía si la OT lo tiene (así funciona aunque falte ejecutar sql/taller.sql)
+  ...(('reparacion_id' in ot) ? { reparacion_id: ot.reparacion_id ?? null } : {}),
   updated_at: new Date().toISOString()
 });
 
@@ -182,7 +184,8 @@ export const guardarOT = async () => {
     if (i >= 0) dbOT.value.splice(i, 1, guardada); else dbOT.value.unshift(guardada);
     return true;
   } catch (err) {
-    alert(/duplicate|unique/i.test(errMsg(err)) ? `Ya existe otra OT con el folio ${ot.folio}.` : 'Error al guardar la OT: ' + errMsg(err));
+    alert(/duplicate|unique/i.test(errMsg(err)) ? `Ya existe otra OT con el folio ${ot.folio}.`
+      : (/reparacion_id/i.test(errMsg(err)) ? 'Falta ejecutar sql/taller.sql en Supabase (columna reparacion_id de bd_ot).' : 'Error al guardar la OT: ' + errMsg(err)));
     return false;
   } finally {
     guardandoOT.value = false;

@@ -23,5 +23,6 @@ export const TABLAS = {
   MINUTAS_ITEMS: 'bd_minutas_items',          // módulo MINUTAS: tareas / compromisos de cada minuta
   OT: 'bd_ot',                                // módulo OT: órdenes de trabajo (formato FRC-RE-OPE-006)
   OC: 'bd_oc',                                // módulo OC: órdenes de compra (N° OC, precio, AFI, documento) ↔ BD_HISTORIAL.numero_oc
-  LOCACIONES: 'bd_locaciones'                 // módulo ÁREAS: árbol Empresa → Área → Locación (equipos en BD_INVENTARIO.locacion_id)
+  LOCACIONES: 'bd_locaciones',                // módulo ÁREAS: árbol Empresa → Área → Locación (equipos en BD_INVENTARIO.locacion_id)
+  TALLER: 'bd_taller_reparaciones'            // PROGRAMAS REPARACIÓN → Taller: equipos en naves / sin programa / con faltantes (bd_ot.reparacion_id)
 };

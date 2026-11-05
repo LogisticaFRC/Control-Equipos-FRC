@@ -6,6 +6,8 @@ import { comunes } from '../../core/comunes.js';
 import * as S from './ot.service.js';
 import { FORMATO_OT } from './ot.formato.js';
 import { editarMantencion } from '../historial/historial.service.js';
+import { cargarReparaciones, opcionesEnlaceOT, valorEnlaceOT, enlazarOT, etiquetaTallerOT, repPorId, progresoRep, ubicacionRep, faltaTablaTaller, vistaReparacion } from '../taller/taller.service.js';
+import { currentTab } from '../../core/store.js';
 
 const { onMounted } = Vue;
 
@@ -20,11 +22,15 @@ export default {
   name: 'OtView',
   template,
   setup() {
-    onMounted(() => { S.cargarOT(); });
+    onMounted(() => { S.cargarOT(); cargarReparaciones(); });
+    const irAlTaller = () => { vistaReparacion.value = 'taller'; currentTab.value = 'progReparacion'; };
     const guardarYAvisar = async () => {
       const nueva = !S.otActual.value.id;
       if (await S.guardarOT()) alert(nueva ? `OT guardada con el folio N° ${S.otActual.value.folio}.` : 'OT guardada.');
     };
-    return { ...comunes(), ...S, editarMantencion, F: FORMATO_OT, E, filasFormato, anchoHoja, guardarYAvisar };
+    return {
+      ...comunes(), ...S, editarMantencion, F: FORMATO_OT, E, filasFormato, anchoHoja, guardarYAvisar,
+      opcionesEnlaceOT, valorEnlaceOT, enlazarOT, etiquetaTallerOT, repPorId, progresoRep, ubicacionRep, faltaTablaTaller, irAlTaller
+    };
   }
 };

@@ -27,7 +27,8 @@ export const AREAS = [
     // grupo → subtítulo dentro del área (ver GRUPOS)
     modulos: [
       { key: 'dashboard', grupo: 'gestion', label: 'Dashboard', icon: 'fa-chart-line' },
-      { key: 'programas', grupo: 'gestion', label: 'Programas', icon: 'fa-calendar-check' },
+      { key: 'progMantencion', grupo: 'gestion', label: 'Programas Mantención', icon: 'fa-oil-can' },
+      { key: 'progReparacion', grupo: 'gestion', label: 'Programas Reparación', icon: 'fa-warehouse' },   // Taller (naves) + programas/Gantt
       { key: 'minutas', grupo: 'gestion', label: 'Minutas', icon: 'fa-clipboard-list' },
 
       { key: 'inventario', grupo: 'equipos', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.length },
