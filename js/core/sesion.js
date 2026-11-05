@@ -15,7 +15,8 @@ import { TABLAS } from './tablas.js';
 
 const { ref, watch } = Vue;
 
-export const INACTIVIDAD_MS = 5 * 60 * 1000;          // 5 minutos
+export const INACTIVIDAD_MS = 10 * 60 * 1000;         // 10 minutos
+const AVISO_INACTIVIDAD = `Tu sesión se cerró por ${INACTIVIDAD_MS / 60000} minutos de inactividad.`;
 const ACTIVIDAD_KEY = 'afi_actividad';                 // última actividad (ms) — compartida entre pestañas
 const AVISO_KEY = 'afi_aviso';                         // mensaje para el login después de recargar
 const GUARDAR_ACTIVIDAD_CADA_MS = 10 * 1000;
@@ -85,7 +86,7 @@ const registrarActividad = () => {
 const revisarInactividad = () => {
   if (!usuarioActivo.value) return;
   if (Date.now() - leerActividad() >= INACTIVIDAD_MS) {
-    cerrarSesion('Tu sesión se cerró por 5 minutos de inactividad.');
+    cerrarSesion(AVISO_INACTIVIDAD);
   }
 };
 
@@ -137,7 +138,7 @@ export const restaurarSesion = async () => {
     if (Date.now() - leerActividad() >= INACTIVIDAD_MS) {
       await supabaseClient.auth.signOut().catch(() => {});
       del(localStorage, ACTIVIDAD_KEY);
-      avisoSesion.value = 'Tu sesión se cerró por 5 minutos de inactividad.';
+      avisoSesion.value = AVISO_INACTIVIDAD;
       return;
     }
     const perfil = await cargarPerfil(session.user.id);

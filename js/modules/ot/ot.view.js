@@ -6,7 +6,7 @@ import { comunes } from '../../core/comunes.js';
 import * as S from './ot.service.js';
 import { FORMATO_OT } from './ot.formato.js';
 import { editarMantencion } from '../historial/historial.service.js';
-import { cargarReparaciones, opcionesEnlaceOT, valorEnlaceOT, enlazarOT, etiquetaTallerOT, repPorId, progresoRep, ubicacionRep, faltaTablaTaller, vistaReparacion } from '../taller/taller.service.js';
+import { cargarReparaciones, opcionesEnlaceOT, valorEnlaceOT, enlazarOT, etiquetaTallerOT, repPorId, progresoRep, ubicacionRep, faltaTablaTaller, vistaReparacion, sugerenciaEnlaceOT } from '../taller/taller.service.js';
 import { currentTab } from '../../core/store.js';
 
 const { onMounted } = Vue;
@@ -26,6 +26,11 @@ export default {
     const irAlTaller = () => { vistaReparacion.value = 'taller'; currentTab.value = 'progReparacion'; };
     const guardarYAvisar = async () => {
       const nueva = !S.otActual.value.id;
+      // OT nueva sin programa: si su AFI está en un programa de reparación vigente, se ofrece enlazarla
+      const sug = nueva && !faltaTablaTaller.value ? sugerenciaEnlaceOT(S.otActual.value) : null;
+      if (sug && confirm(`El AFI ${S.otActual.value.afi} está en el programa de reparación ${sug.programa}.\n¿Asignar esta OT a ese programa (taller)?`)) {
+        await enlazarOT(S.otActual.value, sug.valor);
+      }
       if (await S.guardarOT()) alert(nueva ? `OT guardada con el folio N° ${S.otActual.value.folio}.` : 'OT guardada.');
     };
     return {

@@ -19,7 +19,7 @@ import { usuarioActivo, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPo
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, formatDateForDisplay, placeholderImg } from '../../core/utils.js';
 import { NAVES, carpetaDe, obtenerItemsPrograma, obtenerProgObj } from '../programas/programas.service.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
-import { dbOT, cargarOT, otVacia, mapOT, payloadOT, folioSugerido, N_ACTIVIDADES, N_ACEITES, TABLA_OT } from '../ot/ot.service.js';
+import { dbOT, cargarOT, otVacia, mapOT, payloadOT, folioSugerido, N_ACTIVIDADES, N_ACEITES, TABLA_OT, estadoOT } from '../ot/ot.service.js';
 
 const { ref, computed } = Vue;
 
@@ -409,8 +409,41 @@ export const enlazarOTExistente = async (rep, ot) => {
     ot.reparacion_id = rep.id;
   } catch (err) { avisoError(err, 'enlazar la OT'); }
 };
-/** OT del AFI que todavía no están enlazadas al taller (para enlazarlas desde la nave). */
+/** OT del AFI que todavía no están enlazadas al taller (cualquier fecha). */
 export const otsLibresDelAfi = (afi) => dbOT.value.filter(o => mismoAfi(o.afi, afi) && o.reparacion_id == null && o.estado !== 'ANULADA');
+
+/** Días de margen: una OT creada hasta 7 días antes del inicio del programa también se ofrece. */
+const MARGEN_DIAS_OT = 7;
+/** Fecha desde la cual una OT se considera "de esta reparación": inicio del programa (o creación de la reparación) − margen. */
+export const fechaDesdeOTRep = (rep) => {
+  if (!rep) return '';
+  const prog = rep.programa_id != null ? obtenerProgObj(rep.programa_id) : null;
+  const base = normalizarFecha(prog?.fecha_inicio_programa) || normalizarFecha(rep.created_at) || '';
+  if (!base) return '';
+  const d = new Date(base + 'T00:00:00');
+  d.setDate(d.getDate() - MARGEN_DIAS_OT);
+  return d.toISOString().slice(0, 10);
+};
+/** OT que se ofrecen para unir a una reparación: del mismo AFI, sin enlace, PENDIENTES (no ya registradas en el Historial)
+ *  y no anteriores al programa → así no se une por error una OT antigua. */
+export const otsLibresDeRep = (rep) => {
+  if (!rep) return [];
+  const desde = fechaDesdeOTRep(rep);
+  return otsLibresDelAfi(rep.afi).filter(o => estadoOT(o) === 'PENDIENTE' && (!desde || !o.fecha || normalizarFecha(o.fecha) >= desde));
+};
+
+/** Quita el enlace de una OT con el taller: la OT no se borra, solo deja de contar en el avance de la reparación. */
+export const desenlazarOT = async (ot) => {
+  if (!soloEditor() || !ot) return false;
+  if (!confirm(`¿Quitar la OT N° ${ot.folio} (AFI ${ot.afi}) del taller?\nLa OT no se borra; solo deja de contar en el avance de la reparación.`)) return false;
+  try {
+    await sb(supabaseClient.from(TABLA_OT).update({ reparacion_id: null }).eq('id', ot.id));
+    const enLista = dbOT.value.find(o => o.id === ot.id);
+    if (enLista) enLista.reparacion_id = null;
+    ot.reparacion_id = null;
+    return true;
+  } catch (err) { avisoError(err, 'quitar el enlace de la OT'); return false; }
+};
 
 /** Marca / desmarca una actividad como terminada (fecha y hora de término = ahora). */
 export const alternarActividad = async (ot, i) => {
@@ -611,6 +644,16 @@ export const opcionesEnlaceOT = (afi) => {
   }
   return out;
 };
+/** Al crear una OT: opción del programa de reparación VIGENTE donde está su AFI (y aún no reparado), o null. */
+export const sugerenciaEnlaceOT = (ot) => {
+  if (!ot || !ot.afi || ot.reparacion_id != null) return null;
+  for (const p of dbProgramasCalendarios.value.filter(p => carpetaDe(p) === 'REPARACION' && programaVigente(p))) {
+    const item = obtenerItemsPrograma(p.id).find(i => mismoAfi(limpiarAfi(i.afi), limpiarAfi(ot.afi)) && !i.realizado);
+    if (item) return { valor: 'item:' + item.id, programa: nombreProg(p) };
+  }
+  return null;
+};
+
 /** Valor del selector para la OT abierta. */
 export const valorEnlaceOT = (ot) => {
   if (!ot || ot.reparacion_id == null) return '';

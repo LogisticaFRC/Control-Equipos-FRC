@@ -231,6 +231,7 @@ export default /* html */ `
             <td class="p-3 text-right whitespace-nowrap">
               <button v-if="repPorId(o.reparacion_id)" @click="abrirReparar(repPorId(o.reparacion_id))" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold"><i class="fa-solid fa-screwdriver-wrench mr-1"></i>Actividades</button>
               <button @click="abrirFormatoOT(o)" class="ml-1 px-2.5 py-1 rounded-lg border text-xs font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>Formato</button>
+              <button v-if="puedeEditar" @click="desenlazarOT(o)" title="Quitar del taller (la OT no se borra)" class="ml-1 px-2.5 py-1 rounded-lg border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50"><i class="fa-solid fa-link-slash mr-1"></i>Quitar</button>
             </td>
           </tr>
           <tr v-if="!otsTaller.length"><td colspan="8" class="p-6 text-center text-slate-400 italic">Aún no hay OT enlazadas. Se crean con el botón REPARAR de cada nave o se enlazan desde Órdenes de Trabajo.</td></tr>
@@ -334,14 +335,15 @@ export default /* html */ `
             <button v-for="o in otsDeRep(repTrabajo)" :key="o.id" @click="otSel = o"
               :class="['px-4 py-2 rounded-xl font-black text-sm border-2', otSel && otSel.id === o.id ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-rose-700 border-rose-200 hover:border-rose-400']">OT {{ o.folio }} · {{ progresoOT(o).pct }}%</button>
             <button v-if="otSel && puedeEditar" @click="otSel = null" class="px-3 py-2 rounded-xl text-xs font-bold border-2 border-dashed border-slate-300 text-slate-500 hover:border-slate-400"><i class="fa-solid fa-link mr-1"></i>Unir otra OT</button>
+            <button v-if="otSel && puedeEditar" @click="quitarOTSel" class="px-3 py-2 rounded-xl text-xs font-bold border-2 border-rose-200 text-rose-600 hover:bg-rose-50"><i class="fa-solid fa-link-slash mr-1"></i>Quitar OT {{ otSel.folio }} del taller</button>
           </div>
 
           <!-- ===== Sin OT: unir una OT ya creada ===== -->
           <div v-if="!otSel" class="space-y-4">
             <div class="rounded-2xl border-2 border-rose-200 bg-rose-50/50 p-5 space-y-3">
               <p class="text-lg font-black text-rose-900"><i class="fa-solid fa-link mr-2"></i>Unir con la OT del AFI {{ repTrabajo.afi }}</p>
-              <div v-if="otsLibresDelAfi(repTrabajo.afi).length" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div v-for="o in otsLibresDelAfi(repTrabajo.afi)" :key="o.id" class="bg-white rounded-2xl border-2 border-rose-200 p-4 space-y-2">
+              <div v-if="otsLibresDeRep(repTrabajo).length" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div v-for="o in otsLibresDeRep(repTrabajo)" :key="o.id" class="bg-white rounded-2xl border-2 border-rose-200 p-4 space-y-2">
                   <p class="text-xl font-black text-rose-700">OT N° {{ o.folio }}</p>
                   <p class="text-xs text-slate-500 font-semibold">{{ formatDateForDisplay(o.fecha) }} · {{ o.tipo_mantencion || 'Sin tipo' }} · {{ o.actividades.filter(a => a.descripcion).length }} actividades</p>
                   <p class="text-xs text-slate-600 line-clamp-2">{{ o.actividades.filter(a => a.descripcion).map(a => a.descripcion).join(' · ') || '—' }}</p>
@@ -349,7 +351,7 @@ export default /* html */ `
                 </div>
               </div>
               <div v-else class="text-sm text-rose-900 bg-white rounded-xl border border-rose-200 p-3">
-                <i class="fa-solid fa-circle-info mr-1"></i>Todavía no hay una OT creada para el AFI {{ repTrabajo.afi }}. Operaciones la crea en <b>Órdenes de Trabajo</b> y la une a este equipo; apenas lo haga, aparece aquí.
+                <i class="fa-solid fa-circle-info mr-1"></i>Todavía no hay una OT pendiente para el AFI {{ repTrabajo.afi }} desde el {{ formatDateForDisplay(fechaDesdeOTRep(repTrabajo)) }}. Operaciones la crea en <b>Órdenes de Trabajo</b> y la une a este equipo; apenas lo haga, aparece aquí. <span class="text-rose-700/70">(No se muestran OT antiguas ni ya registradas en el Historial.)</span>
               </div>
             </div>
             <!-- Solo Admin: crear OT desde el taller -->

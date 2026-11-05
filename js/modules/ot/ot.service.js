@@ -368,14 +368,23 @@ const htmlAnexoRepuestos = (ot) => {
     <table style="border-collapse:collapse;width:100%"><thead><tr><th style="${td}">Itm</th><th style="${td}">Repuesto</th><th style="${td}">Fecha</th><th style="${td}">Retira</th></tr></thead><tbody>${filas}</tbody></table></div>`;
 };
 
+/** Hoja carta (8,5 × 11 in a 96 px/in) con márgenes chicos → la OT se escala para ocupar toda la hoja. */
+const CARTA = { w: 8.5 * 96, h: 11 * 96, margen: 0.25 * 96 };
+const zoomImpresion = () => {
+  const ancho = FORMATO_OT.cols.reduce((a, b) => a + b, 0);
+  const alto = FORMATO_OT.rows.reduce((a, b) => a + b, 0);
+  const z = Math.min((CARTA.w - 2 * CARTA.margen) / ancho, (CARTA.h - 2 * CARTA.margen) / alto) * 0.985;
+  return Math.round(z * 1000) / 1000;
+};
+
 export const imprimirOT = (ot) => {
   const w = window.open('', '_blank');
   if (!w) return alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>OT ${ot.folio || ''} - ${htmlEsc(ot.afi || '')}</title>
 <style>
-  @page { size: letter portrait; margin: 0.55in 0.24in 0.55in 0.63in; }
+  @page { size: letter portrait; margin: 0.25in; }
   html, body { margin: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .hoja { zoom: 0.8; margin: 0 auto; }
+  .hoja { zoom: ${zoomImpresion()}; margin: 0 auto; }
   table { border-collapse: collapse; table-layout: fixed; }
   td { padding: 0 1px; overflow: hidden; white-space: nowrap; line-height: 1.05; box-sizing: border-box; }
   @media screen { body { padding: 20px; background: #e2e8f0; } .hoja { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.2); zoom: 1; } }

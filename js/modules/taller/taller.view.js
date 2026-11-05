@@ -92,6 +92,7 @@ export default {
       } finally { ocupado.value = false; }
     };
     const enlazarOT = async (ot) => { await S.enlazarOTExistente(repTrabajo.value, ot); otSel.value = ot; };
+    const quitarOTSel = async () => { if (await S.desenlazarOT(otSel.value)) otSel.value = S.otPrincipal(repTrabajo.value); };
     const agregarAct = async () => {
       if (!otSel.value) return;
       if (await S.agregarActividad(otSel.value, nuevaAct.value.descripcion, nuevaAct.value.ejecutante)) {
@@ -134,6 +135,7 @@ export default {
     };
 
     return {
+      quitarOTSel,
       ...comunes(), ...S,
       folioSugerido, imprimirOT, ESTILO_ESTADO_OT, estadoOT, N_ACTIVIDADES, formatDateForDisplay,
       naveIngreso, afiNuevo, repTrabajo, otSel, nuevaAct, formOT, repSalida, formSalida, afiSinProg, naveDestino, ocupado,
