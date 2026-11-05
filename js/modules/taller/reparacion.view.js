@@ -18,7 +18,7 @@ export default {
         <i class="fa-solid fa-calendar-week text-amber-500"></i> Programas y Gantt
       </button>
       <button v-if="isAdmin" @click="vistaReparacion = 'enlaces'" :class="['px-5 py-3 rounded-2xl text-sm font-black transition shadow-sm flex items-center gap-2', vistaReparacion === 'enlaces' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border hover:bg-slate-50']">
-        <i class="fa-solid fa-link text-rose-500"></i> OT enlazadas · Historial <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950">Admin</span>
+        <i class="fa-solid fa-link text-rose-500"></i> OT enlazadas <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950">Admin</span>
       </button>
     </div>
     <taller-view v-if="vistaReparacion === 'taller'"></taller-view>

@@ -26,7 +26,6 @@ export const TABLAS = {
   LOCACIONES: 'bd_locaciones',                // módulo ÁREAS: árbol Empresa → Área → Locación (equipos en BD_INVENTARIO.locacion_id)
   TALLER_PROBLEMAS: 'bd_taller_problemas',    // TALLER: "nuevo problema para OT" que envía el mecánico y procesa el Admin
   TALLER: 'bd_taller_reparaciones',          // PROGRAMAS REPARACIÓN → Taller: equipos en naves / sin programa / con faltantes (bd_ot.reparacion_id)
-  OT_ENLACES: 'bd_ot_enlaces',                // TALLER: bitácora de OT enlazadas / quitadas del taller (solo Admin la ve)
   TRABAJADORES: 'bd_trabajadores',            // SEGURIDAD → Control Entrega EPP: ficha de cada trabajador (tallas, EPP requerido). Base futura de RRHH
   EPP_ENTREGAS: 'bd_epp_entregas'             // SEGURIDAD → Control Entrega EPP: historial de entregas (una fila por elemento)
 };

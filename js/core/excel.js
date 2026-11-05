@@ -144,6 +144,59 @@ export const hojaTabla = (wb, logo, { nombre, titulo, subtitulo = '', columnas, 
   return ws;
 };
 
+/**
+ * Bloque de FIRMAS al pie de una hoja hecha con hojaTabla (alineado y simétrico).
+ * firmas: [{ nombre: 'IGNACIO NEIRA', cargo: 'JEFE DE OPERACIONES' }, ...]  (1 a 3 firmas)
+ * Cada firma ocupa el mismo ancho, centrada en su parte de la hoja:
+ *   (espacio para firmar) ─────────── línea · FIRMA · NOMBRE · CARGO
+ */
+export const bloqueFirmas = (ws, firmas, { separacion = 3 } = {}) => {
+  if (!ws || !firmas || !firmas.length) return;
+  const n = Math.max(ws.columnCount, firmas.length * 3);
+  const ultima = ws.lastRow ? ws.lastRow.number : 6;
+  const r0 = ultima + separacion;          // fila del espacio para firmar
+  // Las columnas tienen anchos distintos: se eligen por su ANCHO REAL para que cada firma
+  // mida lo mismo y quede centrada en su mitad (o tercio) de la hoja.
+  const anchos = Array.from({ length: n }, (_, i) => ws.getColumn(i + 1).width || 9);
+  const total = anchos.reduce((a, b) => a + b, 0);
+  const inicio = []; anchos.reduce((acc, w, i) => { inicio[i] = acc; return acc + w; }, 0);
+  const rango = (centro, mitad) => {
+    let c1 = null, c2 = null;
+    anchos.forEach((w, i) => { const m = inicio[i] + w / 2; if (m >= centro - mitad && m <= centro + mitad) { if (c1 === null) c1 = i + 1; c2 = i + 1; } });
+    if (c1 === null) { const i = anchos.findIndex((w, j) => inicio[j] + w >= centro); c1 = c2 = i + 1; }
+    return [c1, c2];
+  };
+
+  ws.getRow(r0).height = 50;               // espacio para la firma
+  ws.getRow(r0 + 1).height = 14;
+  ws.getRow(r0 + 2).height = 18;
+  ws.getRow(r0 + 3).height = 15;
+
+  firmas.forEach((f, i) => {
+    const centro = total * (2 * i + 1) / (2 * firmas.length);
+    const [c1, c2] = rango(centro, total / firmas.length * 0.3);   // cada firma ≈ 60% de su parte
+    const fila = (r, valor, font, extra = {}) => {
+      ws.mergeCells(r, c1, r, c2);
+      const cell = ws.getCell(r, c1);
+      cell.value = valor;
+      cell.font = font;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      Object.assign(cell, extra);
+    };
+    // línea de firma (borde superior de toda la franja) + rótulo FIRMA
+    fila(r0 + 1, 'FIRMA', { bold: true, size: 8, color: { argb: 'FF64748B' } });
+    for (let c = c1; c <= c2; c++) ws.getCell(r0 + 1, c).border = { top: { style: 'medium', color: { argb: COLOR.oscuro } } };
+    fila(r0 + 2, String(f.nombre || '').toUpperCase(), { bold: true, size: 11, color: { argb: COLOR.oscuro } });
+    fila(r0 + 3, String(f.cargo || '').toUpperCase(), { bold: true, size: 9, color: { argb: COLOR.indigo } });
+  });
+};
+
+/** Firmas que van en los programas de mantención exportados. */
+export const FIRMAS_PROGRAMA = [
+  { nombre: 'IGNACIO NEIRA', cargo: 'JEFE DE OPERACIONES' },
+  { nombre: 'BRANDON PÉREZ', cargo: 'JEFE SERVICIO TÉCNICO' }
+];
+
 export const descargarLibro = async (wb, archivo) => {
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

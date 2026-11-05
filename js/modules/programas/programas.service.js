@@ -6,7 +6,7 @@ import { dbProgramasCalendarios, dbProgramasItems, dbIntervenciones, cargarDatos
 import { normalizarFecha, formatDateForDisplay, parseNum, limpiarAfi, esFechaEnRango, hoyISO, mismoAfi, parseIsoDate, diasEntre } from '../../core/utils.js';
 import { buscarEquipoPorAfi } from '../../core/store.js';
 import { empresaDe } from '../inventario/inventario.mapper.js';
-import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel, fill, COLOR } from '../../core/excel.js';
+import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel, fill, COLOR, bloqueFirmas, FIRMAS_PROGRAMA } from '../../core/excel.js';
 import { isAdmin } from '../../core/store.js';
 import { kitsEnBodegaAfi, kitConsumidoItem, consumirKitParaItem, devolverKitDeItem, filtrosRequeridosAfi } from '../bodega/bodega.service.js';
 
@@ -622,6 +622,7 @@ export const exportarProgramaGanttExcel = async (prog) => {
         c.fill = fill(f[15] === 'REALIZADO' ? COLOR.verde : COLOR.ambar);
         c.font = { bold: true, size: 9, color: { argb: f[15] === 'REALIZADO' ? COLOR.verdeTxt : COLOR.ambarTxt } };
       });
+      bloqueFirmas(ws, FIRMAS_PROGRAMA);
 
       if (dias.length) {
         const filasG = items.map(item => [
@@ -635,6 +636,7 @@ export const exportarProgramaGanttExcel = async (prog) => {
         });
         const inv = Object.fromEntries(Object.entries(MARCA_GANTT).map(([k, v]) => [v, k]));
         pintarGantt(wsG, filasG.length, 5, v => inv[v]);
+        bloqueFirmas(wsG, FIRMAS_PROGRAMA);
       }
     } else {
       let hay = false;
