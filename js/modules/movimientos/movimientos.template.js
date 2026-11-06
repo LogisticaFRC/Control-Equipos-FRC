@@ -42,19 +42,22 @@ export default /* html */ `
           <tr>
             <th class="p-2.5">FECHA</th>
             <th class="p-2.5">AFI</th>
-            <th class="p-2.5">TIPO</th>
+            <th class="p-2.5">EQUIPO (TIPO · MARCA · MODELO)</th>
+            <th class="p-2.5">TIPO MOVIMIENTO</th>
             <th class="p-2.5">ORIGEN</th>
             <th class="p-2.5">DESTINO</th>
             <th class="p-2.5">EMPRESA ARRIENDO</th>
             <th class="p-2.5">ESTADO</th>
             <th class="p-2.5">CAMIÓN ENCARGADO</th>
             <th class="p-2.5">CONDUCTOR</th>
+            <th v-if="isAdmin" class="p-2.5 text-center">EDITAR</th>
           </tr>
         </thead>
         <tbody class="divide-y bg-white">
           <tr v-for="m in filteredMovimientos" :key="m.id" class="hover:bg-slate-50">
             <td class="p-2.5 font-mono font-bold text-slate-800 bg-amber-50/30">{{ formatDateForDisplay(m.fecha) }}</td>
             <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(m.afi)">{{ m.afi }}</td>
+            <td class="p-2.5 text-slate-600">{{ descEquipoMov(m.afi) || '-' }}</td>
             <td class="p-2.5 font-semibold">{{ m.tipo }}</td>
             <td class="p-2.5 text-slate-600">{{ m.origen || '-' }}</td>
             <td class="p-2.5 font-bold text-emerald-700 bg-emerald-50/50">{{ m.destino || '-' }}</td>
@@ -66,8 +69,9 @@ export default /* html */ `
             </td>
             <td class="p-2.5">{{ m.camion || '-' }}</td>
             <td class="p-2.5 font-semibold">{{ m.conductor || '-' }}</td>
+            <td v-if="isAdmin" class="p-2.5 text-center"><button @click="abrirEditarMovimiento(m)" title="Editar movimiento" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded font-bold"><i class="fa-solid fa-pen-to-square"></i></button></td>
           </tr>
-          <tr v-if="filteredMovimientos.length === 0"><td colspan="9" class="p-8 text-center text-slate-500 font-bold">No se encontraron movimientos.</td></tr>
+          <tr v-if="filteredMovimientos.length === 0"><td colspan="11" class="p-8 text-center text-slate-500 font-bold">No se encontraron movimientos.</td></tr>
         </tbody>
       </table>
     </div>

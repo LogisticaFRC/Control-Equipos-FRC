@@ -69,6 +69,7 @@ export default /* html */ `
                 <div class="flex items-center gap-0.5 shrink-0">
                   <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
                   <button v-if="isAdmin" @click.stop="programaMoviendo = programaMoviendo === prog.id ? null : prog.id" class="text-slate-400 hover:text-slate-700 p-1" title="Mover a subcarpeta"><i class="fa-solid fa-folder-open"></i></button>
+                  <button v-if="isAdmin" @click.stop="abrirModalEditarPrograma(prog)" class="text-sky-600 hover:text-sky-800 p-1" title="Editar nombre y fechas"><i class="fa-solid fa-pen"></i></button>
                   <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar programa"><i class="fa-solid fa-trash"></i></button>
                 </div>
               </div>
@@ -96,6 +97,7 @@ export default /* html */ `
                 <div class="flex items-center gap-0.5 shrink-0">
                   <span class="bg-white border px-1.5 py-0.5 rounded text-[9px]">{{ obtenerItemsPrograma(prog.id).length }}</span>
                   <button v-if="isAdmin" @click.stop="programaMoviendo = programaMoviendo === prog.id ? null : prog.id" class="text-slate-400 hover:text-slate-700 p-1" title="Mover a subcarpeta"><i class="fa-solid fa-folder-open"></i></button>
+                  <button v-if="isAdmin" @click.stop="abrirModalEditarPrograma(prog)" class="text-sky-600 hover:text-sky-800 p-1" title="Editar nombre y fechas"><i class="fa-solid fa-pen"></i></button>
                   <button v-if="isAdmin" @click.stop="eliminarProgramaCompleto(prog.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar programa"><i class="fa-solid fa-trash"></i></button>
                 </div>
               </div>

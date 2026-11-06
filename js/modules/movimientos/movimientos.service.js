@@ -37,7 +37,7 @@ export const getHistorialMovimientosAFI = (afi) => dbMovimientos.value
 
 // ---------- Registrar movimiento ----------
 // Destino = Empresa → Área → Sector → Locación del módulo ÁREAS (formMov.sel). Origen = dónde está hoy el equipo.
-const MOV_DEFAULT = () => ({ afi: "", fecha: hoyISO(), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "", sel: selDesdeLocacion(null) });
+const MOV_DEFAULT = () => ({ id: null, actualizarEquipo: false, afi: "", fecha: hoyISO(), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "", sel: selDesdeLocacion(null) });
 export const showModalMovimiento = ref(false);
 export const formMov = ref(MOV_DEFAULT());
 
@@ -47,8 +47,36 @@ const origenDeEquipo = (eq) => {
   return nodo(eq.locacionId) ? textoUbicacion(eq.locacionId) : (eq.ubicacion || '');
 };
 export const alCambiarAfiMov = () => {
+  if (formMov.value.id) return;   // al editar no se pisa el origen guardado
   const eq = buscarEquipoPorAfi(formMov.value.afi);
   formMov.value.origen = origenDeEquipo(eq);
+};
+/** Equipo elegido en el formulario (para mostrar tipo, marca y modelo). */
+export const equipoMov = computed(() => buscarEquipoPorAfi(formMov.value.afi) || null);
+/** "GENERADOR · FG WILSON · P-100" de un AFI (tabla de movimientos). */
+export const descEquipoMov = (afi) => {
+  const e = buscarEquipoPorAfi(afi);
+  return e ? [e.tipo, e.marca, e.modelo].filter(Boolean).join(' · ') : '';
+};
+/** ¿Es el movimiento más reciente de su equipo? (solo ese puede actualizar la ubicación del equipo al editarlo) */
+export const esUltimoMovDelEquipo = (m) => {
+  const delEq = dbMovimientos.value.filter(x => mismoAfi(x.afi, m.afi)).sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha) || b.id - a.id);
+  return Boolean(delEq.length && delEq[0].id === m.id);
+};
+
+// ---------- Editar movimiento (solo Admin) ----------
+export const abrirEditarMovimiento = (m) => {
+  if (!soloAdmin()) return;
+  formMov.value = {
+    ...MOV_DEFAULT(),
+    id: m.id, afi: m.afi, fecha: formatExcelDate(m.fecha) === '-' ? '' : formatExcelDate(m.fecha), tipo: m.tipo,
+    origen: m.origen, destino: m.destino, empresa_arriendo: m.empresa_arriendo, estado: m.estado,
+    camion: m.camion, conductor: m.conductor,
+    sel: selDesdeLocacion(nodo(m.locacionId) ? m.locacionId : null),
+    locacionOriginal: m.locacionId ?? null,
+    esUltimo: esUltimoMovDelEquipo(m)
+  };
+  showModalMovimiento.value = true;
 };
 /** Ruta completa del origen (Empresa › Área › Sector › Locación), para mostrar bajo el campo. */
 export const origenRuta = computed(() => {
@@ -62,8 +90,74 @@ export const abrirModalCrearMovimiento = (afi = '') => {
   showModalMovimiento.value = true;
 };
 
+/** Actualiza ubicación / estado / empresa del equipo según un movimiento. Devuelve un aviso (texto) si algo falló. */
+const actualizarEquipoDesdeMov = async (payload, locId) => {
+  let avisoEquipo = "";
+  const eqRef = buscarEquipoPorAfi(payload.afi);
+  if (!eqRef) return avisoEquipo;
+  const updateObj = {};
+  if (payload.ubicacion_actual) updateObj.ubicacion = payload.ubicacion_actual;
+  if (locId) updateObj.locacion_id = locId;
+  if (payload.estado) updateObj.disponibilidad = normalizarClave(payload.estado);
+  if (updateObj.disponibilidad === 'Fuera de Servicio') updateObj.empresa_arriendo = 'TALLER FRC';
+  else if (payload.empresa_arriendo) updateObj.empresa_arriendo = String(payload.empresa_arriendo).trim().toUpperCase();
+  if (!Object.keys(updateObj).length) return avisoEquipo;
+  try {
+    try { await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id)); }
+    catch (err) {
+      if (/locacion_id/i.test(errMsg(err)) && 'locacion_id' in updateObj) {
+        delete updateObj.locacion_id;
+        avisoEquipo = "\n(Atención: falta ejecutar sql/areas.sql en Supabase; el equipo no quedó enlazado a la locación)";
+      } else if (('empresa_arriendo' in updateObj) && /empresa_arriendo/i.test(errMsg(err))) {
+        delete updateObj.empresa_arriendo;
+        avisoEquipo = "\n(Atención: falta la columna empresa_arriendo en BD_INVENTARIO, ver sql/empresa_arriendo.sql)";
+      } else throw err;
+      if (Object.keys(updateObj).length) await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id));
+    }
+  } catch (err) { avisoEquipo = "\n(Atención: no se pudo actualizar la ubicación/estado del equipo: " + errMsg(err) + ")"; }
+  return avisoEquipo;
+};
+
+/** Guarda los cambios de un movimiento existente (solo Admin). */
+const guardarEdicionMovimiento = async () => {
+  const f = formMov.value;
+  const sel = f.sel;
+  if (!selVacia(sel) && !selCompleta(sel)) return alert("Completa el destino: Empresa → Área → Sector → Locación, o déjalo vacío para mantener el destino escrito.");
+  let locId = null;
+  if (selCompleta(sel)) {
+    try { locId = await resolverSeleccion(sel); }
+    catch (err) { return alert("No se pudo crear la locación de destino: " + errMsg(err)); }
+  }
+  const ruta = rutaDe(locId);
+  const payload = {
+    afi: limpiarAfi(f.afi),
+    fecha: formatIsoDateForSupabase(f.fecha),
+    tipo: parseStr(f.tipo),
+    ubicacion_anterior: parseStr(f.origen),
+    ubicacion_actual: locId ? textoUbicacion(locId) : parseStr(f.destino),
+    empresa_arriendo: locId && ruta.empresa ? ruta.empresa.nombre : parseStr(f.empresa_arriendo),
+    estado: parseStr(f.estado),
+    camion_encargado: parseStr(f.camion),
+    conductor_encargado: parseStr(f.conductor)
+  };
+  if (locId || f.locacionOriginal != null) payload.locacion_id = locId;
+  try {
+    try { await sb(supabaseClient.from(TABLA_MOVIMIENTOS).update(payload).eq('id', f.id)); }
+    catch (err) {
+      if (!/locacion_id/i.test(errMsg(err))) throw err;
+      delete payload.locacion_id;
+      await sb(supabaseClient.from(TABLA_MOVIMIENTOS).update(payload).eq('id', f.id));
+    }
+  } catch (err) { return alert("Error al guardar el movimiento: " + errMsg(err)); }
+  const aviso = f.actualizarEquipo ? await actualizarEquipoDesdeMov(payload, locId) : '';
+  await cargarDatosDesdeSupabase();
+  showModalMovimiento.value = false;
+  alert("¡Movimiento actualizado!" + (f.actualizarEquipo ? " También se actualizó el equipo." : "") + aviso);
+};
+
 export const guardarNuevoMovimiento = async () => {
   if (!soloAdmin()) return;
+  if (formMov.value.id) return guardarEdicionMovimiento();
   const f = formMov.value;
   const sel = f.sel;
   if (!selVacia(sel) && !selCompleta(sel)) return alert("Completa el destino: Empresa → Área → Sector → Locación (o elige \"➕ Crear nueva…\" y escribe el nombre).");
@@ -100,34 +194,7 @@ export const guardarNuevoMovimiento = async () => {
   }
 
   // Actualiza ubicación y estado del equipo en el inventario
-  let avisoEquipo = "";
-  const eqRef = buscarEquipoPorAfi(payload.afi);
-  if (eqRef) {
-    const updateObj = {};
-    if (payload.ubicacion_actual) updateObj.ubicacion = payload.ubicacion_actual;
-    if (locId) updateObj.locacion_id = locId;
-    if (payload.estado) updateObj.disponibilidad = normalizarClave(payload.estado);
-    // Empresa arrendada: Fuera de Servicio = TALLER FRC; si el movimiento trae empresa, pasa a ser la del equipo
-    if (updateObj.disponibilidad === 'Fuera de Servicio') updateObj.empresa_arriendo = 'TALLER FRC';
-    else if (payload.empresa_arriendo) updateObj.empresa_arriendo = String(payload.empresa_arriendo).trim().toUpperCase();
-    if (Object.keys(updateObj).length > 0) {
-      try {
-        try { await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id)); }
-        catch (err) {
-          // Si aún no existe la columna empresa_arriendo, se actualiza igual ubicación y estado
-          if (/locacion_id/i.test(errMsg(err)) && 'locacion_id' in updateObj) {
-            delete updateObj.locacion_id;
-            avisoEquipo = "\n(Atención: falta ejecutar sql/areas.sql en Supabase; el equipo no quedó enlazado a la locación)";
-          } else if (('empresa_arriendo' in updateObj) && /empresa_arriendo/i.test(errMsg(err))) {
-            delete updateObj.empresa_arriendo;
-            avisoEquipo = "\n(Atención: falta la columna empresa_arriendo en BD_INVENTARIO, ver sql/empresa_arriendo.sql)";
-          } else throw err;
-          if (Object.keys(updateObj).length) await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id));
-        }
-      }
-      catch (err) { avisoEquipo = "\n(Atención: no se pudo actualizar la ubicación/estado del equipo: " + errMsg(err) + ")"; }
-    }
-  }
+  const avisoEquipo = await actualizarEquipoDesdeMov(payload, locId);
 
   await cargarDatosDesdeSupabase();
   showModalMovimiento.value = false;

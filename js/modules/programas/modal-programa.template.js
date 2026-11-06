@@ -5,7 +5,7 @@ export default /* html */ `
     <div :class="['px-6 py-4 flex justify-between items-center text-white', formProgMes.carpeta === 'REPARACION' ? 'bg-amber-500 text-slate-950' : 'bg-indigo-600']">
       <h3 class="font-bold uppercase tracking-wide flex items-center gap-2">
         <i :class="['fa-solid', formProgMes.carpeta === 'REPARACION' ? 'fa-wrench' : 'fa-oil-can']"></i>
-        Crear Programa de {{ formProgMes.carpeta }}
+        {{ formProgMes.id ? 'Editar' : 'Crear' }} Programa de {{ formProgMes.carpeta }}
       </h3>
       <button @click="showModalPrograma=false" class="hover:opacity-80"><i class="fa-solid fa-xmark text-lg"></i></button>
     </div>
@@ -13,6 +13,7 @@ export default /* html */ `
       <div>
         <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Nombre del Programa</label>
         <input type="text" v-model="formProgMes.nombre_programa" class="w-full p-2.5 border rounded-lg bg-white uppercase font-bold text-slate-800" placeholder="Ej: MANTENCION AGOSTO 2026">
+        <p v-if="formProgMes.id" class="mt-1 text-[10px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>Los equipos asignados se mantienen. Si cambias el nombre, también se actualiza en las mantenciones del Historial que lo usan.</p>
       </div>
       <div>
         <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Subcarpeta</label>
@@ -35,7 +36,7 @@ export default /* html */ `
     <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
       <button @click="showModalPrograma=false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
       <button @click="guardarNuevoProgramaMes" :disabled="!formProgMes.nombre_programa.trim() || !formProgMes.fecha_inicio_programa || !formProgMes.fecha_termino_programa" :class="['px-5 py-2 rounded-lg font-bold disabled:opacity-50 shadow-md text-xs', formProgMes.carpeta === 'REPARACION' ? 'bg-amber-500 hover:bg-amber-600 text-slate-950' : 'bg-indigo-600 hover:bg-indigo-700 text-white']">
-        Guardar Programa
+        {{ formProgMes.id ? 'Guardar cambios' : 'Guardar Programa' }}
       </button>
     </div>
   </div>

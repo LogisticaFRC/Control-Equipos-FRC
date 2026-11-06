@@ -72,7 +72,7 @@ export default /* html */ `
             <tr class="bg-slate-800 text-white">
               <th class="p-2">Código</th><th class="p-2">Marca</th><th class="p-2">Tipo</th>
               <th v-for="p in proveedoresColumnas" :key="p" :class="['p-2 text-right', filtroVista.proveedor === p ? 'text-amber-200 bg-slate-700' : 'text-amber-300']">{{ p }}</th>
-              <th class="p-2 text-emerald-300">Mejor</th><th class="p-2 text-right text-rose-300">Ahorro</th><th class="p-2 text-sky-300">Equipos (marca / modelo)</th>
+              <th class="p-2 text-emerald-300">Mejor</th><th class="p-2 text-right text-rose-300">Ahorro</th><th class="p-2 text-sky-300">Equipos (tipo / marca / modelo)</th>
               <th v-if="puedeEditar" class="p-2 text-center">Editar</th>
             </tr>
           </thead>
@@ -86,7 +86,7 @@ export default /* html */ `
               <td class="p-2 text-right font-mono font-bold" :class="c.ahorro > 0 ? 'text-rose-600' : 'text-slate-300'">{{ c.ahorro > 0 ? fmtPrecio(c.ahorro) : '-' }}</td>
               <td class="p-2">
                 <div class="flex flex-wrap gap-1 max-w-[260px]">
-                  <span v-for="m in c.modelos" :key="m" class="text-[9px] font-bold bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded">{{ m }}</span>
+                  <span v-for="m in c.modelosTxt" :key="m" class="text-[9px] font-bold bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded">{{ m }}</span>
                   <span v-if="!c.modelos.length" class="text-[10px] text-slate-400 italic">Sin enlazar</span>
                 </div>
               </td>
@@ -109,10 +109,10 @@ export default /* html */ `
       </div>
       <div v-for="g in gruposPorModelo" :key="g.key" class="border rounded-xl overflow-hidden">
         <div class="bg-slate-800 text-white px-4 py-2.5 flex flex-wrap justify-between items-center gap-2">
-          <p class="font-extrabold text-sm"><i class="fa-solid fa-truck-monster text-amber-400 mr-1.5"></i>{{ g.marca || 'SIN MARCA' }} · {{ g.modelo || 'SIN MODELO' }}</p>
+          <p class="font-extrabold text-sm"><i class="fa-solid fa-truck-monster text-amber-400 mr-1.5"></i>{{ tituloModelo(g.marca, g.modelo) }}</p>
           <div class="flex flex-wrap gap-1 items-center">
             <span class="text-[10px] text-slate-300 mr-1">{{ g.equipos.length }} equipo(s):</span>
-            <button v-for="e in g.equipos" :key="e.id" @click="abrirPerfilEquipo(e)" class="text-[10px] font-mono font-bold bg-amber-500 hover:bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded">{{ e.afi }}</button>
+            <button v-for="e in g.equipos" :key="e.id" @click="abrirPerfilEquipo(e)" :title="'AFI ' + e.afi + ' · ' + descEquipoAfi(e.afi)" class="text-[10px] font-mono font-bold bg-amber-500 hover:bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded">AFI {{ e.afi }}</button>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -137,7 +137,7 @@ export default /* html */ `
                   <td class="p-2 text-right font-mono font-bold" :class="r.esMejor ? 'text-emerald-700' : 'text-slate-800'">{{ fmtPrecio(r.precio) }} <i v-if="r.esMejor && t.codigos > 1" class="fa-solid fa-trophy text-emerald-600 ml-1" title="El más barato de este tipo"></i></td>
                   <td class="p-2 text-right font-mono" :class="r.difMejor > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'">{{ r.difMejor > 0 ? '+' + fmtPrecio(r.difMejor) : '-' }}</td>
                   <td class="p-2 text-center">{{ r.nPrecios || '-' }}</td>
-                  <td class="p-2 font-mono text-slate-500">{{ fmtFecha(r.ultimoUso) }}<span v-if="r.ultimoAfi" class="ml-1 text-amber-700">(AFI {{ r.ultimoAfi }})</span></td>
+                  <td class="p-2 font-mono text-slate-500">{{ fmtFecha(r.ultimoUso) }}<span v-if="r.ultimoAfi" class="ml-1 text-amber-700">(AFI {{ r.ultimoAfi }}<span v-if="descEquipoAfi(r.ultimoAfi)" class="text-slate-500 font-sans"> · {{ descEquipoAfi(r.ultimoAfi) }}</span>)</span></td>
                   <td v-if="puedeEditar" class="p-2 text-center space-x-1">
                     <button @click="editarCodigo(r.codigo)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar precios y equipos"><i class="fa-solid fa-pen-to-square"></i></button>
                     <button v-if="isAdmin" @click="quitarAplicacion(r, g.marca + ' ' + g.modelo)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Quitar de este modelo"><i class="fa-solid fa-link-slash"></i></button>

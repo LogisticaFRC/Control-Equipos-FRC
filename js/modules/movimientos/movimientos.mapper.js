@@ -16,5 +16,6 @@ export const mapMovimiento = (item) => ({
   empresa_arriendo: String(item.empresa_arriendo || ''),
   estado: String(item.estado || ''),
   camion: String(item.camion_encargado || ''),
-  conductor: String(item.conductor_encargado || '')
+  conductor: String(item.conductor_encargado || ''),
+  locacionId: item.locacion_id ?? null
 });

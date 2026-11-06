@@ -43,6 +43,16 @@ export const equiposDelModelo = (marca, modelo) => {
   return dbEquipos.value.filter(e => claveModelo(e.marca, e.modelo) === k);
 };
 
+/** Tipo(s) de equipo del inventario con esa marca + modelo (ej. "GENERADOR"). */
+export const tipoEquipoDeModelo = (marca, modelo) => unicos(equiposDelModelo(marca, modelo).map(e => normTxt(e.tipo))).join(' / ');
+/** "GENERADOR · FG WILSON · P-100" para la cabecera de cada modelo. */
+export const tituloModelo = (marca, modelo) => [tipoEquipoDeModelo(marca, modelo), marca || 'SIN MARCA', modelo || 'SIN MODELO'].filter(Boolean).join(' · ');
+/** Descripción corta de un AFI: "GENERADOR FG WILSON P-100". */
+export const descEquipoAfi = (afi) => {
+  const e = dbEquipos.value.find(x => String(x.afi).trim().toUpperCase() === String(afi || '').trim().toUpperCase());
+  return e ? [e.tipo, e.marca, e.modelo].filter(Boolean).join(' ').toUpperCase() : '';
+};
+
 // ---------- Catálogo: una entrada por código (precios por proveedor + equipos donde se usa) ----------
 export const catalogo = computed(() => {
   const map = new Map();
@@ -71,6 +81,8 @@ export const catalogo = computed(() => {
     c.mejorProveedor = vals.length ? provs.find(p => c.precios[p].precio === c.min) : '';
     c.ahorro = c.max - c.min;
     c.modelos = unicos(c.aplicaciones.map(a => `${a.equipoMarca} ${a.equipoModelo}`.trim()));
+    // Igual que modelos, pero con el tipo de equipo adelante (para mostrar)
+    c.modelosTxt = unicos(c.aplicaciones.map(a => [tipoEquipoDeModelo(a.equipoMarca, a.equipoModelo), a.equipoMarca, a.equipoModelo].filter(Boolean).join(' ').trim()));
   });
   return map;
 });
