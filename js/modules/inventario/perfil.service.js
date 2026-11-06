@@ -59,9 +59,12 @@ export const causaMasFrecuenteEquipo = (afi) => {
 };
 
 // ---------- Abrir / guardar ----------
+let horoOriginal = { h: 0, f: '' };
 export const abrirPerfilEquipo = (equipo) => {
   perfilEquipo.value = JSON.parse(JSON.stringify(equipo));
   perfilEquipo.value.fechaHorometroManual = normalizarFecha(equipo.fechaHorometroManual) || hoyISO();
+  // Valores originales del horómetro manual: "Guardar perfil" solo los envía si el usuario los cambió
+  horoOriginal = { h: Number(equipo.horometroActual) || 0, f: normalizarFecha(equipo.fechaHorometroManual) || '' };
   perfilEquipo.value.empresaArriendo = empresaDe(equipo);
   perfilEquipo.value.sel = selDesdeLocacion(equipo.locacionId);   // Empresa → Área → Sector → Locación (módulo Áreas)
   resetFiltrosPerfil();
@@ -94,10 +97,14 @@ export const guardarPerfilEquipo = async () => {
     ubicacion: locId ? textoUbicacion(locId) : p.ubicacion,
     disponibilidad: p.disponibilidad, gps: p.gps, imei_gps: p.imei_gps,
     empresa_arriendo: esFueraDeServicio(p) ? EMPRESA_TALLER : (empresaTxt || null),
-    horometroactual: parseNum(p.horometroActual),
-    fecha_horometro_manual: formatIsoDateForSupabase(p.fechaHorometroManual),
     frecuencia_mantencion: Math.round(parseNum(p.frecuenciaMantencion)) || 250
   };
+  // Horómetro manual: solo si el usuario lo modificó (así guardar la ubicación u otros datos no lo pisa)
+  const hNuevo = parseNum(p.horometroActual), fNueva = normalizarFecha(p.fechaHorometroManual) || '';
+  if (hNuevo !== horoOriginal.h || (fNueva !== horoOriginal.f && hNuevo > 0)) {
+    payload.horometroactual = hNuevo;
+    payload.fecha_horometro_manual = formatIsoDateForSupabase(p.fechaHorometroManual);
+  }
   // Solo se envía locacion_id si se eligió una o si se quitó la que tenía (así funciona aunque falte sql/areas.sql)
   if (locId || p.locacionId != null) payload.locacion_id = locId;
   if (!payload.afi) return alert("El AFI no puede quedar vacío.");

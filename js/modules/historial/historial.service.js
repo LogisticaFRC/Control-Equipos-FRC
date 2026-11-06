@@ -176,16 +176,9 @@ export const guardarMantencionForm = async () => {
   // 2) Registrar los filtros en el módulo FILTROS (catálogo por marca/modelo, precios y referencias cruzadas)
   let aviso = await registrarFiltrosDesdeMantencion(equipoObj, filtrosValidos, payload.fecha, afiLimpio);
 
-  // 3) Si el horómetro es mayor al del equipo, actualizarlo JUNTO con su fecha
-  //    (antes se actualizaba solo el valor y quedaba la fecha vieja -> cálculo de hrs/día erróneo)
-  const nuevoH = parseNum(f.horometro);
-  if (equipoObj && nuevoH > Number(equipoObj.horometroActual || 0)) {
-    try {
-      await sb(supabaseClient.from(TABLA_INVENTARIO).update({ horometroactual: nuevoH, fecha_horometro_manual: payload.fecha }).eq('id', equipoObj.id));
-    } catch (err) {
-      aviso += "\n(Atención: no se pudo actualizar el horómetro del equipo: " + errMsg(err) + ")";
-    }
-  }
+  // 3) (2026-11-06) Ya NO se copia el horómetro de la mantención al "Último horómetro tomado (manual)"
+  //    del equipo: ese dato solo lo cambia el usuario desde el Perfil (botón Actualizar horómetro).
+  //    El cálculo de horómetros igual considera el historial (core/horometros.js).
 
   await cargarDatosDesdeSupabase();
 
