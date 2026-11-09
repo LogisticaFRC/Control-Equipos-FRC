@@ -24,7 +24,8 @@ js/
   modules/
     dashboard/                 ← DASHBOARD
     inventario/                ← INVENTARIO AFI (+ Perfil de Equipo y modal Nuevo Equipo)
-    programas/                 ← PROGRAMAS (+ modales Crear Programa / Asignar Equipo)
+    programas/                 ← PROGRAMAS Mantención / Reparación (+ modales Crear Programa / Asignar Equipo)
+    taller/                    ← TALLER: naves de reparación (tarjetas con foto y % de avance, OT para mecánicos)
     minutas/                   ← MINUTAS (mejora continua semanal: carpetas Año → Mes, dashboard por minuta y general, importar Word/Excel, exportar)
     areas/                     ← ÁREAS Y LOCACIONES (Empresa → Área → Sector → Locación → AFI) + selector en cascada reutilizable
     movimientos/               ← MOVIMIENTOS (+ modal Registrar Movimiento)
@@ -44,7 +45,7 @@ Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú s
 | Área | Módulos |
 |---|---|
 | Inicio | Bienvenida ("Bienvenido al Sistema de Gestión FRC" + logo grande). Es la primera pantalla al iniciar sesión; también se llega haciendo clic en el logo del header |
-| Operaciones | Dashboard, Inventario AFI, Programas, Minutas, Áreas y Locaciones, Movimientos, Historial, Control Aceites, Filtros, Bodega Filtros |
+| Operaciones | Dashboard, Inventario AFI, Programas Mantención, Programas Reparación (Taller), Minutas, Áreas y Locaciones, Movimientos, Historial, Control Aceites, Filtros, Bodega Filtros |
 | Ventas · Seguridad · RRHH · Finanzas · Administración | En construcción (pantalla "Próximamente") |
 | General | Formatos, Config & Usuarios |
 
@@ -95,6 +96,61 @@ Los módulos se abren con el botón ☰ (esquina superior izquierda). El menú s
 - Permisos: crear/editar = Subadmin o Admin de Operaciones · anular/eliminar = Admin.
 - Si cambia el Excel del formato: reemplazar `plantillas/FORMATO_OT.xlsx` y ejecutar
   `python tools/generar_formato_ot.py plantillas/FORMATO_OT.xlsx js/modules/ot/ot.formato.js` (las celdas de datos están definidas en ese script).
+
+## 🏭 Programas separados + Taller de reparación (2026-11-05)
+
+> ⚠️ Ejecutar una vez **`sql/taller.sql`** en Supabase (crea `bd_taller_reparaciones` y agrega `bd_ot.reparacion_id`).
+> Si después se vuelve a ejecutar `seguridad_paso1_auth_rls.sql`, la tabla nueva ya está en su lista.
+
+**Menú (Operaciones → Gestión operacional):** el antiguo *Programas* ahora son dos submódulos:
+- **Programas Mantención** (`#progMantencion`): carpeta Mantención, tabla, Gantt, kits, sincronizar con Historial (igual que antes).
+- **Programas Reparación** (`#progReparacion`): pestañas **Taller · Naves** y **Programas y Gantt** (la vista de siempre, solo Reparación, con columna nueva **TALLER**).
+- El enlace antiguo `#programas` abre Programas Mantención. El modal *Asignar Equipo* solo ofrece programas del submódulo donde se abrió.
+
+**Taller · Naves** (pensado para el PC del taller, letra y botones grandes, botón *Pantalla completa*):
+- Tarjeta grande por **NAVE** con la **foto del equipo** (campo `foto` del Inventario), AFI, programa, OT, tiempo en nave y **% de avance**
+  (= actividades de sus OT con fecha de término / actividades escritas). Se refresca sola cada 45 s (se pausa con una ventana abierta).
+- **Nave vacía** → *Ingresar equipo*: lista los equipos del **programa de reparación** (seleccionado arriba; por defecto el vigente) que faltan,
+  primero los **recomendados** (programados en esa nave y con fecha de inicio ya cumplida); también los que están en espera y
+  **“Equipo nuevo · agregar a nave”** (AFI que no está en el programa → queda además en **Equipos reparación sin programa**, columna derecha).
+- **REPARAR** (o clic en la foto): muestra la OT del equipo con sus actividades como casillas grandes. Al marcar una actividad se guarda
+  la fecha y hora de término en la OT (igual que en el papel); se pueden agregar actividades (máx. 20, como el formato) y el ejecutante.
+  Si no tiene OT: *Crear OT y empezar* (folio manual, sugerido el mayor + 1, tipo Correctiva) o enlazar una OT existente del mismo AFI.
+- **Sacar**: pregunta **¿quedó reparado?**
+  - **Sí** → la nave queda libre, el equipo queda **Disponible** en el Inventario y **REPARADO** en el programa.
+  - **No** → se escribe **qué le falta** (sugiere las actividades pendientes) y opcionalmente se agrega como actividades pendientes en la OT.
+    Queda en **Salieron con faltantes** (con su OT y pendientes) para reingresarlo a una nave.
+- Al ingresar a una nave, el equipo pasa a **En Mantencion** en el Inventario.
+- Abajo: **Resumen de reparación** del programa (Por ingresar · En nave · Con faltantes · Listos) y **OT de reparación** (dónde está cada equipo y avance).
+- Una nave = un equipo (índice único en la BD: si dos PC intentan ocupar la misma nave, el segundo recibe aviso).
+
+**Órdenes de Trabajo:** en el editor hay un cuadro **Programa de reparación / Taller** para enlazar la OT a un equipo del programa de
+reparación o a *Equipos reparación sin programa* (opción **“+ Agregar a Equipos reparación sin programa”** si el AFI no está en el programa).
+La lista de OT tiene la columna **Taller**. Las actividades terminadas de la OT suman al % de la nave.
+
+Permisos: ver = todos · ingresar/sacar/marcar actividades = Subadmin o Admin de Operaciones · quitar de la lista = Admin.
+Archivos: `js/modules/taller/` (`taller.service.js`, `taller.template.js`, `taller.view.js`, `reparacion.view.js`), `sql/taller.sql`.
+⚠️ La sesión se cierra a los 5 min sin actividad (`core/sesion.js`): en el PC del taller los mecánicos tendrán que volver a entrar si nadie lo toca.
+
+### Taller v2 (2026-11-05): OT del mecánico, problemas nuevos, firmas y "sacar por error"
+
+> ⚠️ Ejecutar una vez **`sql/taller_firmas_problemas.sql`** (columna `bd_ot.firmas` y tabla `bd_taller_problemas`).
+
+- **REPARAR**: el mecánico **no crea OT**. Ve las OT ya creadas del AFI y presiona **Unir esta OT**. Operaciones (Subadmin/Admin)
+  también puede unirla desde *Órdenes de Trabajo → Programa de reparación / Taller*; apenas se une, le aparece al mecánico.
+  Si no hay OT, se le avisa que Operaciones debe crearla. Solo el **Admin** puede crear la OT desde el taller (cuadro plegado "Crear la OT aquí").
+- En la OT unida, el mecánico completa (se guarda solo al escribir): **ejecutante, F. inicio, F. término, H. inicio, H. término** de cada actividad,
+  **insumos** (aceites/lts, repuestos, fecha, retira), **personal asignado** (nombre, cargo, firma), **pauta** y **mecánico / supervisor responsable con firma**.
+  La descripción de las actividades solo la cambia el Admin (y solo él agrega o quita actividades).
+- **Enviar nuevo problema para OT**: el mecánico escribe lo que encontró; queda *Esperando al Admin*. El Admin lo ve en la tarjeta de la nave y en
+  el panel **Problemas nuevos para OT**; lo corrige si quiere y lo **agrega a la OT** como actividad, o lo **rechaza** (con motivo).
+- **Firmas** dibujadas con el mouse o con el dedo (pantalla touch). Se ven sobre la hoja de la OT (editor e impresión). El Excel exportado no las incluye
+  (usar Imprimir → Guardar como PDF).
+- **Sacar por error / prueba** (solo Admin): deshace el ingreso a la nave sin marcar reparado ni faltantes; el equipo vuelve a su estado y
+  disponibilidad anteriores. Si la reparación se creó solo para ese ingreso (sin OT ni problemas), se borra.
+- Componente reutilizable: `js/core/firma-pad.js` (`<firma-pad>`).
+- **Aceites y repuestos** (en REPARAR): *Aceites utilizados* = filas 1 a 4 de insumos del formato; *Repuestos utilizados* = desde la fila 5,
+  con botón **Agregar repuesto** sin límite. En la hoja caben 6 repuestos; los demás se imprimen en una **hoja anexa** (el Excel exportado solo lleva las 10 filas del formato).
 
 ## 🔒 Seguridad (Supabase Auth + RLS) — actualizado 2026-11-03
 
@@ -412,3 +468,109 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Selector en Perfil, Movimientos y Cambiar: 4 listas (Empresa, Área, Sector, Locación), cada una con *➕ Crear nuevo…*. Si un nivel tiene una sola opción, se elige sola.
 - Mover: área → otra empresa, sector → otra área, locación → otro sector. El Excel incluye la columna SECTOR.
 - **Exportar Excel (Áreas):** hoja *Equipos* (Empresa, Área, Sector, Locación, AFI, equipo, estado, horómetro, **Latitud, Longitud, Georreferencia** propia/aprox./sin y enlace *Google Maps*) + hoja *Georreferencias* (cada empresa, área, sector y locación con sus coordenadas, cantidad de equipos y enlace). Respeta la carpeta abierta.
+
+## Programas de Reparación: editar equipos asignados (2026-11-05)
+- En la *Vista de Tabla por Naves* cada fila tiene un botón **Editar** (lápiz) en ACCIONES, visible para admin y subadmin. Eliminar (papelera) sigue siendo solo admin.
+- Abre el modal de asignación en modo edición: se puede cambiar Programa, Equipo (AFI), Nave, Condición, **Tipo Trabajo**, Fecha Inicio y Fecha Fin. No cambia el estado ON/OFF.
+- Valida que la fecha fin no sea anterior a la fecha inicio. No requiere SQL (usa columnas existentes de `bd_programas_items`).
+- Favicon: la pestaña del navegador muestra el logo de la empresa (index.html + main.js, se sincroniza con el logo de Config & Usuarios).
+
+## Taller · OT: quitar enlace, no unir OT antiguas, asignar programa al crear (2026-11-05)
+- **Quitar OT del taller:** botón *Quitar* en la tabla "OT de reparación" y *Quitar OT N del taller* dentro de Actividades (admin y subadmin). La OT no se borra: solo pierde el enlace (`bd_ot.reparacion_id = null`) y **deja de contar** en el % de avance de la reparación/nave. También se puede desde Órdenes de Trabajo eligiendo "Sin enlace (OT normal)".
+- **Unir OT desde la nave:** solo se ofrecen OT del AFI **pendientes** (no registradas en el Historial) y con fecha desde 7 días antes del inicio del programa (o de la creación de la reparación si es "sin programa"). Así no se une una OT antigua.
+- **Crear OT:** al guardar una OT nueva sin enlace, si su AFI está en un programa de reparación **vigente** (y no reparado), pregunta si se asigna a ese programa. El selector "Programa de reparación / Taller" sigue disponible para elegirlo a mano.
+- **Imprimir OT:** márgenes de 0,25" y la hoja se escala automáticamente para ocupar toda la hoja carta.
+- **Inactividad:** el cierre de sesión por inactividad pasó de 5 a **10 minutos** (`INACTIVIDAD_MS` en core/sesion.js).
+- No requiere SQL.
+
+## Seguridad · Control Entrega EPP (2026-11-05)
+
+> ⚠️ Ejecutar **`sql/epp.sql`** en Supabase → SQL Editor (crea `bd_trabajadores` y `bd_epp_entregas`, y carga los 24 trabajadores y 29 entregas de la planilla *CONTROL ENTREGA EPP.xlsx*). Se puede repetir sin duplicar.
+
+- Menú **Seguridad → Control Entrega EPP** (reemplaza "Inicio Seguridad"). Archivos: `js/modules/epp/` (mapper, service, template, view).
+- **Trabajadores** (tarjetas): nombre, cargo, RUT, tallas, EPP sin entregar nunca, perfil incompleto, última entrega. Filtros por texto, cargo y estado (activos / con EPP sin entregar / inactivos).
+- **Perfil**: cada elemento con su talla y la **última entrega** (fecha y hace cuánto) + historial completo. Botones Entregar EPP, Editar, Ficha (Excel con columna de firma) y Eliminar (Admin; mejor marcar INACTIVO para conservar el historial).
+- **Nuevo / Editar trabajador**: nombre, RUT, cargo, activo, observaciones y, por cada elemento, si lo **requiere** + su talla (atajo "misma talla en toda la ropa").
+- **Entregar EPP**: fecha, motivo (inicial, reposición, deterioro, pérdida), observaciones y los elementos entregados con talla y cantidad → una fila por elemento en `bd_epp_entregas`. Si se entrega otra talla o un elemento no requerido, actualiza el perfil (opcional).
+- **Planilla EPP**: matriz como el Excel (talla / SI / N/A + última fecha). Clic en una celda = entregar ese elemento.
+- **Historial de entregas**: todas las entregas con filtros (texto, elemento, motivo, fechas). Eliminar registro: solo Admin.
+- **Exportar Excel**: hojas *Planilla EPP*, *Control entrega* (última fecha por elemento y pendientes) e *Historial entregas*.
+- Elementos: calzado, buzo, pantalón, polera, parka, primera capa, guantes cabritilla, guantes multiflex, guante soldador, lente claro, lente oscuro, respirador, fonos y tapón auditivo (`ELEMENTOS_EPP` en epp.mapper.js; para agregar uno se suma ahí).
+- Importación: "GUANTES = SI" de la planilla → requiere cabritilla y multiflex (soldador queda en NO). Los trabajadores que solo estaban en la hoja de control (Juvenal Silva, Víctor Soto, Felipe Viveros, Abel Muñoz, Sebastián Díaz) quedan con perfil incompleto (sin tallas). Felipe Viveros estaba repetido: quedó uno solo.
+- Permisos: ver = todos · crear/editar/entregar = Subadmin o Admin de **Seguridad** (o de RRHH) · eliminar = Admin.
+- **RRHH**: `bd_trabajadores` está pensada como la base de trabajadores; cuando exista RRHH se le agregan columnas y este módulo sigue funcionando.
+
+## Taller · OT de reparación por programa + pestaña "OT enlazadas" (Admin) (2026-11-05)
+
+- La tabla **OT de reparación** del Taller muestra solo las OT de equipos del **programa que se está viendo** (selector "Programa" de arriba).
+- Nueva pestaña **OT enlazadas** junto a *Taller · Naves* y *Programas y Gantt*, **solo para el Admin**: todas las OT enlazadas al taller (cualquier programa y "Sin programa"), con filtro por programa y búsqueda por folio/AFI. Botones Formato y Quitar.
+- Archivos: `taller/enlaces.view.js` (pestaña), cambios en `taller.service.js` (`otsTallerPrograma`), `taller.template.js`, `reparacion.view.js`. No requiere SQL.
+- (Se descartó la bitácora de enlaces: `sql/ot_enlaces.sql` y `taller/enlaces.service.js` ya no se usan y se pueden borrar.)
+
+## Programa de Mantención: firmas al exportar (2026-11-05)
+- **Exportar Programa (Excel)** de Mantención agrega al pie de las hojas *Mantención* y *Carta Gantt* el bloque de firmas: espacio para firmar, línea, "FIRMA", nombre y cargo — **IGNACIO NEIRA · JEFE DE OPERACIONES** (izquierda) y **BRANDON PÉREZ · JEFE SERVICIO TÉCNICO** (derecha), del mismo largo y centradas en cada mitad de la hoja.
+- Para cambiar nombres o cargos: `FIRMAS_PROGRAMA` en `js/core/excel.js`. La función `bloqueFirmas(ws, firmas)` se puede reutilizar en otros Excel (1 a 3 firmas). No requiere SQL.
+
+## Minutas: nuevo formato de exportación para enviar (2026-11-05)
+- La hoja **Minuta** del Excel (Exportar minuta y Exportar todo) tiene un formato nuevo, centrado y simétrico (grilla de 40 columnas):
+  - Encabezado con logo y títulos **centrados**; pie de página con nombre de la minuta y "Página X de N".
+  - **Datos**: fecha de reunión, total de tareas, responsables y secciones.
+  - **Resumen de cumplimiento**: 8 tarjetas (Total, Realizado, En proceso, Pendiente, No realizado, Vencidas, A tiempo, % Cumplimiento) + barra de avance.
+  - **Resumen por responsable**: total, realizado, en proceso, pendiente, no realizado, vencidas y % por persona.
+  - **Detalle de tareas** por sección (cada sección con su n° de tareas y % cumplido) y nueva columna **SITUACIÓN** ("VENCIDA hace X días", "Vence en X días", "Vence HOY", "Realizada a tiempo", "Realizada con X días de atraso"...). Filas vencidas en rojo, estado con color.
+  - Sin líneas de cuadrícula; el alto de las filas se ajusta al texto; al imprimir se repite el encabezado de la tabla en cada página.
+- En todas las hojas de Minutas los títulos y los gráficos quedan centrados. Archivo: `js/modules/minutas/minutas.export.js`. No requiere SQL.
+
+## Horómetro manual: ya no se sobrescribe solo (2026-11-06)
+- Antes, al guardar una mantención/inspección en el Historial con un horómetro mayor, el sistema copiaba ese horómetro y su fecha al campo **"Último horómetro tomado (manual)"** del equipo. **Se quitó**: ese campo ahora solo cambia cuando el usuario lo edita en el Perfil (*Actualizar horómetro* o *Guardar*).
+- *Guardar perfil* solo envía el horómetro manual y su fecha **si se modificaron** y ambos están completos.
+- Si el equipo no tiene fecha de horómetro manual, el campo queda **vacío** (antes se rellenaba con la fecha de hoy y al guardar quedaba una fecha falsa, ej. 9439 hrs del 07-10 guardado como 02-11). *Actualizar horómetro* exige la fecha y no acepta fechas futuras.
+- El cálculo (horas aprox., próxima mantención) sigue usando el historial como antes (`core/horometros.js`).
+- Archivos: `historial/historial.service.js`, `inventario/perfil.service.js`. No requiere SQL. Los equipos que ya quedaron con el dato cambiado se corrigen a mano en su Perfil.
+
+## Programas: editar nombre y fechas (2026-11-06)
+- En la lista de programas (Mantención y Reparación) cada programa tiene un botón **lápiz** (solo Admin) que abre el mismo formulario de "Crear Programa" en modo **Editar**: nombre, subcarpeta, fecha inicio y fecha término. Los equipos asignados no se tocan.
+- Si se cambia el **nombre**, también se actualiza `uso_de_art` de las mantenciones del Historial que tenían ese programa (el enlace Programa ↔ Historial es por nombre), avisando cuántas son. No permite dos programas con el mismo nombre.
+- Archivos: `programas/programas.service.js` (`abrirModalEditarPrograma`, `guardarEdicionPrograma`), `programas.template.js`, `modal-programa.template.js`. No requiere SQL.
+
+## Movimientos editables + datos del equipo; Filtros con tipo/marca/modelo (2026-11-06)
+- **Movimientos:** nueva columna **EQUIPO (tipo · marca · modelo)**; la columna TIPO pasa a llamarse **TIPO MOVIMIENTO**. Columna **EDITAR** (solo Admin): abre el mismo formulario en modo edición (fecha, tipo, origen, destino —texto guardado o nueva locación de Áreas—, estado, camión, conductor). Casilla opcional *Actualizar también el equipo*: solo en el último movimiento del equipo. La política RLS existente (Admin de Operaciones) ya permite editar.
+- **Registrar movimiento:** al elegir el AFI muestra **Tipo equipo, Marca y Modelo**; la lista de AFI también los muestra.
+- **Filtros:** la referencia cruzada muestra en la cabecera **TIPO · MARCA · MODELO**, los botones dicen "AFI xxx" (con tooltip del equipo); "Último uso (AFI xxx)" agrega el equipo; el comparativo muestra los equipos como "TIPO MARCA MODELO".
+- Archivos: `movimientos/` (service, mapper, template, modal), `filtros/filtros.service.js`, `filtros/filtros.template.js`. No requiere SQL.
+
+## 2026-11-09 · Minutas: eliminar filas (Subadmin) y N° Item con "Guardar cambios"
+- **Eliminar filas**: el botón 🗑 de cada tarea ahora lo ven Admin y Subadmin (Subadmin solo en la última minuta, como el resto de la edición). La política RLS de `bd_minutas_items` ya permitía borrar con nivel subadmin: no requiere SQL.
+- **N° Item en borrador**: al escribir un N° la fila ya no salta de posición. El N° queda marcado en ámbar y aparece el botón **Guardar cambios (n)** (y **Descartar**). Al guardar se graban los N° en Supabase y recién ahí las filas se ordenan.
+- Si se cambia de minuta con N° sin guardar, se pide confirmación.
+- Archivos: `minutas.service.js` (nItemVisible, cambiarNItem, nItemPendiente, cambiosNItem, guardarCambiosNItem, descartarCambiosNItem; eliminarTarea usa soloEditor) y `minutas.template.js`.
+
+## 2026-11-09 · Minutas: mover secciones ▲▼ · Excel de Programas con hoja "Inicio" (dashboard)
+- **Minutas – mover secciones (títulos):** cada título amarillo tiene flechas ▲▼ (Admin en cualquier minuta, Subadmin solo en la última). El orden se guarda en la columna nueva `orden_seccion` de `bd_minutas_items` y se copia al crear la minuta siguiente. Si una tarea cambia de sección, toma la posición de esa sección (sección nueva → queda al final). **Requiere ejecutar `sql/minutas_orden_secciones.sql`** (sin eso, las flechas avisan que falta la columna y todo lo demás sigue funcionando).
+- **Programas → Exportar Excel:** ahora la primera pestaña es **Inicio** con un dashboard:
+  - Reparación (antes de las pestañas por nave): KPI (equipos, reparados, pendientes, atrasados, % avance, % tiempo transcurrido, fuera de vigencia), gráficos (estado general, avance por nave, equipos por tipo, carga del taller por día) y tablas (resumen por nave, por condición, equipos atrasados).
+  - Mantención: KPI (programados, realizadas, % cumplimiento, pendientes, atrasadas, % a tiempo, próximos 7 días, pendientes sin kit en bodega), gráficos (estado, programado vs realizado acumulado, por tipo, por ubicación) y tablas (por tipo, atrasadas, próximos 7 días).
+  - Los gráficos se dibujan con Chart.js y se insertan como imagen. Helper nuevo `hojaDashboard` / `graficoPNG` en `core/excel.js`; armado en `programas/programas.dashboard.js`.
+- Archivos: `minutas.service.js`, `minutas.template.js`, `sql/minutas_orden_secciones.sql`, `core/excel.js`, `programas/programas.dashboard.js` (nuevo), `programas/programas.service.js`.
+
+## 2026-11-09 · Nuevo módulo VEHÍCULOS (Operaciones → Equipos → Vehículos)
+- **Qué es un vehículo:** todo equipo de `BD_INVENTARIO` cuyo AFI es una **patente con formato XXXX-XX** (ej. `RTZK-45`). Se detecta solo (`esVehiculo` en `inventario/inventario.mapper.js`). Los vehículos **ya no aparecen en Inventario AFI** (ahí hay un botón "Vehículos (N)" que lleva al módulo); en Movimientos, Historial, Programas y OT siguen funcionando igual con la patente como AFI.
+- **N° AFI:** cada vehículo tiene su N° AFI interno (`bd_vehiculos.numero_afi`), que se muestra como "AFI: 615" en la tarjeta y el perfil. La patente sigue siendo la clave en todo el sistema.
+- **Tarjetas** (como Inventario): foto, placa con la patente, estado, ubicación/empresa, bloque **Kilometraje**, bloque **Horómetro** y los 3 documentos principales con su estado.
+- **Kilometraje** — mismo cálculo que el horómetro (`calcularKm` en `vehiculos.service.js`):
+  uso km/día = (último km tomado − km última mantención) / días (si no: penúltima vs última mantención; si no: últimas 2 lecturas; si no: 80 km/día).
+  Km aprox. hoy = último km + días × uso · Meta = km última mantención + frecuencia (por defecto 10.000 km, editable por vehículo) · Estado AL DÍA / PRÓXIMO (≤ 1.000 km) / ¡PASADO! · fecha aproximada.
+  Se registran **lecturas** o **mantención realizada** (esta fija el punto de partida de la meta). Historial de lecturas con km recorridos; eliminar = Admin.
+- **Horómetro:** el mismo del Perfil de Equipo (`BD_INVENTARIO.horometroactual`); se puede actualizar desde el perfil del vehículo. La mantención por horas sigue saliendo del Historial.
+- **Documentos:**
+  - **Principales:** Revisión Técnica, Permiso de Circulación y SOAP (12 meses por defecto).
+  - **Secundarios:** cualquier otro (padrón, revisión de gases, certificados, etc.).
+  - Cada documento: emisión, **duración** (días / meses / años), **vencimiento** (= emisión + duración, o escrito a mano), **aviso X días antes** (30 por defecto), N°/folio, archivo (Storage `archivos_frc/vehiculos/<PATENTE>/`) y observación.
+  - Estados: VIGENTE · POR VENCER (dentro de los días de aviso) · VENCIDO · SIN CARGAR. Se muestra el tiempo restante ("Quedan 15 días", "Vencido hace 5 días").
+  - **Renovar** = cargar uno nuevo; el anterior queda como historial. Corregir = Subadmin/Admin; eliminar = Admin.
+- **Avisos:** tarjetas de resumen (vencidos, por vencer, sin cargar, mantención por km y por horómetro) y una lista de **Avisos** ordenada por urgencia; clic abre el perfil en la pestaña correspondiente. Filtros por aviso, estado, búsqueda y orden "Más urgentes primero".
+- **Agregar vehículo:** crea el registro en `BD_INVENTARIO` (AFI = patente, se formatea sola a XXXX-XX) + N° AFI, km inicial y frecuencias.
+- **Exportar Excel:** hojas *Vehículos*, *Documentos* y *Avisos* con colores por estado.
+- Permisos: ver = todos · crear/editar/registrar km/subir documentos = Subadmin o Admin de **Operaciones** · eliminar = Admin.
+- **Requiere ejecutar `sql/vehiculos.sql`** en Supabase (tablas `bd_vehiculos`, `bd_vehiculos_km`, `bd_vehiculos_documentos` + RLS). Sin eso, los vehículos se ven igual pero sin km ni documentos (aparece un aviso).
+- Archivos: `js/modules/vehiculos/` (nuevo: mapper, service, template, view), `sql/vehiculos.sql` (nuevo), `core/menu.js`, `core/tablas.js`, `main.js`, `inventario/inventario.mapper.js`, `inventario.service.js`, `inventario.template.js`.

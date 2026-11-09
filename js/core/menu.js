@@ -7,6 +7,7 @@
 //   placeholder: true → muestra la pantalla "En construcción" del área.
 // =====================================================================
 import { dbEquipos, dbMovimientos, dbIntervenciones, dbOC, dbLocaciones } from './store.js';
+import { esVehiculo } from '../modules/inventario/inventario.mapper.js';
 
 const { ref } = Vue;
 
@@ -31,7 +32,8 @@ export const AREAS = [
       { key: 'progReparacion', grupo: 'gestion', label: 'Programas Reparación', icon: 'fa-warehouse' },   // Taller (naves) + programas/Gantt
       { key: 'minutas', grupo: 'gestion', label: 'Minutas', icon: 'fa-clipboard-list' },
 
-      { key: 'inventario', grupo: 'equipos', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.length },
+      { key: 'inventario', grupo: 'equipos', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.filter(e => !esVehiculo(e)).length },
+      { key: 'vehiculos', grupo: 'equipos', label: 'Vehículos', icon: 'fa-car-side', count: () => dbEquipos.value.filter(esVehiculo).length },   // AFI = patente XXXX-XX
       { key: 'areas', grupo: 'equipos', label: 'Áreas y Locaciones', icon: 'fa-sitemap', count: () => dbLocaciones.value.filter(n => n.tipo === 'LOCACION').length },
       { key: 'movimientos', grupo: 'equipos', label: 'Movimientos', icon: 'fa-truck-ramp-box', count: () => dbMovimientos.value.length },
 

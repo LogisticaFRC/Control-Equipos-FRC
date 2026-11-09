@@ -26,6 +26,20 @@ export const mapEquipo = (item) => ({
   horometros: null
 });
 
+// ---------- Vehículos (AFI = PATENTE "XXXX-XX") ----------
+/** Un equipo es VEHÍCULO si su AFI es una patente con formato XXXX-XX (ej. "RTZK-45"). Van al módulo Vehículos. */
+const RE_PATENTE = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/;
+export const esPatente = (v) => {
+  const s = String(v || '').trim().toUpperCase().replace(/\s+/g, '');
+  return RE_PATENTE.test(s) && /[A-Z]/.test(s);
+};
+export const esVehiculo = (e) => esPatente(e?.afi);
+/** "rtzk45" / "RTZK 45" / "rtzk-45" → "RTZK-45" (si no calza con el formato, se devuelve en mayúsculas). */
+export const normalizarPatente = (v) => {
+  const s = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return s.length === 6 ? `${s.slice(0, 4)}-${s.slice(4)}` : String(v || '').trim().toUpperCase();
+};
+
 // ---------- Empresa arrendada ----------
 /** Un equipo FUERA DE SERVICIO siempre está en "TALLER FRC". */
 export const EMPRESA_TALLER = 'TALLER FRC';

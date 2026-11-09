@@ -21,6 +21,7 @@ import MinutasView from './modules/minutas/minutas.view.js';
 import OtView from './modules/ot/ot.view.js';
 import OcView from './modules/oc/oc.view.js';
 import EppView from './modules/epp/epp.view.js';
+import VehiculosView from './modules/vehiculos/vehiculos.view.js';
 import AreasView from './modules/areas/areas.view.js';
 import SelectorLocacion from './modules/areas/selector-locacion.view.js';
 import DocumentosCarpeta from './modules/formatos/documentos-carpeta.view.js';
@@ -142,6 +143,7 @@ const template = /* html */ `
       <inicio-view v-if="currentTab === 'inicio'"></inicio-view>
       <dashboard-view v-if="currentTab === 'dashboard'"></dashboard-view>
       <inventario-view v-if="currentTab === 'inventario'"></inventario-view>
+      <vehiculos-view v-if="currentTab === 'vehiculos'"></vehiculos-view>
       <programas-view v-if="currentTab === 'progMantencion'" tipo="MANTENCION"></programas-view>
       <reparacion-view v-if="currentTab === 'progReparacion'"></reparacion-view>
       <minutas-view v-if="currentTab === 'minutas'"></minutas-view>
@@ -245,6 +247,7 @@ app.component('BodegaView', BodegaView);
 app.component('MinutasView', MinutasView);
 app.component('OtView', OtView);
 app.component('OcView', OcView);
+app.component('VehiculosView', VehiculosView);   // Operaciones → Vehículos (AFI = patente XXXX-XX)
 app.component('EppView', EppView);   // Seguridad → Control Entrega EPP
 app.component('AreasView', AreasView);
 app.component('SelectorLocacion', SelectorLocacion);   // Empresa → Área → Locación (Perfil, Movimientos, Áreas)

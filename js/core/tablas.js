@@ -27,5 +27,8 @@ export const TABLAS = {
   TALLER_PROBLEMAS: 'bd_taller_problemas',    // TALLER: "nuevo problema para OT" que envía el mecánico y procesa el Admin
   TALLER: 'bd_taller_reparaciones',          // PROGRAMAS REPARACIÓN → Taller: equipos en naves / sin programa / con faltantes (bd_ot.reparacion_id)
   TRABAJADORES: 'bd_trabajadores',            // SEGURIDAD → Control Entrega EPP: ficha de cada trabajador (tallas, EPP requerido). Base futura de RRHH
-  EPP_ENTREGAS: 'bd_epp_entregas'             // SEGURIDAD → Control Entrega EPP: historial de entregas (una fila por elemento)
+  EPP_ENTREGAS: 'bd_epp_entregas',            // SEGURIDAD → Control Entrega EPP: historial de entregas (una fila por elemento)
+  VEHICULOS: 'bd_vehiculos',                  // VEHÍCULOS: datos propios de cada patente (N° AFI interno, frecuencia km, aviso)
+  VEHICULOS_KM: 'bd_vehiculos_km',            // VEHÍCULOS: lecturas de kilometraje (LECTURA / MANTENCION)
+  VEHICULOS_DOCS: 'bd_vehiculos_documentos'   // VEHÍCULOS: Revisión Técnica, Permiso de Circulación, SOAP y secundarios (con vencimiento)
 };

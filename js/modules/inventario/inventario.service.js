@@ -5,7 +5,8 @@ import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
 import { dbEquipos, cargarDatosDesdeSupabase, soloEditor, soloAdmin } from '../../core/store.js';
 import { normalizarClave, parseNum, parseStr, compararAfi, exportarCSV, getVal, tieneColumna, parseFileAnyFormat, resetInputFile, formatDateForDisplay } from '../../core/utils.js';
 import { esEquipoCritico } from '../../core/horometros.js';
-import { TABLA_INVENTARIO, empresaDe } from './inventario.mapper.js';
+import { TABLA_INVENTARIO, empresaDe, esVehiculo } from './inventario.mapper.js';
+import { currentTab } from '../../core/store.js';
 import { listaEmpresas } from '../../core/store.js';
 export { empresaDe, listaEmpresas };
 
@@ -44,7 +45,8 @@ export const resetFiltrosInventario = () => { filterInv.value = FILTRO_INV_DEFAU
 
 export const filteredEquipos = computed(() => {
   const f = filterInv.value;
-  const arr = dbEquipos.value.filter(e => {
+  // Los vehículos (AFI = patente XXXX-XX) se ven en el módulo Vehículos, no aquí
+  const arr = dbEquipos.value.filter(e => !esVehiculo(e)).filter(e => {
     const matchSearch = !f.search || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion, empresaDe(e)].join(" ").toLowerCase().includes(f.search.toLowerCase());
     const matchUbi = !f.ubicacion || String(e.ubicacion).toLowerCase().includes(f.ubicacion.toLowerCase());
     const emp = empresaDe(e);
@@ -162,9 +164,13 @@ export const importarInventarioFile = async (e) => {
   } finally { resetInputFile(e); }
 };
 
-/** Cantidad de equipos por empresa (para el filtro). */
+/** Vehículos (van en su propio módulo) y atajo para ir a verlos. */
+export const nVehiculosInv = computed(() => dbEquipos.value.filter(esVehiculo).length);
+export const irAVehiculos = () => { currentTab.value = 'vehiculos'; };
+
+/** Cantidad de equipos por empresa (para el filtro). Sin vehículos. */
 export const conteoPorEmpresa = computed(() => {
   const m = {};
-  dbEquipos.value.forEach(e => { const k = empresaDe(e) || 'SIN'; m[k] = (m[k] || 0) + 1; });
+  dbEquipos.value.filter(e => !esVehiculo(e)).forEach(e => { const k = empresaDe(e) || 'SIN'; m[k] = (m[k] || 0) + 1; });
   return m;
 });
