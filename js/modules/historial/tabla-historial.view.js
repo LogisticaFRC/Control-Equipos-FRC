@@ -8,7 +8,7 @@
 import { comunes } from '../../core/comunes.js';
 import { editarMantencion, eliminarMantencion } from './historial.service.js';
 import { detalleOCsMantencion, totalOCMantencion, fmtCLP, irAOC } from '../oc/oc.service.js';
-import { categorizar, minutosTrabajo, fmtMin } from '../../core/analisis-fallas.js';
+import { categorizar, minutosTrabajo, fmtMin, piezaMotivoTexto } from '../../core/analisis-fallas.js';
 import { claseMantencion } from '../../core/horometros.js';
 
 const { ref, computed, watch } = Vue;
@@ -113,6 +113,7 @@ export default {
       { l: 'Costo', v: '$' + Number(i.costo || 0).toLocaleString('es-CL'), cls: 'font-bold text-emerald-700' },
       { l: 'Interferencia', v: i.interferencia || '-' },
       { l: 'Sistema detectado', v: cat(i).label + (cat(i).otras.length ? ' (también: ' + cat(i).otras.map(k => k.toLowerCase()).join(', ') + ')' : '') },
+      { l: 'Pieza · motivo detectado', v: piezaMotivoTexto(i), cls: 'text-rose-800 font-semibold' },
       { l: 'Aceites', v: i.aceites || '-', cls: 'text-amber-800 font-semibold' },
       { l: 'Causa detallada', v: i.causaDetallada || '-', ancho: true },
       { l: 'Descripción', v: i.descripcion || '-', ancho: true },

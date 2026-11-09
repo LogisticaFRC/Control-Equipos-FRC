@@ -9,7 +9,7 @@ import { abrirBajaEquipo } from './baja.service.js';
 import { dbEquipos } from '../../core/store.js';
 import { esVehiculo } from './inventario.mapper.js';
 import { dbIntervenciones } from '../../core/store.js';
-import { analizarFallas, hallazgosEquipo, htmlHallazgo, claseNivel, fmtMin } from '../../core/analisis-fallas.js';
+import { analizarFallas, hallazgosEquipo, htmlHallazgo, claseNivel, fmtMin, piezaPorKey, motivoPorKey, sinTildes } from '../../core/analisis-fallas.js';
 import { mismoAfi } from '../../core/utils.js';
 import { getBadgeClass } from './inventario.service.js';
 import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.js';
@@ -74,6 +74,32 @@ export default {
       const res = a.equiposRank[0] || null;
       return { res, lista: a.lista.slice().reverse(), hallazgos: hallazgosEquipo(res, fallasIncluirMant.value ? null : analisisGeneral.value) };
     });
+    // Filtros de "Registros clasificados" (pestaña Fallas)
+    const F0 = () => ({ texto: '', sistema: '', pieza: '', motivo: '', causa: '' });
+    const fRegs = ref(F0());
+    const limpiarFRegs = () => { fRegs.value = F0(); };
+    watch(() => P.perfilEquipo.value.afi, limpiarFRegs);
+    const contarOps = (lista, clave, etiqueta) => {
+      const m = new Map();
+      lista.forEach(x => [].concat(clave(x)).forEach(k => { if (k) m.set(k, (m.get(k) || 0) + 1); }));
+      return Array.from(m.entries()).map(([key, n]) => ({ key, n, label: etiqueta(key) })).sort((a, b) => b.n - a.n);
+    };
+    const opcionesRegs = computed(() => {
+      const l = fallasEquipo.value.lista;
+      return {
+        sistemas: contarOps(l, x => x.cat.key, k => (l.find(x => x.cat.key === k)?.cat.label) || k),
+        piezas: contarOps(l, x => x.piezas, k => piezaPorKey(k)?.label || k),
+        motivos: contarOps(l, x => x.motivo, k => motivoPorKey(k).label),
+        causas: contarOps(l, x => String(x.r.causa || '').trim().toUpperCase(), k => k)
+      };
+    });
+    const regsFallasFiltrados = computed(() => {
+      const f = fRegs.value, t = sinTildes(f.texto).trim();
+      return fallasEquipo.value.lista.filter(x =>
+        (!f.sistema || x.cat.key === f.sistema) && (!f.pieza || x.piezas.includes(f.pieza)) && (!f.motivo || x.motivo === f.motivo) &&
+        (!f.causa || String(x.r.causa || '').trim().toUpperCase() === f.causa) &&
+        (!t || sinTildes(`${x.r.causa} ${x.r.causaDetallada} ${x.r.descripcion}`).includes(t)));
+    });
     const totalRegistrosEquipo = computed(() => dbIntervenciones.value.filter(i => mismoAfi(i.afi, P.perfilEquipo.value.afi)).length);
     const getBadgeEstadoPerfil = (est) => getBadgeClass(est);
     onBeforeUnmount(destruir);
@@ -93,7 +119,7 @@ export default {
 
     return {
       ...comunes(), ...P, resetFiltrosPerfil, renderPerfilCharts, esVehPerfil, uH,
-      fallasIncluirMant, fallasEquipo, totalRegistrosEquipo, getBadgeEstadoPerfil, htmlHallazgo, claseNivel, fmtMin,
+      fallasIncluirMant, fallasEquipo, totalRegistrosEquipo, fRegs, limpiarFRegs, opcionesRegs, regsFallasFiltrados, piezaPorKey, motivoPorKey, getBadgeEstadoPerfil, htmlHallazgo, claseNivel, fmtMin,
       getHistorialMovimientosAFI, editarMantencion, eliminarMantencion,
       filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio,
       fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC,

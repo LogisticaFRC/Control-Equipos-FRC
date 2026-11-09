@@ -140,7 +140,7 @@ export default /* html */ `
   <!-- ===================== PERFIL DEL VEHÍCULO ===================== -->
   <div v-if="vehPerfil" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden">
-      <div class="px-6 py-4 border-b flex flex-wrap items-center justify-between gap-3 bg-slate-800 text-white">
+      <div class="shrink-0 px-6 py-4 border-b flex flex-wrap items-center justify-between gap-3 bg-slate-800 text-white">
         <div class="flex items-center gap-3">
           <div class="bg-white border-[3px] border-amber-400 rounded-md px-2.5 pt-0.5 pb-1 text-center leading-none">
             <span class="block text-[7px] font-bold tracking-[0.3em] text-slate-500">CHILE</span>
@@ -158,7 +158,7 @@ export default /* html */ `
         </div>
       </div>
 
-      <div class="flex gap-1 px-6 pt-3 border-b border-slate-300 bg-slate-100">
+      <div class="shrink-0 flex gap-1 px-6 pt-3 border-b border-slate-300 bg-slate-100 overflow-x-auto">
         <button v-for="p in [{k:'resumen',l:'Resumen',i:'fa-car'},{k:'km',l:'Kilometraje',i:'fa-road'},{k:'documentos',l:'Documentos',i:'fa-folder-open'}]" :key="p.k" @click="tabPerfilVeh = p.k"
           :class="['px-4 py-2.5 font-bold rounded-t-lg border border-b-0 -mb-px transition', tabPerfilVeh === p.k ? 'bg-white text-amber-600 border-slate-300' : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800']">
           <i :class="['fa-solid mr-1.5', p.i]"></i>{{ p.l }}
@@ -166,7 +166,7 @@ export default /* html */ `
         </button>
       </div>
 
-      <div class="p-6 overflow-y-auto space-y-5 flex-grow bg-slate-50 text-xs">
+      <div class="p-6 overflow-y-auto space-y-5 flex-1 min-h-0 bg-slate-50 text-xs">
 
         <!-- ---------- RESUMEN ---------- -->
         <template v-if="tabPerfilVeh === 'resumen'">

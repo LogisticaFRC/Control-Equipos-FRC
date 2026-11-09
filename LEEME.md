@@ -619,3 +619,13 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - **Historial sin barra hacia el lado**: tabla compacta (`historial/tabla-historial.view.js`, componente global `tabla-historial`) con Fecha · AFI · Causa/Tipo · Causa detallada · Sistema · Horas · Horómetro/Km · Doc. Clic en la fila despliega todo lo demás (programa, mecánicos, horas, costo, filtros, OC, OT, aceites, sistema detectado). Muestra de a 100 (botón "Ver más"). Se usa en el módulo Historial y en el Perfil.
 - **Cargar documentos**: ventana más compacta (max 4xl, tabla más chica, filtros en "chips").
 - No requiere SQL.
+
+## 2026-11-09 · Análisis de Fallas: PIEZA y MOTIVO · filtros · arreglos
+- Además del sistema, cada registro detecta la **pieza** (correa, batería, motor de partida, alternador, AVR, radiador, manguera, filtro de aire, ampolleta…) y el **motivo** (rotura/corte, desgaste, fuga, suelto/mal tensado, quemado, descargado, tapado/sucio, sobrecalentamiento, golpe/mal uso, robo, falta de nivel/mantención, desconfiguración) leyendo causa detallada + descripción (`PIEZAS` y `MOTIVOS` en `core/analisis-fallas.js`; para afinar, agregar palabras ahí).
+- Módulo Análisis de Fallas: tabla **"Piezas que más fallan y por qué"** (motivos con cantidades y equipos; clic filtra), barra de **Motivos de falla**, filtros nuevos **Pieza** y **Motivo**, hallazgos de pieza y motivo, hoja Excel **Piezas** y columnas Pieza/Motivo en Detalle.
+- Perfil → pestaña Fallas: "Piezas y por qué fallaron" y **filtros en Registros clasificados** (buscar, sistema, pieza, motivo, causa). Cada registro muestra su pieza y motivo.
+- Historial (detalle de la fila): "Pieza · motivo detectado".
+- Ya no cuentan como falla los registros **preventivos/predictivos** (tipo, causa o causa detallada dicen PREVENTIVA/PREDICTIVA), además de las mantenciones. Palabras como "preventiva", "correctiva", "hrs" ya no se toman como "problema repetido".
+- **Horas de trabajo** = suma de "Total horas" de cada falla (o término − inicio si no hay total). Se ignoran valores de más de 16 h en un registro y textos tipo "250 HRS" (son datos mal ingresados o el tipo de mantención).
+- Arreglo: en el Perfil (y en el perfil de Vehículos) el menú de pestañas ya no queda tapado al abrir Historial o Fallas.
+- (ajuste) "Problema que más se repite" ya no toma inspecciones, revisiones, pruebas, limpiezas, etc. (son actividades, no problemas). Si el registro indica una pieza, el problema se agrupa como "pieza · motivo" (ej. "Correa · rotura / corte").

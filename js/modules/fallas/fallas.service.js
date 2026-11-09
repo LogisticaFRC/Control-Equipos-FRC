@@ -4,16 +4,18 @@
 // =====================================================================
 import { dbIntervenciones, dbEquipos, currentTab } from '../../core/store.js';
 import { normalizarFecha, sumarDiasISO, hoyISO, mismoAfi } from '../../core/utils.js';
-import { analizarFallas, categoriaPorKey, CATEGORIAS_FALLA, CATEGORIA_OTROS, fmtMin, htmlHallazgo, claseNivel, categorizar } from '../../core/analisis-fallas.js';
+import { analizarFallas, categoriaPorKey, CATEGORIAS_FALLA, CATEGORIA_OTROS, fmtMin, htmlHallazgo, claseNivel, categorizar, PIEZAS, MOTIVOS, MOTIVO_NO_INDICADO, piezaPorKey, motivoPorKey, detectarPiezas, detectarMotivo } from '../../core/analisis-fallas.js';
 import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel } from '../../core/excel.js';
 import { errMsg } from '../../core/supabase.js';
 
 const { ref, computed } = Vue;
 
-export { fmtMin, htmlHallazgo, claseNivel, categoriaPorKey };
+export { fmtMin, htmlHallazgo, claseNivel, categoriaPorKey, piezaPorKey, motivoPorKey };
+export const PIEZAS_LISTA = [...PIEZAS].sort((a, b) => a.label.localeCompare(b.label));
+export const MOTIVOS_LISTA = [...MOTIVOS, MOTIVO_NO_INDICADO];
 export const CATEGORIAS = [...CATEGORIAS_FALLA, CATEGORIA_OTROS];
 
-const FILTRO_DEFAULT = () => ({ periodo: '365', desde: '', hasta: '', tipo: 'ALL', afi: '', categoria: 'ALL', incluirMant: false });
+const FILTRO_DEFAULT = () => ({ periodo: '365', desde: '', hasta: '', tipo: 'ALL', afi: '', categoria: 'ALL', pieza: 'ALL', motivo: 'ALL', incluirMant: false });
 export const filtroFallas = ref(FILTRO_DEFAULT());
 export const limpiarFiltroFallas = () => { filtroFallas.value = FILTRO_DEFAULT(); };
 
@@ -38,6 +40,8 @@ const registrosFiltrados = computed(() => {
     if (f.afi && !mismoAfi(i.afi, f.afi.trim())) return false;
     if (f.tipo !== 'ALL' && tipoDe.get(String(i.afi).trim().toUpperCase()) !== f.tipo) return false;
     if (f.categoria !== 'ALL' && categorizar(i).key !== f.categoria) return false;
+    if (f.pieza !== 'ALL' && !detectarPiezas(i).includes(f.pieza)) return false;
+    if (f.motivo !== 'ALL' && detectarMotivo(i) !== f.motivo) return false;
     return true;
   });
 });
@@ -72,13 +76,16 @@ export const exportarFallasExcel = async () => {
         { t: 'PROBLEMA MÁS REPETIDO', w: 34, al: 'left' }, { t: 'REPETIDAS < 30 DÍAS', w: 12 }, { t: 'DÍAS ENTRE FALLAS', w: 12 }, { t: 'HORAS TRABAJO', w: 12 }, { t: 'ÚLTIMA', w: 12, fmt: 'dd-mm-yyyy' }],
       filas: a.equiposRank.map(e => [e.afi, e.tipo, `${e.marca} ${e.modelo}`.trim(), e.n, e.catTop?.label || '', e.catTop ? e.catTop.pct / 100 : '', e.probTop ? `${e.probTop.problema} (${e.probTop.n})` : '',
         e.repetidas, e.mtbf ?? '', Math.round(e.min / 6) / 10, fechaExcel(e.ultima)]) });
+    hojaTabla(wb, logo, { nombre: 'Piezas', titulo: 'ANÁLISIS DE FALLAS · PIEZAS Y MOTIVOS', subtitulo: sub,
+      columnas: [{ t: 'PIEZA', w: 28, al: 'left', bold: true }, { t: 'SISTEMA', w: 22 }, { t: 'VECES', w: 9 }, { t: 'MOTIVO MÁS COMÚN', w: 26 }, { t: 'TODOS LOS MOTIVOS', w: 50, al: 'left' }, { t: 'EQUIPOS', w: 40, al: 'left' }],
+      filas: a.piezas.map(p => [p.label, p.cat.label, p.n, p.motivoTop ? p.motivoTop.label : '', p.motivos.map(m => `${m.label} (${m.n})`).join(', '), p.equipos.map(x => 'AFI ' + x).join(', ')]) });
     hojaTabla(wb, logo, { nombre: 'Problemas', titulo: 'ANÁLISIS DE FALLAS · PROBLEMAS REPETIDOS', subtitulo: sub, apaisado: false,
       columnas: [{ t: 'PROBLEMA', w: 44, al: 'left', bold: true }, { t: 'VECES', w: 10 }, { t: 'EQUIPOS', w: 40, al: 'left' }],
       filas: a.problemas.map(p => [p.problema, p.n, p.equipos.map(x => 'AFI ' + x).join(', ')]) });
     hojaTabla(wb, logo, { nombre: 'Detalle', titulo: 'ANÁLISIS DE FALLAS · DETALLE', subtitulo: sub,
       columnas: [{ t: 'FECHA', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'AFI', w: 9, bold: true }, { t: 'TIPO EQUIPO', w: 16 }, { t: 'SISTEMA', w: 22 }, { t: 'CAUSA', w: 18 },
-        { t: 'CAUSA DETALLADA', w: 40, al: 'left' }, { t: 'DESCRIPCIÓN', w: 40, al: 'left' }, { t: 'HORAS', w: 9 }],
-      filas: a.lista.slice().reverse().map(x => [fechaExcel(x.fecha), x.afi, x.tipoEquipo, x.cat.label, x.r.causa, x.r.causaDetallada, x.r.descripcion, x.min ? Math.round(x.min / 6) / 10 : ''] ) });
+        { t: 'PIEZA', w: 22 }, { t: 'MOTIVO', w: 22 }, { t: 'CAUSA DETALLADA', w: 40, al: 'left' }, { t: 'DESCRIPCIÓN', w: 40, al: 'left' }, { t: 'HORAS', w: 9 }],
+      filas: a.lista.slice().reverse().map(x => [fechaExcel(x.fecha), x.afi, x.tipoEquipo, x.cat.label, x.r.causa, x.piezas.map(k => piezaPorKey(k)?.label).join(', '), motivoPorKey(x.motivo).label, x.r.causaDetallada, x.r.descripcion, x.min ? Math.round(x.min / 6) / 10 : ''] ) });
     await descargarLibro(wb, `Analisis_Fallas_${hoyISO()}.xlsx`);
   } catch (err) { alert('Error al exportar: ' + errMsg(err)); }
   finally { exportandoFallas.value = false; }

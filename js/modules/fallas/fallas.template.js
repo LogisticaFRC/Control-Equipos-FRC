@@ -24,6 +24,10 @@ export default /* html */ `
         <select v-model="filtroFallas.tipo" class="p-2 border rounded-lg font-bold"><option value="ALL">Todos</option><option v-for="t in tiposEquipo" :key="t" :value="t">{{ t }}</option></select></div>
       <div><label class="block text-[10px] font-bold text-slate-500">Sistema</label>
         <select v-model="filtroFallas.categoria" class="p-2 border rounded-lg font-bold"><option value="ALL">Todos</option><option v-for="c in CATEGORIAS" :key="c.key" :value="c.key">{{ c.label }}</option></select></div>
+      <div><label class="block text-[10px] font-bold text-slate-500">Pieza</label>
+        <select v-model="filtroFallas.pieza" class="p-2 border rounded-lg font-bold"><option value="ALL">Todas</option><option v-for="p in PIEZAS_LISTA" :key="p.key" :value="p.key">{{ p.label }}</option></select></div>
+      <div><label class="block text-[10px] font-bold text-slate-500">Motivo</label>
+        <select v-model="filtroFallas.motivo" class="p-2 border rounded-lg font-bold"><option value="ALL">Todos</option><option v-for="m in MOTIVOS_LISTA" :key="m.key" :value="m.key">{{ m.label }}</option></select></div>
       <div><label class="block text-[10px] font-bold text-slate-500">AFI</label><input v-model="filtroFallas.afi" type="text" placeholder="Ej: 510" class="p-2 border rounded-lg w-24 font-mono font-bold"></div>
       <label class="flex items-center gap-1.5 pb-2 font-semibold"><input type="checkbox" v-model="filtroFallas.incluirMant"> Incluir mantenciones</label>
       <button @click="limpiarFiltroFallas" class="text-slate-500 hover:text-slate-800 underline pb-2">Limpiar</button>
@@ -59,6 +63,34 @@ export default /* html */ `
     <div class="bg-white rounded-2xl border shadow-sm p-4">
       <h3 class="font-extrabold text-slate-800 uppercase mb-2"><i class="fa-solid fa-chart-line text-blue-500 mr-1"></i> Evolución mensual (5 sistemas principales)</h3>
       <div class="h-72 relative"><canvas ref="cvMeses"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Piezas y motivos -->
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden lg:col-span-2">
+      <h3 class="font-extrabold text-slate-800 uppercase px-4 py-3 border-b"><i class="fa-solid fa-gear text-slate-600 mr-1"></i> Piezas que más fallan y por qué <span class="font-normal normal-case text-slate-400">· {{ a.conPieza }} de {{ a.total }} registros indican la pieza · clic para filtrar</span></h3>
+      <div class="max-h-96 overflow-y-auto">
+        <table class="w-full text-left">
+          <thead class="bg-slate-50 text-slate-500 sticky top-0"><tr><th class="p-2">Pieza</th><th class="p-2 text-center">Veces</th><th class="p-2">Por qué falló</th><th class="p-2">Equipos</th></tr></thead>
+          <tbody>
+            <tr v-for="p in a.piezas" :key="p.key" @click="filtroFallas.pieza = p.key" class="border-t hover:bg-slate-50 cursor-pointer align-top">
+              <td class="p-2"><b>{{ p.label }}</b><span class="block text-[10px]" :style="{ color: p.cat.color === '#facc15' || p.cat.color === '#eab308' ? '#a16207' : p.cat.color }">{{ p.cat.label }}</span></td>
+              <td class="p-2 text-center"><span class="font-extrabold px-2 py-0.5 rounded-full bg-slate-200">{{ p.n }}</span></td>
+              <td class="p-2"><span v-for="m in p.motivos" :key="m.key" :class="['inline-block mr-1 mb-0.5 text-[10px] px-1.5 rounded', m.key === 'SIN_MOTIVO' ? 'bg-slate-100 text-slate-400' : 'bg-rose-50 text-rose-700 font-semibold']">{{ m.label }} · {{ m.n }}</span></td>
+              <td class="p-2"><button v-for="x in p.equipos.slice(0, 6)" :key="x" @click.stop="verDetallePorAfiString(x)" class="mr-1 font-mono font-bold text-amber-700 hover:underline">{{ x }}</button><span v-if="p.equipos.length > 6" class="text-slate-400">+{{ p.equipos.length - 6 }}</span></td>
+            </tr>
+            <tr v-if="!a.piezas.length"><td colspan="4" class="p-6 text-center text-slate-400">No se detectan piezas en la causa detallada / descripción.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl border shadow-sm p-4">
+      <h3 class="font-extrabold text-slate-800 uppercase mb-3"><i class="fa-solid fa-circle-question text-rose-500 mr-1"></i> Motivos de falla</h3>
+      <div v-for="m in a.motivos" :key="m.key" @click="filtroFallas.motivo = m.key" class="mb-2 cursor-pointer" title="Filtrar por este motivo">
+        <div class="flex justify-between font-semibold"><span :class="m.key === 'SIN_MOTIVO' ? 'text-slate-400' : ''">{{ m.label }}</span><span>{{ m.n }} · {{ m.pct }}%</span></div>
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div :class="['h-full rounded-full', m.key === 'SIN_MOTIVO' ? 'bg-slate-300' : 'bg-rose-500']" :style="{ width: m.pct + '%' }"></div></div>
+      </div>
     </div>
   </div>
 
@@ -141,7 +173,8 @@ export default /* html */ `
                     <span class="font-mono font-bold">{{ formatDateForDisplay(x.fecha) }}</span>
                     <span class="font-bold" :style="{ color: x.cat.color === '#facc15' || x.cat.color === '#eab308' ? '#a16207' : x.cat.color }">{{ x.cat.label }}</span>
                     <span class="text-slate-500">{{ x.r.causa }}</span>
-                    <span class="flex-1 min-w-[200px]">{{ x.r.causaDetallada }}<span v-if="x.r.descripcion" class="text-slate-400"> — {{ x.r.descripcion }}</span></span>
+                    <span class="flex-1 min-w-[200px]">{{ x.r.causaDetallada }}<span v-if="x.r.descripcion" class="text-slate-400"> — {{ x.r.descripcion }}</span>
+                      <span v-if="x.piezas.length || x.motivo !== 'SIN_MOTIVO'" class="block text-[10px] mt-0.5"><span v-for="k in x.piezas" :key="k" class="mr-1 px-1.5 rounded bg-slate-200 text-slate-700 font-bold">{{ piezaPorKey(k)?.label }}</span><span v-if="x.motivo !== 'SIN_MOTIVO'" class="px-1.5 rounded bg-rose-50 text-rose-700 font-semibold">{{ motivoPorKey(x.motivo).label }}</span></span></span>
                     <span v-if="x.min" class="text-sky-700 font-semibold">{{ fmtMin(x.min) }}</span>
                   </div>
                 </div>

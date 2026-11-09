@@ -45,7 +45,8 @@ export const categoriaPorKey = (k) => CATEGORIAS_FALLA.find(c => c.key === k) ||
 const PALABRAS_VACIAS = new Set(('DE LA EL LOS LAS Y EN CON POR PARA SE A AL DEL UN UNA UNOS UNAS QUE SIN MAS ES SU SUS LO LE O U NO SI YA SE REALIZA REALIZO REALIZAR SE HACE ' +
   'HACER EQUIPO EQUIPOS GENERADOR TORRE AFI CAMBIO CAMBIAR CAMBIA SE REVISA REVISAR TRABAJO TRABAJOS FALLA FALLAS PROBLEMA ESTA ESTABA ENTRE DESDE HASTA ' +
   'NUEVO NUEVA NUEVOS TODO TODOS BIEN MAL PARTE PARTES LADO TAMBIEN ANTES DESPUES SEGUN CADA OTRO OTRA TERMINO TERMINA INICIO REPARACION REPARAR ' +
-  'MANTENCION SERVICIO INSTALACION INSTALAR COLOCA COLOCAR DEJA DEJAR QUEDA OPERATIVO').split(/\s+/));
+  'MANTENCION SERVICIO INSTALACION INSTALAR COLOCA COLOCAR DEJA DEJAR QUEDA OPERATIVO PREVENTIVA PREVENTIVO PREDICTIVA PREDICTIVO CORRECTIVA CORRECTIVO ' +
+  'HRS HORAS GENERAL VARIOS VARIAS INTERMEDIA').split(/\s+/));
 
 /** Cuenta palabras clave que aparecen al INICIO de una palabra ("ELECTRIC" calza con "ELECTRICO");
  *  las de 3 letras o menos (AVR, LED, EJE…) deben ser la palabra completa. */
@@ -58,6 +59,112 @@ const contar = (txt, kw) => {
   return n;
 };
 
+// ---------------------------------------------------------------------
+// PIEZA (qué componente falló) y MOTIVO (por qué falló)
+// kw: se buscan al inicio de una palabra; con "$" al final = palabra exacta.
+// generico: true → se descarta si se detecta otra pieza más específica del mismo grupo.
+// ---------------------------------------------------------------------
+export const PIEZAS = [
+  // Eléctrico
+  { key: 'BATERIA', label: 'Batería', grupo: 'ELECTRICO', kw: ['BATERIA'] },
+  { key: 'MOTOR_PARTIDA', label: 'Motor de partida', grupo: 'ELECTRICO', kw: ['MOTOR DE PARTIDA', 'MOTOR PARTIDA', 'MOTOR DE ARRANQUE', 'ARRANCADOR'] },
+  { key: 'ALTERNADOR', label: 'Alternador', grupo: 'ELECTRICO', kw: ['ALTERNADOR'] },
+  { key: 'CABLEADO', label: 'Cableado / conexiones', grupo: 'ELECTRICO', kw: ['CABLE', 'CABLEADO', 'CONEXION', 'TERMINAL', 'BORNE', 'ENCHUFE'] },
+  { key: 'FUSIBLE_RELE', label: 'Fusible / relé', grupo: 'ELECTRICO', kw: ['FUSIBLE', 'RELE$', 'RELES$', 'RELAY'] },
+  { key: 'SENSOR', label: 'Sensor', grupo: 'ELECTRICO', kw: ['SENSOR', 'BULBO', 'SENSORES'] },
+  { key: 'SOLENOIDE', label: 'Solenoide', grupo: 'ELECTRICO', kw: ['SOLENOIDE'] },
+  { key: 'LLAVE_CONTACTO', label: 'Llave de contacto / switch', grupo: 'ELECTRICO', kw: ['LLAVE DE CONTACTO', 'CHAPA DE CONTACTO', 'SWITCH', 'INTERRUPTOR'] },
+  // Generación / panel
+  { key: 'AVR', label: 'AVR / regulador de voltaje', grupo: 'GENERACION', kw: ['AVR$', 'REGULADOR DE VOLTAJE', 'REGULADOR'] },
+  { key: 'CONTROLADOR', label: 'Controlador / módulo', grupo: 'GENERACION', kw: ['CONTROLADOR', 'MODULO', 'DEEP SEA', 'DSE$', 'COMAP', 'PANEL DE CONTROL', 'PANTALLA'] },
+  { key: 'BREAKER', label: 'Breaker / disyuntor', grupo: 'GENERACION', kw: ['BREAKER', 'DISYUNTOR', 'TERMOMAGNETIC'] },
+  { key: 'TRANSFERENCIA', label: 'Transferencia (ATS)', grupo: 'GENERACION', kw: ['TRANSFERENCIA', 'ATS$'] },
+  { key: 'EXCITATRIZ', label: 'Excitatriz / bobinado', grupo: 'GENERACION', kw: ['EXCITATRIZ', 'BOBINA', 'BOBINADO', 'ESTATOR', 'ROTOR', 'DIODO', 'PUENTE RECTIFICADOR'] },
+  // Motor
+  { key: 'CORREA', label: 'Correa', grupo: 'MOTOR', kw: ['CORREA'] },
+  { key: 'POLEA_TENSOR', label: 'Polea / tensor', grupo: 'MOTOR', kw: ['POLEA', 'TENSOR'] },
+  { key: 'INYECTOR', label: 'Inyector', grupo: 'MOTOR', kw: ['INYECTOR'] },
+  { key: 'TURBO', label: 'Turbo', grupo: 'MOTOR', kw: ['TURBO'] },
+  { key: 'CULATA', label: 'Culata / empaquetadura', grupo: 'MOTOR', kw: ['CULATA', 'EMPAQUETADURA', 'JUNTA'] },
+  { key: 'ESCAPE', label: 'Escape / silenciador', grupo: 'MOTOR', kw: ['ESCAPE', 'SILENCIADOR', 'MULTIPLE'] },
+  { key: 'BOMBA_ACEITE', label: 'Bomba de aceite', grupo: 'MOTOR', kw: ['BOMBA DE ACEITE'] },
+  // Combustible
+  { key: 'BOMBA_INYECTORA', label: 'Bomba inyectora', grupo: 'COMBUSTIBLE', kw: ['BOMBA INYECTORA', 'BOMBA DE INYECCION'] },
+  { key: 'BOMBA_COMB', label: 'Bomba de combustible', grupo: 'COMBUSTIBLE', kw: ['BOMBA DE COMBUSTIBLE', 'BOMBA COMBUSTIBLE', 'BOMBA DE ALIMENTACION', 'BOMBA DE TRASPASO', 'BOMBA DE CEBADO'] },
+  { key: 'ESTANQUE', label: 'Estanque / tanque', grupo: 'COMBUSTIBLE', kw: ['ESTANQUE', 'TANQUE', 'FLOTADOR'] },
+  { key: 'SEPARADOR', label: 'Separador de agua', grupo: 'COMBUSTIBLE', kw: ['SEPARADOR'] },
+  // Refrigeración
+  { key: 'RADIADOR', label: 'Radiador', grupo: 'REFRIGERACION', kw: ['RADIADOR'] },
+  { key: 'BOMBA_AGUA', label: 'Bomba de agua', grupo: 'REFRIGERACION', kw: ['BOMBA DE AGUA', 'BOMBA AGUA'] },
+  { key: 'TERMOSTATO', label: 'Termostato', grupo: 'REFRIGERACION', kw: ['TERMOSTATO'] },
+  { key: 'VENTILADOR', label: 'Ventilador / aspa', grupo: 'REFRIGERACION', kw: ['VENTILADOR', 'ASPA'] },
+  // Hidráulico
+  { key: 'MANGUERA', label: 'Manguera', grupo: 'HIDRAULICO', kw: ['MANGUERA', 'FLEXIBLE'] },
+  { key: 'CILINDRO', label: 'Cilindro / gato', grupo: 'HIDRAULICO', kw: ['CILINDRO', 'GATO'] },
+  { key: 'SELLO', label: 'Sello / retén / o-ring', grupo: 'HIDRAULICO', kw: ['SELLO', 'RETEN', 'ORING', 'O RING'] },
+  { key: 'BOMBA_HIDR', label: 'Bomba hidráulica', grupo: 'HIDRAULICO', kw: ['BOMBA HIDRAULICA'] },
+  // Filtros
+  { key: 'FILTRO_AIRE', label: 'Filtro de aire', grupo: 'LUBRICACION', kw: ['FILTRO DE AIRE', 'FILTRO AIRE', 'FILTROS DE AIRE'] },
+  { key: 'FILTRO_COMB', label: 'Filtro de combustible', grupo: 'LUBRICACION', kw: ['FILTRO DE COMBUSTIBLE', 'FILTRO COMBUSTIBLE', 'FILTRO DE PETROLEO', 'FILTRO PETROLEO'] },
+  { key: 'FILTRO_ACEITE', label: 'Filtro de aceite', grupo: 'LUBRICACION', kw: ['FILTRO DE ACEITE', 'FILTRO ACEITE'] },
+  { key: 'FILTRO', label: 'Filtro (otro)', grupo: 'LUBRICACION', kw: ['FILTRO'], generico: true },
+  // Rodado
+  { key: 'NEUMATICO', label: 'Neumático / rueda', grupo: 'TREN', kw: ['NEUMATICO', 'RUEDA', 'LLANTA', 'PINCHAZO', 'CAMARA'] },
+  { key: 'RODAMIENTO', label: 'Rodamiento / eje', grupo: 'TREN', kw: ['RODAMIENTO', 'EJE$', 'MAZA'] },
+  { key: 'FRENO', label: 'Frenos', grupo: 'TREN', kw: ['FRENO', 'PASTILLA', 'BALATA'] },
+  // Estructura
+  { key: 'PUERTA', label: 'Puerta / chapa / bisagra', grupo: 'ESTRUCTURA', kw: ['PUERTA', 'CHAPA$', 'BISAGRA', 'CERRADURA', 'CANDADO'] },
+  { key: 'LANZA', label: 'Lanza / enganche', grupo: 'ESTRUCTURA', kw: ['LANZA', 'ENGANCHE', 'TIRO$'] },
+  { key: 'CARCASA', label: 'Carcasa / gabinete', grupo: 'ESTRUCTURA', kw: ['CARCASA', 'GABINETE', 'CANOPY', 'CABINA'] },
+  // Iluminación / torre
+  { key: 'AMPOLLETA', label: 'Ampolleta / foco / luminaria', grupo: 'ILUMINACION', kw: ['AMPOLLETA', 'FOCO', 'LUMINARIA', 'LAMPARA', 'REFLECTOR', 'LED$', 'HALURO'] },
+  { key: 'BALASTRO', label: 'Balastro', grupo: 'ILUMINACION', kw: ['BALASTRO'] },
+  { key: 'MASTIL', label: 'Mástil / winche', grupo: 'ILUMINACION', kw: ['MASTIL', 'WINCHE', 'HUINCHE', 'CABLE DE ACERO', 'PIOLA'] }
+];
+
+export const MOTIVOS = [
+  { key: 'ROTURA', label: 'Rotura / corte', kw: ['ROTA$', 'ROTO$', 'ROTAS$', 'ROTOS$', 'ROTURA', 'RUPTURA', 'ROMP', 'CORTE DE', 'CORTA$', 'QUEBRAD', 'CORTAD', 'TRIZAD', 'FISUR', 'PARTIDA EN', 'REVENTAD', 'DANAD', 'MALA$', 'MALO$', 'DEFECTUOS'] },
+  { key: 'DESGASTE', label: 'Desgaste / vida útil', kw: ['DESGAST', 'GASTAD', 'CRISTALIZ', 'AGRIETAD', 'RESECA', 'VIDA UTIL', 'FATIGA'] },
+  { key: 'FUGA', label: 'Fuga / pérdida', kw: ['FUGA', 'FILTRA$', 'FILTRACION', 'GOTEA', 'GOTEO', 'PIERDE', 'PERDIDA DE', 'DERRAM', 'BOTA ACEITE', 'BOTA AGUA'] },
+  { key: 'SUELTO', label: 'Suelto / mal tensado', kw: ['SUELT', 'FLOJ', 'DESAJUST', 'DESTENSAD', 'TENSAR', 'TENSADO', 'REAPRIET', 'DESCONECTAD', 'SALIDA DE'] },
+  { key: 'QUEMADO', label: 'Quemado / cortocircuito', kw: ['QUEMAD', 'FUNDID', 'CORTOCIRC', 'CORTO CIRC', 'CHISPORROT', 'SOBRECARGA'] },
+  { key: 'DESCARGA', label: 'Descargado / sin carga', kw: ['DESCARGAD', 'SIN CARGA', 'NO CARGA', 'BAJO VOLTAJE', 'SULFAT', 'AGOTAD'] },
+  { key: 'OBSTRUCCION', label: 'Tapado / sucio / contaminado', kw: ['TAPAD', 'OBSTRU', 'SUCI', 'BARRO', 'POLVO', 'CONTAMIN', 'AGUA EN', 'BARRA$', 'CARBON'] },
+  { key: 'TEMPERATURA', label: 'Sobrecalentamiento', kw: ['SOBRECALENT', 'RECALENT', 'ALTA TEMPERATURA', 'TEMPERATURA'] },
+  { key: 'GOLPE', label: 'Golpe / mal uso / accidente', kw: ['GOLPE', 'CHOQUE', 'IMPACTO', 'ACCIDENT', 'MAL USO', 'MALA OPERACION', 'VANDAL', 'TERCEROS'] },
+  { key: 'ROBO', label: 'Robo', kw: ['ROBO$', 'ROBAD', 'HURTO', 'SUSTRA'] },
+  { key: 'FALTA_MANT', label: 'Falta de nivel / mantención', kw: ['FALTA DE MANTENC', 'SIN MANTENC', 'FALTA DE ACEITE', 'FALTA DE AGUA', 'FALTA DE REFRIGERANTE', 'BAJO NIVEL', 'NIVEL BAJO', 'SIN ACEITE', 'SIN AGUA', 'SIN REFRIGERANTE', 'SIN COMBUSTIBLE', 'FALTA DE COMBUSTIBLE', 'RELLENA', 'RELLENO', 'COMPLETA NIVEL', 'SE AGREGA ACEITE', 'SE AGREGA REFRIGERANTE'] },
+  { key: 'AJUSTE', label: 'Desconfiguración / ajuste', kw: ['DESCONFIGUR', 'CONFIGURA', 'PROGRAMA', 'CALIBRA', 'AJUSTE', 'PARAMETR'] }
+];
+export const MOTIVO_NO_INDICADO = { key: 'SIN_MOTIVO', label: 'Motivo no indicado' };
+export const piezaPorKey = (k) => PIEZAS.find(p => p.key === k) || null;
+export const motivoPorKey = (k) => MOTIVOS.find(m => m.key === k) || MOTIVO_NO_INDICADO;
+
+/** ¿El texto (con espacios al inicio/fin) tiene la palabra clave? "$" al final = palabra exacta. */
+const tiene = (txt, k) => k.endsWith('$') ? txt.includes(` ${k.slice(0, -1)} `) : (k.length <= 3 ? txt.includes(` ${k} `) : txt.includes(` ${k}`));
+/** Texto para pieza/motivo: causa detallada + descripción (sin la causa general). */
+const textoDetalle = (r) => ` ${sinTildes(r.causaDetallada)} ${sinTildes(r.descripcion)} `.replace(/[^A-Z0-9 ]+/g, ' ').replace(/\s+/g, ' ');
+
+/** Piezas mencionadas en un registro (keys). */
+export const detectarPiezas = (r) => {
+  const t = textoDetalle(r);
+  let ps = PIEZAS.filter(p => p.kw.some(k => tiene(t, k)));
+  // "Motor de partida" no es "Motor"; los genéricos se quitan si hay uno específico del mismo grupo
+  ps = ps.filter(p => !p.generico || !ps.some(o => o !== p && o.grupo === p.grupo && !o.generico));
+  return ps.map(p => p.key);
+};
+/** Motivo principal (por qué falló). */
+export const detectarMotivo = (r) => {
+  const t = textoDetalle(r) + ' ' + sinTildes(r.causa) + ' ';
+  return (MOTIVOS.find(m => m.kw.some(k => tiene(t, k))) || MOTIVO_NO_INDICADO).key;
+};
+/** Texto corto "Correa · rotura / corte" para mostrar en tablas. */
+export const piezaMotivoTexto = (r) => {
+  const ps = detectarPiezas(r).map(k => piezaPorKey(k)?.label).filter(Boolean);
+  const m = detectarMotivo(r);
+  return (ps.length ? ps.join(', ') : 'Pieza no indicada') + ' · ' + (m === 'SIN_MOTIVO' ? 'motivo no indicado' : motivoPorKey(m).label.toLowerCase());
+};
+
 /** Texto que se analiza de un registro (la causa detallada pesa doble). */
 const textoDe = (r) => {
   const det = sinTildes(r.causaDetallada);
@@ -65,6 +172,9 @@ const textoDe = (r) => {
 };
 
 /** Sistema principal de un registro: { key, label, color, puntaje, otras:[keys] }. */
+/** Registro que NO es una falla: mantención (completa o intermedia) o trabajo PREVENTIVO / PREDICTIVO. */
+export const esNoFalla = (r) => Boolean(claseMantencion(r)) || /PREVENTIV|PREDICTIV/.test(sinTildes(`${r.tipoMant} ${r.causa} ${r.causaDetallada}`));
+
 export const categorizar = (r) => {
   const t = textoDe(r);
   const puntos = CATEGORIAS_FALLA.map(c => ({ c, n: contar(t, c.kw) })).filter(x => x.n > 0)
@@ -82,14 +192,17 @@ export const categorizar = (r) => {
 /** Minutos de trabajo: "3:45", "3h 45m", "3.5", o inicio/término. null si no hay datos. */
 export const minutosTrabajo = (r) => {
   const t = String(r.horaTotal || '').trim();
-  let m = t.match(/^(\d{1,3})\s*[:hH]\s*(\d{1,2})?/);
-  if (m) { const v = Number(m[1]) * 60 + Number(m[2] || 0); if (v > 0) return v; }
-  if (/^\d+([.,]\d+)?$/.test(t) && Number(t.replace(',', '.')) > 0) return Math.round(Number(t.replace(',', '.')) * 60);
+  const MAX = 16 * 60;   // más de 16 h en un registro = dato mal ingresado → no se cuenta
+  const ok = (v) => (v > 0 && v <= MAX ? v : null);
+  if (/HRS|HORAS/i.test(t) && !/:/.test(t)) return null;   // "250 HRS" es el tipo de mantención, no horas trabajadas
+  let m = t.match(/^(\d{1,2})\s*[:hH]\s*(\d{1,2})?/);
+  if (m) { const v = ok(Number(m[1]) * 60 + Number(m[2] || 0)); if (v) return v; }
+  if (/^\d+([.,]\d+)?$/.test(t) && Number(t.replace(',', '.')) > 0) { const v = ok(Math.round(Number(t.replace(',', '.')) * 60)); if (v) return v; }
   const hm = (s) => { const x = String(s || '').match(/(\d{1,2}):(\d{2})/); return x ? Number(x[1]) * 60 + Number(x[2]) : null; };
   const a = hm(r.horaInicio), b = hm(r.horaTermino);
   if (a === null || b === null) return null;
   const d = b - a < 0 ? b - a + 1440 : b - a;
-  return d > 0 ? d : null;
+  return ok(d);
 };
 export const fmtMin = (min) => {
   if (!min) return '0 h';
@@ -121,16 +234,17 @@ const mesDe = (iso) => String(iso || '').slice(0, 7);
 export const analizarFallas = (regs, equipos = [], { incluirMantenciones = false } = {}) => {
   const eqPorAfi = new Map(equipos.map(e => [String(e.afi).trim().toUpperCase(), e]));
   const lista = regs
-    .filter(r => normalizarFecha(r.fecha) && (incluirMantenciones || !claseMantencion(r)))
+    .filter(r => normalizarFecha(r.fecha) && (incluirMantenciones || !esNoFalla(r)))
     .map(r => {
       const cat = categorizar(r);
       const eq = eqPorAfi.get(String(r.afi).trim().toUpperCase());
       return { r, afi: String(r.afi).trim(), fecha: normalizarFecha(r.fecha), cat, min: minutosTrabajo(r),
-        problema: problemaDe(r), tipoEquipo: String(eq?.tipo || r.equipo || 'SIN TIPO').trim().toUpperCase() || 'SIN TIPO', costo: Number(r.costo) || 0 };
+        problema: problemaDe(r), piezas: detectarPiezas(r), motivo: detectarMotivo(r), tipoEquipo: String(eq?.tipo || r.equipo || 'SIN TIPO').trim().toUpperCase() || 'SIN TIPO', costo: Number(r.costo) || 0 };
     })
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
   const total = lista.length;
+  const porPieza = new Map(), porMotivo = new Map();
   const porCat = new Map(), minPorCat = new Map(), porProblema = new Map(), equiposPorProblema = new Map(), palabras = new Map(), porMes = new Map();
   const porAfi = new Map(), porTipo = new Map(), equiposPorTipo = new Map();
   let minTotal = 0, conHoras = 0, costoTotal = 0;
@@ -151,6 +265,11 @@ export const analizarFallas = (regs, equipos = [], { incluirMantenciones = false
     if (!porAfi.has(x.afi)) porAfi.set(x.afi, []);
     porAfi.get(x.afi).push(x);
     incr(porTipo, x.tipoEquipo);
+    incr(porMotivo, x.motivo);
+    x.piezas.forEach(k => {
+      if (!porPieza.has(k)) porPieza.set(k, { n: 0, motivos: new Map(), equipos: new Set(), min: 0 });
+      const pz = porPieza.get(k); pz.n++; incr(pz.motivos, x.motivo); pz.equipos.add(x.afi); pz.min += x.min || 0;
+    });
     if (!equiposPorTipo.has(x.tipoEquipo)) equiposPorTipo.set(x.tipoEquipo, new Set());
     equiposPorTipo.get(x.tipoEquipo).add(x.afi);
   });
@@ -175,19 +294,38 @@ export const analizarFallas = (regs, equipos = [], { incluirMantenciones = false
   }).sort((a, b) => b.n - a.n);
 
   const meses = Array.from(porMes.keys()).sort();
-  const hallazgos = hallazgosGenerales({ total, categorias, problemas, equiposRank, tipos, lista, minTotal });
+  const piezas = Array.from(porPieza.entries()).map(([k, v]) => {
+    const def = piezaPorKey(k);
+    const motivos = top(v.motivos, 6).map(([mk, n]) => ({ ...motivoPorKey(mk), n }));
+    const motivoTop = motivos.find(m => m.key !== 'SIN_MOTIVO') || null;
+    return { key: k, label: def.label, grupo: def.grupo, cat: categoriaPorKey(def.grupo), n: v.n, motivos, motivoTop, equipos: Array.from(v.equipos), min: v.min };
+  }).sort((a, b) => b.n - a.n);
+  const motivos = top(porMotivo, 20).map(([k, n]) => ({ ...motivoPorKey(k), n, pct: pct(n, total) }));
+  const conPieza = lista.filter(x => x.piezas.length).length, conMotivo = lista.filter(x => x.motivo !== 'SIN_MOTIVO').length;
+  const hallazgos = hallazgosGenerales({ total, categorias, problemas, equiposRank, tipos, lista, minTotal, piezas, motivos, conPieza, conMotivo });
 
   return {
     total, equiposAfectados: porAfi.size, minTotal, minPromedio: conHoras ? Math.round(minTotal / conHoras) : 0, conHoras, costoTotal,
     repetidas: equiposRank.reduce((s, e) => s + e.repetidas, 0),
-    categorias, problemas, equiposRank, tipos, palabras: top(palabras, 30), meses, porMes, hallazgos, lista
+    categorias, problemas, equiposRank, tipos, palabras: top(palabras, 30), meses, porMes, hallazgos, lista,
+    piezas, motivos, conPieza, conMotivo
   };
 };
 
 /** Resumen de un equipo a partir de sus registros ya clasificados. */
 export const resumenEquipo = (afi, xs, eq = null) => {
-  const c = new Map(), p = new Map(); let min = 0, costo = 0;
-  xs.forEach(x => { incr(c, x.cat.key); if (x.problema) incr(p, x.problema); min += x.min || 0; costo += x.costo; });
+  const c = new Map(), p = new Map(), pz = new Map(), mo = new Map(); let min = 0, costo = 0;
+  xs.forEach(x => {
+    incr(c, x.cat.key); if (x.problema) incr(p, x.problema); min += x.min || 0; costo += x.costo;
+    (x.piezas || []).forEach(k => { if (!pz.has(k)) pz.set(k, new Map()); incr(pz.get(k), x.motivo); });
+    incr(mo, x.motivo);
+  });
+  const piezas = Array.from(pz.entries()).map(([k, m]) => {
+    const n = Array.from(m.values()).reduce((s, v) => s + v, 0);
+    const motivos = top(m, 4).map(([mk, v]) => ({ ...motivoPorKey(mk), n: v }));
+    return { key: k, label: piezaPorKey(k)?.label || k, n, motivos, motivoTop: motivos.find(x => x.key !== 'SIN_MOTIVO') || null };
+  }).sort((a, b) => b.n - a.n);
+  const motivosEq = top(mo, 6).map(([k, n]) => ({ ...motivoPorKey(k), n }));
   const cats = top(c, 5).map(([k, n]) => ({ ...categoriaPorKey(k), n, pct: pct(n, xs.length) }));
   const probs = top(p, 5).map(([k, n]) => ({ problema: k, n }));
   // Repetidas: mismo sistema en menos de 30 días
@@ -204,7 +342,7 @@ export const resumenEquipo = (afi, xs, eq = null) => {
   const mtbf = xs.length > 1 ? Math.round(diasEntre(ultima, primera) / (xs.length - 1)) : null;
   return {
     afi, tipo: String(eq?.tipo || xs[0]?.tipoEquipo || ''), marca: eq?.marca || '', modelo: eq?.modelo || '',
-    n: xs.length, min, costo, cats, catTop: cats[0] || null, probs, probTop: probs[0] || null,
+    n: xs.length, min, costo, cats, catTop: cats[0] || null, probs, probTop: probs[0] || null, piezas, piezaTop: piezas[0] || null, motivos: motivosEq,
     repetidas, ejemplosRep, primera, ultima, mtbf, diasDesdeUltima: ultima ? diasEntre(hoyISO(), ultima) : null
   };
 };
@@ -212,13 +350,19 @@ export const resumenEquipo = (afi, xs, eq = null) => {
 // ---------------------------------------------------------------------
 // Hallazgos en palabras
 // ---------------------------------------------------------------------
-const hallazgosGenerales = ({ total, categorias, problemas, equiposRank, tipos, lista, minTotal }) => {
+const hallazgosGenerales = ({ total, categorias, problemas, equiposRank, tipos, lista, minTotal, piezas = [], motivos = [], conPieza = 0, conMotivo = 0 }) => {
   const h = [];
   if (!total) return [{ nivel: 'info', texto: 'No hay intervenciones en el período/filtro elegido.' }];
   const fallasReales = categorias.filter(c => c.key !== 'SERVICIO' && c.key !== 'OTROS');
   if (fallasReales[0]) h.push({ nivel: 'alto', icon: fallasReales[0].icon, texto: `Lo que más falla es el sistema **${fallasReales[0].label}**: ${fallasReales[0].n} de ${total} intervenciones (${fallasReales[0].pct}%).` + (fallasReales[1] ? ` Le sigue **${fallasReales[1].label}** (${fallasReales[1].pct}%).` : '') });
   const masHoras = [...categorias].sort((a, b) => b.min - a.min)[0];
   if (masHoras && masHoras.min && minTotal) h.push({ nivel: 'medio', icon: 'fa-clock', texto: `El sistema que más horas de taller consume es **${masHoras.label}**: ${fmtMin(masHoras.min)} (${pct(masHoras.min, minTotal)}% del tiempo registrado).` });
+  if (piezas[0]) {
+    const p = piezas[0];
+    h.push({ nivel: 'alto', icon: 'fa-gear', texto: `La pieza que más falla es **${p.label}**: ${p.n} veces en ${p.equipos.length} equipo(s)` + (p.motivoTop ? `; el motivo más común es **${p.motivoTop.label.toLowerCase()}** (${p.motivoTop.n}).` : '.') + (piezas[1] ? ` Le siguen ${piezas.slice(1, 3).map(x => x.label.toLowerCase() + ' (' + x.n + ')').join(' y ')}.` : '') });
+  }
+  const motivoTop = motivos.find(m => m.key !== 'SIN_MOTIVO');
+  if (motivoTop) h.push({ nivel: 'medio', icon: 'fa-circle-question', texto: `El motivo de falla más común es **${motivoTop.label.toLowerCase()}** (${motivoTop.n} de ${total}).` + (conMotivo < total * 0.6 ? ` Ojo: en ${total - conMotivo} registros no se indica el motivo.` : '') });
   if (problemas[0]) h.push({ nivel: 'alto', icon: 'fa-repeat', texto: `El problema que más se repite es "**${problemas[0].problema.toLowerCase()}**": ${problemas[0].n} veces en ${problemas[0].equipos.length} equipo(s).` });
   if (equiposRank[0] && equiposRank[0].n >= 3) {
     const e = equiposRank[0];
@@ -246,6 +390,7 @@ export const hallazgosEquipo = (res, analisisGeneral = null) => {
   const h = [];
   if (!res || !res.n) return [{ nivel: 'ok', icon: 'fa-circle-check', texto: 'Este equipo no tiene fallas registradas (fuera de mantenciones) en el período.' }];
   if (res.catTop) h.push({ nivel: 'alto', icon: res.catTop.icon, texto: `Lo que más le falla es **${res.catTop.label}**: ${res.catTop.n} de ${res.n} intervenciones (${res.catTop.pct}%).` });
+  if (res.piezaTop) h.push({ nivel: res.piezaTop.n > 1 ? 'alto' : 'medio', icon: 'fa-gear', texto: `Pieza que más le falla: **${res.piezaTop.label}** (${res.piezaTop.n} ${res.piezaTop.n === 1 ? 'vez' : 'veces'})` + (res.piezaTop.motivoTop ? `, sobre todo por **${res.piezaTop.motivoTop.label.toLowerCase()}**.` : '.') });
   if (res.probTop && res.probTop.n > 1) h.push({ nivel: 'alto', icon: 'fa-repeat', texto: `Problema repetido: "**${res.probTop.problema.toLowerCase()}**" (${res.probTop.n} veces).` });
   if (res.repetidas) {
     const e = res.ejemplosRep[res.ejemplosRep.length - 1];

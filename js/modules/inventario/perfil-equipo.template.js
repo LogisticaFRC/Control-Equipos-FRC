@@ -3,7 +3,7 @@ export default /* html */ `
 <div v-if="showPerfilEquipoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
   <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-7xl max-h-[96vh] flex flex-col overflow-hidden">
     <!-- Encabezado -->
-    <div class="px-5 py-3 border-b flex flex-wrap items-center justify-between gap-3 bg-slate-800 text-white">
+    <div class="shrink-0 px-5 py-3 border-b flex flex-wrap items-center justify-between gap-3 bg-slate-800 text-white">
       <div class="flex items-center gap-3 min-w-0">
         <span class="text-sm font-mono font-extrabold bg-amber-500 text-slate-900 px-3 py-1.5 rounded-lg shadow-sm whitespace-nowrap">{{ esVehPerfil ? '' : 'AFI ' }}{{ perfilEquipo.afi }}</span>
         <div class="min-w-0">
@@ -22,7 +22,7 @@ export default /* html */ `
     </div>
 
     <!-- Indicadores rápidos -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-slate-200 border-b text-xs">
+    <div class="shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-slate-200 border-b text-xs">
       <div class="bg-white px-3 py-2"><span class="block text-[9px] font-bold uppercase text-slate-500">{{ esVehPerfil ? 'Km aprox. hoy' : 'Horómetro aprox.' }}</span><b class="font-mono text-sm text-blue-700">{{ (perfilEquipo.horometros?.hAprox || 0).toLocaleString('es-CL') }} {{ uH }}</b></div>
       <div :class="['px-3 py-2', esAlertaRoja(perfilEquipo.horometros) ? 'bg-rose-50' : 'bg-white']"><span class="block text-[9px] font-bold uppercase text-slate-500">Próxima mantención</span><b class="font-mono text-sm">{{ (perfilEquipo.horometros?.hTarget || 0).toLocaleString('es-CL') }} {{ uH }}</b> <span :class="['text-[9px] font-bold px-1 rounded', getPrediccionStatusBadge(perfilEquipo.horometros)]">{{ perfilEquipo.horometros?.estadoTexto }}</span></div>
       <div class="bg-white px-3 py-2"><span class="block text-[9px] font-bold uppercase text-slate-500">Fecha aprox. mantención</span><b class="font-mono text-sm">{{ formatDateForDisplay(perfilEquipo.horometros?.fechaEstimada) }}</b></div>
@@ -32,7 +32,7 @@ export default /* html */ `
     </div>
 
     <!-- Pestañas -->
-    <div class="flex gap-1 px-4 pt-2 border-b border-slate-300 bg-slate-100 overflow-x-auto">
+    <div class="shrink-0 flex gap-1 px-4 pt-2 border-b border-slate-300 bg-slate-100 overflow-x-auto overflow-y-hidden">
       <button v-for="t in TABS_PERFIL" :key="t.k" @click="perfilTab = t.k"
         :class="['px-3 py-2 text-xs font-bold rounded-t-lg border border-b-0 -mb-px whitespace-nowrap transition', perfilTab === t.k ? 'bg-white text-blue-700 border-slate-300' : 'text-slate-500 border-transparent hover:text-slate-800']">
         <i :class="['fa-solid mr-1', t.i]"></i>{{ t.l }}
@@ -40,7 +40,7 @@ export default /* html */ `
       </button>
     </div>
 
-    <div class="p-4 sm:p-5 overflow-y-auto space-y-5 flex-grow bg-slate-100 text-xs">
+    <div class="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1 min-h-0 bg-slate-100 text-xs">
 
       <!-- ===== RESUMEN ===== -->
       <div v-show="perfilTab === 'resumen'" class="space-y-5">
@@ -198,7 +198,7 @@ export default /* html */ `
             <div v-for="(h, k) in fallasEquipo.hallazgos" :key="k" :class="['rounded-lg border p-2.5 flex gap-2 items-start', claseNivel(h.nivel)]"><i :class="['fa-solid mt-0.5', h.icon || 'fa-circle-info']"></i><span v-html="htmlHallazgo(h.texto)"></span></div>
           </div>
         </div>
-        <div v-if="fallasEquipo.res" class="grid lg:grid-cols-2 gap-4">
+        <div v-if="fallasEquipo.res" class="grid lg:grid-cols-3 gap-4">
           <div class="bg-white p-4 rounded-xl border shadow-sm">
             <h5 class="font-bold uppercase text-slate-700 mb-3"><i class="fa-solid fa-chart-bar text-rose-500 mr-1"></i> Por sistema</h5>
             <div v-for="c in fallasEquipo.res.cats" :key="c.key" class="mb-2">
@@ -213,17 +213,35 @@ export default /* html */ `
             </div>
             <p v-if="!fallasEquipo.res.probs.length" class="text-slate-400">Sin datos.</p>
           </div>
+          <div class="bg-white p-4 rounded-xl border shadow-sm">
+            <h5 class="font-bold uppercase text-slate-700 mb-3"><i class="fa-solid fa-gear text-slate-600 mr-1"></i> Piezas y por qué fallaron</h5>
+            <div v-for="pz in fallasEquipo.res.piezas" :key="pz.key" @click="fRegs.pieza = pz.key" class="py-1.5 border-b last:border-0 cursor-pointer hover:bg-slate-50" title="Ver estos registros">
+              <div class="flex justify-between gap-2"><b>{{ pz.label }}</b><span class="font-extrabold px-2 rounded-full bg-slate-200 text-slate-800">{{ pz.n }}</span></div>
+              <div class="flex flex-wrap gap-1 mt-0.5"><span v-for="m in pz.motivos" :key="m.key" :class="['text-[10px] px-1.5 rounded', m.key === 'SIN_MOTIVO' ? 'bg-slate-100 text-slate-400' : 'bg-rose-50 text-rose-700']">{{ m.label }} · {{ m.n }}</span></div>
+            </div>
+            <p v-if="!fallasEquipo.res.piezas.length" class="text-slate-400">No se detectan piezas en la causa detallada / descripción.</p>
+          </div>
         </div>
         <div v-if="fallasEquipo.lista.length" class="bg-white p-4 rounded-xl border shadow-sm">
-          <h5 class="font-bold uppercase text-slate-700 mb-2"><i class="fa-solid fa-list text-slate-500 mr-1"></i> Registros clasificados ({{ fallasEquipo.lista.length }})</h5>
-          <div class="space-y-1 max-h-72 overflow-y-auto">
-            <div v-for="x in fallasEquipo.lista" :key="x.r.id" class="border rounded-lg px-2 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 hover:bg-slate-50">
+          <h5 class="font-bold uppercase text-slate-700 mb-2"><i class="fa-solid fa-list text-slate-500 mr-1"></i> Registros clasificados ({{ regsFallasFiltrados.length }} de {{ fallasEquipo.lista.length }})</h5>
+          <div class="flex flex-wrap items-end gap-2 mb-2">
+            <input v-model="fRegs.texto" type="text" placeholder="Buscar (ej. correa)..." class="p-1.5 border rounded-lg w-44">
+            <select v-model="fRegs.sistema" class="p-1.5 border rounded-lg font-semibold"><option value="">Todos los sistemas</option><option v-for="o in opcionesRegs.sistemas" :key="o.key" :value="o.key">{{ o.label }} ({{ o.n }})</option></select>
+            <select v-model="fRegs.pieza" class="p-1.5 border rounded-lg font-semibold"><option value="">Todas las piezas</option><option v-for="o in opcionesRegs.piezas" :key="o.key" :value="o.key">{{ o.label }} ({{ o.n }})</option></select>
+            <select v-model="fRegs.motivo" class="p-1.5 border rounded-lg font-semibold"><option value="">Todos los motivos</option><option v-for="o in opcionesRegs.motivos" :key="o.key" :value="o.key">{{ o.label }} ({{ o.n }})</option></select>
+            <select v-model="fRegs.causa" class="p-1.5 border rounded-lg font-semibold"><option value="">Todas las causas</option><option v-for="o in opcionesRegs.causas" :key="o.key" :value="o.key">{{ o.label }} ({{ o.n }})</option></select>
+            <button @click="limpiarFRegs" class="text-slate-500 underline">Limpiar</button>
+          </div>
+          <div class="space-y-1 max-h-96 overflow-y-auto">
+            <div v-for="x in regsFallasFiltrados" :key="x.r.id" class="border rounded-lg px-2 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5 hover:bg-slate-50">
               <span class="font-mono font-bold">{{ formatDateForDisplay(x.fecha) }}</span>
               <span class="font-bold" :style="{ color: x.cat.color === '#facc15' || x.cat.color === '#eab308' ? '#a16207' : x.cat.color }"><i :class="['fa-solid mr-0.5', x.cat.icon]"></i>{{ x.cat.label }}</span>
               <span class="text-slate-500">{{ x.r.causa }}</span>
-              <span class="flex-1 min-w-[200px]">{{ x.r.causaDetallada }}<span v-if="x.r.descripcion" class="text-slate-400"> — {{ x.r.descripcion }}</span></span>
-              <span v-if="x.min" class="text-sky-700 font-semibold">{{ fmtMin(x.min) }}</span>
+              <span class="flex-1 min-w-[200px]">{{ x.r.causaDetallada }}<span v-if="x.r.descripcion" class="text-slate-400"> — {{ x.r.descripcion }}</span>
+                <span v-if="x.piezas.length || x.motivo !== 'SIN_MOTIVO'" class="block text-[10px] mt-0.5"><span v-for="k in x.piezas" :key="k" class="mr-1 px-1.5 rounded bg-slate-200 text-slate-700 font-bold">{{ piezaPorKey(k)?.label }}</span><span v-if="x.motivo !== 'SIN_MOTIVO'" class="px-1.5 rounded bg-rose-50 text-rose-700 font-semibold">{{ motivoPorKey(x.motivo).label }}</span></span></span>
+              <span v-if="x.min" class="text-sky-700 font-semibold" :title="'Total horas: ' + (x.r.horaTotal || '-') + ' · ' + (x.r.horaInicio || '-') + ' → ' + (x.r.horaTermino || '-')">{{ fmtMin(x.min) }}</span>
             </div>
+            <p v-if="!regsFallasFiltrados.length" class="text-center text-slate-400 py-3">Ningún registro con este filtro.</p>
           </div>
         </div>
         <p class="text-[10px] text-slate-400">Clasificación automática por palabras clave de causa, causa detallada y descripción. Ver todos los equipos en <b>Operaciones → Análisis de Fallas</b>.</p>
@@ -399,7 +417,7 @@ export default /* html */ `
 
     </div>
 
-    <div class="px-6 py-4 border-t bg-white flex justify-between items-center">
+    <div class="shrink-0 px-6 py-4 border-t bg-white flex justify-between items-center">
       <div class="flex items-center gap-3">
         <span class="text-[10px] text-slate-400 font-bold uppercase"><i class="fa-solid fa-cloud"></i> Sincronizado</span>
         <button v-if="isAdmin" @click="abrirBajaEquipo(buscarEquipoPorId(perfilEquipo.id) || perfilEquipo)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-3 py-2 rounded-lg text-xs border border-rose-200"><i class="fa-solid fa-trash"></i> Eliminar equipo</button>
