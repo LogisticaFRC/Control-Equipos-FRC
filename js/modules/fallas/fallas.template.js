@@ -114,9 +114,10 @@ export default /* html */ `
     </div>
     <!-- Palabras más usadas -->
     <div class="bg-white rounded-2xl border shadow-sm p-4">
-      <h3 class="font-extrabold text-slate-800 uppercase mb-2"><i class="fa-solid fa-font text-slate-500 mr-1"></i> Palabras más usadas</h3>
+      <h3 class="font-extrabold text-slate-800 uppercase mb-1"><i class="fa-solid fa-triangle-exclamation text-rose-500 mr-1"></i> Señales de alerta</h3>
+      <p class="text-[10px] text-slate-400 mb-2">Palabras de peligro encontradas en las fallas (no cuenta inspecciones ni revisiones).</p>
       <div class="flex flex-wrap gap-1.5">
-        <span v-for="([w, n], i) in a.palabras" :key="w" :style="{ fontSize: (10 + Math.round(8 * n / (a.palabras[0]?.[1] || 1))) + 'px' }" class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold lowercase" :title="n + ' veces'">{{ w }}</span>
+        <span v-for="([w, n], i) in a.palabras" :key="w" :style="{ fontSize: (10 + Math.round(8 * n / (a.palabras[0]?.[1] || 1))) + 'px' }" class="px-1.5 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-800 font-semibold" :title="n + ' veces'">{{ w }} <b>{{ n }}</b></span>
         <span v-if="!a.palabras.length" class="text-slate-400">Sin datos.</span>
       </div>
     </div>

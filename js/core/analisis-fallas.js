@@ -137,6 +137,26 @@ export const MOTIVOS = [
   { key: 'AJUSTE', label: 'Desconfiguración / ajuste', kw: ['DESCONFIGUR', 'CONFIGURA', 'PROGRAMA', 'CALIBRA', 'AJUSTE', 'PARAMETR'] }
 ];
 export const MOTIVO_NO_INDICADO = { key: 'SIN_MOTIVO', label: 'Motivo no indicado' };
+
+/** SÍNTOMAS = señales de alerta (lo que se ve cuando el equipo falla). */
+export const SINTOMAS = [
+  { key: 'FUERA_SERVICIO', label: 'Quedó fuera de servicio', kw: ['FUERA DE SERVICIO', 'DETENIDO', 'INOPERATIVO', 'INOPERABLE', 'EQUIPO PARADO', 'SE DETIENE EL EQUIPO'] },
+  { key: 'NO_PARTE', label: 'No parte / no arranca', kw: ['NO PARTE', 'NO ARRANCA', 'NO ENCIENDE', 'NO DA ARRANQUE', 'NO PRENDE', 'NO HACE CONTACTO'] },
+  { key: 'SE_APAGA', label: 'Se apaga / se detiene', kw: ['SE APAGA', 'SE DETIENE', 'SE CORTA', 'SE PARA', 'SE DESCONECTA'] },
+  { key: 'NO_GENERA', label: 'No genera / sin energía', kw: ['NO GENERA', 'SIN VOLTAJE', 'SIN ENERGIA', 'NO ENTREGA', 'SIN SALIDA', 'NO DA CORRIENTE', 'SIN TENSION'] },
+  { key: 'ALARMA', label: 'Alarma / código de falla', kw: ['ALARMA', 'CODIGO DE FALLA', 'CODIGO', 'TESTIGO', 'SHUTDOWN', 'WARNING'] },
+  { key: 'RUIDO', label: 'Ruido / vibración', kw: ['RUIDO', 'GOLPETEO', 'VIBRA', 'CASCABELEO', 'CHIRRIDO'] },
+  { key: 'HUMO', label: 'Humo / olor a quemado', kw: ['HUMO', 'OLOR A QUEMADO', 'HUMEA'] },
+  { key: 'POTENCIA', label: 'Pierde potencia / no acelera', kw: ['PIERDE POTENCIA', 'PERDIDA DE POTENCIA', 'NO ACELERA', 'NO SUBE', 'BAJA DE REVOLUCIONES', 'INESTABLE', 'OSCILA'] },
+  { key: 'TEMPERATURA', label: 'Alta temperatura', kw: ['SOBRECALENT', 'RECALENT', 'ALTA TEMPERATURA', 'TEMPERATURA ALTA'] },
+  { key: 'PRESION', label: 'Baja presión', kw: ['BAJA PRESION', 'PRESION DE ACEITE', 'SIN PRESION'] }
+];
+/** Señales de alerta de un registro (keys de SINTOMAS). */
+export const detectarSintomas = (r) => {
+  const t = ` ${sinTildes(r.causa)} ${sinTildes(r.causaDetallada)} ${sinTildes(r.descripcion)} `.replace(/[^A-Z0-9 ]+/g, ' ').replace(/\s+/g, ' ');
+  return SINTOMAS.filter(x => x.kw.some(k => t.includes(` ${k}`))).map(x => x.key);
+};
+export const sintomaPorKey = (k) => SINTOMAS.find(x => x.key === k) || null;
 export const piezaPorKey = (k) => PIEZAS.find(p => p.key === k) || null;
 export const motivoPorKey = (k) => MOTIVOS.find(m => m.key === k) || MOTIVO_NO_INDICADO;
 
@@ -211,14 +231,24 @@ export const fmtMin = (min) => {
 };
 
 /** "Problema" normalizado para agrupar textos parecidos (primeras 6 palabras útiles de la causa detallada). */
+/** Palabras de ACTIVIDAD (inspección, revisión, prueba…): describen lo que se hizo, no el problema. */
+const ES_ACTIVIDAD = /^I*(INSPECC|REVISI|REVISA|CHEQUE|PRUEBA|MEDICI|CONTROL|VISITA|ATENCION|OPERADOR|PUESTA|MARCHA|LIMPIEZA|LAVADO|ASEO|APOYO|TRASLADO|ENTREGA|RETIRO|INSTALA)/;
+/**
+ * "Problema" para agrupar registros parecidos. Si se detecta pieza → "pieza · motivo" (ej. "Correa · rotura / corte");
+ * si no, las primeras palabras útiles de la causa detallada. Inspecciones, revisiones, pruebas, limpiezas, etc. NO son problemas → ''.
+ */
 export const problemaDe = (r) => {
-  const base = sinTildes(r.causaDetallada || r.descripcion || r.causa).replace(/[^A-Z0-9 ]+/g, ' ').split(/\s+/)
-    .filter(w => w.length > 2 && !PALABRAS_VACIAS.has(w) && !/^\d+$/.test(w));
-  return base.slice(0, 6).join(' ');
+  const piezas = detectarPiezas(r), m = detectarMotivo(r), sint = detectarSintomas(r);
+  const motivo = m !== 'SIN_MOTIVO' ? motivoPorKey(m).label.toLowerCase() : '';
+  if (piezas.length) return (piezaPorKey(piezas[0])?.label || piezas[0]) + (motivo ? ' · ' + motivo : sint.length ? ' · ' + sintomaPorKey(sint[0]).label.toLowerCase() : '');
+  // Sin pieza: el motivo o la señal de alerta (si no hay ninguna → no es un "problema": inspección, revisión, etc.)
+  if (motivo) return motivo.charAt(0).toUpperCase() + motivo.slice(1);
+  if (sint.length) return sintomaPorKey(sint[0]).label;
+  return '';
 };
 /** Palabras clave de un texto (para la nube de palabras). */
 const palabrasDe = (r) => sinTildes(`${r.causaDetallada} ${r.descripcion}`).replace(/[^A-Z0-9 ]+/g, ' ').split(/\s+/)
-  .filter(w => w.length > 3 && !PALABRAS_VACIAS.has(w) && !/^\d+$/.test(w));
+  .filter(w => w.length > 3 && !PALABRAS_VACIAS.has(w) && !/^\d+$/.test(w) && !ES_ACTIVIDAD.test(w));
 
 const incr = (m, k, v = 1) => m.set(k, (m.get(k) || 0) + v);
 const top = (m, n = 10) => Array.from(m.entries()).sort((a, b) => b[1] - a[1]).slice(0, n);
@@ -253,12 +283,13 @@ export const analizarFallas = (regs, equipos = [], { incluirMantenciones = false
     incr(porCat, x.cat.key);
     if (x.min) { incr(minPorCat, x.cat.key, x.min); minTotal += x.min; conHoras++; }
     costoTotal += x.costo;
-    if (x.problema) {
+    if (x.problema && x.cat.key !== 'SERVICIO') {
       incr(porProblema, x.problema);
       if (!equiposPorProblema.has(x.problema)) equiposPorProblema.set(x.problema, new Set());
       equiposPorProblema.get(x.problema).add(x.afi);
     }
-    palabrasDe(x.r).forEach(w => incr(palabras, w));
+    detectarSintomas(x.r).forEach(k => incr(palabras, sintomaPorKey(k).label));
+    if (x.motivo !== 'SIN_MOTIVO') incr(palabras, motivoPorKey(x.motivo).label);
     const mes = mesDe(x.fecha);
     if (!porMes.has(mes)) porMes.set(mes, new Map());
     incr(porMes.get(mes), x.cat.key);
@@ -316,7 +347,7 @@ export const analizarFallas = (regs, equipos = [], { incluirMantenciones = false
 export const resumenEquipo = (afi, xs, eq = null) => {
   const c = new Map(), p = new Map(), pz = new Map(), mo = new Map(); let min = 0, costo = 0;
   xs.forEach(x => {
-    incr(c, x.cat.key); if (x.problema) incr(p, x.problema); min += x.min || 0; costo += x.costo;
+    incr(c, x.cat.key); if (x.problema && x.cat.key !== 'SERVICIO') incr(p, x.problema); min += x.min || 0; costo += x.costo;
     (x.piezas || []).forEach(k => { if (!pz.has(k)) pz.set(k, new Map()); incr(pz.get(k), x.motivo); });
     incr(mo, x.motivo);
   });
@@ -361,6 +392,8 @@ const hallazgosGenerales = ({ total, categorias, problemas, equiposRank, tipos, 
     const p = piezas[0];
     h.push({ nivel: 'alto', icon: 'fa-gear', texto: `La pieza que más falla es **${p.label}**: ${p.n} veces en ${p.equipos.length} equipo(s)` + (p.motivoTop ? `; el motivo más común es **${p.motivoTop.label.toLowerCase()}** (${p.motivoTop.n}).` : '.') + (piezas[1] ? ` Le siguen ${piezas.slice(1, 3).map(x => x.label.toLowerCase() + ' (' + x.n + ')').join(' y ')}.` : '') });
   }
+  const fueraServ = lista.filter(x => detectarSintomas(x.r).includes('FUERA_SERVICIO'));
+  if (fueraServ.length) h.push({ nivel: 'alto', icon: 'fa-power-off', texto: `**${fueraServ.length} falla(s)** dejaron el equipo **fuera de servicio** (${Array.from(new Set(fueraServ.map(x => 'AFI ' + x.afi))).slice(0, 6).join(', ')}).` });
   const motivoTop = motivos.find(m => m.key !== 'SIN_MOTIVO');
   if (motivoTop) h.push({ nivel: 'medio', icon: 'fa-circle-question', texto: `El motivo de falla más común es **${motivoTop.label.toLowerCase()}** (${motivoTop.n} de ${total}).` + (conMotivo < total * 0.6 ? ` Ojo: en ${total - conMotivo} registros no se indica el motivo.` : '') });
   if (problemas[0]) h.push({ nivel: 'alto', icon: 'fa-repeat', texto: `El problema que más se repite es "**${problemas[0].problema.toLowerCase()}**": ${problemas[0].n} veces en ${problemas[0].equipos.length} equipo(s).` });
