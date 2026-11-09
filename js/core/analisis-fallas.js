@@ -17,17 +17,17 @@ export const sinTildes = (s) => String(s || '').toUpperCase().normalize('NFD').r
 /** Sistemas (categorías). kw = palabras o frases (sin tildes, mayúsculas). El orden desempata. */
 export const CATEGORIAS_FALLA = [
   { key: 'ELECTRICO', label: 'Eléctrico', color: '#eab308', icon: 'fa-bolt',
-    kw: ['BATERIA', 'ALTERNADOR', 'MOTOR DE PARTIDA', 'MOTOR PARTIDA', 'PARTIDA', 'ARRANQUE', 'ELECTRIC', 'CABLE', 'CABLEADO', 'FUSIBLE', 'RELE', 'CORTOCIRCUITO', 'CORTO CIRCUITO', 'SENSOR', 'CONTACTOR', 'BORNE', 'SOLENOIDE', 'TERMINAL', 'CARGADOR', 'CONEXION', 'ENCHUFE', 'SWITCH', 'LLAVE DE CONTACTO', 'TIERRA'] },
+    kw: ['BATERIA', 'ALTERNADOR', 'CORTA CORRIENTE', 'CORTACORRIENTE', 'BOCINA', 'BALIZA', 'MOTOR DE PARTIDA', 'MOTOR PARTIDA', 'PARTIDA', 'ARRANQUE', 'ELECTRIC', 'CABLE', 'CABLEADO', 'FUSIBLE', 'RELE', 'CORTOCIRCUITO', 'CORTO CIRCUITO', 'SENSOR', 'CONTACTOR', 'BORNE', 'SOLENOIDE', 'TERMINAL', 'CARGADOR', 'CONEXION', 'ENCHUFE', 'SWITCH', 'LLAVE DE CONTACTO', 'TIERRA'] },
   { key: 'GENERACION', label: 'Generación / Panel de control', color: '#f97316', icon: 'fa-plug-circle-bolt',
-    kw: ['AVR', 'REGULADOR DE VOLTAJE', 'VOLTAJE', 'FRECUENCIA', 'BREAKER', 'DISYUNTOR', 'PANEL DE CONTROL', 'CONTROLADOR', 'MODULO', 'DEEP SEA', 'DSE', 'COMAP', 'EXCITATRIZ', 'BOBINA', 'ESTATOR', 'ROTOR', 'BANCO DE PRUEBA', 'BANCO DE CARGA', 'BANCO', 'TRANSFERENCIA', 'ATS', 'KVA', 'AMPER'] },
+    kw: ['AVR', 'REGULADOR DE VOLTAJE', 'VOLTAJE', 'FRECUENCIA', 'BREAKER', 'DISYUNTOR', 'PANEL DE CONTROL', 'CONTROLADOR', 'MODULO', 'DEEP SEA', 'DSE', 'COMAP', 'EXCITATRIZ', 'ALIMENTADOR', 'COOPER', 'BOBINA', 'ESTATOR', 'ROTOR', 'BANCO DE PRUEBA', 'BANCO DE CARGA', 'BANCO', 'TRANSFERENCIA', 'ATS', 'KVA', 'AMPER'] },
   { key: 'MOTOR', label: 'Motor', color: '#dc2626', icon: 'fa-gear',
     kw: ['MOTOR', 'CULATA', 'INYECTOR', 'TURBO', 'EMPAQUETADURA', 'JUNTA', 'PISTON', 'VALVULA', 'COMPRESION', 'CIGUENAL', 'ARBOL DE LEVAS', 'HUMO', 'POTENCIA', 'CORREA', 'POLEA', 'TAPA DE VALVULA', 'CARTER', 'ESCAPE', 'SILENCIADOR', 'ADMISION', 'MULTIPLE', 'GOBERNADOR', 'RPM'] },
   { key: 'COMBUSTIBLE', label: 'Combustible', color: '#a16207', icon: 'fa-gas-pump',
-    kw: ['COMBUSTIBLE', 'PETROLEO', 'DIESEL', 'BOMBA INYECTORA', 'ESTANQUE', 'TANQUE', 'SEPARADOR', 'PURGA', 'PURGAR', 'CEBAR', 'AIRE EN EL SISTEMA', 'BOMBA DE ALIMENTACION', 'FLOTADOR', 'NIVEL DE COMBUSTIBLE'] },
+    kw: ['COMBUSTIBLE', 'OCMBUSTIBLE', 'PETROLEO', 'DIESEL', 'DECANTADOR', 'BOMBA INYECTORA', 'ESTANQUE', 'TANQUE', 'SEPARADOR', 'PURGA', 'PURGAR', 'CEBAR', 'AIRE EN EL SISTEMA', 'BOMBA DE ALIMENTACION', 'FLOTADOR', 'NIVEL DE COMBUSTIBLE'] },
   { key: 'REFRIGERACION', label: 'Refrigeración', color: '#0ea5e9', icon: 'fa-temperature-arrow-down',
-    kw: ['RADIADOR', 'REFRIGERANTE', 'TEMPERATURA', 'SOBRECALENT', 'RECALENT', 'VENTILADOR', 'TERMOSTATO', 'BOMBA DE AGUA', 'ASPA', 'ANTICONGELANTE', 'AGUA', 'ENFRIAMIENTO'] },
+    kw: ['RADIADOR', 'READIADOR', 'REFRIGERANTE', 'REGRIGERANTE', 'REFIGERANTE', 'COOLAN', 'ENFRIADOR', 'TEMPERATURA', 'SOBRECALENT', 'RECALENT', 'VENTILADOR', 'TERMOSTATO', 'BOMBA DE AGUA', 'ASPA', 'ANTICONGELANTE', 'AGUA', 'ENFRIAMIENTO'] },
   { key: 'HIDRAULICO', label: 'Hidráulico', color: '#7c3aed', icon: 'fa-droplet',
-    kw: ['HIDRAULIC', 'MANGUERA', 'CILINDRO', 'SELLO', 'RETEN', 'ORING', 'O RING', 'BOMBA HIDRAULICA', 'GATO', 'FLEXIBLE', 'ACOPLE', 'FUGA', 'FILTRACION', 'PERDIDA DE ACEITE'] },
+    kw: ['HIDRAULIC', 'HIDDRAULIC', 'MANGUERA', 'MANGERA', 'MANIFOLD', 'CILINDRO', 'SELLO', 'RETEN', 'ORING', 'O RING', 'BOMBA HIDRAULICA', 'GATO', 'FLEXIBLE', 'ACOPLE', 'FUGA', 'FILTRACION', 'PERDIDA DE ACEITE'] },
   { key: 'LUBRICACION', label: 'Lubricación / Filtros', color: '#16a34a', icon: 'fa-oil-can',
     kw: ['ACEITE', 'LUBRIC', 'ENGRASE', 'ENGRASAR', 'GRASA', 'FILTRO', 'FILTROS'] },
   { key: 'TREN', label: 'Transmisión / Rodado', color: '#475569', icon: 'fa-gears',
@@ -53,7 +53,7 @@ const PALABRAS_VACIAS = new Set(('DE LA EL LOS LAS Y EN CON POR PARA SE A AL DEL
 const contar = (txt, kw) => {
   let n = 0;
   kw.forEach(k => {
-    const ok = k.length <= 3 ? txt.includes(` ${k} `) : txt.includes(` ${k}`);
+    const ok = k.endsWith('$') ? txt.includes(` ${k.slice(0, -1)} `) : (k.length <= 3 ? txt.includes(` ${k} `) : txt.includes(` ${k}`));
     if (ok) n += k.includes(' ') ? 2 : 1;
   });
   return n;
@@ -67,16 +67,19 @@ const contar = (txt, kw) => {
 export const PIEZAS = [
   // Eléctrico
   { key: 'BATERIA', label: 'Batería', grupo: 'ELECTRICO', kw: ['BATERIA'] },
-  { key: 'MOTOR_PARTIDA', label: 'Motor de partida', grupo: 'ELECTRICO', kw: ['MOTOR DE PARTIDA', 'MOTOR PARTIDA', 'MOTOR DE ARRANQUE', 'ARRANCADOR'] },
+  { key: 'MOTOR_PARTIDA', label: 'Motor de partida', grupo: 'ELECTRICO', kw: ['MOTOR DE PARTIDA', 'MOTOR PARTIDA', 'MOTOR DE ARRANQUE', 'MOTOR DE ARRAQUE', 'ARRANCADOR'] },
+  { key: 'CORTA_CORRIENTE', label: 'Corta corriente', grupo: 'ELECTRICO', kw: ['CORTA CORRIENTE', 'CORTACORRIENTE'] },
+  { key: 'BOCINA', label: 'Bocina / alarma de retroceso / baliza', grupo: 'ELECTRICO', kw: ['BOCINA', 'ALARMA DE RETROCESO', 'ALARMA RETROCESO', 'BALIZA'] },
   { key: 'ALTERNADOR', label: 'Alternador', grupo: 'ELECTRICO', kw: ['ALTERNADOR'] },
-  { key: 'CABLEADO', label: 'Cableado / conexiones', grupo: 'ELECTRICO', kw: ['CABLE', 'CABLEADO', 'CONEXION', 'TERMINAL', 'BORNE', 'ENCHUFE'] },
+  { key: 'CABLEADO', label: 'Cableado / conexiones', grupo: 'ELECTRICO', kw: ['CABLE', 'CABLEADO', 'CONEXIONADO', 'CONEXIADO', 'CONEXION', 'TERMINAL', 'BORNE', 'ENCHUFE', 'MASA$', 'ATERRIZAJE'] },
   { key: 'FUSIBLE_RELE', label: 'Fusible / relé', grupo: 'ELECTRICO', kw: ['FUSIBLE', 'RELE$', 'RELES$', 'RELAY'] },
   { key: 'SENSOR', label: 'Sensor', grupo: 'ELECTRICO', kw: ['SENSOR', 'BULBO', 'SENSORES'] },
   { key: 'SOLENOIDE', label: 'Solenoide', grupo: 'ELECTRICO', kw: ['SOLENOIDE'] },
   { key: 'LLAVE_CONTACTO', label: 'Llave de contacto / switch', grupo: 'ELECTRICO', kw: ['LLAVE DE CONTACTO', 'CHAPA DE CONTACTO', 'SWITCH', 'INTERRUPTOR'] },
   // Generación / panel
   { key: 'AVR', label: 'AVR / regulador de voltaje', grupo: 'GENERACION', kw: ['AVR$', 'REGULADOR DE VOLTAJE', 'REGULADOR'] },
-  { key: 'CONTROLADOR', label: 'Controlador / módulo', grupo: 'GENERACION', kw: ['CONTROLADOR', 'MODULO', 'DEEP SEA', 'DSE$', 'COMAP', 'PANEL DE CONTROL', 'PANTALLA'] },
+  { key: 'CONTROLADOR', label: 'Controlador / módulo', grupo: 'GENERACION', kw: ['CONTROLADOR', 'MODULO', 'MODILO', 'DEEP SEA', 'DSE$', 'COMAP', 'PANEL DE CONTROL', 'PANTALLA', 'DISPLAY'] },
+  { key: 'ALIMENTADORES', label: 'Alimentadores / barra Cooper', grupo: 'GENERACION', kw: ['ALIMENTADOR', 'BARRA COOPER', 'COOPER'] },
   { key: 'BREAKER', label: 'Breaker / disyuntor', grupo: 'GENERACION', kw: ['BREAKER', 'DISYUNTOR', 'TERMOMAGNETIC'] },
   { key: 'TRANSFERENCIA', label: 'Transferencia (ATS)', grupo: 'GENERACION', kw: ['TRANSFERENCIA', 'ATS$'] },
   { key: 'EXCITATRIZ', label: 'Excitatriz / bobinado', grupo: 'GENERACION', kw: ['EXCITATRIZ', 'BOBINA', 'BOBINADO', 'ESTATOR', 'ROTOR', 'DIODO', 'PUENTE RECTIFICADOR'] },
@@ -86,6 +89,7 @@ export const PIEZAS = [
   { key: 'INYECTOR', label: 'Inyector', grupo: 'MOTOR', kw: ['INYECTOR'] },
   { key: 'TURBO', label: 'Turbo', grupo: 'MOTOR', kw: ['TURBO'] },
   { key: 'CULATA', label: 'Culata / empaquetadura', grupo: 'MOTOR', kw: ['CULATA', 'EMPAQUETADURA', 'JUNTA'] },
+  { key: 'RETEN_CIGUENAL', label: 'Retén de cigüeñal / cárter', grupo: 'MOTOR', kw: ['CIGUENAL', 'CARTER'] },
   { key: 'ESCAPE', label: 'Escape / silenciador', grupo: 'MOTOR', kw: ['ESCAPE', 'SILENCIADOR', 'MULTIPLE'] },
   { key: 'BOMBA_ACEITE', label: 'Bomba de aceite', grupo: 'MOTOR', kw: ['BOMBA DE ACEITE'] },
   // Combustible
@@ -94,42 +98,48 @@ export const PIEZAS = [
   { key: 'ESTANQUE', label: 'Estanque / tanque', grupo: 'COMBUSTIBLE', kw: ['ESTANQUE', 'TANQUE', 'FLOTADOR'] },
   { key: 'SEPARADOR', label: 'Separador de agua', grupo: 'COMBUSTIBLE', kw: ['SEPARADOR'] },
   // Refrigeración
-  { key: 'RADIADOR', label: 'Radiador', grupo: 'REFRIGERACION', kw: ['RADIADOR'] },
+  { key: 'RADIADOR', label: 'Radiador', grupo: 'REFRIGERACION', kw: ['RADIADOR', 'READIADOR'] },
+  { key: 'ENFRIADOR', label: 'Enfriador de aceite', grupo: 'REFRIGERACION', kw: ['ENFRIADOR'] },
   { key: 'BOMBA_AGUA', label: 'Bomba de agua', grupo: 'REFRIGERACION', kw: ['BOMBA DE AGUA', 'BOMBA AGUA'] },
   { key: 'TERMOSTATO', label: 'Termostato', grupo: 'REFRIGERACION', kw: ['TERMOSTATO'] },
   { key: 'VENTILADOR', label: 'Ventilador / aspa', grupo: 'REFRIGERACION', kw: ['VENTILADOR', 'ASPA'] },
   // Hidráulico
-  { key: 'MANGUERA', label: 'Manguera', grupo: 'HIDRAULICO', kw: ['MANGUERA', 'FLEXIBLE'] },
+  { key: 'MANGUERA', label: 'Manguera / flexible', grupo: 'HIDRAULICO', kw: ['MANGUERA', 'MANGERA', 'FLEXIBLE'] },
+  { key: 'MANIFOLD', label: 'Manifold / válvulas', grupo: 'HIDRAULICO', kw: ['MANIFOLD', 'VALVULA'] },
   { key: 'CILINDRO', label: 'Cilindro / gato', grupo: 'HIDRAULICO', kw: ['CILINDRO', 'GATO'] },
   { key: 'SELLO', label: 'Sello / retén / o-ring', grupo: 'HIDRAULICO', kw: ['SELLO', 'RETEN', 'ORING', 'O RING'] },
   { key: 'BOMBA_HIDR', label: 'Bomba hidráulica', grupo: 'HIDRAULICO', kw: ['BOMBA HIDRAULICA'] },
+  { key: 'ACOPLE', label: 'Acople (macho / hembra)', grupo: 'HIDRAULICO', kw: ['ACOPLE', 'ACOCPLE'] },
   // Filtros
-  { key: 'FILTRO_AIRE', label: 'Filtro de aire', grupo: 'LUBRICACION', kw: ['FILTRO DE AIRE', 'FILTRO AIRE', 'FILTROS DE AIRE'] },
-  { key: 'FILTRO_COMB', label: 'Filtro de combustible', grupo: 'LUBRICACION', kw: ['FILTRO DE COMBUSTIBLE', 'FILTRO COMBUSTIBLE', 'FILTRO DE PETROLEO', 'FILTRO PETROLEO'] },
+  { key: 'FILTRO_AIRE', label: 'Filtro de aire', grupo: 'LUBRICACION', kw: ['FILTRO DE AIRE', 'FILTRO AIRE', 'FILTROS DE AIRE', 'FILTROS AIRE'] },
+  { key: 'FILTRO_COMB', label: 'Filtro de combustible / decantador', grupo: 'LUBRICACION', kw: ['FILTRO DE COMBUSTIBLE', 'FILTRO COMBUSTIBLE', 'FILTRO DE PETROLEO', 'FILTRO PETROLEO', 'DECANTADOR'] },
   { key: 'FILTRO_ACEITE', label: 'Filtro de aceite', grupo: 'LUBRICACION', kw: ['FILTRO DE ACEITE', 'FILTRO ACEITE'] },
   { key: 'FILTRO', label: 'Filtro (otro)', grupo: 'LUBRICACION', kw: ['FILTRO'], generico: true },
   // Rodado
   { key: 'NEUMATICO', label: 'Neumático / rueda', grupo: 'TREN', kw: ['NEUMATICO', 'RUEDA', 'LLANTA', 'PINCHAZO', 'CAMARA'] },
-  { key: 'RODAMIENTO', label: 'Rodamiento / eje', grupo: 'TREN', kw: ['RODAMIENTO', 'EJE$', 'MAZA'] },
+  { key: 'RODAMIENTO', label: 'Rodamiento / eje / maza', grupo: 'TREN', kw: ['RODAMIENTO', 'EJE$', 'MAZA'] },
+  { key: 'ESTABILIZADOR', label: 'Patas estabilizadoras', grupo: 'TREN', kw: ['ESTABILIZADOR', 'PATA ESTABILIZ', 'PATAS ESTABILIZ'] },
+  { key: 'PASADOR', label: 'Pasadores / pernos', grupo: 'TREN', kw: ['PASADOR', 'PERNO'] },
   { key: 'FRENO', label: 'Frenos', grupo: 'TREN', kw: ['FRENO', 'PASTILLA', 'BALATA'] },
   // Estructura
-  { key: 'PUERTA', label: 'Puerta / chapa / bisagra', grupo: 'ESTRUCTURA', kw: ['PUERTA', 'CHAPA$', 'BISAGRA', 'CERRADURA', 'CANDADO'] },
+  { key: 'PUERTA', label: 'Puerta / chapa / bisagra', grupo: 'ESTRUCTURA', kw: ['PUERTA', 'CHAPA$', 'BISAGRA', 'VISAGRA', 'CERRADURA', 'CANDADO'] },
+  { key: 'PARABRISAS', label: 'Parabrisas / limpiaparabrisas', grupo: 'ESTRUCTURA', kw: ['PARABRISAS', 'LIMPIAPARABRISAS', 'VIDRIO'] },
   { key: 'LANZA', label: 'Lanza / enganche', grupo: 'ESTRUCTURA', kw: ['LANZA', 'ENGANCHE', 'TIRO$'] },
   { key: 'CARCASA', label: 'Carcasa / gabinete', grupo: 'ESTRUCTURA', kw: ['CARCASA', 'GABINETE', 'CANOPY', 'CABINA'] },
   // Iluminación / torre
   { key: 'AMPOLLETA', label: 'Ampolleta / foco / luminaria', grupo: 'ILUMINACION', kw: ['AMPOLLETA', 'FOCO', 'LUMINARIA', 'LAMPARA', 'REFLECTOR', 'LED$', 'HALURO'] },
   { key: 'BALASTRO', label: 'Balastro', grupo: 'ILUMINACION', kw: ['BALASTRO'] },
-  { key: 'MASTIL', label: 'Mástil / winche', grupo: 'ILUMINACION', kw: ['MASTIL', 'WINCHE', 'HUINCHE', 'CABLE DE ACERO', 'PIOLA'] }
+  { key: 'MASTIL', label: 'Mástil / piola / trinquete', grupo: 'ILUMINACION', kw: ['MASTIL', 'WINCHE', 'HUINCHE', 'CABLE DE ACERO', 'PIOLA', 'TRINQUETE'] }
 ];
 
 export const MOTIVOS = [
-  { key: 'ROTURA', label: 'Rotura / corte', kw: ['ROTA$', 'ROTO$', 'ROTAS$', 'ROTOS$', 'ROTURA', 'RUPTURA', 'ROMP', 'CORTE DE', 'CORTA$', 'QUEBRAD', 'CORTAD', 'TRIZAD', 'FISUR', 'PARTIDA EN', 'REVENTAD', 'DANAD', 'MALA$', 'MALO$', 'DEFECTUOS'] },
-  { key: 'DESGASTE', label: 'Desgaste / vida útil', kw: ['DESGAST', 'GASTAD', 'CRISTALIZ', 'AGRIETAD', 'RESECA', 'VIDA UTIL', 'FATIGA'] },
+  { key: 'ROTURA', label: 'Rotura / corte', kw: ['ROTA$', 'ROTO$', 'ROTAS$', 'ROTOS$', 'ROTURA', 'RUPTURA', 'FATIGA DE MATERIAL', 'ROMP', 'CORTE DE', 'CORTA$', 'QUEBRAD', 'CORTAD', 'TRIZAD', 'FISUR', 'PARTIDA EN', 'REVENTAD', 'DANAD', 'MALA$', 'MALO$', 'DEFECTUOS'] },
+  { key: 'DESGASTE', label: 'Desgaste / mal estado', kw: ['MAL ESTADO', 'DESGAST', 'GASTAD', 'CRISTALIZ', 'AGRIETAD', 'RESECA', 'VIDA UTIL', 'FATIGA'] },
   { key: 'FUGA', label: 'Fuga / pérdida', kw: ['FUGA', 'FILTRA$', 'FILTRACION', 'GOTEA', 'GOTEO', 'PIERDE', 'PERDIDA DE', 'DERRAM', 'BOTA ACEITE', 'BOTA AGUA'] },
   { key: 'SUELTO', label: 'Suelto / mal tensado', kw: ['SUELT', 'FLOJ', 'DESAJUST', 'DESTENSAD', 'TENSAR', 'TENSADO', 'REAPRIET', 'DESCONECTAD', 'SALIDA DE'] },
   { key: 'QUEMADO', label: 'Quemado / cortocircuito', kw: ['QUEMAD', 'FUNDID', 'CORTOCIRC', 'CORTO CIRC', 'CHISPORROT', 'SOBRECARGA'] },
   { key: 'DESCARGA', label: 'Descargado / sin carga', kw: ['DESCARGAD', 'SIN CARGA', 'NO CARGA', 'BAJO VOLTAJE', 'SULFAT', 'AGOTAD'] },
-  { key: 'OBSTRUCCION', label: 'Tapado / sucio / contaminado', kw: ['TAPAD', 'OBSTRU', 'SUCI', 'BARRO', 'POLVO', 'CONTAMIN', 'AGUA EN', 'BARRA$', 'CARBON'] },
+  { key: 'OBSTRUCCION', label: 'Tapado / saturado / sucio', kw: ['SATURAD', 'SATURACION', 'TAPAD', 'OBSTRU', 'SUCI', 'BARRO', 'POLVO', 'CONTAMIN', 'AGUA EN', 'BARRA$', 'CARBON'] },
   { key: 'TEMPERATURA', label: 'Sobrecalentamiento', kw: ['SOBRECALENT', 'RECALENT', 'ALTA TEMPERATURA', 'TEMPERATURA'] },
   { key: 'GOLPE', label: 'Golpe / mal uso / accidente', kw: ['GOLPE', 'CHOQUE', 'IMPACTO', 'ACCIDENT', 'MAL USO', 'MALA OPERACION', 'VANDAL', 'TERCEROS'] },
   { key: 'ROBO', label: 'Robo', kw: ['ROBO$', 'ROBAD', 'HURTO', 'SUSTRA'] },
@@ -140,7 +150,7 @@ export const MOTIVO_NO_INDICADO = { key: 'SIN_MOTIVO', label: 'Motivo no indicad
 
 /** SÍNTOMAS = señales de alerta (lo que se ve cuando el equipo falla). */
 export const SINTOMAS = [
-  { key: 'FUERA_SERVICIO', label: 'Quedó fuera de servicio', kw: ['FUERA DE SERVICIO', 'DETENIDO', 'INOPERATIVO', 'INOPERABLE', 'EQUIPO PARADO', 'SE DETIENE EL EQUIPO'] },
+  { key: 'FUERA_SERVICIO', label: 'Quedó fuera de servicio', kw: ['FUERA DE SERVICIO', 'DETENIDO', 'DETENCION', 'INOPERATIVO', 'INOPERABLE', 'EQUIPO PARADO', 'SE DETIENE EL EQUIPO'] },
   { key: 'NO_PARTE', label: 'No parte / no arranca', kw: ['NO PARTE', 'NO ARRANCA', 'NO ENCIENDE', 'NO DA ARRANQUE', 'NO PRENDE', 'NO HACE CONTACTO'] },
   { key: 'SE_APAGA', label: 'Se apaga / se detiene', kw: ['SE APAGA', 'SE DETIENE', 'SE CORTA', 'SE PARA', 'SE DESCONECTA'] },
   { key: 'NO_GENERA', label: 'No genera / sin energía', kw: ['NO GENERA', 'SIN VOLTAJE', 'SIN ENERGIA', 'NO ENTREGA', 'SIN SALIDA', 'NO DA CORRIENTE', 'SIN TENSION'] },
@@ -148,7 +158,7 @@ export const SINTOMAS = [
   { key: 'RUIDO', label: 'Ruido / vibración', kw: ['RUIDO', 'GOLPETEO', 'VIBRA', 'CASCABELEO', 'CHIRRIDO'] },
   { key: 'HUMO', label: 'Humo / olor a quemado', kw: ['HUMO', 'OLOR A QUEMADO', 'HUMEA'] },
   { key: 'POTENCIA', label: 'Pierde potencia / no acelera', kw: ['PIERDE POTENCIA', 'PERDIDA DE POTENCIA', 'NO ACELERA', 'NO SUBE', 'BAJA DE REVOLUCIONES', 'INESTABLE', 'OSCILA'] },
-  { key: 'TEMPERATURA', label: 'Alta temperatura', kw: ['SOBRECALENT', 'RECALENT', 'ALTA TEMPERATURA', 'TEMPERATURA ALTA'] },
+  { key: 'TEMPERATURA', label: 'Alta temperatura', kw: ['SOBRECALENT', 'RECALENT', 'ALTA TEMPERATURA', 'TEMPERATURA ALTA', 'ALTA TEMEPRATURA', 'ALTA TEMPERATIRA'] },
   { key: 'PRESION', label: 'Baja presión', kw: ['BAJA PRESION', 'PRESION DE ACEITE', 'SIN PRESION'] }
 ];
 /** Señales de alerta de un registro (keys de SINTOMAS). */
@@ -193,7 +203,10 @@ const textoDe = (r) => {
 
 /** Sistema principal de un registro: { key, label, color, puntaje, otras:[keys] }. */
 /** Registro que NO es una falla: mantención (completa o intermedia) o trabajo PREVENTIVO / PREDICTIVO. */
-export const esNoFalla = (r) => Boolean(claseMantencion(r)) || /PREVENTIV|PREDICTIV/.test(sinTildes(`${r.tipoMant} ${r.causa} ${r.causaDetallada}`));
+// Causas administrativas / de rutina que no son fallas (estandarización, implementación, check list…)
+const CAUSAS_NO_FALLA = /^(ESTANDARIZACION|IMPLEMENTACION|CHECK ?LIST|ACTIVIDAD|PUESTA EN MARCHA)/;
+export const esNoFalla = (r) => Boolean(claseMantencion(r)) || /PREVENTIV|PREDICTIV/.test(sinTildes(`${r.tipoMant} ${r.causa} ${r.causaDetallada}`))
+  || CAUSAS_NO_FALLA.test(sinTildes(r.causa).trim());
 
 export const categorizar = (r) => {
   const t = textoDe(r);
