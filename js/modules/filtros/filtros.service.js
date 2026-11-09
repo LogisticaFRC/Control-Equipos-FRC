@@ -323,6 +323,50 @@ const leerExcelMatriz = (file) => new Promise((resolve, reject) => {
   reader.readAsArrayBuffer(file);
 });
 
+/** Compara modelos sin espacios ni guiones: "P-100" = "P100" = "p 100". */
+const modeloCompacto = (v) => normTxt(v).replace(/[^A-Z0-9.]/g, '');
+
+/**
+ * Lee las columnas "SIRVE PARA" y arma los enlaces filtro ↔ marca/modelo (bd_filtros).
+ * El modelo se busca en el inventario (BD_INVENTARIO.modelo) para tomar su MARCA y escribirlo igual;
+ * si hay varias marcas con ese modelo se enlaza a cada una. Si no está en el inventario se guarda sin marca.
+ * No duplica: si ya existe el mismo modelo + tipo + código, no se toca (respeta la cantidad que ya tenga).
+ */
+const aplicacionesDesdeSirve = (filas, iCod, iMarca, iTipo, colsSirve) => {
+  const inv = new Map();   // modelo compacto → [{ marca, modelo }]
+  dbEquipos.value.forEach(e => {
+    const k = modeloCompacto(e.modelo);
+    if (!k) return;
+    const l = inv.get(k) || [];
+    if (!l.some(x => x.marca === normTxt(e.marca) && x.modelo === normTxt(e.modelo))) l.push({ marca: normTxt(e.marca), modelo: normTxt(e.modelo) });
+    inv.set(k, l);
+  });
+  const ya = new Set(dbFiltros.value.map(a => `${claveModelo(a.equipoMarca, a.equipoModelo)}|${a.tipo}|${a.codigo}`));
+  const nuevas = [], modelos = new Set(), sinEquipo = new Set(), afis = new Set();
+  filas.forEach(r => {
+    const codigo = normCodigo(r?.[iCod]);
+    if (!codigo) return;
+    const tipo = iTipo >= 0 ? normTipo(r[iTipo]) : '';
+    const marcaFiltro = iMarca >= 0 ? normTxt(r[iMarca]) : '';
+    colsSirve.forEach(i => {
+      const crudo = normTxt(r[i]);
+      if (!crudo) return;
+      const k = modeloCompacto(crudo);
+      modelos.add(k);
+      const destinos = inv.get(k) || [];
+      if (!destinos.length) sinEquipo.add(crudo);
+      (destinos.length ? destinos : [{ marca: '', modelo: crudo }]).forEach(d => {
+        dbEquipos.value.forEach(e => { if (normTxt(e.marca) === d.marca && normTxt(e.modelo) === d.modelo) afis.add(e.afi); });
+        const clave = `${claveModelo(d.marca, d.modelo)}|${tipo}|${codigo}`;
+        if (ya.has(clave)) return;
+        ya.add(clave);
+        nuevas.push({ equipo_marca: d.marca, equipo_modelo: d.modelo, tipo, codigo, marca: marcaFiltro, cantidad: 1, updated_at: ahora() });
+      });
+    });
+  });
+  return { nuevas, modelos: modelos.size, sinEquipo: [...sinEquipo].sort(), afis: afis.size };
+};
+
 export const importarPreciosExcel = async (e) => {
   if (!soloAdmin()) return;
   const file = e.target.files[0]; if (!file) return;
@@ -331,13 +375,16 @@ export const importarPreciosExcel = async (e) => {
     const { matriz, header } = await leerExcelMatriz(file);
     const enc = (matriz[header] || []).map(sinTildes);
     const iCod = enc.indexOf('CODIGO'), iMarca = enc.indexOf('MARCA'), iTipo = enc.indexOf('TIPO');
+    // Columnas "SIRVE PARA", "SIRVE PARA 2"… = modelos de equipo que usan ese filtro (se enlazan a los AFI del inventario)
+    const colsSirve = enc.map((h, i) => ({ h, i })).filter(c => /^SIRVE\s*PARA/.test(c.h)).map(c => c.i);
     const colsProv = enc.map((h, i) => ({ h: normTxt(matriz[header][i]), i }))
-      .filter(c => c.h && ![iCod, iMarca, iTipo].includes(c.i) && !/^COLUMNA\s*\d*$/.test(c.h));
+      .filter(c => c.h && ![iCod, iMarca, iTipo].includes(c.i) && !colsSirve.includes(c.i) && !/^COLUMNA\s*\d*$/.test(c.h));
     if (!colsProv.length) throw new Error('No se encontraron columnas de proveedores después de CODIGO / MARCA / TIPO.');
 
     const porClave = new Map();
     const codigos = new Set();
     const hoy = hoyISO();
+    const apps = colsSirve.length ? aplicacionesDesdeSirve(matriz.slice(header + 1), iCod, iMarca, iTipo, colsSirve) : null;
     matriz.slice(header + 1).forEach(r => {
       const codigo = normCodigo(r?.[iCod]);
       if (!codigo) return;
@@ -351,14 +398,20 @@ export const importarPreciosExcel = async (e) => {
       });
     });
     const filas = Array.from(porClave.values());
-    if (!filas.length) throw new Error('El archivo no trae precios.');
-    if (!confirm(`Se cargarán ${filas.length} precios de ${codigos.size} códigos y ${colsProv.length} proveedores:\n${colsProv.map(c => c.h).join(', ')}\n\nLos precios que ya existan para el mismo código y proveedor se reemplazan. ¿Continuar?`)) return;
+    if (!filas.length && !(apps && apps.nuevas.length)) throw new Error('El archivo no trae precios.');
+    const txtApps = apps ? `\n\nMODELOS ("SIRVE PARA"): ${apps.modelos} modelo(s) → ${apps.afis} AFI del inventario.\n` +
+      `· ${apps.nuevas.length} enlace(s) nuevos filtro ↔ modelo (los que ya existen no se tocan)` +
+      (apps.sinEquipo.length ? `\n· ${apps.sinEquipo.length} modelo(s) que no están en el inventario (se guardan igual, sin marca): ${apps.sinEquipo.slice(0, 15).join(', ')}${apps.sinEquipo.length > 15 ? '…' : ''}` : '') : '';
+    if (!confirm(`Se cargarán ${filas.length} precios de ${codigos.size} códigos y ${colsProv.length} proveedores:\n${colsProv.map(c => c.h).join(', ')}${txtApps}\n\nLos precios que ya existan para el mismo código y proveedor se reemplazan. ¿Continuar?`)) return;
 
     for (let k = 0; k < filas.length; k += 500) {
       await sb(supabaseClient.from(TABLA_FILTROS_PRECIOS).upsert(filas.slice(k, k + 500), { onConflict: 'codigo,proveedor' }));
     }
+    if (apps && apps.nuevas.length) {
+      for (let k = 0; k < apps.nuevas.length; k += 500) await sb(supabaseClient.from(TABLA_FILTROS).insert(apps.nuevas.slice(k, k + 500)));
+    }
     await cargarDatosDesdeSupabase();
-    alert(`¡Lista de precios importada! ${filas.length} precios de ${codigos.size} códigos.`);
+    alert(`¡Lista de precios importada! ${filas.length} precios de ${codigos.size} códigos.` + (apps ? `\n${apps.nuevas.length} filtros enlazados a modelos (${apps.afis} AFI).` : ''));
   } catch (err) {
     alert('Error al importar la lista de precios: ' + errMsg(err));
   } finally {

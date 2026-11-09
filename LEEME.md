@@ -657,3 +657,14 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - **Control del horómetro/km**: avisa en rojo si es menor que el registro anterior o mayor que el siguiente del mismo AFI, y en amarillo si subió más horas que los días transcurridos (km: > 1.500/día).
 - **Completar pendientes** (botón en Historial): recorre uno a uno los registros con documento a los que les falta descripción/causa detallada, mecánicos u horómetro. Botones Guardar y siguiente · Saltar · Anterior · Salir, y contador "Pendiente X de N".
 - Para quitarlo: borrar el botón "Completar pendientes" en `historial.template.js` y el bloque "HOJA AL LADO" en `form-mantencion.template.js`. No requiere SQL.
+
+## 2026-11-09 · Costos de Mantención (módulo nuevo) · filtros enlazados por "SIRVE PARA"
+- **Ejecutar `sql/costos_mantencion.sql`** (tabla `bd_config` para guardar la configuración compartida). Sin él todo funciona con los valores por defecto, pero no se puede guardar la configuración.
+- **Filtros → Importar planilla**: ahora lee las columnas **SIRVE PARA, SIRVE PARA 2…** (ya no se toman como proveedores). Cada modelo se busca en el inventario sin importar espacios/guiones ("P-100" = "P100"), se toma su MARCA y se crea el enlace filtro ↔ marca/modelo en `bd_filtros` (cantidad 1; no duplica ni cambia los que ya existen). Los modelos que no están en el inventario se guardan sin marca y se avisan.
+- **Mantenimiento → Costos de Mantención** (`js/modules/costos/`):
+  - Valor de cada mantención 250 / 500 / 1000 hrs por modelo = filtros del modelo (opción más barata de cada tipo × cantidad) que van en esa mantención + costo adicional fijo opcional (aceite, mano de obra).
+  - "Qué incluye cada mantención" (Admin): matriz grupo de filtro × 250/500/1000 + adicional $; se guarda para todos. Por defecto: aceite, combustible y aire en todas; hidráulico y cabina desde 500; separador de aceite, refrigerante, transmisión y otros solo en 1000.
+  - **Horas de uso a proyectar** (250…5000 o escribir): cuántas mantenciones caen desde el horómetro aproximado de hoy, de qué tipo (por horómetro nominal: múltiplos de 1000 → 1000, de 500 → 500, resto → 250), fecha estimada (uso diario) y costo. Las vencidas se marcan.
+  - KPI (costo proyectado, mantenciones 250/500/1000, vencidas, modelos sin filtros), vista **Por modelo** (tarjetas con costo 250/500/1000, AFI y detalle de filtros), **Por equipo** (próxima mantención, cantidades, costo; clic → todas las mantenciones), **Faltan datos** (modelos sin filtros y filtros sin precio). Sin vehículos.
+  - **Excel**: Resumen (KPI), Por modelo, Por equipo, Proyección (cada mantención), Filtros por modelo (en qué mantención va cada uno), Sin filtros.
+- **Perfil → pestaña "Costo mantención"**: valor de la 250 / 500 / 1000 con sus filtros, proyección con horas editables, tabla de mantenciones con fecha, costo y acumulado, y Excel del equipo.

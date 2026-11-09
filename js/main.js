@@ -23,6 +23,7 @@ import OcView from './modules/oc/oc.view.js';
 import EppView from './modules/epp/epp.view.js';
 import VehiculosView from './modules/vehiculos/vehiculos.view.js';
 import FallasView from './modules/fallas/fallas.view.js';
+import CostosView from './modules/costos/costos.view.js';
 import TablaHistorial from './modules/historial/tabla-historial.view.js';
 import AreasView from './modules/areas/areas.view.js';
 import SelectorLocacion from './modules/areas/selector-locacion.view.js';
@@ -156,6 +157,7 @@ const template = /* html */ `
       <movimientos-view v-if="currentTab === 'movimientos'"></movimientos-view>
       <historial-view v-if="currentTab === 'hojaVida'"></historial-view>
       <fallas-view v-if="currentTab === 'fallas'"></fallas-view>
+      <costos-view v-if="currentTab === 'costosMant'"></costos-view>
       <aceites-view v-if="currentTab === 'aceites'"></aceites-view>
       <filtros-view v-if="currentTab === 'filtros'"></filtros-view>
       <bodega-view v-if="currentTab === 'bodega'"></bodega-view>
@@ -251,6 +253,7 @@ app.component('MinutasView', MinutasView);
 app.component('OtView', OtView);
 app.component('OcView', OcView);
 app.component('VehiculosView', VehiculosView);
+app.component('CostosView', CostosView);         // Operaciones → Costos de Mantención
 app.component('FallasView', FallasView);         // Operaciones → Análisis de Fallas
 app.component('TablaHistorial', TablaHistorial); // tabla compacta del Historial (módulo Historial y Perfil)   // Operaciones → Vehículos (AFI = patente XXXX-XX)
 app.component('EppView', EppView);   // Seguridad → Control Entrega EPP

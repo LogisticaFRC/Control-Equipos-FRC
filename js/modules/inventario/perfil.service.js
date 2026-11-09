@@ -24,6 +24,7 @@ export const TABS_PERFIL = [
   { k: 'fallas', l: 'Fallas', i: 'fa-magnifying-glass-chart' },
   { k: 'datos', l: 'Datos y ubicación', i: 'fa-truck-monster' },
   { k: 'ficha', l: 'Filtros y ficha', i: 'fa-filter' },
+  { k: 'costos', l: 'Costo mantención', i: 'fa-sack-dollar' },
   { k: 'oc', l: 'OC y traslados', i: 'fa-file-invoice-dollar' }
 ];
 

@@ -360,6 +360,70 @@ export default /* html */ `
       </div>
       </div>
 
+      <!-- ===== COSTO DE MANTENCIÓN (módulo Costos: filtros del modelo + proyección) ===== -->
+      <div v-show="perfilTab === 'costos'" class="space-y-4">
+        <div v-if="esVehPerfil" class="bg-white p-5 rounded-xl border text-slate-500 text-center">Los vehículos se mantienen por kilometraje; este cálculo es para equipos por horas.</div>
+        <template v-else>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-indigo-200">
+          <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2 mb-3">
+            <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2"><i class="fa-solid fa-sack-dollar text-indigo-600"></i> Valor estimado de cada mantención <span class="normal-case font-semibold text-slate-500">({{ perfilEquipo.marca || 'sin marca' }} · {{ perfilEquipo.modelo || 'sin modelo' }})</span></h4>
+            <div class="flex gap-2">
+              <button @click="verFiltrosDelPerfil" class="border border-emerald-300 text-emerald-800 font-bold px-3 py-1.5 rounded-lg hover:bg-emerald-50"><i class="fa-solid fa-filter"></i> Filtros del modelo</button>
+              <button @click="exportarCostosExcel(perfilEquipo)" :disabled="exportandoCostos" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow disabled:opacity-50"><i class="fa-solid fa-file-excel"></i> Excel</button>
+            </div>
+          </div>
+          <div v-if="!costoPerfil.tieneFiltros" class="bg-amber-50 border border-amber-300 rounded-lg p-3 text-amber-800 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> Este modelo aún no tiene filtros cargados en el módulo Filtros, así que su costo sale en $0. Cárgalos (planilla con "SIRVE PARA") y aparecerá solo.</div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div v-for="mt in TIPOS_MANT" :key="mt" :class="['rounded-xl border p-3', estiloMant.caja[mt]]">
+              <div class="flex justify-between items-baseline"><span class="text-[11px] uppercase font-extrabold">Mantención {{ ETIQ_MANT[mt] }}</span><span class="font-mono font-extrabold text-lg">{{ fmtPrecio(costoPerfil.por[mt].total) }}</span></div>
+              <div class="mt-2 space-y-0.5">
+                <div v-for="t in costoPerfil.por[mt].items" :key="t.tipo" class="flex justify-between gap-2 text-[11px]">
+                  <span class="truncate">{{ t.cantidad > 1 ? t.cantidad + '× ' : '' }}{{ t.tipo }} <span class="font-mono opacity-70">{{ t.mejor ? t.mejor.codigo : '' }}</span></span>
+                  <span :class="['font-mono', t.mejor ? '' : 'text-rose-600 font-bold']">{{ t.mejor ? fmtPrecio(t.costo) : 'sin precio' }}</span>
+                </div>
+                <div v-if="costoPerfil.por[mt].extra" class="flex justify-between text-[11px] border-t pt-0.5"><span>Adicional (aceite, M.O., otros)</span><span class="font-mono">{{ fmtPrecio(costoPerfil.por[mt].extra) }}</span></div>
+                <p v-if="!costoPerfil.por[mt].items.length" class="text-[11px] opacity-60">Sin filtros para este tipo.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+          <div class="flex flex-wrap justify-between items-end gap-3 border-b pb-2 mb-3">
+            <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2"><i class="fa-solid fa-chart-line text-indigo-600"></i> Proyección de mantenciones</h4>
+            <div class="flex items-center gap-1">
+              <span class="font-bold text-slate-600 mr-1">Próximas</span>
+              <input type="number" min="0" step="50" v-model.number="horasProyeccion" class="w-20 p-1 border rounded-lg font-mono font-bold text-center">
+              <span class="font-bold text-slate-600">h de uso</span>
+              <button v-for="h in [500, 1000, 2000, 5000]" :key="h" @click="horasProyeccion = h" :class="['px-2 py-0.5 rounded-lg border font-bold ml-0.5', horasProyeccion === h ? 'bg-indigo-600 text-white border-indigo-600' : 'hover:bg-slate-50']">{{ h.toLocaleString('es-CL') }}</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
+            <div class="bg-indigo-600 text-white rounded-xl p-2.5 col-span-2 md:col-span-1"><span class="text-[9px] uppercase font-bold opacity-80">Costo total</span><span class="block font-mono font-extrabold text-lg">{{ fmtPrecio(proyPerfil.total) }}</span></div>
+            <div class="bg-slate-50 border rounded-xl p-2.5"><span class="text-[9px] uppercase font-bold text-slate-500">Desde / hasta</span><span class="block font-mono font-bold">{{ Math.round(proyPerfil.desde).toLocaleString('es-CL') }} → {{ Math.round(proyPerfil.hasta).toLocaleString('es-CL') }} h</span><span class="text-[9px] text-slate-400">{{ proyPerfil.rate ? proyPerfil.rate.toFixed(1) + ' h/día · cada ' + proyPerfil.frecuencia + ' h' : 'cada ' + proyPerfil.frecuencia + ' h' }}</span></div>
+            <div v-for="mt in TIPOS_MANT" :key="mt" :class="['rounded-xl border p-2.5', estiloMant.caja[mt]]"><span class="text-[9px] uppercase font-bold">{{ ETIQ_MANT[mt] }}</span><span class="block font-extrabold text-lg">{{ proyPerfil.cuenta[mt] }} <span class="text-[10px] font-semibold">× {{ fmtPrecio(costoPerfil.por[mt].total) }}</span></span></div>
+          </div>
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="w-full text-left">
+              <thead class="bg-slate-800 text-white uppercase text-[9px]"><tr><th class="p-2">N°</th><th class="p-2 text-right">Horómetro</th><th class="p-2">Mantención</th><th class="p-2">Fecha estimada</th><th class="p-2 text-right">Costo</th><th class="p-2 text-right">Acumulado</th></tr></thead>
+              <tbody class="divide-y">
+                <tr v-for="(s, k) in proyPerfil.servicios" :key="s.n" :class="s.vencida ? 'bg-rose-50' : 'hover:bg-slate-50'">
+                  <td class="p-2 font-bold text-slate-500">{{ s.n }}</td>
+                  <td class="p-2 text-right font-mono font-bold">{{ s.h.toLocaleString('es-CL') }} h</td>
+                  <td class="p-2"><span :class="['px-2 py-0.5 rounded-full text-[10px] font-extrabold', estiloMant.chip[s.tipo]]">{{ ETIQ_MANT[s.tipo] }}</span></td>
+                  <td class="p-2"><span v-if="s.vencida" class="text-rose-600 font-extrabold">VENCIDA · hacer ya</span><span v-else>{{ formatDateForDisplay(s.fecha) }}</span></td>
+                  <td class="p-2 text-right font-mono">{{ fmtPrecio(s.costo) }}<span v-if="s.sinPrecio.length" class="text-amber-600" :title="'Sin precio: ' + s.sinPrecio.join(', ')"> ⚠</span></td>
+                  <td class="p-2 text-right font-mono text-slate-500">{{ fmtPrecio(proyPerfil.servicios.slice(0, k + 1).reduce((a, x) => a + x.costo, 0)) }}</td>
+                </tr>
+                <tr v-if="!proyPerfil.servicios.length"><td colspan="6" class="p-4 text-center text-slate-400">No hay mantenciones en las próximas {{ horasProyeccion }} h de uso.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-2">El tipo (250 / 500 / 1000) sale del horómetro: múltiplos de 1.000 → 1000 hrs, de 500 → 500 hrs, el resto → 250 hrs. Las fechas usan el uso diario del equipo. Qué filtros van en cada mantención se ajusta en Mantenimiento → Costos de Mantención.</p>
+        </div>
+        </template>
+      </div>
+
       <!-- ===== OC Y TRASLADOS ===== -->
       <div v-show="perfilTab === 'oc'" class="space-y-5">
       <!-- ÓRDENES DE COMPRA DEL EQUIPO (módulo OC) -->

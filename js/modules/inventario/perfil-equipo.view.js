@@ -15,6 +15,7 @@ import { getBadgeClass } from './inventario.service.js';
 import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.js';
 import { editarMantencion, eliminarMantencion } from '../historial/historial.service.js';
 import { requeridosPorModelo, irAFiltrosDelModelo, fmtPrecio } from '../filtros/filtros.service.js';
+import { costoModelo, proyeccionEquipo, horasProyeccion, cargarConfigCostos, configCostos, exportarCostosExcel, exportandoCostos, TIPOS_MANT, ETIQ_MANT, ESTILO_MANT } from '../costos/costos.service.js';
 import { fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC } from '../oc/oc.service.js';
 
 const { onMounted, onBeforeUnmount, watch, nextTick, computed, ref } = Vue;
@@ -112,6 +113,10 @@ export default {
 
     // Filtros que usa el equipo: se leen del módulo FILTROS (marca + modelo). Se corrigen solo allá.
     const filtrosRequeridosPerfil = computed(() => requeridosPorModelo(P.perfilEquipo.value.marca, P.perfilEquipo.value.modelo));
+    // Costo de mantención (pestaña "Costo mantención")
+    onMounted(() => cargarConfigCostos());
+    const costoPerfil = computed(() => { configCostos.value; return costoModelo(P.perfilEquipo.value.marca, P.perfilEquipo.value.modelo); });
+    const proyPerfil = computed(() => proyeccionEquipo(P.perfilEquipo.value, horasProyeccion.value, costoPerfil.value));
     const verFiltrosDelPerfil = () => {
       irAFiltrosDelModelo(P.perfilEquipo.value.marca, P.perfilEquipo.value.modelo);
       P.showPerfilEquipoModal.value = false;
@@ -122,6 +127,7 @@ export default {
       fallasIncluirMant, fallasEquipo, totalRegistrosEquipo, fRegs, limpiarFRegs, opcionesRegs, regsFallasFiltrados, piezaPorKey, motivoPorKey, getBadgeEstadoPerfil, htmlHallazgo, claseNivel, fmtMin,
       getHistorialMovimientosAFI, editarMantencion, eliminarMantencion,
       filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio,
+      costoPerfil, proyPerfil, horasProyeccion, exportarCostosExcel, exportandoCostos, TIPOS_MANT, ETIQ_MANT, estiloMant: ESTILO_MANT,
       fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC,
       abrirBajaEquipo, buscarEquipoPorId: (id) => dbEquipos.value.find(e => e.id === id)
     };

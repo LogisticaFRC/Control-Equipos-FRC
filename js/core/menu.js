@@ -40,6 +40,7 @@ export const AREAS = [
       { key: 'ot', grupo: 'mantenimiento', label: 'Órdenes de Trabajo', icon: 'fa-file-signature' },
       { key: 'hojaVida', grupo: 'mantenimiento', label: 'Historial', icon: 'fa-file-medical', count: () => dbIntervenciones.value.length },
       { key: 'fallas', grupo: 'mantenimiento', label: 'Análisis de Fallas', icon: 'fa-magnifying-glass-chart' },   // qué falla más (core/analisis-fallas.js)
+      { key: 'costosMant', grupo: 'mantenimiento', label: 'Costos de Mantención', icon: 'fa-sack-dollar' },   // valor 250/500/1000 por modelo + proyección (modules/costos)
       { key: 'aceites', grupo: 'mantenimiento', label: 'Control Aceites', icon: 'fa-oil-can' },
 
       { key: 'oc', grupo: 'abastecimiento', label: 'OC', icon: 'fa-file-invoice-dollar', count: () => dbOC.value.length },
