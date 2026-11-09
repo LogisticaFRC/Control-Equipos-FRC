@@ -97,7 +97,7 @@ export const PIEZAS = [
   { key: 'BOMBA_INYECTORA', label: 'Bomba inyectora', grupo: 'COMBUSTIBLE', kw: ['BOMBA INYECTORA', 'BOMBA DE INYECCION'] },
   { key: 'BOMBA_COMB', label: 'Bomba de combustible', grupo: 'COMBUSTIBLE', kw: ['BOMBA DE COMBUSTIBLE', 'BOMBA COMBUSTIBLE', 'BOMBA DE ALIMENTACION', 'BOMBA DE TRASPASO', 'BOMBA DE CEBADO'] },
   { key: 'ESTANQUE', label: 'Estanque / tanque', grupo: 'COMBUSTIBLE', kw: ['ESTANQUE', 'TANQUE', 'FLOTADOR'] },
-  { key: 'SEPARADOR', label: 'Separador de agua', grupo: 'COMBUSTIBLE', kw: ['SEPARADOR DE AGUA', 'SEPARADOR AGUA', 'SEPARADOR DE COMBUSTIBLE', 'SEPARADOR COMBUSTIBLE', 'SEPARADOR$'] },
+  { key: 'SEPARADOR', label: 'Separador de agua', grupo: 'COMBUSTIBLE', kw: ['SEPARADOR'] },
   // Refrigeración
   { key: 'RADIADOR', label: 'Radiador', grupo: 'REFRIGERACION', kw: ['RADIADOR', 'READIADOR'] },
   { key: 'ENFRIADOR', label: 'Enfriador de aceite', grupo: 'REFRIGERACION', kw: ['ENFRIADOR'] },
@@ -130,10 +130,7 @@ export const PIEZAS = [
   // Iluminación / torre
   { key: 'AMPOLLETA', label: 'Ampolleta / foco / luminaria', grupo: 'ILUMINACION', kw: ['AMPOLLETA', 'FOCO', 'LUMINARIA', 'LAMPARA', 'REFLECTOR', 'LED$', 'HALURO'] },
   { key: 'BALASTRO', label: 'Balastro', grupo: 'ILUMINACION', kw: ['BALASTRO'] },
-  { key: 'MASTIL', label: 'Mástil / piola / trinquete', grupo: 'ILUMINACION', kw: ['MASTIL', 'WINCHE', 'HUINCHE', 'CABLE DE ACERO', 'PIOLA', 'TRINQUETE'] },
-  { key: 'UNIDAD_COMPRESORA', label: 'Unidad compresora', grupo: 'MOTOR', kw: ['UNIDAD COMPRESORA', 'ELEMENTO COMPRESOR', 'TORNILLO COMPRESOR'] },
-  { key: 'SEP_ACEITE', label: 'Separador de aceite (compresor)', grupo: 'LUBRICACION', kw: ['SEPARADOR DE ACEITE', 'SEPARADOR ACEITE', 'FILTRO SEPARADOR'] },
-  { key: 'VALVULA_ADMISION', label: 'Válvula de admisión / descarga (compresor)', grupo: 'HIDRAULICO', kw: ['VALVULA DE ADMISION', 'VALVULA ADMISION', 'VALVULA DE DESCARGA', 'VALVULA DE SEGURIDAD', 'VALVULA DE ALIVIO', 'VALVULA DE MINIMA PRESION'] }
+  { key: 'MASTIL', label: 'Mástil / piola / trinquete', grupo: 'ILUMINACION', kw: ['MASTIL', 'WINCHE', 'HUINCHE', 'CABLE DE ACERO', 'PIOLA', 'TRINQUETE'] }
 ];
 
 export const MOTIVOS = [

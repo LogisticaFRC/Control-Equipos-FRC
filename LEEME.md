@@ -678,3 +678,4 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
   - Perfil → Fallas: la pieza que más se repite muestra sus causas; las demás con **¿por qué?**.
   - Historial → detalle de una falla: causas probables de la pieza detectada (no en mantenciones).
 - Piezas nuevas en el análisis: Unidad compresora, Separador de aceite (compresor), Válvula de admisión / descarga / seguridad. "Separador" solo cuenta como separador de agua cuando no dice "de aceite".
+- (ajuste) **La pieza manda sobre el sistema**: si la causa detallada nombra una pieza (o la descripción la nombra y dice qué le pasó), el sistema es el de esa pieza (correa → Motor, módulo → Eléctrico / control, manguera → Hidráulico, radiador → Refrigeración…). Sin pieza se usan las palabras clave ("FALLA EN MOTOR, CAMBIO DE ACEITE" → Motor). Una inspección que solo nombra piezas sigue como Servicio / Inspección.
