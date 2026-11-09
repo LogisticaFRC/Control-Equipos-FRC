@@ -206,3 +206,155 @@ export const descargarLibro = async (wb, archivo) => {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1500);
 };
+
+// =====================================================================
+// HOJA "INICIO" CON DASHBOARD (KPI + gráficos como imagen + tablas resumen)
+// ---------------------------------------------------------------------
+// Los gráficos se dibujan con Chart.js en un canvas oculto y se insertan como imagen PNG.
+//   (llamarla ANTES de crear las otras hojas para que quede primera)
+//   hojaDashboard(wb, logo, { nombre: 'Inicio', titulo, subtitulo,
+//     kpis:     [{ t: 'EQUIPOS', v: 12, sub: 'asignados', color: 'indigo'|'verde'|'ambar'|'rojo'|'gris' }],
+//     graficos: [{ titulo: 'Avance', cfg: { type, data, options } }],   // 2 por fila
+//     tablas:   [{ titulo, columnas: [{ t, w? }], filas: [[...]] }] })
+// =====================================================================
+const COLS_DASH = 12;
+
+/** Dibuja un gráfico de Chart.js fuera de pantalla y devuelve su PNG (dataURL) o null. */
+export const graficoPNG = async (cfg, ancho = 720, alto = 400) => {
+  if (!window.Chart) return null;
+  const cont = document.createElement('div');
+  cont.style.cssText = `position:fixed;left:-10000px;top:0;width:${ancho}px;height:${alto}px;`;
+  const canvas = document.createElement('canvas');
+  canvas.width = ancho; canvas.height = alto;
+  cont.appendChild(canvas); document.body.appendChild(cont);
+  const fondo = { id: 'fondoBlanco', beforeDraw: (ch) => { const c = ch.ctx; c.save(); c.fillStyle = '#ffffff'; c.fillRect(0, 0, ch.width, ch.height); c.restore(); } };
+  let chart = null;
+  try {
+    const o = cfg.options || {};
+    chart = new window.Chart(canvas, {
+      ...cfg,
+      options: { ...o, responsive: false, animation: false, devicePixelRatio: 2,
+        plugins: { ...(o.plugins || {}), legend: { position: 'bottom', ...((o.plugins || {}).legend || {}) } } },
+      plugins: [...(cfg.plugins || []), fondo]
+    });
+    return chart.toBase64Image('image/png', 1);
+  } catch (e) { console.warn('[Excel] No se pudo dibujar el gráfico', e); return null; }
+  finally { if (chart) chart.destroy(); cont.remove(); }
+};
+
+const TONO = {
+  indigo: { f: COLOR.indigoClaro, t: COLOR.indigo }, verde: { f: COLOR.verde, t: COLOR.verdeTxt },
+  ambar: { f: COLOR.ambar, t: COLOR.ambarTxt }, rojo: { f: COLOR.rojo, t: COLOR.rojoTxt }, gris: { f: COLOR.gris, t: COLOR.oscuro }
+};
+
+export const hojaDashboard = async (wb, logo, { nombre = 'Inicio', titulo, subtitulo = '', kpis = [], graficos = [], tablas = [] }) => {
+  const ws = wb.addWorksheet(nombreHoja(wb, nombre), {
+    views: [{ showGridLines: false }],
+    pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 } }
+  });
+  for (let c = 1; c <= COLS_DASH; c++) ws.getColumn(c).width = 11;
+  const PX_COL = 82, PX_FILA = 20;   // ancho aprox. de una columna (11) y alto de una fila de 15 pt
+
+  // Encabezado (igual que hojaTabla)
+  ws.getRow(1).height = 28; ws.getRow(2).height = 20; ws.getRow(3).height = 16; ws.getRow(4).height = 8;
+  if (logo) {
+    const id = wb.addImage({ base64: logo.url, extension: 'png' });
+    ws.addImage(id, { tl: { col: 0.15, row: 0.15 }, ext: { width: Math.round(Math.min(60 * (logo.ratio || 1), 150)), height: 60 }, editAs: 'oneCell' });
+  }
+  const filaTitulo = (r, texto, font) => {
+    ws.mergeCells(r, 1, r, COLS_DASH);
+    const c = ws.getCell(r, 1); c.value = texto; c.font = font; c.alignment = { horizontal: 'center', vertical: 'middle' };
+  };
+  filaTitulo(1, `${EMPRESA} · ${titulo}`, { bold: true, size: 15, color: { argb: COLOR.oscuro } });
+  filaTitulo(2, subtitulo, { bold: true, size: 11, color: { argb: COLOR.indigo } });
+  filaTitulo(3, `Generado el ${formatDateForDisplay(hoyISO())} ${new Date().toTimeString().slice(0, 5)}`, { italic: true, size: 9, color: { argb: 'FF64748B' } });
+  for (let c = 1; c <= COLS_DASH; c++) ws.getCell(4, c).border = { bottom: { style: 'medium', color: { argb: COLOR.indigo } } };
+
+  let r = 6;
+  const tituloSeccion = (texto) => {
+    ws.mergeCells(r, 1, r, COLS_DASH);
+    const c = ws.getCell(r, 1);
+    c.value = texto; c.font = { bold: true, size: 11, color: { argb: COLOR.blanco } }; c.fill = fill(COLOR.oscuro);
+    c.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    ws.getRow(r).height = 20; r += 1;
+  };
+
+  // --- KPI: 6 tarjetas por fila, cada una de 2 columnas × 3 filas ---
+  if (kpis.length) {
+    tituloSeccion('INDICADORES (KPI)');
+    r += 1;
+    for (let i = 0; i < kpis.length; i += 6) {
+      kpis.slice(i, i + 6).forEach((k, j) => {
+        const c1 = j * 2 + 1, c2 = c1 + 1, tn = TONO[k.color] || TONO.indigo;
+        const celda = (fila, valor, font, h) => {
+          ws.mergeCells(fila, c1, fila, c2);
+          const c = ws.getCell(fila, c1);
+          c.value = valor; c.font = font; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+          for (let cc = c1; cc <= c2; cc++) ws.getCell(fila, cc).fill = fill(tn.f);
+          if (h) ws.getRow(fila).height = h;
+        };
+        celda(r, String(k.t || '').toUpperCase(), { bold: true, size: 8, color: { argb: tn.t } }, 18);
+        celda(r + 1, k.v ?? '-', { bold: true, size: 20, color: { argb: tn.t } }, 32);
+        celda(r + 2, k.sub || '', { size: 8, italic: true, color: { argb: 'FF475569' } }, 16);
+        if (k.fmt) ws.getCell(r + 1, c1).numFmt = k.fmt;
+        const ln = { style: 'thin', color: { argb: tn.t } };
+        for (let fr = r; fr <= r + 2; fr++) {
+          ws.getCell(fr, c1).border = { ...(ws.getCell(fr, c1).border || {}), left: ln, ...(fr === r ? { top: ln } : {}), ...(fr === r + 2 ? { bottom: ln } : {}) };
+          ws.getCell(fr, c2).border = { ...(ws.getCell(fr, c2).border || {}), right: ln, ...(fr === r ? { top: ln } : {}), ...(fr === r + 2 ? { bottom: ln } : {}) };
+        }
+      });
+      r += 4;
+    }
+  }
+
+  // --- Gráficos: 2 por fila (6 columnas cada uno) ---
+  const imgs = [];
+  for (const g of graficos) imgs.push({ ...g, png: await graficoPNG(g.cfg, g.ancho || 720, g.alto || 400) });
+  const validos = imgs.filter(g => g.png);
+  if (validos.length) {
+    tituloSeccion('GRÁFICOS');
+    r += 1;
+    const FILAS_G = 14;
+    for (let i = 0; i < validos.length; i += 2) {
+      validos.slice(i, i + 2).forEach((g, j) => {
+        const c1 = j * 6 + 1;
+        ws.mergeCells(r, c1, r, c1 + 5);
+        const t = ws.getCell(r, c1);
+        t.value = g.titulo || ''; t.font = { bold: true, size: 10, color: { argb: COLOR.indigo } }; t.alignment = { horizontal: 'center', vertical: 'middle' };
+        const id = wb.addImage({ base64: g.png, extension: 'png' });
+        const ancho = PX_COL * 6 - 16;
+        ws.addImage(id, { tl: { col: c1 - 1 + 0.1, row: r }, ext: { width: ancho, height: Math.round(ancho * (g.alto || 400) / (g.ancho || 720)) }, editAs: 'oneCell' });
+      });
+      for (let k = r + 1; k <= r + FILAS_G; k++) ws.getRow(k).height = 15;
+      r += FILAS_G + 1;
+    }
+  }
+
+  // --- Tablas resumen ---
+  tablas.forEach(tb => {
+    if (!tb.filas || !tb.filas.length) return;
+    tituloSeccion(tb.titulo);
+    const n = tb.columnas.length;
+    // reparte las 12 columnas entre las de la tabla (la primera se lleva el sobrante)
+    const base = Math.floor(COLS_DASH / n), extra = COLS_DASH - base * n;
+    const span = tb.columnas.map((_, i) => base + (i === 0 ? extra : 0));
+    const ini = []; span.reduce((a, s, i) => { ini[i] = a; return a + s; }, 1);
+    const fila = (valores, estilo) => {
+      valores.forEach((v, i) => {
+        if (span[i] > 1) ws.mergeCells(r, ini[i], r, ini[i] + span[i] - 1);
+        const c = ws.getCell(r, ini[i]);
+        c.value = v ?? ''; c.alignment = { horizontal: i === 0 ? 'left' : 'center', vertical: 'middle', wrapText: true, indent: i === 0 ? 1 : 0 };
+        if (tb.columnas[i].fmt) c.numFmt = tb.columnas[i].fmt;
+        for (let cc = ini[i]; cc < ini[i] + span[i]; cc++) { const x = ws.getCell(r, cc); x.border = borde; if (estilo.fill) x.fill = fill(estilo.fill); }
+        c.font = estilo.font;
+      });
+      ws.getRow(r).height = 18; r += 1;
+    };
+    fila(tb.columnas.map(c => c.t), { fill: COLOR.indigo, font: { bold: true, size: 9, color: { argb: COLOR.blanco } } });
+    tb.filas.forEach((f, i) => fila(f, { fill: i % 2 ? COLOR.gris : null, font: { size: 9 } }));
+    if (tb.total) fila(tb.total, { fill: COLOR.oscuro, font: { bold: true, size: 9, color: { argb: COLOR.blanco } } });
+    r += 1;
+  });
+
+  return ws;
+};

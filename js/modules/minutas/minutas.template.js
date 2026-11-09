@@ -238,7 +238,13 @@ export default /* html */ `
                 <template v-for="(it, idx) in itemsFiltrados" :key="it.id">
                 <!-- Título de sección (como en el Word: "Seguridad") -->
                 <tr v-if="inicioSeccion(itemsFiltrados, idx)" class="bg-amber-50 border-b">
-                  <td colspan="9" class="p-1.5 text-center font-extrabold text-slate-800 text-sm"><span class="bg-yellow-300 px-2 rounded">{{ it.seccion }}</span></td>
+                  <td colspan="9" class="p-1.5 text-center font-extrabold text-slate-800 text-sm relative">
+                    <span class="bg-yellow-300 px-2 rounded">{{ it.seccion }}</span>
+                    <span v-if="puedeEditarMinuta && seccionesSel.length > 1" class="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                      <button @click="moverSeccion(it, -1)" :disabled="moviendoSeccion || posSeccion(it) <= 0" class="w-6 h-6 rounded border bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30" title="Subir sección"><i class="fa-solid fa-arrow-up text-[10px]"></i></button>
+                      <button @click="moverSeccion(it, 1)" :disabled="moviendoSeccion || posSeccion(it) >= seccionesSel.length - 1" class="w-6 h-6 rounded border bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30" title="Bajar sección"><i class="fa-solid fa-arrow-down text-[10px]"></i></button>
+                    </span>
+                  </td>
                 </tr>
                 <tr :class="['border-b align-top', esVencida(it) ? 'bg-rose-50' : it.estado === 'Realizado' ? 'bg-emerald-50/40' : 'hover:bg-slate-50']">
                   <template v-if="puedeEditarMinuta">

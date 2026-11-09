@@ -58,8 +58,11 @@ const mapItem = (r) => ({
   id: r.id, minuta_id: r.minuta_id, n_item: r.n_item ?? '', personal: r.personal || '',
   fecha_compromiso: normalizarFecha(r.fecha_compromiso) || '', fecha_estimada: normalizarFecha(r.fecha_estimada) || '',
   tarea: r.tarea || '', estado: normalizarEstado(r.estado), fecha_realizado: normalizarFecha(r.fecha_realizado) || '',
-  seccion: r.seccion || '', area: r.area || '', fecha_texto: r.fecha_texto || ''
+  seccion: r.seccion || '', area: r.area || '', fecha_texto: r.fecha_texto || '',
+  orden_seccion: r.orden_seccion ?? null
 });
+/** ¿Existe la columna orden_seccion en Supabase? (sql/minutas_orden_secciones.sql) */
+export const hayOrdenSeccion = ref(false);
 
 const avisoError = (err) => {
   const m = errMsg(err);
@@ -76,6 +79,7 @@ export const cargarMinutas = async () => {
     const [m, it] = await Promise.all([fetchAllRows(TABLA_MINUTAS), fetchAllRows(TABLA_MINUTAS_ITEMS)]);
     dbMinutas.value = m.map(mapMinuta).sort(cmpMinuta);
     dbMinutasItems.value = it.map(mapItem);
+    hayOrdenSeccion.value = it.some(r => Object.prototype.hasOwnProperty.call(r, 'orden_seccion'));
     // Al entrar, abre la última minuta
     if (!minutaSelId.value || !dbMinutas.value.some(x => x.id === minutaSelId.value)) {
       const ult = ultimaMinuta.value;
@@ -142,12 +146,22 @@ export const claveSeccion = (it) => String(it.seccion || '').trim().replace(/\s+
 const porNumero = (a, b) => (Number(a.n_item) || 0) - (Number(b.n_item) || 0) || a.id - b.id;
 
 /** Tareas de una minuta AGRUPADAS POR SECCIÓN: todas las de "VENTANAS" juntas, aunque en el Word estén separadas.
- *  Las secciones quedan en el orden en que aparecen por primera vez; dentro de cada una, por N° Item. */
+ *  Orden de las secciones: el definido con las flechas ▲▼ (orden_seccion); las que no lo tienen,
+ *  al final en el orden en que aparecen por primera vez. Dentro de cada sección, por N° Item. */
 export const ordenarPorSeccion = (items) => {
   const ordenados = [...items].sort(porNumero);
-  const orden = new Map();
-  ordenados.forEach(it => { const k = claveSeccion(it); if (!orden.has(k)) orden.set(k, orden.size); });
-  return ordenados.sort((a, b) => orden.get(claveSeccion(a)) - orden.get(claveSeccion(b)) || porNumero(a, b));
+  const primera = new Map(), fijo = new Map();
+  ordenados.forEach(it => {
+    const k = claveSeccion(it);
+    if (!primera.has(k)) primera.set(k, primera.size);
+    const o = Number(it.orden_seccion);
+    if (it.orden_seccion !== null && it.orden_seccion !== '' && !isNaN(o) && (!fijo.has(k) || o < fijo.get(k))) fijo.set(k, o);
+  });
+  const rango = (k) => fijo.has(k) ? fijo.get(k) : 100000 + primera.get(k);
+  return ordenados.sort((a, b) => {
+    const ka = claveSeccion(a), kb = claveSeccion(b);
+    return rango(ka) - rango(kb) || primera.get(ka) - primera.get(kb) || porNumero(a, b);
+  });
 };
 export const itemsDeMinuta = (id) => ordenarPorSeccion(dbMinutasItems.value.filter(i => i.minuta_id === id));
 
@@ -256,8 +270,9 @@ export const guardarNuevaMinuta = async () => {
     const origen = formMinuta.value.copiar ? ultimaMinuta.value : null;
     const [nueva] = await sb(supabaseClient.from(TABLA_MINUTAS)
       .insert([{ nombre, fecha, origen_id: origen ? origen.id : null, creado_por: usuarioActivo.value?.nombre || '' }]).select());
-    const copiar = itemsACopiar.value.map(({ n_item, personal, fecha_compromiso, fecha_estimada, tarea, estado, fecha_realizado, seccion, area, fecha_texto }) => ({
+    const copiar = itemsACopiar.value.map(({ n_item, personal, fecha_compromiso, fecha_estimada, tarea, estado, fecha_realizado, seccion, area, fecha_texto, orden_seccion }) => ({
       minuta_id: nueva.id, n_item: n_item === '' ? null : Number(n_item) || null, personal, tarea, estado,
+      ...(hayOrdenSeccion.value ? { orden_seccion: orden_seccion ?? null } : {}),
       seccion: seccion || null, area: area || null, fecha_texto: fecha_texto || null,
       fecha_compromiso: fecha_compromiso || null, fecha_estimada: fecha_estimada || null, fecha_realizado: fecha_realizado || null
     }));
@@ -310,7 +325,8 @@ const payloadItem = (it) => ({
   fecha_realizado: it.estado === 'Realizado' ? (it.fecha_realizado || hoyISO()) : null,
   seccion: String(it.seccion || '').trim() || null,
   area: String(it.area || '').trim().toUpperCase() || null,
-  fecha_texto: String(it.fecha_texto || '').trim() || null
+  fecha_texto: String(it.fecha_texto || '').trim() || null,
+  ...(hayOrdenSeccion.value ? { orden_seccion: it.orden_seccion === '' || it.orden_seccion === null || it.orden_seccion === undefined ? null : Number(it.orden_seccion) } : {})
 });
 
 export const agregarTarea = async () => {
@@ -319,7 +335,7 @@ export const agregarTarea = async () => {
   if (!puedeEditarMinuta.value) return alert('Las minutas anteriores son histórico: solo el Admin las modifica. Agrega la tarea en la última minuta.');
   const sig = Math.max(0, ...itemsSel.value.map(i => Number(i.n_item) || 0)) + 1;
   const ultimaT = itemsSel.value[itemsSel.value.length - 1];
-  const nuevo = { minuta_id: minutaSel.value.id, n_item: sig, seccion: ultimaT ? ultimaT.seccion || null : null, area: null, personal: '', fecha_compromiso: minutaSel.value.fecha || hoyISO(), fecha_estimada: null, tarea: '', estado: 'Pendiente', fecha_realizado: null };
+  const nuevo = { minuta_id: minutaSel.value.id, n_item: sig, seccion: ultimaT ? ultimaT.seccion || null : null, ...(hayOrdenSeccion.value ? { orden_seccion: ultimaT ? ultimaT.orden_seccion ?? null : null } : {}), area: null, personal: '', fecha_compromiso: minutaSel.value.fecha || hoyISO(), fecha_estimada: null, tarea: '', estado: 'Pendiente', fecha_realizado: null };
   try {
     const [fila] = await sb(supabaseClient.from(TABLA_MINUTAS_ITEMS).insert([nuevo]).select());
     dbMinutasItems.value.push(mapItem(fila));
@@ -333,6 +349,11 @@ export const guardarTarea = async (it) => {
   if (it.estado === 'Realizado' && !it.fecha_realizado) it.fecha_realizado = hoyISO();
   if (it.estado !== 'Realizado') it.fecha_realizado = '';
   it.personal = String(it.personal || '').trim().toUpperCase();
+  if (hayOrdenSeccion.value) {   // si cambió de sección, toma la posición de esa sección (o queda al final si es nueva)
+    const k = claveSeccion(it);
+    const otra = itemsSel.value.find(x => x.id !== it.id && claveSeccion(x) === k);
+    it.orden_seccion = otra ? (otra.orden_seccion ?? null) : null;
+  }
   it._guardando = true;
   try {
     await sb(supabaseClient.from(TABLA_MINUTAS_ITEMS).update(payloadItem(it)).eq('id', it.id));
@@ -348,6 +369,34 @@ export const eliminarTarea = async (it) => {
     await sb(supabaseClient.from(TABLA_MINUTAS_ITEMS).delete().eq('id', it.id));
     dbMinutasItems.value = dbMinutasItems.value.filter(x => x.id !== it.id);
   } catch (err) { avisoError(err); }
+};
+
+// ---------- Mover SECCIONES (títulos) ▲▼ ----------
+// Admin: cualquier minuta · Subadmin: solo la última. Guarda orden_seccion (1, 2, 3...) en todas las tareas de la minuta.
+export const seccionesSel = computed(() => {
+  const vistas = [];
+  itemsSel.value.forEach(it => { const k = claveSeccion(it); if (!vistas.includes(k)) vistas.push(k); });
+  return vistas;
+});
+export const posSeccion = (it) => seccionesSel.value.indexOf(claveSeccion(it));
+export const moviendoSeccion = ref(false);
+export const moverSeccion = async (it, dir) => {
+  if (!puedeEditarMinuta.value || !soloEditor()) return;
+  if (!hayOrdenSeccion.value) return alert('Para mover secciones falta una columna en Supabase.\n\nEjecuta en Supabase → SQL Editor el archivo sql/minutas_orden_secciones.sql y recarga la página.');
+  const lista = [...seccionesSel.value];
+  const i = lista.indexOf(claveSeccion(it)), j = i + dir;
+  if (i < 0 || j < 0 || j >= lista.length) return;
+  [lista[i], lista[j]] = [lista[j], lista[i]];
+  moviendoSeccion.value = true;
+  try {
+    for (let pos = 0; pos < lista.length; pos++) {
+      const ids = itemsSel.value.filter(x => claveSeccion(x) === lista[pos]).map(x => x.id);
+      if (!ids.length) continue;
+      await sb(supabaseClient.from(TABLA_MINUTAS_ITEMS).update({ orden_seccion: pos + 1 }).in('id', ids));
+      dbMinutasItems.value.forEach(x => { if (ids.includes(x.id)) x.orden_seccion = pos + 1; });
+    }
+  } catch (err) { avisoError(err); }
+  finally { moviendoSeccion.value = false; }
 };
 
 // ---------- Cambios de N° Item (borrador) ----------

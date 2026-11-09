@@ -8,6 +8,7 @@ import { buscarEquipoPorAfi } from '../../core/store.js';
 import { empresaDe } from '../inventario/inventario.mapper.js';
 import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel, fill, COLOR, bloqueFirmas, FIRMAS_PROGRAMA } from '../../core/excel.js';
 import { isAdmin } from '../../core/store.js';
+import { hojaInicioReparacion, hojaInicioMantencion } from './programas.dashboard.js';
 import { kitsEnBodegaAfi, kitConsumidoItem, consumirKitParaItem, devolverKitDeItem, filtrosRequeridosAfi } from '../bodega/bodega.service.js';
 
 const { ref, computed } = Vue;
@@ -593,6 +594,8 @@ export const exportarProgramaGanttExcel = async (prog) => {
       const corte = fechaCorteProg(prog);
       const items = obtenerItemsPrograma(prog.id);
       if (!items.length) return alert("El programa no tiene equipos asignados.");
+      // Hoja "Inicio" con dashboard (va primera)
+      await hojaInicioMantencion(wb, logo, { prog, nombre, vigencia, items, det, ubicacion: ubicacionActualAfi, dias, corte, kitsBodega: (afi) => kitsEnBodegaAfi(afi).total });
       const filas = items.map((item, i) => {
         const u = ultimaMantencionAfi(item.afi, corte);
         return [
@@ -640,6 +643,10 @@ export const exportarProgramaGanttExcel = async (prog) => {
       }
     } else {
       let hay = false;
+      const todos = obtenerItemsPrograma(prog.id);
+      const fueraRango = obtenerItemsFueraDeRangoPrograma(prog.id);
+      // Hoja "Inicio" con dashboard (va primera, antes de las naves)
+      if (todos.length) await hojaInicioReparacion(wb, logo, { prog, nombre, vigencia, items: todos, naves: NAVES, det, ubicacion: ubicacionActualAfi, dias, fueraRango });
       NAVES.forEach(nave => {
         const items = obtenerItemsProgramaPorNave(prog.id, nave);
         if (!items.length) return;
@@ -660,7 +667,6 @@ export const exportarProgramaGanttExcel = async (prog) => {
         });
         pintarGantt(ws, filas.length, 9, v => (v === '●' ? 'prog' : ''));
       });
-      const fueraRango = obtenerItemsFueraDeRangoPrograma(prog.id);
       if (fueraRango.length) {
         hay = true;
         hojaTabla(wb, logo, {
