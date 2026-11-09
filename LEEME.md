@@ -574,3 +574,23 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Permisos: ver = todos · crear/editar/registrar km/subir documentos = Subadmin o Admin de **Operaciones** · eliminar = Admin.
 - **Requiere ejecutar `sql/vehiculos.sql`** en Supabase (tablas `bd_vehiculos`, `bd_vehiculos_km`, `bd_vehiculos_documentos` + RLS). Sin eso, los vehículos se ven igual pero sin km ni documentos (aparece un aviso).
 - Archivos: `js/modules/vehiculos/` (nuevo: mapper, service, template, view), `sql/vehiculos.sql` (nuevo), `core/menu.js`, `core/tablas.js`, `main.js`, `inventario/inventario.mapper.js`, `inventario.service.js`, `inventario.template.js`.
+
+## 2026-11-09 · Vehículos: el horómetro ES el kilometraje · frecuencia 10.000 km
+- En los vehículos (AFI = patente XXXX-XX) **todo lo que el sistema llama "horómetro" es kilometraje**: `BD_INVENTARIO.horometroactual` = último km tomado y `BD_HISTORIAL.horometro` = km de cada mantención.
+- `core/horometros.js`: para patentes usa frecuencia por defecto **10.000 km**, uso por defecto **80 km/día** y aviso **PRÓXIMO desde 1.000 km** (en equipos sigue 250 h / 1,5 h/día / 50 h). El objeto `horometros` trae `esVehiculo`, `unidad` ('km' | 'h') y `umbralProximo`.
+- Módulo Vehículos: se quitó el bloque "Horómetro" (tarjetas, perfil, avisos, filtro y Excel). Queda solo **Kilometraje**, calculado con el mismo motor de siempre.
+  - **Registrar kilometraje** actualiza el km tomado del inventario (y queda en la bitácora `bd_vehiculos_km`).
+  - **Registrar mantención** abre "Agregar Mantención" del Historial: su campo ahora dice **Kilometraje (km)** cuando el AFI es una patente, y fija la próxima meta (km + 10.000).
+  - Historial de kilometraje del perfil = lecturas + registros del Historial con km.
+  - "Mantención cada (km)" se guarda en `BD_INVENTARIO.frecuencia_mantencion`.
+- Perfil de Equipo e Historial muestran **km** en vez de h/hrs cuando el AFI es una patente. `esPatente` disponible en todas las plantillas (core/comunes.js).
+- Nuevo equipo con patente (o importado sin frecuencia) → 10.000 km.
+- **SQL:** `sql/vehiculos_frecuencia_10000.sql` deja la frecuencia en 10.000 a todos los vehículos ya existentes (también quedó al final de `sql/vehiculos.sql`).
+
+## 2026-11-09 · Historial: "Cargar documentos" (carga masiva de PDF enlazados a cada registro)
+- Botón **Cargar documentos** en Historial (Subadmin/Admin de Operaciones). Se elige una **carpeta** (ej. `DOCUMENTOS EQUIPOS/2026/ABRIL`) o varios archivos (PDF, JPG, PNG).
+- Del nombre se lee: **AFI** (números de 2 a 4 dígitos o patentes que existan en el inventario; "759, 760, 761" o "127_147" = mismo archivo para cada AFI), **fecha** dd-mm-aaaa (si falta o no calza, se usa la de la carpeta `dd-mm-aaaa`), y **tipo**: si dice MANTENCION → registro de mantención; si no → otra intervención. Se ignoran sufijos de página/copia ("_001", "_page-0002", "(1)").
+- Busca el registro de `BD_HISTORIAL` con mismo AFI + fecha + tipo (si no hay ese día, ± 3 días). Vista previa con estados: Listo · Revisar · Ya tiene documento · Sin registro · Sin AFI. En cada fila se puede corregir AFI, fecha, tipo (clic) y elegir el registro de una lista (± 20 días).
+- Al confirmar sube a Storage `archivos_frc/historial/<AFI>/…` y guarda la URL en `BD_HISTORIAL.link` (botón "Drive" del Historial). Si varios archivos van al mismo registro se **unen en un solo PDF** (pdf-lib 1.17.1 desde cdnjs, se carga solo si hace falta). Por defecto no reemplaza documentos existentes (casilla para reemplazar).
+- Ojo con el espacio: las carpetas 2025 + 2026 pesan ~880 MB; el plan gratis de Supabase Storage trae 1 GB.
+- Archivos: `historial/carga-documentos.service.js`, `historial/carga-documentos.view.js` (nuevos), `historial.template.js`, `historial.view.js`. No requiere SQL.

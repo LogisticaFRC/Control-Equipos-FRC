@@ -78,5 +78,10 @@ begin
   end loop;
 end $$;
 
+-- Todos los vehículos: mantención cada 10.000 km (en los vehículos el "horómetro" es el KILOMETRAJE)
+update public."BD_INVENTARIO" set frecuencia_mantencion = 10000
+ where upper(regexp_replace(afi, '\s', '', 'g')) ~ '^[A-Z0-9]{4}-[A-Z0-9]{2}$' and upper(afi) ~ '[A-Z]';
+update public.bd_vehiculos set frecuencia_km = 10000;
+
 -- Recarga el esquema para que la API vea las tablas nuevas
 notify pgrst, 'reload schema';

@@ -4,8 +4,8 @@
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
 import { dbEquipos, cargarDatosDesdeSupabase, soloEditor, soloAdmin } from '../../core/store.js';
 import { normalizarClave, parseNum, parseStr, compararAfi, exportarCSV, getVal, tieneColumna, parseFileAnyFormat, resetInputFile, formatDateForDisplay } from '../../core/utils.js';
-import { esEquipoCritico } from '../../core/horometros.js';
-import { TABLA_INVENTARIO, empresaDe, esVehiculo } from './inventario.mapper.js';
+import { esEquipoCritico, VEH_FRECUENCIA_KM } from '../../core/horometros.js';
+import { TABLA_INVENTARIO, empresaDe, esVehiculo, esPatente } from './inventario.mapper.js';
 import { currentTab } from '../../core/store.js';
 import { listaEmpresas } from '../../core/store.js';
 export { empresaDe, listaEmpresas };
@@ -122,7 +122,8 @@ export const guardarNuevoEquipo = async () => {
     tipo: parseStr(f.tipo), marca: parseStr(f.marca), modelo: parseStr(f.modelo), ubicacion: parseStr(f.ubicacion),
     disponibilidad: normalizarClave(f.disponibilidad),
     horometroactual: parseNum(f.horometroActual),
-    frecuencia_mantencion: Math.round(parseNum(f.frecuenciaMantencion)) || 250,
+    // Vehículo (AFI = patente XXXX-XX): mantención cada 10.000 km
+    frecuencia_mantencion: esPatente(afiClean) && Number(f.frecuenciaMantencion) === 250 ? VEH_FRECUENCIA_KM : (Math.round(parseNum(f.frecuenciaMantencion)) || 250),
     gps: parseStr(f.gps)
   };
   try {
@@ -152,7 +153,7 @@ export const importarInventarioFile = async (e) => {
         ubicacion: parseStr(getVal(item, "ubicacion")), disponibilidad: normalizarClave(getVal(item, "disponibilidad") || "Operativo")
       };
       if (traeHorometro) p.horometroactual = parseNum(getVal(item, "horometro", "horometroactual"));
-      if (traeFrecuencia) p.frecuencia_mantencion = Math.round(parseNum(getVal(item, "frecuencia", "frecuencia mantencion", "frecuencia_mantencion"))) || 250;
+      if (traeFrecuencia) p.frecuencia_mantencion = Math.round(parseNum(getVal(item, "frecuencia", "frecuencia mantencion", "frecuencia_mantencion"))) || (esPatente(p.afi) ? VEH_FRECUENCIA_KM : 250);
       return p;
     }).filter(Boolean);
     if (!payloads.length) return alert("El archivo no tiene filas con AFI.");

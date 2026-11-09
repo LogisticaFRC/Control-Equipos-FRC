@@ -7,11 +7,12 @@ import { formatDateForDisplay, getMecanicosText, calcularRestaHoras, exportarCSV
 import { getHorometroCardBgClass, getPrediccionStatusBadge, getAnualStatusBadge, getAnualTextoDias, esAnualVencida, esAnualProxima, tieneAlertaAnual, esAlertaRoja } from './horometros.js';
 import { abrirPerfilEquipo, verDetallePorAfiString } from '../modules/inventario/perfil.service.js';
 import { abrirFormularioNuevaMantencion, listaCausas } from '../modules/historial/historial.service.js';
+import { esPatente } from '../modules/inventario/inventario.mapper.js';   // vehículos: AFI = patente → horómetro en km
 
 export const comunes = () => ({
   isAdmin, isSubadmin, puedeEditar, dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios,
   obtenerDetalleEquipoPorAfi, formatDateForDisplay, getMecanicosText, calcularRestaHoras, exportarCSV, placeholderImg,
   getHorometroCardBgClass, getPrediccionStatusBadge,
   getAnualStatusBadge, getAnualTextoDias, esAnualVencida, esAnualProxima, tieneAlertaAnual, esAlertaRoja,
-  abrirPerfilEquipo, verDetallePorAfiString, abrirFormularioNuevaMantencion, listaCausas
+  abrirPerfilEquipo, verDetallePorAfiString, abrirFormularioNuevaMantencion, listaCausas, esPatente
 });

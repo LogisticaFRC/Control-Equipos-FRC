@@ -12,6 +12,7 @@ export default /* html */ `
         </select>
         <button @click="limpiarFiltrosHistorial" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Limpiar Filtros</button>
         <button v-if="puedeEditar" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5"><i class="fa-solid fa-plus-circle"></i> + Registrar Mantención</button>
+        <button v-if="puedeEditar" @click="abrirCargaDocs" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5" title="Subir muchos PDF de una vez y enlazarlos a su mantención / intervención"><i class="fa-solid fa-folder-open text-amber-400"></i> Cargar documentos</button>
         <button @click="exportarCSV(filteredIntervenciones, 'HojaVida_Filtrada')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
       </div>
     </div>
@@ -106,7 +107,7 @@ export default /* html */ `
             <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
             <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
             <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
-            <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
+            <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.horometro ? i.horometro + (esPatente(i.afi) ? ' km' : ' hrs') : '-' }}</td>
             <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ formatDateForDisplay(i.fecha) }}</td>
             <td class="p-2">{{ getMecanicosText(i) }}</td>
             <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
@@ -138,5 +139,6 @@ export default /* html */ `
       </table>
     </div>
   </div>
+  <carga-documentos></carga-documentos>
 </section>
 `;

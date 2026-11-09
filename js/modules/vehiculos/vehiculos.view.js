@@ -18,11 +18,10 @@ export default {
     const verAvisos = ref(true);
     const hoy = computed(() => hoyISO());
     const diasHasta = (iso) => diasEntre(iso, hoyISO());
-    /** Lecturas del perfil abierto, más nueva primero. */
-    const lecturasOrdenadas = computed(() => [...(S.vehPerfil.value?.lecturas || [])]
-      .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.km - a.km));
+    /** Bitácora de km del perfil abierto (lecturas + Historial), más nueva primero. */
+    const bitacoraPerfil = computed(() => S.vehPerfil.value ? S.bitacoraKm(S.vehPerfil.value) : []);
     return {
-      ...comunes(), ...S, verAvisos, hoy, diasHasta, lecturasOrdenadas,
+      ...comunes(), ...S, verAvisos, hoy, diasHasta, bitacoraPerfil,
       getBadgeClass, getEstadoText, uploadFotoEquipo, empresaDe
     };
   }

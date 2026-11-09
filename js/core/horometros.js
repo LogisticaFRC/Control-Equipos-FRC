@@ -3,9 +3,16 @@
 // (usado por Dashboard, Inventario y Perfil de Equipo)
 // =====================================================================
 import { normalizarFecha, normalizarClave, parseIsoDate, diasEntre, hoyISO, sumarDiasISO } from './utils.js';
+import { esPatente } from '../modules/inventario/inventario.mapper.js';
 
 const USO_POR_DEFECTO_HRS_DIA = 1.5;
 const UMBRAL_PROXIMO_HRS = 50;
+// VEHÍCULOS (AFI = patente XXXX-XX): el "horómetro" es KILOMETRAJE → otros valores por defecto
+export const VEH_FRECUENCIA_KM = 10000;   // mantención cada 10.000 km
+const VEH_USO_KM_DIA = 80;                // uso por defecto si no hay datos
+const VEH_UMBRAL_PROXIMO_KM = 1000;       // "PRÓXIMO" desde 1.000 km antes
+/** Umbral de aviso "PRÓXIMO" del objeto horometros (50 h en equipos, 1.000 km en vehículos). */
+const umbralDe = (h) => Number(h?.umbralProximo) || UMBRAL_PROXIMO_HRS;
 const UMBRAL_ANUAL_DIAS = 30;   // aviso "MANT. ANUAL PRÓXIMA" desde 30 días antes de cumplir el año
 
 const sinTildes = (s) => String(s || '').trim().toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -57,6 +64,8 @@ const calcularMantencionAnual = (fechaUltimaMant, hoy) => {
 /** Calcula el objeto `horometros` de un equipo a partir de su historial. */
 export const calcularHorometrosEquipo = (eq, histFull) => {
   const hoy = hoyISO();
+  const esVeh = esPatente(eq.afi);
+  const umbralProximo = esVeh ? VEH_UMBRAL_PROXIMO_KM : UMBRAL_PROXIMO_HRS;
   const histConHorometro = histFull.filter(i => Number(i.horometro) > 0 && i.fecha && i.fecha !== '-');
   const histMant = histConHorometro.filter(esMantencionReal);
 
@@ -108,14 +117,14 @@ export const calcularHorometrosEquipo = (eq, histFull) => {
       calc = { hDesde: Number(penultimoReg.horometro), fDesde: penultimoReg.fecha, hHasta: Number(ultimoReg.horometro), fHasta: ultimoReg.fecha, horas: dH, dias: dD };
     }
   }
-  if (!(rateHrsDia > 0)) { rateHrsDia = USO_POR_DEFECTO_HRS_DIA; metodoCalculo = 'POR DEFECTO'; calc = null; }
+  if (!(rateHrsDia > 0)) { rateHrsDia = esVeh ? VEH_USO_KM_DIA : USO_POR_DEFECTO_HRS_DIA; metodoCalculo = 'POR DEFECTO'; calc = null; }
 
   // Si no hay fecha válida del último horómetro, no se proyecta (antes daba NaN)
   const diasDesdeUltimo = Math.max(0, diasEntre(hoy, fechaUltimoHorometro) ?? 0);
   const estaFueraServicio = normalizarClave(eq.disponibilidad) === 'Fuera de Servicio';
   const hAprox = estaFueraServicio ? hUltimoTomado : Math.round((hUltimoTomado + diasDesdeUltimo * rateHrsDia) * 10) / 10;
 
-  const frecuencia = Number(eq.frecuenciaMantencion) || 250;
+  const frecuencia = Number(eq.frecuenciaMantencion) || (esVeh ? VEH_FRECUENCIA_KM : 250);
   const hTarget = hUltimaMant + frecuencia;
   const faltan = hTarget - hAprox;
 
@@ -129,12 +138,12 @@ export const calcularHorometrosEquipo = (eq, histFull) => {
   const baseAnual = parseIsoDate(ultimaMantPorFecha) > parseIsoDate(ultimaMantFecha) ? ultimaMantPorFecha : ultimaMantFecha;
   const anual = calcularMantencionAnual(baseAnual, hoy);
 
-  const estadoTexto = faltan <= 0 ? "¡PASADO!" : faltan <= UMBRAL_PROXIMO_HRS ? "PRÓXIMO" : "AL DÍA";
+  const estadoTexto = faltan <= 0 ? "¡PASADO!" : faltan <= umbralProximo ? "PRÓXIMO" : "AL DÍA";
 
   return {
     hTomado: hUltimoTomado, fechaUltimoHorometro, hUltimaMant, ultimaMantFecha,
     hAprox, hTarget, horasFaltantes: Math.round(faltan * 10) / 10,
-    estadoTexto, rateHrsDia, fechaEstimada, metodoCalculo, calc,
+    estadoTexto, rateHrsDia, fechaEstimada, metodoCalculo, calc, esVehiculo: esVeh, unidad: esVeh ? 'km' : 'h', umbralProximo,
     hPenultimaMant: penultimaMant ? Number(penultimaMant.horometro) : 0,
     penultimaMantFecha: penultimaMant ? penultimaMant.fecha : '-',
     fechaBaseAnual: baseAnual, ...anual
@@ -150,8 +159,8 @@ export const actualizarHorometrosDesdeHistorial = (equipos, intervenciones) => {
 };
 
 // ---------- Clases visuales según estado del horómetro ----------
-export const getHorometroCardBgClass = (h) => esAlertaRoja(h) ? 'bg-rose-50 border-rose-300' : (h?.horasFaltantes <= UMBRAL_PROXIMO_HRS || tieneAlertaAnual(h)) ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200';
-export const getPrediccionStatusBadge = (h) => h?.horasFaltantes <= 0 ? 'bg-rose-600 text-white animate-pulse' : h?.horasFaltantes <= UMBRAL_PROXIMO_HRS ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white';
+export const getHorometroCardBgClass = (h) => esAlertaRoja(h) ? 'bg-rose-50 border-rose-300' : (h?.horasFaltantes <= umbralDe(h) || tieneAlertaAnual(h)) ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200';
+export const getPrediccionStatusBadge = (h) => h?.horasFaltantes <= 0 ? 'bg-rose-600 text-white animate-pulse' : h?.horasFaltantes <= umbralDe(h) ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white';
 
 // ---------- Mantención anual (por fecha) ----------
 export const esAnualVencida = (h) => h?.diasParaAnual !== null && h?.diasParaAnual !== undefined && h.diasParaAnual <= 0;
@@ -167,4 +176,4 @@ export const getAnualTextoDias = (h) => {
 /** Rojo si está pasado por horas o vencida la anual; ámbar si es solo "próximo". */
 export const esAlertaRoja = (h) => h?.horasFaltantes <= 0 || esAnualVencida(h);
 
-export const esEquipoCritico = (eq) => Boolean(eq.horometros) && (eq.horometros.horasFaltantes <= UMBRAL_PROXIMO_HRS || tieneAlertaAnual(eq.horometros));
+export const esEquipoCritico = (eq) => Boolean(eq.horometros) && (eq.horometros.horasFaltantes <= umbralDe(eq.horometros) || tieneAlertaAnual(eq.horometros));

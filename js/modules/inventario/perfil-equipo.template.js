@@ -107,45 +107,45 @@ export default /* html */ `
       <div :class="['p-5 rounded-xl shadow-sm border flex flex-col lg:flex-row gap-6 items-center', esAlertaRoja(perfilEquipo.horometros) ? 'bg-pasado-blink' : 'bg-normal-horometro']">
         <div class="w-full lg:w-1/3 space-y-3">
           <div class="flex items-center justify-between border-b border-white/20 pb-2">
-            <h4 class="font-bold text-sm flex items-center gap-2 uppercase"><i class="fa-solid fa-stopwatch"></i> Horómetros y Frecuencia</h4>
+            <h4 class="font-bold text-sm flex items-center gap-2 uppercase"><i class="fa-solid fa-stopwatch"></i> {{ esVehPerfil ? 'Kilometraje y Frecuencia' : 'Horómetros y Frecuencia' }}</h4>
             <div class="flex gap-1">
               <span v-if="perfilEquipo.horometros?.horasFaltantes <= 0" class="bg-white text-rose-600 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase animate-pulse">¡PASADO!</span>
               <span v-if="tieneAlertaAnual(perfilEquipo.horometros)" :class="['px-2 py-0.5 rounded text-[10px] font-extrabold uppercase', esAnualVencida(perfilEquipo.horometros) ? 'bg-white text-rose-600 animate-pulse' : 'bg-amber-400 text-slate-900']">{{ perfilEquipo.horometros?.estadoAnual }}</span>
             </div>
           </div>
           <div>
-            <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Último Horómetro Tomado (Manual)</label>
+            <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">{{ esVehPerfil ? 'Último Kilometraje Tomado (Manual)' : 'Último Horómetro Tomado (Manual)' }}</label>
             <input type="number" step="any" v-model="perfilEquipo.horometroActual" :disabled="!puedeEditar" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
           </div>
           <div>
-            <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Fecha de este Horómetro</label>
+            <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">{{ esVehPerfil ? 'Fecha de este Kilometraje' : 'Fecha de este Horómetro' }}</label>
             <input type="date" v-model="perfilEquipo.fechaHorometroManual" :disabled="!puedeEditar" class="w-full p-2.5 border-none rounded-lg bg-white/20 focus:bg-white/30 font-mono font-bold text-white text-sm outline-none transition">
           </div>
           <div>
-            <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención</label>
+            <label class="block font-bold text-[10px] mb-1 opacity-80 uppercase">Frecuencia de Mantención ({{ esVehPerfil ? 'km' : 'horas' }})</label>
             <input type="number" step="any" v-model="perfilEquipo.frecuenciaMantencion" :disabled="!puedeEditar" class="w-full p-2.5 border-none rounded-lg bg-white/10 font-mono font-bold text-sm outline-none">
           </div>
           <button v-if="puedeEditar" @click="actualizarHorometroPerfil" :disabled="actualizandoHorometro" class="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-extrabold py-2.5 rounded-lg shadow text-xs uppercase transition">
-            <i :class="['fa-solid', actualizandoHorometro ? 'fa-spinner fa-spin' : 'fa-rotate']"></i> {{ actualizandoHorometro ? 'Actualizando...' : 'Actualizar Horómetro' }}
+            <i :class="['fa-solid', actualizandoHorometro ? 'fa-spinner fa-spin' : 'fa-rotate']"></i> {{ actualizandoHorometro ? 'Actualizando...' : (esVehPerfil ? 'Actualizar Kilometraje' : 'Actualizar Horómetro') }}
           </button>
         </div>
 
         <div class="w-full lg:w-2/3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
           <div class="bg-white/10 p-3 rounded-xl border border-white/20">
-            <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Último Horómetro Tomado</span>
-            <strong class="font-mono text-base text-amber-300 block">{{ perfilEquipo.horometros?.hTomado || 0 }}h</strong>
+            <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">{{ esVehPerfil ? 'Último Kilometraje Tomado' : 'Último Horómetro Tomado' }}</span>
+            <strong class="font-mono text-base text-amber-300 block">{{ perfilEquipo.horometros?.hTomado || 0 }} {{ uH }}</strong>
             <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ formatDateForDisplay(perfilEquipo.horometros?.fechaUltimoHorometro) }}</span>
           </div>
           <div class="bg-white/10 p-3 rounded-xl border border-white/20">
             <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Última Mantención</span>
-            <strong class="font-mono text-base text-blue-300 block">{{ perfilEquipo.horometros?.hUltimaMant || 0 }}h</strong>
+            <strong class="font-mono text-base text-blue-300 block">{{ perfilEquipo.horometros?.hUltimaMant || 0 }} {{ uH }}</strong>
             <span class="text-[9px] opacity-70 block mt-0.5"><i class="fa-solid fa-calendar mr-1"></i> {{ formatDateForDisplay(perfilEquipo.horometros?.ultimaMantFecha) }}</span>
-            <span class="text-[9px] opacity-60 block mt-0.5">Penúltima: {{ perfilEquipo.horometros?.hPenultimaMant ? perfilEquipo.horometros.hPenultimaMant + 'h · ' + formatDateForDisplay(perfilEquipo.horometros.penultimaMantFecha) : 'sin registro' }}</span>
+            <span class="text-[9px] opacity-60 block mt-0.5">Penúltima: {{ perfilEquipo.horometros?.hPenultimaMant ? perfilEquipo.horometros.hPenultimaMant + ' ' + uH + ' · ' + formatDateForDisplay(perfilEquipo.horometros.penultimaMantFecha) : 'sin registro' }}</span>
           </div>
           <div class="bg-white/10 p-3 rounded-xl border border-white/20">
-            <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Horómetro Actual Aprox.</span>
-            <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }}h</strong>
-            <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(2) + ' hrs/día' : 'Sin uso diario' }}</span>
+            <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">{{ esVehPerfil ? 'Kilometraje Actual Aprox.' : 'Horómetro Actual Aprox.' }}</span>
+            <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }} {{ uH }}</strong>
+            <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(2) + ' ' + uH + '/día' : 'Sin uso diario' }}</span>
             <span v-if="perfilEquipo.horometros?.calc" class="text-[9px] opacity-70 block mt-0.5 leading-tight" :title="perfilEquipo.horometros.metodoCalculo">
               ({{ perfilEquipo.horometros.calc.hHasta }} − {{ perfilEquipo.horometros.calc.hDesde }}) / {{ perfilEquipo.horometros.calc.dias }} días<br>
               {{ formatDateForDisplay(perfilEquipo.horometros.calc.fDesde) }} → {{ formatDateForDisplay(perfilEquipo.horometros.calc.fHasta) }}
@@ -154,7 +154,7 @@ export default /* html */ `
           </div>
           <div class="bg-white/10 p-3 rounded-xl border border-white/20">
             <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Próxima Mantención (Meta)</span>
-            <strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }}h</strong>
+            <strong class="font-mono text-base text-emerald-300 block">{{ perfilEquipo.horometros?.hTarget || 0 }} {{ uH }}</strong>
           </div>
           <div class="bg-white/10 p-3 rounded-xl border border-white/20">
             <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">Fecha Próxima Mantención (Aprox.)</span>
@@ -265,7 +265,7 @@ export default /* html */ `
                 <th class="p-2">Lugar</th>
                 <th class="p-2">Causa</th>
                 <th class="p-2">Tipo Mant.</th>
-                <th class="p-2 text-amber-300">Horómetro</th>
+                <th class="p-2 text-amber-300">{{ esVehPerfil ? 'Kilometraje' : 'Horómetro' }}</th>
                 <th class="p-2">Mecánicos</th>
                 <th class="p-2 text-sky-300">Hora Inicio</th>
                 <th class="p-2 text-sky-300">Hora Término</th>
@@ -291,7 +291,7 @@ export default /* html */ `
                 <td class="p-2">{{ i.lugar || '-' }}</td>
                 <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
                 <td class="p-2 text-blue-600 font-semibold">{{ i.tipoMant || '-' }}</td>
-                <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ i.horometro ? i.horometro + ' hrs' : '-' }}</td>
+                <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ i.horometro ? i.horometro + (esVehPerfil ? ' km' : ' hrs') : '-' }}</td>
                 <td class="p-2">{{ getMecanicosText(i) }}</td>
                 <td class="p-2 font-mono text-sky-700 bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
                 <td class="p-2 font-mono text-sky-700 bg-sky-50/50">{{ i.horaTermino || '-' }}</td>

@@ -3,21 +3,21 @@
 // ---------------------------------------------------------------------
 // · Vehículo = equipo de BD_INVENTARIO cuyo AFI es una PATENTE "XXXX-XX".
 //   Se muestran aquí y NO en Inventario AFI. Su N° AFI interno se guarda en bd_vehiculos.numero_afi.
-// · Kilometraje: mismo cálculo que el horómetro (core/horometros.js) pero en km:
-//     uso km/día = (último km tomado − km última mantención) / días entre ambas
-//     (si no se puede: penúltima vs última mantención; si no: últimas 2 lecturas; si no: 80 km/día)
-//     km aprox. hoy = último km tomado + días transcurridos × uso
-//     meta = km última mantención + frecuencia (ej. 10.000 km) → faltan, fecha estimada, estado.
-// · Horómetro: el mismo del inventario (e.horometros), se actualiza en BD_INVENTARIO.
+// · En los vehículos el "horómetro" del sistema ES EL KILOMETRAJE:
+//     BD_INVENTARIO.horometroactual = último km tomado · BD_HISTORIAL.horometro = km de cada mantención.
+//     El cálculo es el de core/horometros.js (e.horometros), que para patentes usa km:
+//     frecuencia 10.000 km, uso por defecto 80 km/día, aviso PRÓXIMO desde 1.000 km.
+//     bd_vehiculos_km guarda la bitácora de lecturas (cada lectura también actualiza BD_INVENTARIO).
 // · Documentos: 3 PRINCIPALES (Revisión Técnica, Permiso de Circulación, SOAP) + SECUNDARIOS.
 //   Cada uno con emisión + duración → vencimiento, y aviso X días antes (por defecto 30).
 //   Renovar = subir uno nuevo; los anteriores quedan como historial.
 // · Los datos propios del módulo se cargan al abrirlo (como Control EPP).
 // =====================================================================
 import { supabaseClient, sb, errMsg, subirArchivoStorage, BUCKET_ARCHIVOS } from '../../core/supabase.js';
-import { dbEquipos, usuarioActivo, soloAdmin, soloEditor, cargarDatosDesdeSupabase, currentTab } from '../../core/store.js';
-import { hoyISO, diasEntre, sumarDiasISO, normalizarFecha, normalizarClave, parseNum, formatDateForDisplay, compararAfi, resetInputFile } from '../../core/utils.js';
-import { esAlertaRoja, getPrediccionStatusBadge } from '../../core/horometros.js';
+import { dbEquipos, dbIntervenciones, usuarioActivo, soloAdmin, soloEditor, cargarDatosDesdeSupabase, currentTab } from '../../core/store.js';
+import { hoyISO, diasEntre, sumarDiasISO, normalizarFecha, normalizarClave, parseNum, formatDateForDisplay, compararAfi, mismoAfi } from '../../core/utils.js';
+import { abrirFormularioNuevaMantencion } from '../historial/historial.service.js';
+import { VEH_FRECUENCIA_KM } from '../../core/horometros.js';
 import { TABLA_INVENTARIO, esVehiculo, esPatente, normalizarPatente, empresaDe } from '../inventario/inventario.mapper.js';
 import { abrirPerfilEquipo } from '../inventario/perfil.service.js';
 import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel, COLOR } from '../../core/excel.js';
@@ -134,52 +134,39 @@ const ordenDocs = (a, b) => String(b.fechaVencimiento || b.fechaEmision || '').l
 // ---------------------------------------------------------------------
 // Kilometraje (mismo cálculo que el horómetro, en km)
 // ---------------------------------------------------------------------
-export const calcularKm = (eq, conf, lecturas) => {
-  const hoy = hoyISO();
-  const arr = lecturas.filter(l => l.km > 0 && l.fecha).sort((a, b) => a.fecha.localeCompare(b.fecha) || a.km - b.km);
-  const mants = arr.filter(l => l.tipo === 'MANTENCION');
-  const ult = mants.length ? mants[mants.length - 1] : null;
-  const kmUlt = ult ? ult.km : 0, fUlt = ult ? ult.fecha : '';
-  const pen = ult ? [...mants].reverse().find(l => l.km < kmUlt && l.fecha < fUlt) || null : null;
-  const ultimo = arr.length ? arr[arr.length - 1] : null;
-  let kmTomado = ultimo ? ultimo.km : 0, fTomado = ultimo ? ultimo.fecha : '';
-  if (ult && kmTomado < kmUlt) { kmTomado = kmUlt; fTomado = fUlt; }
-
-  let rate = 0, metodo = 'POR DEFECTO', calc = null;
-  const dKm = kmTomado - kmUlt, dD = ult ? diasEntre(fTomado, fUlt) : null;
-  if (ult && dKm > 0 && dD > 0) {
-    rate = dKm / dD; metodo = 'TOMADO vs ÚLT. MANT.';
-    calc = { desde: kmUlt, fDesde: fUlt, hasta: kmTomado, fHasta: fTomado, km: dKm, dias: dD };
-  } else if (ult && pen) {
-    const k = kmUlt - pen.km, d = diasEntre(fUlt, pen.fecha);
-    if (k > 0 && d > 0) { rate = k / d; metodo = 'PENÚLT. vs ÚLT. MANT.'; calc = { desde: pen.km, fDesde: pen.fecha, hasta: kmUlt, fHasta: fUlt, km: k, dias: d }; }
-  }
-  if (!(rate > 0) && arr.length >= 2) {
-    const a = arr[arr.length - 2], b = arr[arr.length - 1];
-    const k = b.km - a.km, d = Math.max(1, Math.abs(diasEntre(b.fecha, a.fecha) || 1));
-    if (k > 0) { rate = k / d; metodo = 'ÚLTIMAS 2 LECTURAS'; calc = { desde: a.km, fDesde: a.fecha, hasta: b.km, fHasta: b.fecha, km: k, dias: d }; }
-  }
-  if (!(rate > 0)) { rate = USO_KM_DIA_DEFAULT; metodo = 'POR DEFECTO'; calc = null; }
-
-  const diasDesde = fTomado ? Math.max(0, diasEntre(hoy, fTomado) ?? 0) : 0;
-  const fuera = normalizarClave(eq?.disponibilidad) === 'Fuera de Servicio';
-  const kmAprox = !ultimo ? 0 : fuera ? kmTomado : Math.round(kmTomado + diasDesde * rate);
-  const frecuencia = Number(conf?.frecuenciaKm) || FRECUENCIA_KM_DEFAULT;
-  const kmMeta = ult ? kmUlt + frecuencia : null;
-  const faltan = kmMeta !== null ? kmMeta - kmAprox : null;
-  let fechaEstimada = '';
-  if (faltan !== null && rate > 0) { try { fechaEstimada = sumarDiasISO(hoy, Math.ceil(faltan / rate)); } catch (e) {} }
-  const estado = !arr.length ? 'SIN LECTURAS' : !ult ? 'SIN MANT.' : faltan <= 0 ? '¡PASADO!' : faltan <= UMBRAL_KM_PROXIMO ? 'PRÓXIMO' : 'AL DÍA';
-
+/** Kilometraje del vehículo = cálculo general de core/horometros.js (en km para patentes). */
+export const kmDe = (eq) => {
+  const h = eq.horometros || {};
+  const conMant = Number(h.hUltimaMant) > 0;
+  const kmTomado = Number(h.hTomado) || 0;
   return {
-    kmTomado, fTomado, kmUlt, fUlt, kmPen: pen ? pen.km : null, fPen: pen ? pen.fecha : '',
-    rate, metodo, calc, kmAprox, frecuencia, kmMeta, faltan, fechaEstimada, estado, nLecturas: arr.length
+    kmTomado, fTomado: h.fechaUltimoHorometro && h.fechaUltimoHorometro !== '-' ? h.fechaUltimoHorometro : '',
+    kmUlt: Number(h.hUltimaMant) || 0, fUlt: h.ultimaMantFecha && h.ultimaMantFecha !== '-' ? h.ultimaMantFecha : '',
+    kmPen: Number(h.hPenultimaMant) || null, fPen: h.penultimaMantFecha !== '-' ? h.penultimaMantFecha : '',
+    rate: Number(h.rateHrsDia) || 0, metodo: h.metodoCalculo || '',
+    calc: h.calc ? { desde: h.calc.hDesde, fDesde: h.calc.fDesde, hasta: h.calc.hHasta, fHasta: h.calc.fHasta, dias: h.calc.dias } : null,
+    kmAprox: kmTomado ? Number(h.hAprox) || 0 : 0,
+    frecuencia: Number(eq.frecuenciaMantencion) || VEH_FRECUENCIA_KM,
+    kmMeta: conMant ? Number(h.hTarget) : null,
+    faltan: conMant ? Number(h.horasFaltantes) : null,
+    fechaEstimada: conMant && h.fechaEstimada !== '-' ? h.fechaEstimada : '',
+    estado: !kmTomado ? 'SIN LECTURAS' : !conMant ? 'SIN MANT.' : (h.estadoTexto || 'AL DÍA'),
+    fechaVencAnual: h.fechaVencAnual, estadoAnual: h.estadoAnual
   };
+};
+const sinTildes = (x) => String(x || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const esMantencion = (i) => { const c = sinTildes(i.causa), t = sinTildes(i.tipoMant); return c.includes('MANTENCION') || c.includes('MANTENIMIENTO') || t.includes('MANTENCION'); };
+/** Bitácora de km: registros del Historial con km + lecturas del módulo, más nuevo primero. */
+export const bitacoraKm = (v) => {
+  const hist = dbIntervenciones.value.filter(i => mismoAfi(i.afi, v.patente) && Number(i.horometro) > 0 && normalizarFecha(i.fecha))
+    .map(i => ({ id: 'h' + (i.id ?? Math.random()), fecha: normalizarFecha(i.fecha), km: Number(i.horometro), tipo: esMantencion(i) ? 'MANTENCION' : 'HISTORIAL',
+      observacion: [i.causa, i.tipoMant].filter(x => x && x !== '-').join(' · '), creadoPor: 'Historial', origen: 'HISTORIAL' }));
+  const lect = v.lecturas.map(l => ({ ...l, origen: 'LECTURA' }));
+  return [...hist, ...lect].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.km - a.km);
 };
 export const kmBadge = (k) => !k || k.estado === 'SIN LECTURAS' || k.estado === 'SIN MANT.' ? 'bg-slate-400 text-white'
   : k.estado === '¡PASADO!' ? 'bg-rose-600 text-white animate-pulse' : k.estado === 'PRÓXIMO' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white';
 export const kmCard = (k) => k?.estado === '¡PASADO!' ? 'bg-rose-50 border-rose-300' : k?.estado === 'PRÓXIMO' ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200';
-export const horoBadge = getPrediccionStatusBadge;
 
 // ---------------------------------------------------------------------
 // Lista de vehículos (inventario + datos propios)
@@ -193,7 +180,7 @@ const confPorPatente = computed(() => new Map(dbVehiculosConf.value.map(v => [v.
 const lecturasPorPatente = computed(() => agrupar(dbLecturasKm.value));
 const docsPorPatente = computed(() => agrupar(dbDocsVehiculos.value));
 
-const confDefault = (patente) => ({ id: null, patente, numeroAfi: '', frecuenciaKm: FRECUENCIA_KM_DEFAULT, diasAviso: DIAS_AVISO_DEFAULT, observacion: '' });
+const confDefault = (patente) => ({ id: null, patente, numeroAfi: '', diasAviso: DIAS_AVISO_DEFAULT, observacion: '' });
 
 export const vehiculos = computed(() => dbEquipos.value.filter(esVehiculo).map(eq => {
   const patente = up(eq.afi);
@@ -214,15 +201,14 @@ export const vehiculos = computed(() => dbEquipos.value.filter(esVehiculo).map(e
     hist.sort(ordenDocs);
     return { nombre: hist[0].nombre, doc: hist[0], hist, est: estadoDoc(hist[0]) };
   }).sort((a, b) => a.est.orden - b.est.orden || a.nombre.localeCompare(b.nombre));
-  const km = calcularKm(eq, conf, lecturas);
+  const km = kmDe(eq);
   const todos = [...principales, ...secundarios];
   const nVencidos = todos.filter(x => x.est.key === 'VENCIDO').length;
   const nPorVencer = todos.filter(x => x.est.key === 'POR_VENCER').length;
   const nFaltan = principales.filter(x => x.est.key === 'FALTA').length;
-  const horoRojo = esAlertaRoja(eq.horometros), horoAmbar = !horoRojo && eq.horometros?.estadoTexto === 'PRÓXIMO';
   const kmRojo = km.estado === '¡PASADO!', kmAmbar = km.estado === 'PRÓXIMO';
-  const nivel = (nVencidos || kmRojo || horoRojo) ? 'ROJO' : (nPorVencer || kmAmbar || horoAmbar) ? 'AMBAR' : nFaltan ? 'GRIS' : 'OK';
-  return { eq, patente, conf, lecturas, principales, secundarios, km, nVencidos, nPorVencer, nFaltan, horoRojo, horoAmbar, kmRojo, kmAmbar, nivel };
+  const nivel = (nVencidos || kmRojo) ? 'ROJO' : (nPorVencer || kmAmbar) ? 'AMBAR' : nFaltan ? 'GRIS' : 'OK';
+  return { eq, patente, conf, lecturas, principales, secundarios, km, nVencidos, nPorVencer, nFaltan, kmRojo, kmAmbar, nivel };
 }));
 export const vehiculoDe = (patente) => vehiculos.value.find(v => v.patente === up(patente)) || null;
 export const nVehiculos = computed(() => dbEquipos.value.filter(esVehiculo).length);
@@ -233,11 +219,10 @@ export const nivelBorde = (n) => n === 'ROJO' ? 'border-rose-400 ring-1 ring-ros
 // Resumen, avisos y filtros
 // ---------------------------------------------------------------------
 export const resumenVeh = computed(() => {
-  const r = { total: 0, vencidos: 0, porVencer: 0, faltan: 0, km: 0, horo: 0, vehAlerta: 0 };
+  const r = { total: 0, vencidos: 0, porVencer: 0, faltan: 0, km: 0, vehAlerta: 0 };
   vehiculos.value.forEach(v => {
     r.total++; r.vencidos += v.nVencidos; r.porVencer += v.nPorVencer; r.faltan += v.nFaltan;
     if (v.kmRojo || v.kmAmbar) r.km++;
-    if (v.horoRojo || v.horoAmbar) r.horo++;
     if (v.nivel === 'ROJO' || v.nivel === 'AMBAR') r.vehAlerta++;
   });
   return r;
@@ -253,11 +238,7 @@ export const avisosVeh = computed(() => {
       }
     });
     if (v.kmRojo || v.kmAmbar) {
-      out.push({ v, tipo: 'KM', rojo: v.kmRojo, orden: v.kmRojo ? -1 : 9, titulo: 'Mantención por kilometraje', detalle: `${v.km.faltan <= 0 ? 'Pasada por ' + fmtKm(Math.abs(v.km.faltan)) : 'Faltan ' + fmtKm(v.km.faltan)} · meta ${fmtKm(v.km.kmMeta)}`, tab: 'km' });
-    }
-    if (v.horoRojo || v.horoAmbar) {
-      const h = v.eq.horometros || {};
-      out.push({ v, tipo: 'HORO', rojo: v.horoRojo, orden: v.horoRojo ? -1 : 9, titulo: 'Mantención por horómetro', detalle: `${h.horasFaltantes < 0 ? 'Pasada por ' + Math.abs(h.horasFaltantes) + ' h' : 'Faltan ' + h.horasFaltantes + ' h'} · meta ${h.hTarget || 0} h`, tab: 'km' });
+      out.push({ v, tipo: 'KM', rojo: v.kmRojo, orden: v.kmRojo ? -1 : 9, titulo: 'Mantención por kilometraje', detalle: `${v.km.faltan < 0 ? 'Pasada por ' + fmtKm(Math.abs(v.km.faltan)) : v.km.faltan === 0 ? 'Llegó a la meta' : 'Faltan ' + fmtKm(v.km.faltan)} · meta ${fmtKm(v.km.kmMeta)}`, tab: 'km' });
     }
   });
   return out.sort((a, b) => (b.rojo - a.rojo) || ((a.orden ?? 0) - (b.orden ?? 0)));
@@ -277,7 +258,6 @@ export const listaVehiculos = computed(() => {
     if (f.alerta === 'POR_VENCER' && !v.nPorVencer) return false;
     if (f.alerta === 'FALTAN' && !v.nFaltan) return false;
     if (f.alerta === 'KM' && !(v.kmRojo || v.kmAmbar)) return false;
-    if (f.alerta === 'HORO' && !(v.horoRojo || v.horoAmbar)) return false;
     return true;
   }).sort((a, b) => f.orden === 'alerta'
     ? ({ ROJO: 0, AMBAR: 1, GRIS: 2, OK: 3 }[a.nivel] - { ROJO: 0, AMBAR: 1, GRIS: 2, OK: 3 }[b.nivel]) || a.patente.localeCompare(b.patente)
@@ -294,15 +274,13 @@ export const vehAbierto = ref('');          // patente del perfil abierto
 export const tabPerfilVeh = ref('resumen'); // resumen | km | documentos
 export const formConf = ref({});
 export const formKm = ref({});
-export const formHoro = ref({});
 export const vehPerfil = computed(() => vehAbierto.value ? vehiculoDe(vehAbierto.value) : null);
 
 export const abrirPerfilVehiculo = (v, tab = 'resumen') => {
   vehAbierto.value = v.patente;
   tabPerfilVeh.value = tab;
-  formConf.value = { numeroAfi: v.conf.numeroAfi, frecuenciaKm: v.conf.frecuenciaKm, diasAviso: v.conf.diasAviso, observacion: v.conf.observacion };
-  formKm.value = { fecha: hoyISO(), km: '', tipo: 'LECTURA', observacion: '' };
-  formHoro.value = { h: v.eq.horometroActual || '', fecha: normalizarFecha(v.eq.fechaHorometroManual) || '' };
+  formConf.value = { numeroAfi: v.conf.numeroAfi, frecuenciaKm: v.km.frecuencia, diasAviso: v.conf.diasAviso, observacion: v.conf.observacion };
+  formKm.value = { fecha: hoyISO(), km: '', observacion: '' };
 };
 export const cerrarPerfilVehiculo = () => { vehAbierto.value = ''; };
 /** Abre el Perfil de Equipo general (historial de mantenciones, ubicación, programas…). */
@@ -316,18 +294,20 @@ export const guardarConfVehiculo = async () => {
   if (!soloEditor()) return;
   const v = vehPerfil.value; if (!v) return;
   const f = formConf.value;
-  const payload = {
-    patente: v.patente,
-    numero_afi: String(f.numeroAfi || '').trim() || null,
-    frecuencia_km: Math.round(parseNum(f.frecuenciaKm)) || FRECUENCIA_KM_DEFAULT,
-    dias_aviso: Math.round(parseNum(f.diasAviso)) || DIAS_AVISO_DEFAULT,
-    observacion: String(f.observacion || '').trim() || null,
-    updated_at: new Date().toISOString()
-  };
+  const frecuencia = Math.round(parseNum(f.frecuenciaKm)) || VEH_FRECUENCIA_KM;
   guardandoVeh.value = true;
   try {
-    await sb(supabaseClient.from(TABLA_VEHICULOS).upsert([payload], { onConflict: 'patente' }));
-    await cargarVehiculos();
+    // La frecuencia (km) es la misma columna que usa todo el sistema: BD_INVENTARIO.frecuencia_mantencion
+    if (frecuencia !== v.km.frecuencia) await sb(supabaseClient.from(TABLA_INVENTARIO).update({ frecuencia_mantencion: frecuencia }).eq('id', v.eq.id));
+    await sb(supabaseClient.from(TABLA_VEHICULOS).upsert([{
+      patente: v.patente,
+      numero_afi: String(f.numeroAfi || '').trim() || null,
+      frecuencia_km: frecuencia,
+      dias_aviso: Math.round(parseNum(f.diasAviso)) || DIAS_AVISO_DEFAULT,
+      observacion: String(f.observacion || '').trim() || null,
+      updated_at: new Date().toISOString()
+    }], { onConflict: 'patente' }));
+    await recargarTodo();
     alert('¡Datos del vehículo guardados!');
   } catch (err) {
     if (esErrorTabla(errMsg(err))) return avisoSQL();
@@ -335,6 +315,7 @@ export const guardarConfVehiculo = async () => {
   } finally { guardandoVeh.value = false; }
 };
 
+/** Lectura de kilometraje: actualiza el km tomado del inventario (lo que usa el cálculo) y queda en la bitácora. */
 export const registrarKm = async () => {
   if (!soloEditor()) return;
   const v = vehPerfil.value; if (!v) return;
@@ -343,21 +324,29 @@ export const registrarKm = async () => {
   if (!(km > 0)) return alert('Ingresa el kilometraje (mayor a 0).');
   if (!f.fecha) return alert('Ingresa la fecha de la lectura.');
   if (f.fecha > hoyISO()) return alert('La fecha no puede ser futura.');
-  const previo = v.lecturas.filter(l => l.fecha <= f.fecha).reduce((m, l) => Math.max(m, l.km), 0);
-  if (previo > km && !confirm(`El kilometraje ingresado (${fmtKm(km)}) es MENOR que una lectura anterior (${fmtKm(previo)}). ¿Guardar de todas formas?`)) return;
+  const previo = bitacoraKm(v).filter(l => l.fecha <= f.fecha).reduce((m, l) => Math.max(m, l.km), 0);
+  if (previo > km && !confirm(`El kilometraje ingresado (${fmtKm(km)}) es MENOR que un registro anterior (${fmtKm(previo)}). ¿Guardar de todas formas?`)) return;
+  // Solo pasa a ser el "km tomado" si es igual o más nuevo que el que ya tiene el inventario
+  const fActual = normalizarFecha(v.eq.fechaHorometroManual) || '';
+  const esMasNuevo = !fActual || f.fecha >= fActual;
   guardandoVeh.value = true;
   try {
-    await sb(supabaseClient.from(TABLA_VEH_KM).insert([{
-      patente: v.patente, fecha: f.fecha, km, tipo: f.tipo === 'MANTENCION' ? 'MANTENCION' : 'LECTURA',
-      observacion: String(f.observacion || '').trim() || null, creado_por: usuario()
-    }]));
-    await cargarVehiculos();
-    formKm.value = { fecha: hoyISO(), km: '', tipo: 'LECTURA', observacion: '' };
+    if (esMasNuevo) await sb(supabaseClient.from(TABLA_INVENTARIO).update({ horometroactual: km, fecha_horometro_manual: f.fecha }).eq('id', v.eq.id));
+    try {
+      await sb(supabaseClient.from(TABLA_VEH_KM).insert([{
+        patente: v.patente, fecha: f.fecha, km, tipo: 'LECTURA',
+        observacion: String(f.observacion || '').trim() || null, creado_por: usuario()
+      }]));
+    } catch (err) { if (!esErrorTabla(errMsg(err))) throw err; }   // sin sql/vehiculos.sql igual queda en el inventario
+    await recargarTodo();
+    formKm.value = { fecha: hoyISO(), km: '', observacion: '' };
   } catch (err) {
-    if (esErrorTabla(errMsg(err))) return avisoSQL();
     alert('Error al registrar kilometraje: ' + errMsg(err));
   } finally { guardandoVeh.value = false; }
 };
+
+/** La mantención se registra en el Historial (su campo "Kilometraje" fija la próxima meta). */
+export const registrarMantencionVeh = (v) => abrirFormularioNuevaMantencion(v.patente);
 
 export const eliminarLecturaKm = async (l) => {
   if (!soloAdmin()) return;
@@ -366,23 +355,6 @@ export const eliminarLecturaKm = async (l) => {
     await sb(supabaseClient.from(TABLA_VEH_KM).delete().eq('id', l.id));
     await cargarVehiculos();
   } catch (err) { alert('Error al eliminar: ' + errMsg(err)); }
-};
-
-/** Horómetro manual (el mismo campo del Perfil de Equipo en BD_INVENTARIO). */
-export const actualizarHorometroVeh = async () => {
-  if (!soloEditor()) return;
-  const v = vehPerfil.value; if (!v) return;
-  const h = parseNum(formHoro.value.h);
-  if (!(h > 0)) return alert('Ingresa el horómetro (mayor a 0).');
-  if (!formHoro.value.fecha) return alert('Ingresa la fecha del horómetro.');
-  if (formHoro.value.fecha > hoyISO()) return alert('La fecha no puede ser futura.');
-  guardandoVeh.value = true;
-  try {
-    await sb(supabaseClient.from(TABLA_INVENTARIO).update({ horometroactual: h, fecha_horometro_manual: formHoro.value.fecha }).eq('id', v.eq.id));
-    await cargarDatosDesdeSupabase();
-  } catch (err) {
-    alert('Error al actualizar horómetro: ' + errMsg(err));
-  } finally { guardandoVeh.value = false; }
 };
 
 // ---------------------------------------------------------------------
@@ -492,7 +464,7 @@ export const showNuevoVeh = ref(false);
 export const formNuevoVeh = ref({});
 export const abrirNuevoVehiculo = () => {
   if (!soloEditor()) return;
-  formNuevoVeh.value = { patente: '', numeroAfi: '', tipo: 'CAMIONETA', marca: '', modelo: '', ubicacion: '', disponibilidad: 'Operativo', km: '', fechaKm: hoyISO(), horometro: '', frecuenciaKm: FRECUENCIA_KM_DEFAULT, frecuenciaHoras: 250 };
+  formNuevoVeh.value = { patente: '', numeroAfi: '', tipo: 'CAMIONETA', marca: '', modelo: '', ubicacion: '', disponibilidad: 'Operativo', km: '', fechaKm: hoyISO(), frecuenciaKm: VEH_FRECUENCIA_KM };
   showNuevoVeh.value = true;
 };
 export const formatearPatenteNueva = () => { formNuevoVeh.value.patente = normalizarPatente(formNuevoVeh.value.patente); };
@@ -506,19 +478,20 @@ export const guardarNuevoVehiculo = async () => {
   if (dbEquipos.value.some(e => up(e.afi) === patente)) return alert(`La patente ${patente} ya existe en el sistema.`);
   guardandoVeh.value = true;
   try {
-    const h = parseNum(f.horometro);
+    const h = Math.round(parseNum(f.km));
+    const frecuencia = Math.round(parseNum(f.frecuenciaKm)) || VEH_FRECUENCIA_KM;
     await sb(supabaseClient.from(TABLA_INVENTARIO).insert([{
       afi: patente, tipo: String(f.tipo).trim().toUpperCase(), marca: String(f.marca || '').trim(), modelo: String(f.modelo || '').trim(),
       ubicacion: String(f.ubicacion || '').trim(), disponibilidad: normalizarClave(f.disponibilidad),
       horometroactual: h, ...(h > 0 ? { fecha_horometro_manual: f.fechaKm || hoyISO() } : {}),
-      frecuencia_mantencion: Math.round(parseNum(f.frecuenciaHoras)) || 250, gps: 'Sin GPS'
+      frecuencia_mantencion: frecuencia, gps: 'Sin GPS'
     }]));
     try {
       await sb(supabaseClient.from(TABLA_VEHICULOS).upsert([{
         patente, numero_afi: String(f.numeroAfi || '').trim() || null,
-        frecuencia_km: Math.round(parseNum(f.frecuenciaKm)) || FRECUENCIA_KM_DEFAULT, dias_aviso: DIAS_AVISO_DEFAULT
+        frecuencia_km: frecuencia, dias_aviso: DIAS_AVISO_DEFAULT
       }], { onConflict: 'patente' }));
-      const km = Math.round(parseNum(f.km));
+      const km = h;
       if (km > 0) await sb(supabaseClient.from(TABLA_VEH_KM).insert([{ patente, fecha: f.fechaKm || hoyISO(), km, tipo: 'LECTURA', observacion: 'Kilometraje inicial', creado_por: usuario() }]));
     } catch (err) {
       alert(`El vehículo ${patente} quedó creado en el inventario, pero no se guardó su N° AFI / kilometraje: ` + errMsg(err) + (esErrorTabla(errMsg(err)) ? '\n\nEjecuta sql/vehiculos.sql en Supabase.' : ''));
@@ -544,18 +517,17 @@ export const exportarVehiculosExcel = async () => {
     const lista = [...vehiculos.value].sort((a, b) => compararAfi(a.patente, b.patente));
     const docCol = (v, key) => { const p = v.principales.find(x => x.def.key === key); return p.doc ? fechaExcel(p.doc.fechaVencimiento) : 'SIN CARGAR'; };
     hojaTabla(wb, logo, {
-      nombre: 'Vehículos', titulo: 'VEHÍCULOS', subtitulo: `${lista.length} vehículos · kilometraje, horómetro y documentos`,
+      nombre: 'Vehículos', titulo: 'VEHÍCULOS', subtitulo: `${lista.length} vehículos · kilometraje y documentos`,
       columnas: [
         { t: 'PATENTE', w: 12, bold: true }, { t: 'N° AFI', w: 9 }, { t: 'TIPO', w: 16 }, { t: 'MARCA / MODELO', w: 22 }, { t: 'ESTADO', w: 14 }, { t: 'UBICACIÓN', w: 22, al: 'left' },
-        { t: 'KM TOMADO', w: 11, fmt: '#,##0' }, { t: 'FECHA KM', w: 11, fmt: 'dd-mm-yyyy' }, { t: 'KM APROX HOY', w: 12, fmt: '#,##0' }, { t: 'META KM', w: 11, fmt: '#,##0' }, { t: 'FALTAN KM', w: 11, fmt: '#,##0' }, { t: 'ESTADO KM', w: 12 },
-        { t: 'HORÓMETRO APROX', w: 12 }, { t: 'META H', w: 9 }, { t: 'ESTADO HORÓMETRO', w: 12 },
+        { t: 'KM TOMADO', w: 11, fmt: '#,##0' }, { t: 'FECHA KM', w: 11, fmt: 'dd-mm-yyyy' }, { t: 'KM APROX HOY', w: 12, fmt: '#,##0' }, { t: 'META KM', w: 11, fmt: '#,##0' }, { t: 'FALTAN KM', w: 11, fmt: '#,##0' }, { t: 'ESTADO KM', w: 12 }, { t: 'MANTENCIÓN CADA (KM)', w: 12, fmt: '#,##0' },
         { t: 'VENCE REV. TÉCNICA', w: 13, fmt: 'dd-mm-yyyy' }, { t: 'VENCE PERMISO CIRC.', w: 13, fmt: 'dd-mm-yyyy' }, { t: 'VENCE SOAP', w: 12, fmt: 'dd-mm-yyyy' },
         { t: 'DOCS VENCIDOS', w: 10 }, { t: 'DOCS POR VENCER', w: 10 }
       ],
       filas: lista.map(v => [
         v.patente, v.conf.numeroAfi, v.eq.tipo, `${v.eq.marca} ${v.eq.modelo}`.trim(), v.eq.disponibilidad, v.eq.ubicacion,
         v.km.kmTomado || '', fechaExcel(v.km.fTomado), v.km.kmAprox || '', v.km.kmMeta ?? '', v.km.faltan ?? '', v.km.estado,
-        v.eq.horometros?.hAprox ?? '', v.eq.horometros?.hTarget ?? '', v.eq.horometros?.estadoTexto ?? '',
+        v.km.frecuencia,
         docCol(v, 'REVISION_TECNICA'), docCol(v, 'PERMISO_CIRCULACION'), docCol(v, 'SOAP'), v.nVencidos, v.nPorVencer
       ]),
       estiloFila: (f, i) => { const v = lista[i]; return v.nivel === 'ROJO' ? { fill: COLOR.rojo } : v.nivel === 'AMBAR' ? { fill: COLOR.ambar } : null; }
@@ -579,9 +551,9 @@ export const exportarVehiculosExcel = async () => {
       estiloFila: (f, i) => colorEstado(docs[i].est.key)
     });
     hojaTabla(wb, logo, {
-      nombre: 'Avisos', titulo: 'AVISOS DE VEHÍCULOS', subtitulo: 'Documentos vencidos / por vencer y mantenciones por km u horómetro',
+      nombre: 'Avisos', titulo: 'AVISOS DE VEHÍCULOS', subtitulo: 'Documentos vencidos / por vencer y mantenciones por kilometraje',
       columnas: [{ t: 'PATENTE', w: 12, bold: true }, { t: 'N° AFI', w: 9 }, { t: 'TIPO AVISO', w: 14 }, { t: 'ASUNTO', w: 30, al: 'left' }, { t: 'DETALLE', w: 50, al: 'left' }, { t: 'NIVEL', w: 10 }],
-      filas: avisosVeh.value.map(a => [a.v.patente, a.v.conf.numeroAfi, a.tipo === 'DOC' ? 'DOCUMENTO' : a.tipo === 'KM' ? 'KILOMETRAJE' : 'HORÓMETRO', a.titulo, a.detalle, a.rojo ? 'URGENTE' : 'PRÓXIMO']),
+      filas: avisosVeh.value.map(a => [a.v.patente, a.v.conf.numeroAfi, a.tipo === 'DOC' ? 'DOCUMENTO' : 'KILOMETRAJE', a.titulo, a.detalle, a.rojo ? 'URGENTE' : 'PRÓXIMO']),
       estiloFila: (f) => f[5] === 'URGENTE' ? colorEstado('VENCIDO') : colorEstado('POR_VENCER'),
       apaisado: false
     });

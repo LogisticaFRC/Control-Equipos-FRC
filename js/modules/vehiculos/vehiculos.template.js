@@ -6,7 +6,7 @@ export default /* html */ `
   <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
     <div>
       <h2 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-car-side text-amber-500"></i> Vehículos</h2>
-      <p class="text-slate-500 mt-0.5">Equipos cuyo AFI es una <b>patente XXXX-XX</b>. Kilometraje y horómetro con mantención estimada, y documentos con <b>aviso de vencimiento</b>.</p>
+      <p class="text-slate-500 mt-0.5">Equipos cuyo AFI es una <b>patente XXXX-XX</b>. Kilometraje con mantención estimada (cada 10.000 km), y documentos con <b>aviso de vencimiento</b>.</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
       <button @click="recargarTodo" :disabled="cargandoVeh" title="Recargar" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-2.5 rounded-xl border"><i :class="['fa-solid fa-rotate', cargandoVeh ? 'fa-spin' : '']"></i></button>
@@ -20,13 +20,12 @@ export default /* html */ `
   </div>
 
   <!-- Resumen -->
-  <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+  <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
     <div @click="limpiarFiltroVeh" class="rounded-xl border p-3 bg-white cursor-pointer hover:shadow"><p class="text-[10px] font-bold text-slate-500 uppercase">Vehículos</p><p class="text-2xl font-extrabold text-slate-800">{{ resumenVeh.total }} <span v-if="resumenVeh.vehAlerta" class="text-xs font-bold text-rose-500">· {{ resumenVeh.vehAlerta }} con aviso</span></p></div>
     <div @click="filtroVeh.alerta = 'VENCIDOS'" class="rounded-xl border p-3 bg-rose-50 border-rose-300 text-rose-800 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Documentos vencidos</p><p class="text-2xl font-extrabold">{{ resumenVeh.vencidos }}</p></div>
     <div @click="filtroVeh.alerta = 'POR_VENCER'" class="rounded-xl border p-3 bg-amber-50 border-amber-300 text-amber-800 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Documentos por vencer</p><p class="text-2xl font-extrabold">{{ resumenVeh.porVencer }}</p></div>
     <div @click="filtroVeh.alerta = 'FALTAN'" class="rounded-xl border p-3 bg-slate-50 border-slate-300 text-slate-700 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Doc. principales sin cargar</p><p class="text-2xl font-extrabold">{{ resumenVeh.faltan }}</p></div>
     <div @click="filtroVeh.alerta = 'KM'" class="rounded-xl border p-3 bg-blue-50 border-blue-300 text-blue-800 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Mant. por km (próx./pasada)</p><p class="text-2xl font-extrabold">{{ resumenVeh.km }}</p></div>
-    <div @click="filtroVeh.alerta = 'HORO'" class="rounded-xl border p-3 bg-violet-50 border-violet-300 text-violet-800 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Mant. por horómetro</p><p class="text-2xl font-extrabold">{{ resumenVeh.horo }}</p></div>
   </div>
 
   <!-- Avisos -->
@@ -53,7 +52,7 @@ export default /* html */ `
       <select v-model="filtroVeh.alerta" class="p-2 border rounded-lg font-bold">
         <option value="TODOS">Todos</option><option value="ALERTAS">Con algún aviso</option><option value="VENCIDOS">Documentos vencidos</option>
         <option value="POR_VENCER">Documentos por vencer</option><option value="FALTAN">Doc. principales sin cargar</option>
-        <option value="KM">Mantención por km</option><option value="HORO">Mantención por horómetro</option>
+        <option value="KM">Mantención por km</option>
       </select></div>
     <div><label class="block text-[10px] font-bold text-slate-500">Estado</label>
       <select v-model="filtroVeh.estado" class="p-2 border rounded-lg font-bold">
@@ -111,21 +110,8 @@ export default /* html */ `
               <div class="bg-white/80 p-1.5 rounded border"><span class="text-slate-500 font-bold block">META</span><strong class="font-mono text-emerald-700">{{ fmtNum(v.km.kmMeta) }}</strong></div>
             </div>
             <div class="text-[11px] text-center bg-white/60 p-1 rounded">
-              <template v-if="v.km.kmMeta !== null">{{ v.km.faltan < 0 ? 'Pasado por' : v.km.faltan === 0 ? 'Meta alcanzada' : 'Faltan' }} <b>{{ fmtKm(Math.abs(v.km.faltan)) }}</b> · aprox. <b>{{ formatDateForDisplay(v.km.fechaEstimada) }}</b> · {{ fmtNum(v.km.rate) }} km/día</template>
-              <span v-else class="text-slate-500 italic">{{ v.km.nLecturas ? 'Registra la última mantención (km) para calcular la meta' : 'Sin lecturas de kilometraje' }}</span>
-            </div>
-          </div>
-
-          <!-- Horómetro -->
-          <div :class="['rounded-xl p-3 space-y-2 border', getHorometroCardBgClass(v.eq.horometros)]">
-            <div class="flex justify-between items-center font-bold">
-              <span><i class="fa-solid fa-gauge-high text-amber-600"></i> Horómetro <span class="text-[10px] text-slate-500 font-semibold">· cada {{ v.eq.frecuenciaMantencion }}h</span></span>
-              <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', getPrediccionStatusBadge(v.eq.horometros)]">{{ v.eq.horometros?.estadoTexto || 'OK' }}</span>
-            </div>
-            <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
-              <div class="bg-white/80 p-1.5 rounded border"><span class="text-slate-500 font-bold block">H. TOMADO</span><strong class="font-mono">{{ v.eq.horometros?.hTomado || 0 }}h</strong></div>
-              <div class="bg-white/80 p-1.5 rounded border"><span class="text-slate-500 font-bold block">APROX HOY</span><strong class="font-mono text-blue-700">{{ v.eq.horometros?.hAprox || 0 }}h</strong></div>
-              <div class="bg-white/80 p-1.5 rounded border"><span class="text-slate-500 font-bold block">META</span><strong class="font-mono text-emerald-700">{{ v.eq.horometros?.hTarget || 0 }}h</strong></div>
+              <template v-if="v.km.kmMeta !== null"><template v-if="v.km.faltan === 0"><b>Llegó a la meta</b></template><template v-else>{{ v.km.faltan < 0 ? 'Pasado por' : 'Faltan' }} <b>{{ fmtKm(Math.abs(v.km.faltan)) }}</b></template> · aprox. <b>{{ formatDateForDisplay(v.km.fechaEstimada) }}</b> · {{ fmtNum(v.km.rate) }} km/día</template>
+              <span v-else class="text-slate-500 italic">{{ v.km.kmTomado ? 'Registra una mantención en el Historial (con su km) para calcular la meta' : 'Sin lecturas de kilometraje' }}</span>
             </div>
           </div>
 
@@ -173,7 +159,7 @@ export default /* html */ `
       </div>
 
       <div class="flex gap-1 px-6 pt-3 border-b border-slate-300 bg-slate-100">
-        <button v-for="p in [{k:'resumen',l:'Resumen',i:'fa-car'},{k:'km',l:'Kilometraje y Horómetro',i:'fa-road'},{k:'documentos',l:'Documentos',i:'fa-folder-open'}]" :key="p.k" @click="tabPerfilVeh = p.k"
+        <button v-for="p in [{k:'resumen',l:'Resumen',i:'fa-car'},{k:'km',l:'Kilometraje',i:'fa-road'},{k:'documentos',l:'Documentos',i:'fa-folder-open'}]" :key="p.k" @click="tabPerfilVeh = p.k"
           :class="['px-4 py-2.5 font-bold rounded-t-lg border border-b-0 -mb-px transition', tabPerfilVeh === p.k ? 'bg-white text-amber-600 border-slate-300' : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800']">
           <i :class="['fa-solid mr-1.5', p.i]"></i>{{ p.l }}
           <span v-if="p.k === 'documentos' && (vehPerfil.nVencidos + vehPerfil.nPorVencer)" :class="['ml-1 px-1.5 rounded-full text-[10px] text-white', vehPerfil.nVencidos ? 'bg-rose-600' : 'bg-amber-500']">{{ vehPerfil.nVencidos + vehPerfil.nPorVencer }}</span>
@@ -191,11 +177,11 @@ export default /* html */ `
               <p>Meta: <b>{{ fmtKm(vehPerfil.km.kmMeta) }}</b> · {{ vehPerfil.km.kmMeta !== null ? (vehPerfil.km.faltan < 0 ? 'pasado por ' : 'faltan ') + fmtKm(Math.abs(vehPerfil.km.faltan)) : 'sin mantención registrada' }}</p>
               <p>Fecha aprox.: <b>{{ formatDateForDisplay(vehPerfil.km.fechaEstimada) }}</b></p>
             </div>
-            <div :class="['rounded-xl border p-4 space-y-1', getHorometroCardBgClass(vehPerfil.eq.horometros)]">
-              <p class="font-bold flex justify-between"><span><i class="fa-solid fa-gauge-high text-amber-600 mr-1"></i> Horómetro</span><span :class="['px-2 py-0.5 rounded text-[10px] font-bold', getPrediccionStatusBadge(vehPerfil.eq.horometros)]">{{ vehPerfil.eq.horometros?.estadoTexto || 'OK' }}</span></p>
-              <p class="text-2xl font-extrabold font-mono text-blue-700">{{ vehPerfil.eq.horometros?.hAprox || 0 }} h <span class="text-[10px] text-slate-500 font-sans">aprox. hoy</span></p>
-              <p>Meta: <b>{{ vehPerfil.eq.horometros?.hTarget || 0 }} h</b> · faltan {{ vehPerfil.eq.horometros?.horasFaltantes ?? '-' }} h</p>
-              <p>Fecha aprox.: <b>{{ formatDateForDisplay(vehPerfil.eq.horometros?.fechaEstimada) }}</b></p>
+            <div class="rounded-xl border p-4 space-y-1 bg-white">
+              <p class="font-bold"><i class="fa-solid fa-calendar-check text-blue-600 mr-1"></i> Última mantención</p>
+              <p class="text-2xl font-extrabold font-mono text-slate-800">{{ vehPerfil.km.kmUlt ? fmtKm(vehPerfil.km.kmUlt) : '-' }}</p>
+              <p>Fecha: <b>{{ formatDateForDisplay(vehPerfil.km.fUlt) }}</b> · cada <b>{{ fmtKm(vehPerfil.km.frecuencia) }}</b></p>
+              <p>Mant. anual: <b>{{ formatDateForDisplay(vehPerfil.km.fechaVencAnual) }}</b> <span class="text-slate-500">({{ vehPerfil.km.estadoAnual || 'SIN REGISTRO' }})</span></p>
             </div>
             <div class="rounded-xl border p-4 bg-white space-y-2">
               <p class="font-bold"><i class="fa-solid fa-folder-open text-slate-500 mr-1"></i> Documentos principales</p>
@@ -216,17 +202,17 @@ export default /* html */ `
               <div><label class="block font-bold text-slate-700 mb-1">Aviso de documentos (días antes)</label><input v-model="formConf.diasAviso" :disabled="!puedeEditar" type="number" min="1" class="w-full p-2 border rounded-lg font-mono"><p class="text-[10px] text-slate-400 mt-0.5">Valor por defecto para documentos nuevos</p></div>
               <div class="sm:col-span-2 md:col-span-4"><label class="block font-bold text-slate-700 mb-1">Observación</label><input v-model="formConf.observacion" :disabled="!puedeEditar" type="text" class="w-full p-2 border rounded-lg"></div>
             </div>
-            <p class="text-[11px] text-slate-500 mt-3"><i class="fa-solid fa-circle-info mr-1"></i>Tipo, marca, modelo, estado, ubicación y frecuencia del horómetro se editan en <button @click="abrirPerfilEquipoDeVeh(vehPerfil)" class="text-blue-600 underline font-bold">Perfil Equipo</button>.</p>
+            <p class="text-[11px] text-slate-500 mt-3"><i class="fa-solid fa-circle-info mr-1"></i>Tipo, marca, modelo, estado y ubicación se editan en <button @click="abrirPerfilEquipoDeVeh(vehPerfil)" class="text-blue-600 underline font-bold">Perfil Equipo</button>.</p>
             <div v-if="puedeEditar" class="flex justify-end mt-3"><button @click="guardarConfVehiculo" :disabled="guardandoVeh" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg shadow disabled:opacity-60"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar datos</button></div>
           </div>
         </template>
 
         <!-- ---------- KILOMETRAJE Y HORÓMETRO ---------- -->
         <template v-if="tabPerfilVeh === 'km'">
-          <div class="grid lg:grid-cols-2 gap-4">
+          <div>
             <div :class="['rounded-xl border p-4 space-y-3', kmCard(vehPerfil.km)]">
               <h4 class="font-bold uppercase flex justify-between"><span><i class="fa-solid fa-road text-blue-600 mr-1"></i> Kilometraje</span><span :class="['px-2 py-0.5 rounded text-[10px] font-bold', kmBadge(vehPerfil.km)]">{{ vehPerfil.km.estado }}</span></h4>
-              <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="grid grid-cols-3 lg:grid-cols-6 gap-2 text-center">
                 <div class="bg-white p-2 rounded border"><span class="text-[10px] text-slate-500 font-bold block">KM TOMADO</span><b class="font-mono">{{ fmtKm(vehPerfil.km.kmTomado) }}</b><span class="block text-[10px] text-slate-400">{{ formatDateForDisplay(vehPerfil.km.fTomado) }}</span></div>
                 <div class="bg-white p-2 rounded border"><span class="text-[10px] text-slate-500 font-bold block">ÚLT. MANTENCIÓN</span><b class="font-mono">{{ vehPerfil.km.kmUlt ? fmtKm(vehPerfil.km.kmUlt) : '-' }}</b><span class="block text-[10px] text-slate-400">{{ formatDateForDisplay(vehPerfil.km.fUlt) }}</span></div>
                 <div class="bg-white p-2 rounded border"><span class="text-[10px] text-slate-500 font-bold block">USO</span><b class="font-mono">{{ fmtNum(vehPerfil.km.rate) }} km/día</b><span class="block text-[10px] text-slate-400">{{ vehPerfil.km.metodo }}</span></div>
@@ -242,53 +228,34 @@ export default /* html */ `
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
                   <div><label class="block text-[10px] font-bold text-slate-500">Fecha</label><input v-model="formKm.fecha" type="date" :max="hoy" class="w-full p-2 border rounded-lg"></div>
                   <div><label class="block text-[10px] font-bold text-slate-500">Kilometraje</label><input v-model="formKm.km" type="number" min="0" placeholder="Ej: 125400" class="w-full p-2 border rounded-lg font-mono font-bold"></div>
-                  <div><label class="block text-[10px] font-bold text-slate-500">Tipo</label>
-                    <select v-model="formKm.tipo" class="w-full p-2 border rounded-lg font-bold"><option value="LECTURA">Lectura</option><option value="MANTENCION">Mantención realizada</option></select></div>
+                  <div><label class="block text-[10px] font-bold text-slate-500">Observación</label><input v-model="formKm.observacion" type="text" placeholder="Opcional" class="w-full p-2 border rounded-lg"></div>
                   <button @click="registrarKm" :disabled="guardandoVeh" class="bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-lg shadow disabled:opacity-60"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar</button>
                 </div>
-                <input v-model="formKm.observacion" type="text" placeholder="Observación (opcional)" class="w-full p-2 border rounded-lg">
-                <p class="text-[10px] text-slate-400">"Mantención realizada" fija el punto de partida de la siguiente meta (km de la mantención + {{ fmtNum(vehPerfil.km.frecuencia) }} km).</p>
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <p class="text-[10px] text-slate-400 flex-1">La lectura actualiza el km tomado del vehículo. Las <b>mantenciones</b> se registran en el Historial con su kilometraje y fijan la próxima meta (km de la mantención + {{ fmtNum(vehPerfil.km.frecuencia) }} km).</p>
+                  <button @click="registrarMantencionVeh(vehPerfil)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-screwdriver-wrench mr-1"></i> Registrar mantención</button>
+                </div>
               </div>
             </div>
 
-            <div :class="['rounded-xl border p-4 space-y-3', getHorometroCardBgClass(vehPerfil.eq.horometros)]">
-              <h4 class="font-bold uppercase flex justify-between"><span><i class="fa-solid fa-gauge-high text-amber-600 mr-1"></i> Horómetro</span><span :class="['px-2 py-0.5 rounded text-[10px] font-bold', getPrediccionStatusBadge(vehPerfil.eq.horometros)]">{{ vehPerfil.eq.horometros?.estadoTexto || 'OK' }}</span></h4>
-              <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="bg-white p-2 rounded border"><span class="text-[10px] text-slate-500 font-bold block">H. TOMADO</span><b class="font-mono">{{ vehPerfil.eq.horometros?.hTomado || 0 }} h</b><span class="block text-[10px] text-slate-400">{{ formatDateForDisplay(vehPerfil.eq.horometros?.fechaUltimoHorometro) }}</span></div>
-                <div class="bg-white p-2 rounded border"><span class="text-[10px] text-slate-500 font-bold block">ÚLT. MANTENCIÓN</span><b class="font-mono">{{ vehPerfil.eq.horometros?.hUltimaMant || 0 }} h</b><span class="block text-[10px] text-slate-400">{{ formatDateForDisplay(vehPerfil.eq.horometros?.ultimaMantFecha) }}</span></div>
-                <div class="bg-white p-2 rounded border"><span class="text-[10px] text-slate-500 font-bold block">USO</span><b class="font-mono">{{ vehPerfil.eq.horometros?.rateHrsDia ? vehPerfil.eq.horometros.rateHrsDia.toFixed(2) : '-' }} h/día</b><span class="block text-[10px] text-slate-400">{{ vehPerfil.eq.horometros?.metodoCalculo }}</span></div>
-                <div class="bg-white p-2 rounded border"><span class="text-[10px] text-slate-500 font-bold block">APROX HOY</span><b class="font-mono text-blue-700">{{ vehPerfil.eq.horometros?.hAprox || 0 }} h</b></div>
-                <div class="bg-white p-2 rounded border"><span class="text-[10px] text-slate-500 font-bold block">META (+{{ vehPerfil.eq.frecuenciaMantencion }})</span><b class="font-mono text-emerald-700">{{ vehPerfil.eq.horometros?.hTarget || 0 }} h</b></div>
-                <div class="bg-white p-2 rounded border"><span class="text-[10px] text-slate-500 font-bold block">FALTAN</span><b class="font-mono">{{ vehPerfil.eq.horometros?.horasFaltantes ?? '-' }} h</b><span class="block text-[10px] text-slate-400">aprox. {{ formatDateForDisplay(vehPerfil.eq.horometros?.fechaEstimada) }}</span></div>
-              </div>
-              <p class="text-[10px] text-slate-500 bg-white/70 rounded p-2">La mantención por horómetro se cuenta desde el Historial (botón "Agregar Mantención"), igual que en los equipos.</p>
-              <div v-if="puedeEditar" class="bg-white rounded-lg border p-3 space-y-2">
-                <p class="font-bold text-slate-700"><i class="fa-solid fa-pen text-amber-600 mr-1"></i> Actualizar horómetro tomado</p>
-                <div class="grid grid-cols-3 gap-2 items-end">
-                  <div><label class="block text-[10px] font-bold text-slate-500">Horómetro (h)</label><input v-model="formHoro.h" type="number" min="0" step="0.1" class="w-full p-2 border rounded-lg font-mono font-bold"></div>
-                  <div><label class="block text-[10px] font-bold text-slate-500">Fecha</label><input v-model="formHoro.fecha" type="date" :max="hoy" class="w-full p-2 border rounded-lg"></div>
-                  <button @click="actualizarHorometroVeh" :disabled="guardandoVeh" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold p-2 rounded-lg shadow disabled:opacity-60">Actualizar</button>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div class="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <h4 class="font-bold uppercase px-4 py-3 border-b"><i class="fa-solid fa-list text-slate-500 mr-1"></i> Historial de kilometraje ({{ vehPerfil.lecturas.length }})</h4>
+            <h4 class="font-bold uppercase px-4 py-3 border-b"><i class="fa-solid fa-list text-slate-500 mr-1"></i> Historial de kilometraje ({{ bitacoraPerfil.length }}) <span class="font-normal normal-case text-slate-400">· lecturas + registros del Historial</span></h4>
             <div class="overflow-x-auto max-h-80">
               <table class="w-full text-left">
                 <thead class="bg-slate-100 text-slate-600 sticky top-0"><tr><th class="p-2">Fecha</th><th class="p-2 text-right">Kilometraje</th><th class="p-2 text-right">Recorrido desde anterior</th><th class="p-2">Tipo</th><th class="p-2">Observación</th><th class="p-2">Registró</th><th v-if="isAdmin" class="p-2"></th></tr></thead>
                 <tbody>
-                  <tr v-for="(l, i) in lecturasOrdenadas" :key="l.id" :class="['border-t', l.tipo === 'MANTENCION' ? 'bg-emerald-50' : '']">
+                  <tr v-for="(l, i) in bitacoraPerfil" :key="l.id" :class="['border-t', l.tipo === 'MANTENCION' ? 'bg-emerald-50' : '']">
                     <td class="p-2 font-mono">{{ formatDateForDisplay(l.fecha) }}</td>
                     <td class="p-2 text-right font-mono font-bold">{{ fmtKm(l.km) }}</td>
-                    <td class="p-2 text-right font-mono text-slate-500">{{ lecturasOrdenadas[i + 1] ? fmtKm(l.km - lecturasOrdenadas[i + 1].km) : '-' }}</td>
-                    <td class="p-2"><span :class="['px-2 py-0.5 rounded text-[10px] font-bold', l.tipo === 'MANTENCION' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700']">{{ l.tipo === 'MANTENCION' ? 'MANTENCIÓN' : 'LECTURA' }}</span></td>
+                    <td class="p-2 text-right font-mono text-slate-500">{{ bitacoraPerfil[i + 1] ? fmtKm(l.km - bitacoraPerfil[i + 1].km) : '-' }}</td>
+                    <td class="p-2"><span :class="['px-2 py-0.5 rounded text-[10px] font-bold', l.tipo === 'MANTENCION' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700']">{{ l.tipo === 'MANTENCION' ? 'MANTENCIÓN' : l.tipo === 'HISTORIAL' ? 'HISTORIAL' : 'LECTURA' }}</span></td>
                     <td class="p-2">{{ l.observacion }}</td>
                     <td class="p-2 text-slate-500">{{ l.creadoPor }}</td>
-                    <td v-if="isAdmin" class="p-2 text-right"><button @click="eliminarLecturaKm(l)" class="text-rose-500 hover:text-rose-700" title="Eliminar"><i class="fa-solid fa-trash"></i></button></td>
+                    <td v-if="isAdmin" class="p-2 text-right"><button v-if="l.origen === 'LECTURA'" @click="eliminarLecturaKm(l)" class="text-rose-500 hover:text-rose-700" title="Eliminar"><i class="fa-solid fa-trash"></i></button></td>
                   </tr>
-                  <tr v-if="!vehPerfil.lecturas.length"><td colspan="7" class="p-6 text-center text-slate-400">Sin lecturas de kilometraje.</td></tr>
+                  <tr v-if="!bitacoraPerfil.length"><td colspan="7" class="p-6 text-center text-slate-400">Sin lecturas de kilometraje.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -457,12 +424,8 @@ export default /* html */ `
         </div>
         <div class="grid grid-cols-3 gap-3">
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Kilometraje actual</label><input v-model="formNuevoVeh.km" type="number" min="0" class="w-full p-2.5 border rounded-lg bg-white font-mono"></div>
-          <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Horómetro actual</label><input v-model="formNuevoVeh.horometro" type="number" min="0" class="w-full p-2.5 border rounded-lg bg-white font-mono"></div>
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Fecha lectura</label><input v-model="formNuevoVeh.fechaKm" type="date" :max="hoy" class="w-full p-2.5 border rounded-lg bg-white"></div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Mantención cada (km)</label><input v-model="formNuevoVeh.frecuenciaKm" type="number" min="1" class="w-full p-2.5 border rounded-lg bg-white font-mono"></div>
-          <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Mantención cada (horas)</label><input v-model="formNuevoVeh.frecuenciaHoras" type="number" min="1" class="w-full p-2.5 border rounded-lg bg-white font-mono"></div>
         </div>
         <p class="text-[10px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>Se crea en el inventario con la patente como AFI (así aparece en Movimientos, Historial, Programas y OT). Los documentos se cargan después en su perfil.</p>
       </div>

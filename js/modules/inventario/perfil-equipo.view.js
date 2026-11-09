@@ -7,6 +7,7 @@ import { datosVersion } from '../../core/store.js';
 import * as P from './perfil.service.js';
 import { abrirBajaEquipo } from './baja.service.js';
 import { dbEquipos } from '../../core/store.js';
+import { esVehiculo } from './inventario.mapper.js';
 import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.js';
 import { editarMantencion, eliminarMantencion } from '../historial/historial.service.js';
 import { requeridosPorModelo, irAFiltrosDelModelo, fmtPrecio } from '../filtros/filtros.service.js';
@@ -60,6 +61,10 @@ export default {
 
     const resetFiltrosPerfil = () => P.resetFiltrosPerfil();
 
+    // Vehículos (AFI = patente): el horómetro es KILOMETRAJE
+    const esVehPerfil = computed(() => esVehiculo(P.perfilEquipo.value));
+    const uH = computed(() => esVehPerfil.value ? 'km' : 'h');
+
     // Filtros que usa el equipo: se leen del módulo FILTROS (marca + modelo). Se corrigen solo allá.
     const filtrosRequeridosPerfil = computed(() => requeridosPorModelo(P.perfilEquipo.value.marca, P.perfilEquipo.value.modelo));
     const verFiltrosDelPerfil = () => {
@@ -68,7 +73,7 @@ export default {
     };
 
     return {
-      ...comunes(), ...P, resetFiltrosPerfil, renderPerfilCharts,
+      ...comunes(), ...P, resetFiltrosPerfil, renderPerfilCharts, esVehPerfil, uH,
       getHistorialMovimientosAFI, editarMantencion, eliminarMantencion,
       filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio,
       fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC,
