@@ -120,6 +120,11 @@ export const ultimaMinuta = computed(() => dbMinutas.value.length ? dbMinutas.va
 export const minutaSel = computed(() => dbMinutas.value.find(m => m.id === minutaSelId.value) || null);
 export const esUltimaMinuta = computed(() => Boolean(minutaSel.value && ultimaMinuta.value && minutaSel.value.id === ultimaMinuta.value.id));
 export const seleccionarMinuta = (m) => {
+  if (m && minutaSelId.value && m.id !== minutaSelId.value) {
+    const pend = dbMinutasItems.value.filter(i => i.minuta_id === minutaSelId.value && i._nBorrador !== undefined);
+    if (pend.some(nItemPendiente) && !confirm('Hay cambios de N° Item sin guardar en esta minuta.\n¿Salir sin guardarlos?')) return;
+    pend.forEach(i => { delete i._nBorrador; });
+  }
   minutaSelId.value = m ? m.id : null;
   if (m && vistaMinuta.value === 'general') vistaMinuta.value = 'tabla';   // al elegir una minuta se sale del Dashboard General
   if (m) { openAnios.value[anioDe(m)] = true; openMeses.value[claveMes(anioDe(m), mesDe(m))] = true; }
@@ -337,12 +342,46 @@ export const guardarTarea = async (it) => {
 };
 
 export const eliminarTarea = async (it) => {
-  if (!puedeEditarMinuta.value || !soloAdmin()) return;
+  if (!puedeEditarMinuta.value || !soloEditor()) return;   // Admin y Subadmin (Subadmin: solo en la última minuta)
   if (!confirm(`¿Eliminar la tarea N° ${it.n_item} de esta minuta?\n(No se borra de las minutas anteriores)`)) return;
   try {
     await sb(supabaseClient.from(TABLA_MINUTAS_ITEMS).delete().eq('id', it.id));
     dbMinutasItems.value = dbMinutasItems.value.filter(x => x.id !== it.id);
   } catch (err) { avisoError(err); }
+};
+
+// ---------- Cambios de N° Item (borrador) ----------
+// El N° se escribe en un borrador (it._nBorrador) y la fila NO se mueve mientras se edita.
+// Al presionar "Guardar cambios" se guardan los N° y recién ahí las filas se ordenan.
+const valorN = (v) => (v === '' || v === null || v === undefined) ? '' : String(Number(v) || '');
+export const nItemVisible = (it) => it._nBorrador !== undefined ? it._nBorrador : it.n_item;
+export const cambiarNItem = (it, v) => { it._nBorrador = v; };
+export const nItemPendiente = (it) => it._nBorrador !== undefined && valorN(it._nBorrador) !== valorN(it.n_item);
+export const cambiosNItem = computed(() => itemsSel.value.filter(nItemPendiente));
+export const guardandoNItems = ref(false);
+
+export const guardarCambiosNItem = async () => {
+  if (!puedeEditarMinuta.value || !soloEditor()) return;
+  const lista = cambiosNItem.value;
+  if (!lista.length) return;
+  guardandoNItems.value = true;
+  const errores = [];
+  try {
+    for (const it of lista) {
+      const n = valorN(it._nBorrador);
+      const payload = { ...payloadItem(it), n_item: n === '' ? null : Number(n) };
+      try {
+        await sb(supabaseClient.from(TABLA_MINUTAS_ITEMS).update(payload).eq('id', it.id));
+        it.n_item = n === '' ? '' : Number(n);   // recién ahora la fila toma su lugar según el N°
+        delete it._nBorrador;
+      } catch (err) { errores.push(`N° ${it.n_item}: ${errMsg(err)}`); }
+    }
+  } finally { guardandoNItems.value = false; }
+  if (errores.length) alert('No se pudieron guardar algunos N° Item:\n' + errores.join('\n'));
+};
+
+export const descartarCambiosNItem = () => {
+  itemsSel.value.forEach(it => { delete it._nBorrador; });
 };
 
 /** Historial de una tarea en todas las minutas (mismo N° y mismo texto de tarea). */

@@ -210,6 +210,10 @@ export default /* html */ `
             </button>
             <div class="flex-grow"></div>
             <input v-model="busquedaMinuta" type="text" placeholder="Buscar tarea o encargado..." class="p-1.5 border rounded-lg text-xs w-52">
+            <template v-if="puedeEditarMinuta && cambiosNItem.length">
+              <button @click="descartarCambiosNItem" :disabled="guardandoNItems" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5"><i class="fa-solid fa-rotate-left"></i> Descartar</button>
+              <button @click="guardarCambiosNItem" :disabled="guardandoNItems" class="bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow flex items-center gap-1.5"><i :class="['fa-solid', guardandoNItems ? 'fa-spinner fa-spin' : 'fa-floppy-disk']"></i> Guardar cambios ({{ cambiosNItem.length }})</button>
+            </template>
             <button v-if="puedeEditarMinuta" @click="agregarTarea" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Agregar tarea</button>
           </div>
 
@@ -238,7 +242,7 @@ export default /* html */ `
                 </tr>
                 <tr :class="['border-b align-top', esVencida(it) ? 'bg-rose-50' : it.estado === 'Realizado' ? 'bg-emerald-50/40' : 'hover:bg-slate-50']">
                   <template v-if="puedeEditarMinuta">
-                    <td class="p-1"><input v-model="it.n_item" @change="guardarTarea(it)" type="number" min="1" class="w-full p-1 border rounded text-center font-bold"></td>
+                    <td class="p-1"><input :value="nItemVisible(it)" @input="cambiarNItem(it, $event.target.value)" type="number" min="1" :class="['w-full p-1 border rounded text-center font-bold', nItemPendiente(it) ? 'border-amber-400 bg-amber-50 text-amber-800' : '']" :title="nItemPendiente(it) ? 'N° modificado: presiona Guardar cambios para ordenar' : ''"></td>
                     <td class="p-1 space-y-1">
                       <input v-model="it.area" @change="guardarTarea(it)" type="text" placeholder="Área" class="w-full p-1 border rounded uppercase">
                       <input v-model="it.seccion" @change="guardarTarea(it)" type="text" placeholder="Sección" title="Sección (título que agrupa las tareas)" class="w-full p-1 border border-dashed rounded text-[10px] text-slate-500">
@@ -264,7 +268,7 @@ export default /* html */ `
                       <i v-if="it._guardando" class="fa-solid fa-spinner fa-spin text-slate-400"></i>
                       <i v-else-if="it._ok" class="fa-solid fa-check text-emerald-500"></i>
                       <button @click="verHistorialTarea(it)" class="text-slate-400 hover:text-teal-700 p-1" title="Historial de la tarea"><i class="fa-solid fa-clock-rotate-left"></i></button>
-                      <button v-if="isAdmin" @click="eliminarTarea(it)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar tarea"><i class="fa-solid fa-trash"></i></button>
+                      <button @click="eliminarTarea(it)" class="text-rose-500 hover:text-rose-700 p-1" title="Eliminar fila"><i class="fa-solid fa-trash"></i></button>
                     </td>
                   </template>
                   <template v-else>
