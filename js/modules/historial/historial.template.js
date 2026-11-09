@@ -60,84 +60,9 @@ export default /* html */ `
     </div>
   </div>
 
-  <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-    <div class="overflow-x-auto border rounded-lg max-h-[600px]">
-      <table class="w-full text-left text-[11px] whitespace-nowrap border-collapse">
-        <thead class="bg-slate-800 text-white sticky top-0 uppercase">
-          <tr>
-            <th v-if="puedeEditar" class="p-2 text-center">ACCIONES</th>
-            <th class="p-2">AFI</th>
-            <th class="p-2">FECHA MANT.</th>
-            <th class="p-2 text-indigo-300">PROGRAMA CORRESPONDIENTE</th>
-            <th class="p-2">EQUIPO</th>
-            <th class="p-2">LUGAR</th>
-            <th class="p-2">CAUSA</th>
-            <th class="p-2">TIPO MANT.</th>
-            <th class="p-2 text-amber-300">TIPO EN HORAS (H)</th>
-            <th class="p-2 bg-amber-900 text-amber-200 font-bold">ÚLTIMO HORÓMETRO TOMADO</th>
-            <th class="p-2 bg-amber-900 text-amber-200 font-bold">FECHA HORÓMETRO</th>
-            <th class="p-2">MECÁNICOS</th>
-            <th class="p-2 text-sky-300">INICIO HORA</th>
-            <th class="p-2 text-sky-300">TÉRMINO HORA</th>
-            <th class="p-2 text-amber-300">TOTAL HORAS</th>
-            <th class="p-2 text-emerald-300">FILTROS UTILIZADOS</th>
-            <th class="p-2">CAUSA DETALLADA</th>
-            <th class="p-2">DESCRIPCIÓN</th>
-            <th class="p-2">INTERFERENCIA</th>
-            <th class="p-2">EMPRESA</th>
-            <th class="p-2">COSTO</th>
-            <th class="p-2 text-emerald-300">N° OC</th>
-            <th class="p-2 text-emerald-300">TOTAL OC</th>
-            <th class="p-2">N° OT</th>
-            <th class="p-2 text-amber-300">CONSUMO ACEITES</th>
-            <th class="p-2 text-center">LINK</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y bg-white">
-          <tr v-for="i in filteredIntervenciones" :key="i.id" class="hover:bg-slate-50">
-            <td v-if="puedeEditar" class="p-2 text-center space-x-1">
-              <button @click="editarMantencion(i)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded font-bold" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button v-if="isAdmin" @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
-            </td>
-            <td class="p-2 font-bold text-amber-700"><button @click="verDetallePorAfiString(i.afi)" class="hover:underline bg-amber-50 px-2 rounded">{{ i.afi }}</button></td>
-            <td class="p-2 font-mono font-bold text-slate-800 bg-amber-50/50">{{ formatDateForDisplay(i.fecha) }}</td>
-            <td class="p-2 font-bold text-indigo-700 bg-indigo-50/40">{{ i.programaCorrespondiente || '-' }}</td>
-            <td class="p-2 font-semibold">{{ i.equipo || '-' }}</td>
-            <td class="p-2">{{ i.lugar || '-' }}</td>
-            <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
-            <td class="p-2 font-semibold text-blue-600">{{ i.tipoMant || '-' }}</td>
-            <td class="p-2 font-bold text-amber-900 bg-amber-50">{{ i.tipoHorasMant || '-' }}</td>
-            <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ i.horometro ? i.horometro + (esPatente(i.afi) ? ' km' : ' hrs') : '-' }}</td>
-            <td class="p-2 font-mono font-bold text-amber-900 bg-amber-100/60">{{ formatDateForDisplay(i.fecha) }}</td>
-            <td class="p-2">{{ getMecanicosText(i) }}</td>
-            <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaInicio || '-' }}</td>
-            <td class="p-2 font-mono text-sky-700 font-semibold bg-sky-50/50">{{ i.horaTermino || '-' }}</td>
-            <td class="p-2 font-mono font-bold text-amber-900 bg-amber-50">{{ i.horaTotal || '-' }}</td>
-            <td class="p-2 text-emerald-800 font-bold bg-emerald-50/50">{{ i.filtrosTexto || 'Sin filtros' }}</td>
-            <td class="p-2 max-w-xs truncate">{{ i.causaDetallada || '-' }}</td>
-            <td class="p-2 max-w-xs truncate">{{ i.descripcion || '-' }}</td>
-            <td class="p-2">{{ i.interferencia || '-' }}</td>
-            <td class="p-2">{{ i.empresaArriendo || '-' }}</td>
-            <td class="p-2 font-bold text-emerald-700">\${{ Number(i.costo || 0).toLocaleString('es-CL') }}</td>
-            <td class="p-2 font-mono">
-              <template v-if="detalleOCsMantencion(i).length">
-                <button v-for="d in detalleOCsMantencion(i)" :key="d.numero" @click.stop="irAOC(d.numero)" :title="d.oc ? (d.oc.proveedor + ' · ' + fmtCLP(d.precio)) : 'OC no registrada en el módulo OC'"
-                  :class="['block font-bold underline whitespace-nowrap', d.oc ? 'text-emerald-700 hover:text-emerald-900' : 'text-amber-700']">{{ d.numero }} <span class="no-underline font-normal text-slate-500">{{ d.oc ? fmtCLP(d.precio) : '(sin registrar)' }}</span></button>
-              </template>
-              <span v-else>-</span>
-            </td>
-            <td class="p-2 font-mono font-extrabold text-emerald-800 bg-emerald-50/50">{{ detalleOCsMantencion(i).length ? fmtCLP(totalOCMantencion(i)) : '-' }}</td>
-            <td class="p-2 font-mono"><button v-if="i.numeroOT" @click.stop="irAOT(i.numeroOT)" title="Abrir la OT" class="text-blue-700 font-bold underline hover:text-blue-900">{{ i.numeroOT }}</button><span v-else>-</span></td>
-            <td class="p-2 text-amber-800 font-bold bg-amber-50">{{ i.aceites }}</td>
-            <td class="p-2 text-center">
-              <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-2 py-1 rounded font-bold text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-link"></i> Drive</a>
-              <span v-else class="text-slate-400 italic">-</span>
-            </td>
-          </tr>
-          <tr v-if="filteredIntervenciones.length === 0"><td colspan="26" class="p-8 text-center text-slate-500 font-bold">No se encontraron registros.</td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-2">
+    <p class="text-[11px] text-slate-500"><i class="fa-solid fa-hand-pointer mr-1"></i>{{ filteredIntervenciones.length }} registros · haz clic en una fila para ver todos sus datos (mecánicos, filtros, OC, OT, aceites…).</p>
+    <tabla-historial :registros="filteredIntervenciones" mostrar-afi :abrir-ot="irAOT"></tabla-historial>
   </div>
   <carga-documentos></carga-documentos>
 </section>

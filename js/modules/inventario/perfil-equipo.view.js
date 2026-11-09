@@ -8,12 +8,16 @@ import * as P from './perfil.service.js';
 import { abrirBajaEquipo } from './baja.service.js';
 import { dbEquipos } from '../../core/store.js';
 import { esVehiculo } from './inventario.mapper.js';
+import { dbIntervenciones } from '../../core/store.js';
+import { analizarFallas, hallazgosEquipo, htmlHallazgo, claseNivel, fmtMin } from '../../core/analisis-fallas.js';
+import { mismoAfi } from '../../core/utils.js';
+import { getBadgeClass } from './inventario.service.js';
 import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.js';
 import { editarMantencion, eliminarMantencion } from '../historial/historial.service.js';
 import { requeridosPorModelo, irAFiltrosDelModelo, fmtPrecio } from '../filtros/filtros.service.js';
 import { fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC } from '../oc/oc.service.js';
 
-const { onMounted, onBeforeUnmount, watch, nextTick, computed } = Vue;
+const { onMounted, onBeforeUnmount, watch, nextTick, computed, ref } = Vue;
 
 export default {
   name: 'PerfilEquipo',
@@ -57,6 +61,21 @@ export default {
     onMounted(renderPerfilCharts);
     // Antes los gráficos solo cambiaban al presionar "Limpiar"; ahora siguen a los filtros.
     watch([P.perfilFiltroFechaInicio, P.perfilFiltroFechaFin, P.perfilFiltroCausa, datosVersion], renderPerfilCharts);
+    // Los gráficos están en la pestaña Historial: se redibujan al abrirla
+    watch(P.perfilTab, (t) => { if (t === 'historial') renderPerfilCharts(); });
+
+    // ---------- Análisis de fallas del equipo (core/analisis-fallas.js) ----------
+    const fallasIncluirMant = ref(false);
+    const analisisGeneral = computed(() => analizarFallas(dbIntervenciones.value, dbEquipos.value));
+    const fallasEquipo = computed(() => {
+      const afi = P.perfilEquipo.value.afi;
+      const regs = dbIntervenciones.value.filter(i => mismoAfi(i.afi, afi));
+      const a = analizarFallas(regs, dbEquipos.value, { incluirMantenciones: fallasIncluirMant.value });
+      const res = a.equiposRank[0] || null;
+      return { res, lista: a.lista.slice().reverse(), hallazgos: hallazgosEquipo(res, fallasIncluirMant.value ? null : analisisGeneral.value) };
+    });
+    const totalRegistrosEquipo = computed(() => dbIntervenciones.value.filter(i => mismoAfi(i.afi, P.perfilEquipo.value.afi)).length);
+    const getBadgeEstadoPerfil = (est) => getBadgeClass(est);
     onBeforeUnmount(destruir);
 
     const resetFiltrosPerfil = () => P.resetFiltrosPerfil();
@@ -74,6 +93,7 @@ export default {
 
     return {
       ...comunes(), ...P, resetFiltrosPerfil, renderPerfilCharts, esVehPerfil, uH,
+      fallasIncluirMant, fallasEquipo, totalRegistrosEquipo, getBadgeEstadoPerfil, htmlHallazgo, claseNivel, fmtMin,
       getHistorialMovimientosAFI, editarMantencion, eliminarMantencion,
       filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio,
       fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC,

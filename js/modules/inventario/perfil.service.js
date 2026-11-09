@@ -16,6 +16,16 @@ const { ref, computed } = Vue;
 
 export const showPerfilEquipoModal = ref(false);
 export const perfilEquipo = ref({});
+/** Pestaña del perfil: resumen | historial | fallas | datos | ficha | oc */
+export const perfilTab = ref('resumen');
+export const TABS_PERFIL = [
+  { k: 'resumen', l: 'Resumen', i: 'fa-gauge-high' },
+  { k: 'historial', l: 'Historial', i: 'fa-wrench' },
+  { k: 'fallas', l: 'Fallas', i: 'fa-magnifying-glass-chart' },
+  { k: 'datos', l: 'Datos y ubicación', i: 'fa-truck-monster' },
+  { k: 'ficha', l: 'Filtros y ficha', i: 'fa-filter' },
+  { k: 'oc', l: 'OC y traslados', i: 'fa-file-invoice-dollar' }
+];
 
 // ---------- Filtros del dashboard individual ----------
 export const perfilFiltroFechaInicio = ref("");
@@ -68,6 +78,7 @@ export const abrirPerfilEquipo = (equipo) => {
   perfilEquipo.value.empresaArriendo = empresaDe(equipo);
   perfilEquipo.value.sel = selDesdeLocacion(equipo.locacionId);   // Empresa → Área → Sector → Locación (módulo Áreas)
   resetFiltrosPerfil();
+  perfilTab.value = 'resumen';
   perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
   showPerfilEquipoModal.value = true;
 };
