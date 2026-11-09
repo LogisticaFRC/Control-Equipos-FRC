@@ -4,6 +4,7 @@
 import template from './fallas.template.js';
 import { comunes } from '../../core/comunes.js';
 import * as S from './fallas.service.js';
+import { tieneConocimiento } from '../../core/conocimiento-fallas.js';
 
 const { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } = Vue;
 
@@ -16,6 +17,7 @@ export default {
     const a = S.analisisFallas;
     const sistemaTop = computed(() => a.value.categorias.find(c => c.key !== 'SERVICIO' && c.key !== 'OTROS') || a.value.categorias[0] || null);
     const limiteRank = ref(30);
+    const piezaAbierta = ref(null);
     const cvCategorias = ref(null), cvMeses = ref(null);
     let chCat = null, chMes = null;
 
@@ -45,6 +47,6 @@ export default {
     watch(a, dibujar);
     onBeforeUnmount(() => { chCat?.destroy(); chMes?.destroy(); });
 
-    return { ...comunes(), ...S, a, sistemaTop, limiteRank, cvCategorias, cvMeses };
+    return { ...comunes(), piezaAbierta, tieneConocimiento, ...S, a, sistemaTop, limiteRank, cvCategorias, cvMeses };
   }
 };

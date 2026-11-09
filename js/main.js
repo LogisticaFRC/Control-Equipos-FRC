@@ -24,6 +24,7 @@ import EppView from './modules/epp/epp.view.js';
 import VehiculosView from './modules/vehiculos/vehiculos.view.js';
 import FallasView from './modules/fallas/fallas.view.js';
 import CostosView from './modules/costos/costos.view.js';
+import CausasProbables from './modules/fallas/causas-probables.view.js';
 import TablaHistorial from './modules/historial/tabla-historial.view.js';
 import AreasView from './modules/areas/areas.view.js';
 import SelectorLocacion from './modules/areas/selector-locacion.view.js';
@@ -254,6 +255,7 @@ app.component('OtView', OtView);
 app.component('OcView', OcView);
 app.component('VehiculosView', VehiculosView);
 app.component('CostosView', CostosView);         // Operaciones → Costos de Mantención
+app.component('CausasProbables', CausasProbables);   // causas probables por pieza (core/conocimiento-fallas.js)
 app.component('FallasView', FallasView);         // Operaciones → Análisis de Fallas
 app.component('TablaHistorial', TablaHistorial); // tabla compacta del Historial (módulo Historial y Perfil)   // Operaciones → Vehículos (AFI = patente XXXX-XX)
 app.component('EppView', EppView);   // Seguridad → Control Entrega EPP

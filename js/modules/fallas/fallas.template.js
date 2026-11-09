@@ -72,15 +72,19 @@ export default /* html */ `
       <h3 class="font-extrabold text-slate-800 uppercase px-4 py-3 border-b"><i class="fa-solid fa-gear text-slate-600 mr-1"></i> Piezas que más fallan y por qué <span class="font-normal normal-case text-slate-400">· {{ a.conPieza }} de {{ a.total }} registros indican la pieza · clic para filtrar</span></h3>
       <div class="max-h-96 overflow-y-auto">
         <table class="w-full text-left">
-          <thead class="bg-slate-50 text-slate-500 sticky top-0"><tr><th class="p-2">Pieza</th><th class="p-2 text-center">Veces</th><th class="p-2">Por qué falló</th><th class="p-2">Equipos</th></tr></thead>
+          <thead class="bg-slate-50 text-slate-500 sticky top-0"><tr><th class="p-2">Pieza</th><th class="p-2 text-center">Veces</th><th class="p-2">Por qué falló</th><th class="p-2">Equipos</th><th class="p-2 w-20"></th></tr></thead>
           <tbody>
-            <tr v-for="p in a.piezas" :key="p.key" @click="filtroFallas.pieza = p.key" class="border-t hover:bg-slate-50 cursor-pointer align-top">
+            <template v-for="p in a.piezas" :key="p.key">
+            <tr @click="filtroFallas.pieza = p.key" class="border-t hover:bg-slate-50 cursor-pointer align-top">
               <td class="p-2"><b>{{ p.label }}</b><span class="block text-[10px]" :style="{ color: p.cat.color === '#facc15' || p.cat.color === '#eab308' ? '#a16207' : p.cat.color }">{{ p.cat.label }}</span></td>
               <td class="p-2 text-center"><span class="font-extrabold px-2 py-0.5 rounded-full bg-slate-200">{{ p.n }}</span></td>
               <td class="p-2"><span v-for="m in p.motivos" :key="m.key" :class="['inline-block mr-1 mb-0.5 text-[10px] px-1.5 rounded', m.key === 'SIN_MOTIVO' ? 'bg-slate-100 text-slate-400' : 'bg-rose-50 text-rose-700 font-semibold']">{{ m.label }} · {{ m.n }}</span></td>
               <td class="p-2"><button v-for="x in p.equipos.slice(0, 6)" :key="x" @click.stop="verDetallePorAfiString(x)" class="mr-1 font-mono font-bold text-amber-700 hover:underline">{{ x }}</button><span v-if="p.equipos.length > 6" class="text-slate-400">+{{ p.equipos.length - 6 }}</span></td>
+              <td class="p-2 text-right"><button v-if="tieneConocimiento(p.key)" @click.stop="piezaAbierta = piezaAbierta === p.key ? null : p.key" :class="['px-2 py-0.5 rounded-lg border font-bold text-[10px] whitespace-nowrap', piezaAbierta === p.key ? 'bg-sky-600 text-white border-sky-600' : 'border-sky-300 text-sky-700 hover:bg-sky-50']"><i class="fa-solid fa-lightbulb"></i> Causas</button></td>
             </tr>
-            <tr v-if="!a.piezas.length"><td colspan="4" class="p-6 text-center text-slate-400">No se detectan piezas en la causa detallada / descripción.</td></tr>
+            <tr v-if="piezaAbierta === p.key"><td colspan="5" class="px-2 pb-2"><causas-probables :pieza="p.key" :motivo="p.motivoTop ? p.motivoTop.key : ''" :max="1"></causas-probables></td></tr>
+            </template>
+            <tr v-if="!a.piezas.length"><td colspan="5" class="p-6 text-center text-slate-400">No se detectan piezas en la causa detallada / descripción.</td></tr>
           </tbody>
         </table>
       </div>

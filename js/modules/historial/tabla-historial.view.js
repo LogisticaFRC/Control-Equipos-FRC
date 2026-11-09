@@ -8,7 +8,8 @@
 import { comunes } from '../../core/comunes.js';
 import { editarMantencion, eliminarMantencion } from './historial.service.js';
 import { detalleOCsMantencion, totalOCMantencion, fmtCLP, irAOC } from '../oc/oc.service.js';
-import { categorizar, minutosTrabajo, fmtMin, piezaMotivoTexto } from '../../core/analisis-fallas.js';
+import { categorizar, minutosTrabajo, fmtMin, piezaMotivoTexto, detectarPiezas, detectarMotivo, esNoFalla } from '../../core/analisis-fallas.js';
+import { tieneConocimiento } from '../../core/conocimiento-fallas.js';
 import { claseMantencion } from '../../core/horometros.js';
 
 const { ref, computed, watch } = Vue;
@@ -66,6 +67,9 @@ const template = /* html */ `
                 </template>
                 <span v-else>-</span>
               </div>
+              <div class="col-span-2 md:col-span-4" v-if="piezaDe(i)">
+                <causas-probables :pieza="piezaDe(i)" :motivo="detectarMotivo(i)" compacto></causas-probables>
+              </div>
               <div>
                 <span class="block text-[9px] font-bold uppercase text-slate-500">N° OT</span>
                 <button v-if="i.numeroOT && abrirOt" @click="abrirOt(i.numeroOT)" class="font-mono font-bold text-blue-700 underline">{{ i.numeroOT }}</button><span v-else>{{ i.numeroOT || '-' }}</span>
@@ -122,7 +126,9 @@ export default {
       { l: 'Descripción', v: i.descripcion || '-', ancho: true },
       { l: 'Filtros utilizados', v: i.filtrosTexto || 'Sin filtros', ancho: true, cls: 'text-emerald-800 font-semibold' }
     ];
-    return { ...c, abierto, limite, visibles, toggle, cat, min, fmtMin, detalle, claseMantencion,
+    // Pieza con causas conocidas (solo fallas, no mantenciones)
+    const piezaDe = (i) => esNoFalla(i) ? '' : (detectarPiezas(i).find(tieneConocimiento) || '');
+    return { ...c, piezaDe, detectarMotivo, abierto, limite, visibles, toggle, cat, min, fmtMin, detalle, claseMantencion,
       editarMantencion, eliminarMantencion, detalleOCsMantencion, totalOCMantencion, fmtCLP, irAOC };
   }
 };

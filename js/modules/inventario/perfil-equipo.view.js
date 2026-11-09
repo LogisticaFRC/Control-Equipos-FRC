@@ -11,6 +11,7 @@ import { esVehiculo } from './inventario.mapper.js';
 import { dbIntervenciones } from '../../core/store.js';
 import { analizarFallas, hallazgosEquipo, htmlHallazgo, claseNivel, fmtMin, piezaPorKey, motivoPorKey, sinTildes } from '../../core/analisis-fallas.js';
 import { mismoAfi } from '../../core/utils.js';
+import { tieneConocimiento } from '../../core/conocimiento-fallas.js';
 import { getBadgeClass } from './inventario.service.js';
 import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.js';
 import { editarMantencion, eliminarMantencion } from '../historial/historial.service.js';
@@ -79,6 +80,8 @@ export default {
     const F0 = () => ({ texto: '', sistema: '', pieza: '', motivo: '', causa: '' });
     const fRegs = ref(F0());
     const limpiarFRegs = () => { fRegs.value = F0(); };
+    const piezaCausas = ref(null);   // pieza con "¿por qué?" abierto (null = se muestra la que más falla si se repite)
+    watch(() => P.perfilEquipo.value.afi, () => { piezaCausas.value = null; });
     watch(() => P.perfilEquipo.value.afi, limpiarFRegs);
     const contarOps = (lista, clave, etiqueta) => {
       const m = new Map();
@@ -124,6 +127,7 @@ export default {
 
     return {
       ...comunes(), ...P, resetFiltrosPerfil, renderPerfilCharts, esVehPerfil, uH,
+      piezaCausas, tieneConocimiento,
       fallasIncluirMant, fallasEquipo, totalRegistrosEquipo, fRegs, limpiarFRegs, opcionesRegs, regsFallasFiltrados, piezaPorKey, motivoPorKey, getBadgeEstadoPerfil, htmlHallazgo, claseNivel, fmtMin,
       getHistorialMovimientosAFI, editarMantencion, eliminarMantencion,
       filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio,

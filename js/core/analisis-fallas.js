@@ -16,10 +16,11 @@ export const sinTildes = (s) => String(s || '').toUpperCase().normalize('NFD').r
 
 /** Sistemas (categorías). kw = palabras o frases (sin tildes, mayúsculas). El orden desempata. */
 export const CATEGORIAS_FALLA = [
-  { key: 'ELECTRICO', label: 'Eléctrico', color: '#eab308', icon: 'fa-bolt',
-    kw: ['BATERIA', 'ALTERNADOR', 'CORTA CORRIENTE', 'CORTACORRIENTE', 'BOCINA', 'BALIZA', 'MOTOR DE PARTIDA', 'MOTOR PARTIDA', 'PARTIDA', 'ARRANQUE', 'ELECTRIC', 'CABLE', 'CABLEADO', 'FUSIBLE', 'RELE', 'CORTOCIRCUITO', 'CORTO CIRCUITO', 'SENSOR', 'CONTACTOR', 'BORNE', 'SOLENOIDE', 'TERMINAL', 'CARGADOR', 'CONEXION', 'ENCHUFE', 'SWITCH', 'LLAVE DE CONTACTO', 'TIERRA'] },
-  { key: 'GENERACION', label: 'Generación / Panel de control', color: '#f97316', icon: 'fa-plug-circle-bolt',
-    kw: ['AVR', 'REGULADOR DE VOLTAJE', 'VOLTAJE', 'FRECUENCIA', 'BREAKER', 'DISYUNTOR', 'PANEL DE CONTROL', 'CONTROLADOR', 'MODULO', 'DEEP SEA', 'DSE', 'COMAP', 'EXCITATRIZ', 'ALIMENTADOR', 'COOPER', 'BOBINA', 'ESTATOR', 'ROTOR', 'BANCO DE PRUEBA', 'BANCO DE CARGA', 'BANCO', 'TRANSFERENCIA', 'ATS', 'KVA', 'AMPER'] },
+  { key: 'ELECTRICO', label: 'Eléctrico / control', color: '#eab308', icon: 'fa-bolt',
+    // incluye el MÓDULO / CONTROLADOR / PANEL (electrónica de control de cualquier equipo)
+    kw: ['PANEL DE CONTROL', 'CONTROLADOR', 'MODULO', 'MODILO', 'DEEP SEA', 'DSE', 'COMAP', 'DISPLAY', 'PANTALLA', 'BATERIA', 'ALTERNADOR', 'CORTA CORRIENTE', 'CORTACORRIENTE', 'BOCINA', 'BALIZA', 'MOTOR DE PARTIDA', 'MOTOR PARTIDA', 'PARTIDA', 'ARRANQUE', 'ELECTRIC', 'CABLE', 'CABLEADO', 'FUSIBLE', 'RELE', 'CORTOCIRCUITO', 'CORTO CIRCUITO', 'SENSOR', 'CONTACTOR', 'BORNE', 'SOLENOIDE', 'TERMINAL', 'CARGADOR', 'CONEXION', 'ENCHUFE', 'SWITCH', 'LLAVE DE CONTACTO', 'TIERRA'] },
+  { key: 'GENERACION', label: 'Generación (AVR, voltaje, breaker)', color: '#f97316', icon: 'fa-plug-circle-bolt',
+    kw: ['AVR', 'REGULADOR DE VOLTAJE', 'VOLTAJE', 'FRECUENCIA', 'BREAKER', 'DISYUNTOR', 'EXCITATRIZ', 'ALIMENTADOR', 'COOPER', 'BOBINA', 'ESTATOR', 'ROTOR', 'BANCO DE PRUEBA', 'BANCO DE CARGA', 'BANCO', 'TRANSFERENCIA', 'ATS', 'KVA', 'AMPER'] },
   { key: 'MOTOR', label: 'Motor', color: '#dc2626', icon: 'fa-gear',
     kw: ['MOTOR', 'CULATA', 'INYECTOR', 'TURBO', 'EMPAQUETADURA', 'JUNTA', 'PISTON', 'VALVULA', 'COMPRESION', 'CIGUENAL', 'ARBOL DE LEVAS', 'HUMO', 'POTENCIA', 'CORREA', 'POLEA', 'TAPA DE VALVULA', 'CARTER', 'ESCAPE', 'SILENCIADOR', 'ADMISION', 'MULTIPLE', 'GOBERNADOR', 'RPM'] },
   { key: 'COMBUSTIBLE', label: 'Combustible', color: '#a16207', icon: 'fa-gas-pump',
@@ -78,7 +79,7 @@ export const PIEZAS = [
   { key: 'LLAVE_CONTACTO', label: 'Llave de contacto / switch', grupo: 'ELECTRICO', kw: ['LLAVE DE CONTACTO', 'CHAPA DE CONTACTO', 'SWITCH', 'INTERRUPTOR'] },
   // Generación / panel
   { key: 'AVR', label: 'AVR / regulador de voltaje', grupo: 'GENERACION', kw: ['AVR$', 'REGULADOR DE VOLTAJE', 'REGULADOR'] },
-  { key: 'CONTROLADOR', label: 'Controlador / módulo', grupo: 'GENERACION', kw: ['CONTROLADOR', 'MODULO', 'MODILO', 'DEEP SEA', 'DSE$', 'COMAP', 'PANEL DE CONTROL', 'PANTALLA', 'DISPLAY'] },
+  { key: 'CONTROLADOR', label: 'Controlador / módulo', grupo: 'ELECTRICO', kw: ['CONTROLADOR', 'MODULO', 'MODILO', 'DEEP SEA', 'DSE$', 'COMAP', 'PANEL DE CONTROL', 'PANTALLA', 'DISPLAY'] },
   { key: 'ALIMENTADORES', label: 'Alimentadores / barra Cooper', grupo: 'GENERACION', kw: ['ALIMENTADOR', 'BARRA COOPER', 'COOPER'] },
   { key: 'BREAKER', label: 'Breaker / disyuntor', grupo: 'GENERACION', kw: ['BREAKER', 'DISYUNTOR', 'TERMOMAGNETIC'] },
   { key: 'TRANSFERENCIA', label: 'Transferencia (ATS)', grupo: 'GENERACION', kw: ['TRANSFERENCIA', 'ATS$'] },
@@ -96,7 +97,7 @@ export const PIEZAS = [
   { key: 'BOMBA_INYECTORA', label: 'Bomba inyectora', grupo: 'COMBUSTIBLE', kw: ['BOMBA INYECTORA', 'BOMBA DE INYECCION'] },
   { key: 'BOMBA_COMB', label: 'Bomba de combustible', grupo: 'COMBUSTIBLE', kw: ['BOMBA DE COMBUSTIBLE', 'BOMBA COMBUSTIBLE', 'BOMBA DE ALIMENTACION', 'BOMBA DE TRASPASO', 'BOMBA DE CEBADO'] },
   { key: 'ESTANQUE', label: 'Estanque / tanque', grupo: 'COMBUSTIBLE', kw: ['ESTANQUE', 'TANQUE', 'FLOTADOR'] },
-  { key: 'SEPARADOR', label: 'Separador de agua', grupo: 'COMBUSTIBLE', kw: ['SEPARADOR'] },
+  { key: 'SEPARADOR', label: 'Separador de agua', grupo: 'COMBUSTIBLE', kw: ['SEPARADOR DE AGUA', 'SEPARADOR AGUA', 'SEPARADOR DE COMBUSTIBLE', 'SEPARADOR COMBUSTIBLE', 'SEPARADOR$'] },
   // Refrigeración
   { key: 'RADIADOR', label: 'Radiador', grupo: 'REFRIGERACION', kw: ['RADIADOR', 'READIADOR'] },
   { key: 'ENFRIADOR', label: 'Enfriador de aceite', grupo: 'REFRIGERACION', kw: ['ENFRIADOR'] },
@@ -129,7 +130,10 @@ export const PIEZAS = [
   // Iluminación / torre
   { key: 'AMPOLLETA', label: 'Ampolleta / foco / luminaria', grupo: 'ILUMINACION', kw: ['AMPOLLETA', 'FOCO', 'LUMINARIA', 'LAMPARA', 'REFLECTOR', 'LED$', 'HALURO'] },
   { key: 'BALASTRO', label: 'Balastro', grupo: 'ILUMINACION', kw: ['BALASTRO'] },
-  { key: 'MASTIL', label: 'Mástil / piola / trinquete', grupo: 'ILUMINACION', kw: ['MASTIL', 'WINCHE', 'HUINCHE', 'CABLE DE ACERO', 'PIOLA', 'TRINQUETE'] }
+  { key: 'MASTIL', label: 'Mástil / piola / trinquete', grupo: 'ILUMINACION', kw: ['MASTIL', 'WINCHE', 'HUINCHE', 'CABLE DE ACERO', 'PIOLA', 'TRINQUETE'] },
+  { key: 'UNIDAD_COMPRESORA', label: 'Unidad compresora', grupo: 'MOTOR', kw: ['UNIDAD COMPRESORA', 'ELEMENTO COMPRESOR', 'TORNILLO COMPRESOR'] },
+  { key: 'SEP_ACEITE', label: 'Separador de aceite (compresor)', grupo: 'LUBRICACION', kw: ['SEPARADOR DE ACEITE', 'SEPARADOR ACEITE', 'FILTRO SEPARADOR'] },
+  { key: 'VALVULA_ADMISION', label: 'Válvula de admisión / descarga (compresor)', grupo: 'HIDRAULICO', kw: ['VALVULA DE ADMISION', 'VALVULA ADMISION', 'VALVULA DE DESCARGA', 'VALVULA DE SEGURIDAD', 'VALVULA DE ALIVIO', 'VALVULA DE MINIMA PRESION'] }
 ];
 
 export const MOTIVOS = [

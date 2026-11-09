@@ -669,3 +669,12 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
   - **Excel**: Resumen (KPI), Por modelo, Por equipo, Proyección (cada mantención), Filtros por modelo (en qué mantención va cada uno), Sin filtros.
 - **Perfil → pestaña "Costo mantención"**: valor de la 250 / 500 / 1000 con sus filtros, proyección con horas editables, tabla de mantenciones con fecha, costo y acumulado, y Excel del equipo.
 - (ajuste Análisis de Fallas) La **causa detallada pesa x3** frente a la descripción, y de la descripción se ignoran las **revisiones y pruebas de rutina** ("se revisa temperatura, nivel de combustible", "se realizan pruebas quedando presión 10 bar"…) salvo que indiquen falla (bajo, falta, fuga, roto, no parte…). Ej.: "MODULO CON LECTURAS ERRONEAS" ya no sale como Combustible sino Generación / Panel de control. "Temperatura" sola ya no es sobrecalentamiento; motivo nuevo "lectura errónea" (dentro de Desconfiguración).
+- (ajuste) **Módulo / controlador / panel de control / display** pasan a **Eléctrico / control** (es electrónica de control de cualquier equipo, no solo de generadores). "Generación" queda para AVR, voltaje, frecuencia, breaker, excitatriz, transferencia, alimentadores.
+
+## 2026-11-09 · Causas probables por componente (conocimiento técnico)
+- `js/core/conocimiento-fallas.js` (nuevo): para cada pieza (mismas keys de PIEZAS) sus fallas típicas con **causas probables** (más común primero), **qué revisar** y **cómo prevenir**, y con qué motivos calza. Mismo contenido que el doc "Causas de falla por componente FRC". Para afinar: editar ese archivo.
+- Componente global `<causas-probables>` (`modules/fallas/causas-probables.view.js`): ordena las fallas según el motivo detectado (ej. correa + rotura → primero "se corta").
+  - Análisis de Fallas → "Piezas que más fallan": botón **Causas** por pieza.
+  - Perfil → Fallas: la pieza que más se repite muestra sus causas; las demás con **¿por qué?**.
+  - Historial → detalle de una falla: causas probables de la pieza detectada (no en mantenciones).
+- Piezas nuevas en el análisis: Unidad compresora, Separador de aceite (compresor), Válvula de admisión / descarga / seguridad. "Separador" solo cuenta como separador de agua cuando no dice "de aceite".

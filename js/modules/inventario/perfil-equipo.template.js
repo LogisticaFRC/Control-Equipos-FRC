@@ -217,7 +217,9 @@ export default /* html */ `
             <h5 class="font-bold uppercase text-slate-700 mb-3"><i class="fa-solid fa-gear text-slate-600 mr-1"></i> Piezas y por qué fallaron</h5>
             <div v-for="pz in fallasEquipo.res.piezas" :key="pz.key" @click="fRegs.pieza = pz.key" class="py-1.5 border-b last:border-0 cursor-pointer hover:bg-slate-50" title="Ver estos registros">
               <div class="flex justify-between gap-2"><b>{{ pz.label }}</b><span class="font-extrabold px-2 rounded-full bg-slate-200 text-slate-800">{{ pz.n }}</span></div>
-              <div class="flex flex-wrap gap-1 mt-0.5"><span v-for="m in pz.motivos" :key="m.key" :class="['text-[10px] px-1.5 rounded', m.key === 'SIN_MOTIVO' ? 'bg-slate-100 text-slate-400' : 'bg-rose-50 text-rose-700']">{{ m.label }} · {{ m.n }}</span></div>
+              <div class="flex flex-wrap gap-1 mt-0.5"><span v-for="m in pz.motivos" :key="m.key" :class="['text-[10px] px-1.5 rounded', m.key === 'SIN_MOTIVO' ? 'bg-slate-100 text-slate-400' : 'bg-rose-50 text-rose-700']">{{ m.label }} · {{ m.n }}</span>
+                <button v-if="tieneConocimiento(pz.key)" @click.stop="piezaCausas = piezaCausas === pz.key ? null : pz.key" class="text-[10px] px-1.5 rounded border border-sky-300 text-sky-700 font-bold hover:bg-sky-50"><i class="fa-solid fa-lightbulb"></i> ¿por qué?</button></div>
+              <causas-probables v-if="piezaCausas === pz.key || (pz.n >= 2 && pz === fallasEquipo.res.piezas[0] && piezaCausas === null)" class="mt-1.5" :pieza="pz.key" :motivo="pz.motivoTop ? pz.motivoTop.key : ''" :titulo="pz.n >= 2 ? pz.label + ' falló ' + pz.n + ' veces: causas probables' : ''" compacto></causas-probables>
             </div>
             <p v-if="!fallasEquipo.res.piezas.length" class="text-slate-400">No se detectan piezas en la causa detallada / descripción.</p>
           </div>
