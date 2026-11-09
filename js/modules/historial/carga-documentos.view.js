@@ -9,7 +9,7 @@ const template = /* html */ `
   <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
     <div class="px-4 py-2.5 bg-slate-800 text-white flex items-center justify-between">
       <h3 class="font-extrabold uppercase tracking-wide"><i class="fa-solid fa-folder-arrow-up mr-2 text-amber-400"></i> Cargar documentos al Historial</h3>
-      <button @click="showCargaDocs = false" :disabled="subiendoCarga" class="w-8 h-8 rounded-full bg-slate-700 hover:bg-rose-500 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      <button @click="showCargaDocs = false" :disabled="subiendoCarga || releyendo" class="w-8 h-8 rounded-full bg-slate-700 hover:bg-rose-500 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
     </div>
 
     <div class="p-3 space-y-2.5 overflow-y-auto flex-grow bg-slate-50">
@@ -23,6 +23,34 @@ const template = /* html */ `
           <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" @change="elegirArchivosCarga" class="hidden">
         </label>
         <p class="text-slate-500 flex-1 min-w-[220px] text-[10px] leading-tight">Lee <b>AFI</b> y <b>fecha</b> del nombre (o de la carpeta). "MANTENCION" → mantención de ese día; si no, otra intervención. Puedes sumar varias carpetas.</p>
+        <div class="w-full flex flex-wrap items-center gap-2 border-t pt-2">
+          <label class="flex items-center gap-1.5 font-semibold text-indigo-800" title="Lee lo impreso: tipo de hoja, N° de folio, si trae ART y N° de OC impresa. Solo completa campos vacíos."><input type="checkbox" v-model="leerContenidoCarga"> <i class="fa-solid fa-wand-magic-sparkles"></i> Leer el contenido al subir (folio, ART, OC)</label>
+          <span class="flex-1"></span>
+          <template v-if="!releyendo">
+            <span class="text-slate-500 text-[10px]">{{ pendientesRelectura.length }} ya subidos sin leer</span>
+            <select v-model="loteRelectura" class="p-1 border rounded text-[11px]"><option :value="10">10</option><option :value="25">25</option><option :value="50">50</option><option :value="100">100</option></select>
+            <button @click="releerSubidos" :disabled="subiendoCarga || !pendientesRelectura.length" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg disabled:opacity-40"><i class="fa-solid fa-book-open-reader mr-1"></i> Leer documentos ya subidos</button>
+          </template>
+          <template v-else>
+            <span class="text-indigo-700 font-bold"><i class="fa-solid fa-spinner fa-spin"></i> Leyendo {{ progresoCarga.hechos }} / {{ progresoCarga.total }}</span>
+            <button @click="detenerRelectura" class="border border-rose-300 text-rose-700 font-bold px-2 py-1 rounded-lg">Detener</button>
+          </template>
+        </div>
+      </div>
+
+      <div v-if="lecturasLog.length" class="bg-white border border-indigo-200 rounded-xl overflow-hidden">
+        <div class="px-2.5 py-1.5 bg-indigo-50 flex items-center justify-between gap-2">
+          <b class="text-indigo-900"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Lecturas ({{ lecturasLog.length }}) · solo se completaron campos vacíos</b>
+          <button @click="deshacerLecturas" class="text-rose-700 font-bold hover:underline"><i class="fa-solid fa-rotate-left"></i> Deshacer lo completado</button>
+        </div>
+        <div class="max-h-40 overflow-y-auto divide-y">
+          <div v-for="(e, k) in lecturasLog" :key="k" :class="['px-2.5 py-1 flex flex-wrap gap-x-2', e.deshecho ? 'opacity-40 line-through' : '']">
+            <span class="font-mono font-bold text-amber-700">{{ e.afi }}</span><span class="text-slate-500">{{ formatDateForDisplay(e.fecha) }}</span>
+            <span class="text-slate-700">{{ e.resumen }}</span>
+            <span v-if="e.cambios.length" class="text-emerald-700 font-semibold">→ {{ e.cambios.join(' · ') }}</span><span v-else class="text-slate-400">→ sin cambios</span>
+            <span v-if="e.aviso" class="text-amber-700 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> {{ e.aviso }}</span>
+          </div>
+        </div>
       </div>
 
       <template v-if="filasCarga.length">
@@ -66,7 +94,10 @@ const template = /* html */ `
           <b>Errores:</b><div v-for="(e, i) in progresoCarga.errores" :key="i">{{ e }}</div>
         </div>
       </template>
-      <p v-else class="text-center text-slate-400 py-6">Elige una carpeta (por ejemplo <b>2026 → ABRIL</b>) para ver qué archivo va con qué registro antes de subir.</p>
+      <div v-if="!filasCarga.length && progresoCarga.errores.length" class="bg-rose-50 border border-rose-300 rounded-xl p-3 text-rose-800">
+        <b>Errores:</b><div v-for="(e, i) in progresoCarga.errores" :key="i">{{ e }}</div>
+      </div>
+      <p v-if="!filasCarga.length" class="text-center text-slate-400 py-6">Elige una carpeta (por ejemplo <b>2026 → ABRIL</b>) para ver qué archivo va con qué registro antes de subir.</p>
     </div>
 
     <div class="px-4 py-2 border-t bg-white flex flex-wrap items-center justify-between gap-2">

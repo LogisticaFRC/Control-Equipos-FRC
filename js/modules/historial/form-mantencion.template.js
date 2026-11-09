@@ -9,11 +9,23 @@ export default /* html */ `
           <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
             <!-- ADJUNTO DE DOCUMENTO -->
 <div class="bg-slate-50 p-4 rounded-xl border space-y-2">
-  <label class="block font-bold mb-1 text-slate-700">Adjuntar Documento / PDF / Factura</label>
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <label class="block font-bold text-slate-700">Adjuntar Documento / PDF / Factura</label>
+    <label class="flex items-center gap-1.5 font-semibold text-indigo-800" title="Lee lo impreso de la hoja: tipo de hoja, N° de folio, si trae ART u OC. La letra a mano se completa a mano."><input type="checkbox" v-model="leerAlAdjuntar"> <i class="fa-solid fa-wand-magic-sparkles"></i> Leer el documento al adjuntar</label>
+  </div>
   <input type="file" @change="subirArchivoHistorial" accept=".pdf,image/*" class="w-full text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
   <p v-if="formMant.linkDrive" class="text-[10px] text-emerald-700 font-bold">
     <i class="fa-solid fa-check"></i> Archivo ya adjunto y vinculado correctamente.
+    <a :href="formMant.linkDrive" target="_blank" rel="noopener" class="underline ml-1">Ver</a>
   </p>
+  <p v-if="lecturaForm.estado" class="text-[11px] text-indigo-700 font-bold"><i class="fa-solid fa-spinner fa-spin"></i> {{ lecturaForm.estado }}</p>
+  <div v-else-if="lecturaForm.resumen" class="bg-indigo-50 border border-indigo-200 rounded-lg p-2 text-[11px] space-y-0.5">
+    <p class="font-bold text-indigo-900"><i class="fa-solid fa-wand-magic-sparkles"></i> Leído: {{ lecturaForm.resumen }}</p>
+    <p v-if="lecturaForm.cambios.length" class="text-indigo-800">Se completó: {{ lecturaForm.cambios.join(' · ') }}</p>
+    <p v-else class="text-slate-500">No había campos vacíos que completar con lo leído.</p>
+    <p v-for="(a, k) in lecturaForm.avisos" :key="k" class="text-amber-800 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> {{ a }}</p>
+    <p class="text-slate-500">Lo escrito a mano (horómetro, horas, mecánicos, descripción) complétalo tú.</p>
+  </div>
 </div>
             <!-- INFORMES PRINCIPALES -->
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
@@ -63,6 +75,18 @@ export default /* html */ `
                   <label class="block font-bold mb-1 text-amber-800">Total Calculado</label>
                   <div class="w-full p-2 border rounded-lg bg-amber-50 font-mono font-bold text-amber-900 text-center">{{ calcularRestaHoras(formMant.horaInicio, formMant.horaTermino) }}</div>
                 </div>
+              </div>
+            </div>
+
+            <!-- DATOS DE LA HOJA (ART, BLOQUEO, FOLIO, CAUSA DE LA FALLA) -->
+            <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase">Datos de la hoja</h4>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                <div><label class="block font-bold mb-1">N° folio</label><input type="text" v-model="formMant.numeroFolio" placeholder="Ej. 000214" class="w-full p-2 border rounded-lg bg-white font-mono font-bold"></div>
+                <div><label class="block font-bold mb-1">Uso de ART</label><select v-model="formMant.usoArt" class="w-full p-2 border rounded-lg bg-white font-bold"><option value="">—</option><option value="SI">SÍ</option><option value="NO">NO</option></select></div>
+                <div><label class="block font-bold mb-1">Bloqueo de equipo</label><select v-model="formMant.bloqueo" class="w-full p-2 border rounded-lg bg-white font-bold"><option value="">—</option><option value="SI">SÍ</option><option value="NO">NO</option></select></div>
+                <div><label class="block font-bold mb-1">Hora falla</label><input type="time" v-model="formMant.horaFalla" class="w-full p-2 border rounded-lg bg-white font-mono font-bold text-rose-700"></div>
+                <div><label class="block font-bold mb-1">Causa de la falla</label><select v-model="formMant.causaFalla" class="w-full p-2 border rounded-lg bg-white font-bold"><option value="">—</option><option v-for="c in CAUSAS_FALLA_HOJA" :key="c" :value="c">{{ c }}</option></select></div>
               </div>
             </div>
 

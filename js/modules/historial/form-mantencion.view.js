@@ -5,7 +5,7 @@ import template from './form-mantencion.template.js';
 import { comunes } from '../../core/comunes.js';
 import {
   showFormMantencionModal, isEditingMantencion, formMant, guardarMantencionForm,
-  agregarFilaFiltro, eliminarFilaFiltro, subirArchivoHistorial,
+  agregarFilaFiltro, eliminarFilaFiltro, subirArchivoHistorial, leerAlAdjuntar, lecturaForm, CAUSAS_FALLA_HOJA,
   equipoFormMant, filtrosRequeridosFormMant, cargarFiltrosDelModelo, autocompletarFilaFiltro
 } from './historial.service.js';
 import { listaTiposFiltro, listaProveedoresFiltro, listaMarcasFiltro, fmtPrecio } from '../filtros/filtros.service.js';
@@ -21,7 +21,7 @@ export default {
       ...comunes(), showFormMantencionModal, isEditingMantencion, formMant,
       // si quedó un N° OC escrito sin presionar "Agregar", se agrega antes de guardar
       guardarMantencionForm: () => { agregarOCFormMant(); return guardarMantencionForm(); },
-      agregarFilaFiltro, eliminarFilaFiltro, subirArchivoHistorial,
+      agregarFilaFiltro, eliminarFilaFiltro, subirArchivoHistorial, leerAlAdjuntar, lecturaForm, CAUSAS_FALLA_HOJA,
       equipoFormMant, filtrosRequeridosFormMant, cargarFiltrosDelModelo, autocompletarFilaFiltro,
       listaTiposFiltro, listaProveedoresFiltro, listaMarcasFiltro, fmtPrecio, programasDelAfi,
       dbOC, fmtCLP, ocNuevaFormMant, ocsFormMant, totalOcsFormMant, agregarOCFormMant, quitarOCFormMant, ocsSugeridasFormMant

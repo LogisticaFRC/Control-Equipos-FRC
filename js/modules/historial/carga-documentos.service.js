@@ -14,6 +14,8 @@ import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supa
 import { dbEquipos, dbIntervenciones, soloEditor, cargarDatosDesdeSupabase } from '../../core/store.js';
 import { normalizarFecha, sumarDiasISO, diasEntre, formatDateForDisplay } from '../../core/utils.js';
 import { TABLA_HISTORIAL } from './historial.mapper.js';
+import { leerDocumento, resumenLectura, avisoVariasHojas } from '../../core/ocr-documentos.js';
+import { ocsDeTexto } from '../oc/oc.mapper.js';
 
 const { ref, shallowRef, computed } = Vue;
 
@@ -145,12 +147,15 @@ export const reemplazarExistentes = ref(false);
 export const subiendoCarga = ref(false);
 export const progresoCarga = ref({ hechos: 0, total: 0, errores: [] });
 export const filtroCarga = ref('TODOS');
+export const leerContenidoCarga = ref(true);   // leer folio / ART / OC de cada documento al subir
+export const lecturasLog = ref([]);            // lo que se completó (para revisar o deshacer)
 
 export const abrirCargaDocs = () => {
   if (!soloEditor()) return;
   filasCarga.value = []; archivosCarga.value = []; ignoradosCarga.value = [];
   progresoCarga.value = { hechos: 0, total: 0, errores: [] };
   filtroCarga.value = 'TODOS';
+  lecturasLog.value = [];
   showCargaDocs.value = true;
 };
 
@@ -296,7 +301,12 @@ export const subirCargaDocs = async () => {
         catch (err) { console.warn('[Carga docs] No se pudieron unir, se sube el primero', err); }
       }
       const url = await subirArchivoStorage(`historial/${limpiar(g.afi)}/${fecha}_${g.regId}_${Date.now()}_${limpiar(nombre)}`, file);
-      await sb(supabaseClient.from(TABLA_HISTORIAL).update({ link: url }).eq('id', g.regId));
+      let extra = {};
+      if (leerContenidoCarga.value && reg) {
+        try { extra = await leerYProponer(reg, files); } catch (err) { console.warn('[Lectura]', err); }
+      }
+      await actualizarRegistro(g.regId, { link: url, ...extra.campos });
+      if (extra.entrada) lecturasLog.value.unshift(extra.entrada);
       g.filas.forEach(f => { f.subido = true; });
     } catch (err) {
       progresoCarga.value.errores.push(`${g.afi} ${formatDateForDisplay(g.fecha)}: ${errMsg(err)}`);
@@ -313,4 +323,104 @@ export const subirCargaDocs = async () => {
   alert(`Listo: ${progresoCarga.value.total - e} registros enlazados${e ? ` · ${e} con error (ver lista)` : ''}.`);
   // Quita de la tabla lo que ya se subió
   filasCarga.value = filasCarga.value.filter(f => !f.subido);
+};
+
+// ---------------------------------------------------------------------
+// Lectura del contenido (OCR gratis): SOLO rellena campos vacíos, nunca borra ni reemplaza
+// ---------------------------------------------------------------------
+let faltanColumnas = false;   // si no se ejecutó sql/historial_documentos.sql
+const COLS_NUEVAS = ['art', 'numero_folio'];
+
+/** Lee los archivos y arma qué columnas vacías del registro se pueden completar. */
+const leerYProponer = async (reg, files) => {
+  const lecturas = [];
+  for (const f of files) lecturas.push(await leerDocumento(f));
+  const r = { tipo: '', folio: '', art: false, ocs: [], resumen: lecturas.map(resumenLectura).join(' | ') };
+  lecturas.forEach(l => {
+    if (!r.tipo && l.tipo) r.tipo = l.tipo;
+    if (!r.folio && l.folio) r.folio = l.folio;
+    if (l.art) r.art = true;
+    (l.ocs || []).forEach(o => { if (o.numero && !r.ocs.includes(o.numero)) r.ocs.push(o.numero); });
+  });
+  const campos = {}, previo = {}, cambios = [];
+  if (!faltanColumnas && r.folio && !reg.numeroFolio) { campos.numero_folio = r.folio; previo.numero_folio = null; cambios.push('folio ' + r.folio); }
+  if (!faltanColumnas && r.art && !reg.usoArt) { campos.art = 'SI'; previo.art = null; cambios.push('ART = SI'); }
+  const ocsYa = ocsDeTexto(reg.numeroOC);
+  const ocsNuevas = r.ocs.filter(n => !ocsYa.includes(n));
+  if (ocsNuevas.length) { campos.numero_oc = [reg.numeroOC, ...ocsNuevas].filter(Boolean).join(', '); previo.numero_oc = reg.numeroOC || null; cambios.push('OC ' + ocsNuevas.join(', ')); }
+  const avisos = [];
+  if (r.tipo === 'INTERVENCION' && esMantencionReg(reg)) avisos.push('La hoja es INTERVENCIÓN pero el registro es MANTENCIÓN');
+  lecturas.forEach(l => { const v = avisoVariasHojas(l); if (v) avisos.push(v); });
+  const aviso = avisos.join(' · ');
+  return { campos, entrada: { id: reg.id, afi: reg.afi, fecha: reg.fecha, resumen: r.resumen, cambios, previo, aviso, deshecho: false } };
+};
+
+/** Update tolerante: si faltan las columnas nuevas, guarda lo demás y avisa. */
+const actualizarRegistro = async (id, campos) => {
+  if (!Object.keys(campos).length) return;
+  try { await sb(supabaseClient.from(TABLA_HISTORIAL).update(campos).eq('id', id)); }
+  catch (err) {
+    if (!/'(art|numero_folio)' column|column \S*(art|numero_folio)\b/i.test(errMsg(err))) throw err;
+    faltanColumnas = true;
+    const c = { ...campos }; COLS_NUEVAS.forEach(k => delete c[k]);
+    if (Object.keys(c).length) await sb(supabaseClient.from(TABLA_HISTORIAL).update(c).eq('id', id));
+    progresoCarga.value.errores.push('Falta ejecutar sql/historial_documentos.sql en Supabase: no se guardó el folio ni el ART.');
+  }
+};
+
+/** Vuelve a dejar como estaban los campos que completó la lectura. */
+export const deshacerLecturas = async () => {
+  const lista = lecturasLog.value.filter(e => !e.deshecho && Object.keys(e.previo).length);
+  if (!lista.length) return alert('No hay cambios de lectura para deshacer.');
+  if (!confirm(`Se dejarán como estaban ${lista.length} registro(s) (solo los campos que completó la lectura). ¿Continuar?`)) return;
+  for (const e of lista) {
+    try { await sb(supabaseClient.from(TABLA_HISTORIAL).update(e.previo).eq('id', e.id)); e.deshecho = true; }
+    catch (err) { alert(`AFI ${e.afi}: ${errMsg(err)}`); }
+  }
+  await cargarDatosDesdeSupabase();
+};
+
+// ---------- Leer documentos que YA están subidos (sin volver a subirlos) ----------
+const CLAVE_LEIDOS = 'frc_ocr_leidos';
+const leidos = () => { try { return new Set(JSON.parse(localStorage.getItem(CLAVE_LEIDOS) || '[]')); } catch (_) { return new Set(); } };
+const marcarLeido = (id) => { try { const s = leidos(); s.add(String(id)); localStorage.setItem(CLAVE_LEIDOS, JSON.stringify([...s])); } catch (_) {} };
+const esDeStorage = (url) => /\/storage\/v1\/object\//.test(String(url || ''));
+
+export const pendientesRelectura = computed(() => {
+  const ya = leidos();
+  return dbIntervenciones.value.filter(i => i.linkDrive && esDeStorage(i.linkDrive) && !i.numeroFolio && !ya.has(String(i.id)));
+});
+export const releyendo = ref(false);
+export const loteRelectura = ref(25);
+let detener = false;
+export const detenerRelectura = () => { detener = true; };
+
+export const releerSubidos = async () => {
+  if (!soloEditor()) return;
+  const lista = pendientesRelectura.value.slice(0, Number(loteRelectura.value) || 25);
+  if (!lista.length) return alert('No hay documentos subidos pendientes de leer.');
+  if (!confirm(`Se leerán ${lista.length} documento(s) ya subidos.\nSolo se completan campos VACÍOS (folio, ART, OC); no se borra ni reemplaza nada.\nTarda unos segundos por página. ¿Continuar?`)) return;
+  releyendo.value = true; detener = false;
+  const antes = lecturasLog.value.length;
+  progresoCarga.value = { hechos: 0, total: lista.length, errores: [] };
+  for (const reg of lista) {
+    if (detener) break;
+    try {
+      const resp = await fetch(reg.linkDrive);
+      if (!resp.ok) throw new Error('No se pudo descargar (' + resp.status + ')');
+      const blob = await resp.blob();
+      const nombre = decodeURIComponent(String(reg.linkDrive).split('/').pop().split('?')[0]) || 'documento.pdf';
+      const file = new File([blob], nombre, { type: blob.type || (nombre.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg') });
+      const { campos, entrada } = await leerYProponer(reg, [file]);
+      await actualizarRegistro(reg.id, campos);
+      lecturasLog.value.unshift(entrada);
+      marcarLeido(reg.id);
+    } catch (err) {
+      progresoCarga.value.errores.push(`AFI ${reg.afi} ${formatDateForDisplay(reg.fecha)}: ${errMsg(err)}`);
+    } finally { progresoCarga.value.hechos++; }
+  }
+  releyendo.value = false;
+  await cargarDatosDesdeSupabase();
+  const n = lecturasLog.value.slice(0, lecturasLog.value.length - antes).filter(e => e.cambios.length).length;
+  alert(`Lectura terminada: ${progresoCarga.value.hechos} documento(s) leídos · ${n} con datos completados.`);
 };

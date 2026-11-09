@@ -94,6 +94,12 @@ export const mapIntervencion = (item) => {
     ocLista: ocsDeTexto(item.numero_oc),   // una mantención puede tener varias OC ("123, 456") → módulo OC
     numeroOT: String(item.numero_ot || ''),
     linkDrive: String(item.link || ''),
+    // Datos del documento escaneado (columnas nuevas: sql/historial_documentos.sql)
+    usoArt: String(item.art || ''),
+    bloqueo: String(item.bloqueo_de_equipo || ''),
+    horaFalla: String(item.hora_falla || ''),
+    numeroFolio: String(item.numero_folio || ''),
+    causaFalla: String(item.causa_falla || ''),
     filtrosLista,
     filtrosTexto,
     ...aceitesObj,

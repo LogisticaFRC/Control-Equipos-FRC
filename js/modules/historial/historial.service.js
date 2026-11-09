@@ -8,6 +8,9 @@ import { TABLA_HISTORIAL, ACEITES, aceitesVacios, COL_FILTROS_ESCRITURA } from '
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
 import { registrarFiltrosDesdeMantencion, requeridosPorModelo, autocompletarFiltro } from '../filtros/filtros.service.js';
 import { sincronizarProgramaConHistorial } from '../programas/programas.service.js';
+import { leerDocumento, resumenLectura, avisoVariasHojas } from '../../core/ocr-documentos.js';
+import { leerNombre } from './carga-documentos.service.js';
+import { ocsDeTexto } from '../oc/oc.mapper.js';
 
 const { ref, computed } = Vue;
 
@@ -44,12 +47,27 @@ export const filteredIntervenciones = computed(() => {
   return arr.sort((a, b) => sortHistorialOrder.value === 'desc' ? parseIsoDate(b.fecha) - parseIsoDate(a.fecha) : parseIsoDate(a.fecha) - parseIsoDate(b.fecha));
 });
 
+// ---------- Columnas nuevas del documento (ART, folio, causa de la falla) ----------
+// Si todavía no se ejecutó sql/historial_documentos.sql, se guarda sin ellas y se avisa (no se pierde el registro).
+const COLS_DOCUMENTO = (f) => ({ art: parseStr(f.usoArt), numero_folio: parseStr(f.numeroFolio), causa_falla: parseStr(f.causaFalla) });
+let avisoSqlDocs = false;
+const guardarConRespaldo = async (payload, op) => {
+  try { await sb(op(payload)); }
+  catch (err) {
+    if (!/'(art|numero_folio|causa_falla)' column|column \S*(art|numero_folio|causa_falla)\b/i.test(errMsg(err))) throw err;
+    const p = { ...payload }; delete p.art; delete p.numero_folio; delete p.causa_falla;
+    await sb(op(p));
+    if (!avisoSqlDocs) { avisoSqlDocs = true; alert('Guardado. OJO: falta ejecutar sql/historial_documentos.sql en Supabase para guardar ART, N° folio y causa de la falla.'); }
+  }
+};
+
 // ---------- Formulario de mantención ----------
 const FORM_MANT_DEFAULT = (afiInicial = "") => ({
   id: null, afi: afiInicial || (dbEquipos.value.length > 0 ? dbEquipos.value[0].afi : ""),
   fecha: hoyISO(), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA 250 HRS", tipoHorasMant: "250 hrs", horometro: "",
   programaCorrespondiente: "", horaInicio: "", horaTermino: "", linkDrive: "",
   mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
+  usoArt: "", bloqueo: "", horaFalla: "", numeroFolio: "", causaFalla: "",
   filtrosLista: [],
   ...aceitesVacios()
 });
@@ -61,6 +79,7 @@ export const formMant = ref(FORM_MANT_DEFAULT());
 export const abrirFormularioNuevaMantencion = (afiInicial = "") => {
   isEditingMantencion.value = false;
   formMant.value = FORM_MANT_DEFAULT(typeof afiInicial === 'string' ? afiInicial : "");
+  lecturaForm.value = { estado: '', resumen: '', cambios: [], avisos: [] };
   showFormMantencionModal.value = true;
 };
 
@@ -68,6 +87,7 @@ export const editarMantencion = (item) => {
   isEditingMantencion.value = true;
   formMant.value = JSON.parse(JSON.stringify(item));
   if (!formMant.value.filtrosLista) formMant.value.filtrosLista = [];
+  lecturaForm.value = { estado: '', resumen: '', cambios: [], avisos: [] };
   showFormMantencionModal.value = true;
 };
 
@@ -106,16 +126,54 @@ const derivarTipoHoras = (tipoMant, actual) => {
   return m ? `${m[1]} hrs` : (isEditingMantencion.value ? parseStr(actual) : "");
 };
 
+// ---------- Adjuntar documento (y leerlo) ----------
+export const leerAlAdjuntar = ref(true);
+export const CAUSAS_FALLA_HOJA = ['FALLA MECANICA', 'FALLA OPERACIONAL', 'ACCIDENTE', 'CONDICION DE LA OPERACION'];
+export const lecturaForm = ref({ estado: '', resumen: '', cambios: [], avisos: [] });
+
+/** Rellena el formulario SOLO en campos vacíos con lo que se pudo leer del documento. */
+const aplicarLecturaAlForm = (r, file) => {
+  const f = formMant.value, cambios = [], avisos = [];
+  const nuevo = !isEditingMantencion.value;
+  if (nuevo) {
+    const n = leerNombre(file);
+    if (n.afis[0] && n.afis[0] !== f.afi) { f.afi = n.afis[0]; cambios.push('AFI ' + n.afis[0] + ' (del nombre)'); }
+    if (n.fechas[0] && n.fechas[0] !== f.fecha) { f.fecha = n.fechas[0]; cambios.push('fecha (del nombre)'); }
+  }
+  if (r.folio && !f.numeroFolio) { f.numeroFolio = r.folio; cambios.push('N° folio ' + r.folio); }
+  if (r.art && !f.usoArt) { f.usoArt = 'SI'; cambios.push('Uso de ART = SI'); }
+  (r.ocs || []).forEach(oc => {
+    if (oc.numero && !ocsDeTexto(f.numeroOC).includes(oc.numero)) { f.numeroOC = [f.numeroOC, oc.numero].filter(Boolean).join(', '); cambios.push('OC ' + oc.numero); }
+  });
+  const varias = avisoVariasHojas(r); if (varias) avisos.push(varias);
+  if (r.tipo === 'INTERVENCION') {
+    if (nuevo && f.causa === 'MANTENCION' && f.tipoMant === 'PREVENTIVA 250 HRS') {
+      f.causa = ''; f.tipoMant = ''; f.tipoHorasMant = ''; cambios.push('es INTERVENCIÓN → elige la causa');
+    } else if (/MANTENCION/.test(up(f.causa))) avisos.push('La hoja es una INTERVENCIÓN, pero la causa dice MANTENCIÓN. Revísalo.');
+  }
+  if (r.tipo === 'PAUTA' && f.causa && !/MANTENCION/.test(up(f.causa)) && !/CORRECTIVA/.test(up(f.tipoMant)))
+    avisos.push('La hoja es una PAUTA de mantención (si se usó para una intervención, deja la causa como está).');
+  if (r.equipoPauta) { const eq = buscarEquipoPorAfi(f.afi); if (eq && !up(eq.tipo).includes(r.equipoPauta.split(' ')[0])) avisos.push(`La pauta es de ${r.equipoPauta} y el AFI ${f.afi} es ${eq.tipo}.`); }
+  return { cambios, avisos };
+};
+
 export const subirArchivoHistorial = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  lecturaForm.value = { estado: '', resumen: '', cambios: [], avisos: [] };
+  // Se lee en paralelo mientras se sube
+  const lectura = leerAlAdjuntar.value
+    ? leerDocumento(file, (m) => { lecturaForm.value.estado = m; })
+        .then(r => { const a = aplicarLecturaAlForm(r, file); lecturaForm.value = { estado: '', resumen: resumenLectura(r), ...a }; })
+        .catch(err => { console.warn('[Lectura]', err); lecturaForm.value = { estado: '', resumen: 'No se pudo leer: ' + errMsg(err), cambios: [], avisos: [] }; })
+    : Promise.resolve();
   try {
     const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     formMant.value.linkDrive = await subirArchivoStorage(fileName, file);
-    alert("¡Archivo subido y vinculado con éxito!");
   } catch (err) {
     alert("Error al subir el archivo: " + errMsg(err));
   } finally { resetInputFile(e); }
+  await lectura;
 };
 
 export const guardarMantencionForm = async () => {
@@ -142,8 +200,8 @@ export const guardarMantencionForm = async () => {
     horometro: parseNum(f.horometro),
     mecanico_1: parseStr(f.mec1), mecanico_2: parseStr(f.mec2), mecanico_3: parseStr(f.mec3), mecanico_4: parseStr(f.mec4),
     uso_de_art: parseStr(f.programaCorrespondiente),
-    bloqueo_de_equipo: "NO",
-    hora_falla: "",
+    bloqueo_de_equipo: parseStr(f.bloqueo),
+    hora_falla: parseStr(f.horaFalla),
     hora_inicio: parseStr(f.horaInicio),
     hora_termino: parseStr(f.horaTermino),
     hora_total: parseStr(calcularRestaHoras(f.horaInicio, f.horaTermino)),
@@ -157,16 +215,17 @@ export const guardarMantencionForm = async () => {
     numero_oc: parseStr(f.numeroOC),
     numero_ot: parseStr(f.numeroOT),
     causa: parseStr(f.causa),
-    tipo_mantencion: parseStr(f.tipoMant)
+    tipo_mantencion: parseStr(f.tipoMant),
+    ...COLS_DOCUMENTO(f)
   };
   ACEITES.forEach(a => { payload[a.col] = parseNum(f[a.key]); });
 
   // 1) Guardar el registro del historial
   try {
     if (isEditingMantencion.value && f.id) {
-      await sb(supabaseClient.from(TABLA_HISTORIAL).update(payload).eq('id', f.id));
+      await guardarConRespaldo(payload, (p) => supabaseClient.from(TABLA_HISTORIAL).update(p).eq('id', f.id));
     } else {
-      await sb(supabaseClient.from(TABLA_HISTORIAL).insert([payload]));
+      await guardarConRespaldo(payload, (p) => supabaseClient.from(TABLA_HISTORIAL).insert([p]));
     }
   } catch (err) {
     console.error("Error detallado Supabase:", err);

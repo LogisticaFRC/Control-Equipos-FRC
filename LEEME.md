@@ -630,3 +630,21 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Arreglo: en el Perfil (y en el perfil de Vehículos) el menú de pestañas ya no queda tapado al abrir Historial o Fallas.
 - (ajuste) "Problema que más se repite" ya no toma inspecciones, revisiones, pruebas, limpiezas, etc. (son actividades, no problemas). Si el registro indica una pieza, el problema se agrupa como "pieza · motivo" (ej. "Correa · rotura / corte").
 - (ajuste) "Problema" ya no se arma con texto libre: solo con **pieza**, **motivo** o **señal de alerta** (`SINTOMAS`: quedó fuera de servicio, no parte, se apaga, no genera, alarma, ruido/vibración, humo, pierde potencia, alta temperatura, baja presión). Revisiones, inspecciones, etc. no son problema. "Palabras más usadas" pasó a **Señales de alerta**; hallazgo nuevo: cuántas fallas dejaron el equipo fuera de servicio.
+
+## 2026-11-09 · Análisis de Fallas: diccionario técnico
+- `core/analisis-fallas.js` reconoce piezas nuevas (corta corriente, bocina/baliza, alimentadores Cooper, manifold/válvulas, acoples, patas estabilizadoras, pasadores/pernos, parabrisas, enfriador, retén de cigüeñal) y errores de tipeo frecuentes (READIADOR, MANGERA, REGRIGERANTE, OCMBUSTIBLE, MODILO, ALTA TEMEPRATURA…).
+- Motivos: "mal estado" → desgaste; "saturado" → tapado. Causas ESTANDARIZACION, IMPLEMENTACION, CHECK LIST, ACTIVIDAD y PUESTA EN MARCHA ya no cuentan como falla.
+
+## 2026-11-09 · Lectura de documentos escaneados (gratis, OCR) · datos de la hoja
+- **Ejecutar `sql/historial_documentos.sql`** (agrega `art`, `numero_folio`, `causa_falla` a BD_HISTORIAL). Si no se ejecuta, todo sigue funcionando pero no se guardan esos 3 datos (avisa).
+- Formulario del Historial: sección **Datos de la hoja** → N° folio, Uso de ART, Bloqueo de equipo, Hora falla, Causa de la falla (antes bloqueo se guardaba siempre "NO" y hora falla vacía).
+- **Leer el documento al adjuntar** (casilla en el formulario): `core/ocr-documentos.js` (pdf.js + Tesseract.js, en el navegador, sin costo ni claves). Lee solo lo IMPRESO:
+  - qué es cada página: Intervención mecánica · Pauta de mantención · ART · Orden de compra;
+  - N° de folio (canal rojo + solo dígitos, ej. 000214 / 005119);
+  - si trae ART → Uso de ART = SI; si trae OC impresa → N° OC.
+  - Hoja de INTERVENCIÓN en un registro nuevo → limpia causa "MANTENCION" para elegirla; avisa si la causa no calza con la hoja.
+  - En registro nuevo toma AFI y fecha del nombre del archivo. Solo completa campos VACÍOS.
+  - La letra a mano (horómetro, horas, mecánicos, descripción) no se lee: se completa a mano.
+- **Cargar documentos**: casilla "Leer el contenido al subir" y botón **"Leer documentos ya subidos"** (lotes de 10–100, se puede detener; solo documentos guardados en Supabase Storage). Nunca borra ni reemplaza: solo completa folio, ART y OC vacíos. Lista de **Lecturas** con lo completado y botón **Deshacer lo completado**. Avisa si una hoja de intervención quedó en un registro de mantención.
+- Las librerías se cargan solo al usar la lectura (la página no se pone más lenta). Primera lectura ~10–20 s (descarga el idioma español); luego ~3–7 s por página.
+- (ajuste) Se revisan hasta **15 páginas** por PDF, dibujadas de a una (no se llena la memoria). Una pauta de 2 hojas (generador, manipulador, minicargador…) cuenta como UNA: la hoja siguiente del mismo tipo sin folio o con el mismo folio es continuación. Si el PDF trae 2 hojas principales distintas (ej. pauta 000214 + intervención 005119) se avisa en el formulario y en la lista de Lecturas; se usa la primera. Varias OC en un PDF → se agregan todas.
