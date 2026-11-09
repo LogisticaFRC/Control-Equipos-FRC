@@ -261,6 +261,7 @@ export default /* html */ `
               <tr>
                 <th v-if="puedeEditar" class="p-2 text-center">Acciones</th>
                 <th class="p-2">Fecha Mant.</th>
+                <th class="p-2 text-center text-rose-300">Doc.</th>
                 <th class="p-2 text-indigo-300">Programa</th>
                 <th class="p-2">Lugar</th>
                 <th class="p-2">Causa</th>
@@ -287,6 +288,10 @@ export default /* html */ `
                   <button v-if="isAdmin" @click="eliminarMantencion(i.id)" class="bg-rose-100 hover:bg-rose-200 text-rose-800 p-1 rounded font-bold" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                 </td>
                 <td class="p-2 font-mono font-bold bg-amber-50/50">{{ formatDateForDisplay(i.fecha) }}</td>
+                <td class="p-2 text-center">
+                  <a v-if="i.linkDrive" :href="i.linkDrive" target="_blank" rel="noopener" class="inline-flex items-center gap-1 bg-rose-100 hover:bg-rose-200 text-rose-800 px-2 py-1 rounded font-bold text-[10px] whitespace-nowrap" title="Abrir documento"><i class="fa-solid fa-file-pdf"></i> Ver</a>
+                  <span v-else class="text-slate-300" title="Sin documento">—</span>
+                </td>
                 <td class="p-2 font-bold text-indigo-700 bg-indigo-50/40">{{ i.programaCorrespondiente || '-' }}</td>
                 <td class="p-2">{{ i.lugar || '-' }}</td>
                 <td class="p-2 font-bold">{{ i.causa || '-' }}</td>
@@ -310,7 +315,7 @@ export default /* html */ `
                 <td class="p-2 font-mono">{{ i.numeroOT || '-' }}</td>
                 <td class="p-2 text-amber-800 font-bold bg-amber-50">{{ i.aceites }}</td>
               </tr>
-              <tr v-if="getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi).length === 0"><td colspan="19" class="p-4 text-center text-slate-400">Sin registros de mantención para este filtro.</td></tr>
+              <tr v-if="getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi).length === 0"><td colspan="20" class="p-4 text-center text-slate-400">Sin registros de mantención para este filtro.</td></tr>
             </tbody>
           </table>
         </div>

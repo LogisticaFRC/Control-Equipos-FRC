@@ -594,3 +594,7 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Al confirmar sube a Storage `archivos_frc/historial/<AFI>/…` y guarda la URL en `BD_HISTORIAL.link` (botón "Drive" del Historial). Si varios archivos van al mismo registro se **unen en un solo PDF** (pdf-lib 1.17.1 desde cdnjs, se carga solo si hace falta). Por defecto no reemplaza documentos existentes (casilla para reemplazar).
 - Ojo con el espacio: las carpetas 2025 + 2026 pesan ~880 MB; el plan gratis de Supabase Storage trae 1 GB.
 - Archivos: `historial/carga-documentos.service.js`, `historial/carga-documentos.view.js` (nuevos), `historial.template.js`, `historial.view.js`. No requiere SQL.
+
+## 2026-11-09 · Perfil de Equipo: columna "Doc." en el historial
+- La tabla "Historial completo de mantenciones del equipo" del Perfil tiene la columna **Doc.** (junto a la fecha) con el botón **Ver** para abrir el documento enlazado (`BD_HISTORIAL.link`, el mismo que se carga con "Cargar documentos" o al registrar la mantención). Si el registro no tiene documento muestra "—".
+- Archivo: `inventario/perfil-equipo.template.js`. No requiere SQL.
