@@ -55,10 +55,19 @@ export default /* html */ `
       </template>
 
       <template v-else>
-        <div>
-          <label class="block font-bold text-slate-700 mb-1 text-indigo-900">Fecha Programada (Día Fijo)</label>
-          <input type="date" v-model="formAsignar.fecha_programada" class="w-full p-2.5 border border-indigo-300 rounded-lg bg-indigo-50 font-mono font-bold">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1 text-indigo-900">Tipo de Mantención</label>
+            <select v-model="formAsignar.tipoMant" class="w-full p-2.5 border border-indigo-300 rounded-lg bg-indigo-50 font-bold">
+              <option v-for="t in TIPOS_MANT_PROG" :key="t.key" :value="t.key">{{ t.label }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1 text-indigo-900">Fecha Programada (Día Fijo)</label>
+            <input type="date" v-model="formAsignar.fecha_programada" class="w-full p-2.5 border border-indigo-300 rounded-lg bg-indigo-50 font-mono font-bold">
+          </div>
         </div>
+        <p v-if="formAsignar.tipoMant === 'INTERMEDIA'" class="text-[10px] text-sky-800 bg-sky-50 border border-sky-200 rounded-lg p-2"><i class="fa-solid fa-circle-info mr-1"></i>Intermedia = solo filtros de aire. Se marca realizada con un registro "MANTENCION INTERMEDIA" del Historial; no descuenta KIT ni cambia el horómetro del equipo.</p>
       </template>
 
     </div>

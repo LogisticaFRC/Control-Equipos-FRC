@@ -54,7 +54,9 @@ export default {
     return {
       ...comunes(), ...S, tipoProg: tipo, carpetasVisibles, progDelTipo, cumplimientoTipo, estadoItemTaller, tallerDeItem, ESTILO_ESTADO,
       abrirModalAsignarEquipo: () => S.abrirModalAsignarEquipo(tipo.value),
-      filtrosRequeridosAfi, kitsEnBodegaAfi, sePuedeArmarAfi, kitConsumidoItem, resumenKitsPrograma, abrirArmarKitParaAfi
+      filtrosRequeridosAfi, kitsEnBodegaAfi, sePuedeArmarAfi, kitConsumidoItem, abrirArmarKitParaAfi,
+      // la mantención INTERMEDIA (solo filtro de aire) no usa KIT
+      resumenKitsPrograma: (items) => resumenKitsPrograma(items.filter(i => !S.esItemIntermedia(i)))
     };
   }
 };

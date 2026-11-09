@@ -35,11 +35,21 @@ const agruparPorAfi = (intervenciones) => {
   return map;
 };
 
-/** Solo cuenta como mantención el registro que dice "MANTENCIÓN" (causa o tipo). */
-const esMantencionReal = (i) => {
-  const c = sinTildes(i.causa), t = sinTildes(i.tipoMant);
-  return c.includes('MANTENCION') || c.includes('MANTENIMIENTO') || t.includes('MANTENCION');
+/**
+ * Clase de un registro del Historial:
+ *   'COMPLETA'   → mantención normal (250 / 500 / 1000 hrs…): reinicia horómetro/km, anual, etc.
+ *   'INTERMEDIA' → "MANTENCION INTERMEDIA" (solo filtros de aire): sirve para el Programa,
+ *                  pero NO cambia nada del equipo (no reinicia horómetro ni mantención anual).
+ *   null         → no es mantención (reparación, servicio, inspección…).
+ */
+export const claseMantencion = (i) => {
+  const c = sinTildes(i?.causa), t = sinTildes(i?.tipoMant), th = sinTildes(i?.tipoHorasMant);
+  const esMant = c.includes('MANTENCION') || c.includes('MANTENIMIENTO') || t.includes('MANTENCION');
+  if (!esMant) return null;
+  return (c.includes('INTERMEDIA') || t.includes('INTERMEDIA') || th.includes('INTERMEDIA')) ? 'INTERMEDIA' : 'COMPLETA';
 };
+/** Solo cuenta como mantención (para horómetro / km / anual) la mantención COMPLETA, no la intermedia. */
+const esMantencionReal = (i) => claseMantencion(i) === 'COMPLETA';
 
 /** Suma años a una fecha ISO (29-feb → 28-feb si el año destino no es bisiesto). */
 const sumarAniosISO = (iso, anios) => {

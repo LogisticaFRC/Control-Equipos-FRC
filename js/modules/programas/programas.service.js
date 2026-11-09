@@ -6,6 +6,7 @@ import { dbProgramasCalendarios, dbProgramasItems, dbIntervenciones, cargarDatos
 import { normalizarFecha, formatDateForDisplay, parseNum, limpiarAfi, esFechaEnRango, hoyISO, mismoAfi, parseIsoDate, diasEntre } from '../../core/utils.js';
 import { buscarEquipoPorAfi } from '../../core/store.js';
 import { empresaDe } from '../inventario/inventario.mapper.js';
+import { claseMantencion } from '../../core/horometros.js';
 import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel, fill, COLOR, bloqueFirmas, FIRMAS_PROGRAMA } from '../../core/excel.js';
 import { isAdmin } from '../../core/store.js';
 import { hojaInicioReparacion, hojaInicioMantencion } from './programas.dashboard.js';
@@ -321,13 +322,13 @@ export const eliminarProgramaCompleto = async (progId) => {
  * Se usa desde el modal "Asignar Equipo" y desde el Perfil de Equipo.
  * (Antes, si Supabase fallaba, se agregaba igual un registro falso en pantalla que desaparecía al recargar.)
  */
-export const insertarItemPrograma = async ({ programa_id, afi, tipo, nave, condicion, fechaInicio, fechaFin }) => {
+export const insertarItemPrograma = async ({ programa_id, afi, tipo, tipoMant = '', nave, condicion, fechaInicio, fechaFin }) => {
   const prog = obtenerProgObj(programa_id);
   const esMant = esProgramaMantencion(prog);
   const payload = {
     programa_id,
     afi: limpiarAfi(afi),
-    tipo: esMant ? 'Mantención' : tipo,
+    tipo: esMant ? (tipoMant || 'Mantención') : tipo,   // mantención: '250 HRS' | '500 HRS' | '1000 HRS' | 'INTERMEDIA'
     nave: esMant ? null : (nave || 'NAVE 1'),
     condicion: esMant ? 'Arriendo' : condicion,
     fecha_programada: fechaInicio,
@@ -342,7 +343,7 @@ export const insertarItemPrograma = async ({ programa_id, afi, tipo, nave, condi
 };
 
 export const showModalAsignarEquipo = ref(false);
-export const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', nave: 'NAVE 1', condicion: 'Arriendo', fecha_programada: '', fecha_fin: '', tipoFiltro: '', editandoId: null });
+export const formAsignar = ref({ programa_id: '', afi: '', tipo: 'Reparación', tipoMant: '250 HRS', nave: 'NAVE 1', condicion: 'Arriendo', fecha_programada: '', fecha_fin: '', tipoFiltro: '', editandoId: null });
 
 /** Programas que se muestran en el modal "Asignar Equipo" (solo los del submódulo desde donde se abrió). */
 export const programasParaAsignar = computed(() => dbProgramasCalendarios.value
@@ -359,6 +360,7 @@ export const abrirModalAsignarEquipo = (tipoCarpeta = '') => {
     programa_id: selProg ? selProg.id : '',
     afi: '',
     tipo: esProgramaMantencion(selProg) ? 'Mantención' : 'Reparación',
+    tipoMant: '250 HRS',
     nave: 'NAVE 1',
     condicion: 'Arriendo',
     fecha_programada: selProg ? selProg.fecha_inicio_programa : hoyISO(),
@@ -434,7 +436,7 @@ export const guardarAsignacionEquipo = async () => {
   }
   try {
     const prog = await insertarItemPrograma({
-      programa_id: f.programa_id, afi: f.afi, tipo: f.tipo, nave: f.nave, condicion: f.condicion,
+      programa_id: f.programa_id, afi: f.afi, tipo: f.tipo, tipoMant: f.tipoMant, nave: f.nave, condicion: f.condicion,
       fechaInicio: f.fecha_programada, fechaFin: f.fecha_fin
     });
     showModalAsignarEquipo.value = false;
@@ -456,7 +458,7 @@ export const cambiarEstadoRealizadoItem = async (item) => {
   if (!soloEditor()) { item.realizado = !item.realizado; return; }
   const esMant = esProgramaMantencion(obtenerProgObj(item.programa_id));
 
-  const descuenta = esMant && descuentaBodega(item.programa_id);
+  const descuenta = esMant && descuentaBodega(item.programa_id) && !esItemIntermedia(item);   // intermedia = solo filtro de aire → no descuenta KIT
   if (descuenta && item.realizado && !kitConsumidoItem(item)) {
     const { principal } = kitsEnBodegaAfi(item.afi);
     if (!principal && !confirm(`No hay KIT en bodega para el modelo del AFI ${item.afi}.\n¿Marcar como REALIZADO igual (sin descontar kit)?`)) {
@@ -524,7 +526,38 @@ export const eliminarItemPrograma = async (itemId) => {
  *  Mantención = solo los registros del Historial con causa MANTENCION (incluye "MANTENCION INTERMEDIA").
  *  Intervención = todo lo demás (reparación, implementación, falla, inspección...). */
 const sinTildes = (s) => String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-export const esMantencion = (i) => sinTildes(i.causa).includes('MANTENCION');
+/** Mantención COMPLETA (no cuenta la INTERMEDIA, que es solo de filtros de aire). */
+export const esMantencion = (i) => claseMantencion(i) === 'COMPLETA';
+
+// ---------- Tipo de mantención de cada equipo en el programa (bd_programas_items.tipo) ----------
+export const TIPOS_MANT_PROG = [
+  { key: '250 HRS', label: '250 hrs' },
+  { key: '500 HRS', label: '500 hrs' },
+  { key: '1000 HRS', label: '1000 hrs' },
+  { key: 'INTERMEDIA', label: 'Intermedia (filtros de aire)' }
+];
+/** '250 HRS' | '500 HRS' | '1000 HRS' | 'INTERMEDIA' | '' (ítems antiguos = "Mantención" sin tipo). */
+export const tipoMantDeItem = (item) => {
+  const t = sinTildes(item?.tipo);
+  if (t.includes('INTERMEDIA')) return 'INTERMEDIA';
+  const m = t.match(/(\d{3,4})/);
+  return m ? `${m[1]} HRS` : '';
+};
+export const esItemIntermedia = (item) => tipoMantDeItem(item) === 'INTERMEDIA';
+export const etiquetaTipoMant = (item) => { const k = tipoMantDeItem(item); return (TIPOS_MANT_PROG.find(t => t.key === k) || {}).label || 'Sin tipo'; };
+export const claseTipoMant = (item) => {
+  const k = tipoMantDeItem(item);
+  return k === 'INTERMEDIA' ? 'bg-sky-100 text-sky-800' : k === '250 HRS' ? 'bg-emerald-100 text-emerald-800'
+    : k === '500 HRS' ? 'bg-amber-100 text-amber-800' : k === '1000 HRS' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-500';
+};
+/** Cambia el tipo de mantención de un equipo del programa (Admin). */
+export const cambiarTipoMantItem = async (item, nuevo) => {
+  if (!soloAdmin()) return;
+  const anterior = item.tipo;
+  item.tipo = nuevo || 'Mantención';
+  try { await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ tipo: item.tipo }).eq('id', item.id)); }
+  catch (err) { item.tipo = anterior; alert('No se pudo cambiar el tipo: ' + errMsg(err)); }
+};
 
 /** Última MANTENCIÓN (causa = Mantención) registrada en el Historial para un AFI (o null). No cuenta intervenciones. */
 // ---------- Programas CERRADOS (vigencia terminada) ----------
@@ -599,7 +632,7 @@ export const exportarProgramaGanttExcel = async (prog) => {
       const filas = items.map((item, i) => {
         const u = ultimaMantencionAfi(item.afi, corte);
         return [
-          i + 1, `AFI ${item.afi}`, det(item.afi, 'tipo'), `${det(item.afi, 'marca')} ${det(item.afi, 'modelo')}`,
+          i + 1, `AFI ${item.afi}`, det(item.afi, 'tipo'), `${det(item.afi, 'marca')} ${det(item.afi, 'modelo')}`, etiquetaTipoMant(item).toUpperCase(),
           ubicacionActualAfi(item.afi), empresaActualAfi(item.afi) || '-',
           u ? fechaExcel(normalizarFecha(u.fecha)) : 'NO HAY MANTENCIONES ANTERIORES', u ? (u.tipoMant || 'MANTENCION') : '-', u && u.horometro ? Number(u.horometro) : '-',
           fechaExcel(normalizarFecha(item.fecha_programada)) || '-', fechaExcel(normalizarFecha(item.fecha_fin)) || '-',
@@ -612,7 +645,7 @@ export const exportarProgramaGanttExcel = async (prog) => {
       const ws = hojaTabla(wb, logo, {
         nombre: 'Mantención', titulo: `PROGRAMA DE MANTENCIÓN · ${nombre}`, subtitulo: `${vigencia}${corte ? ' (CERRADO)' : ''} · ${items.length} equipos · ${realizados} realizados (${Math.round(realizados / items.length * 100)}%)`,
         columnas: [
-          { t: 'N°', w: 5 }, { t: 'EQUIPO AFI', w: 11, bold: true }, { t: 'TIPO EQUIPO', w: 18 }, { t: 'MARCA / MODELO', w: 22 },
+          { t: 'N°', w: 5 }, { t: 'EQUIPO AFI', w: 11, bold: true }, { t: 'TIPO EQUIPO', w: 18 }, { t: 'MARCA / MODELO', w: 22 }, { t: 'TIPO MANT.', w: 12, bold: true },
           { t: 'UBICACIÓN ACTUAL', w: 20, bold: true }, { t: 'EMPRESA', w: 18 },
           { t: corte ? 'ÚLTIMA MANTENCIÓN (AL CIERRE)' : 'ÚLTIMA MANTENCIÓN', w: 14, fmt: 'dd-mm-yyyy', bold: true }, { t: 'TIPO ÚLT. MANT.', w: 20 }, { t: 'HORÓMETRO ÚLT. MANT.', w: 12, fmt: '#,##0' },
           { t: 'FECHA PROGRAMADA', w: 13, fmt: 'dd-mm-yyyy' }, { t: 'FECHA REALIZADA', w: 13, fmt: 'dd-mm-yyyy' }, { t: 'HORÓMETRO REALIZADO', w: 12, fmt: '#,##0' },
@@ -621,9 +654,9 @@ export const exportarProgramaGanttExcel = async (prog) => {
         filas
       });
       filas.forEach((f, i) => {
-        const c = ws.getCell(7 + i, 16);
-        c.fill = fill(f[15] === 'REALIZADO' ? COLOR.verde : COLOR.ambar);
-        c.font = { bold: true, size: 9, color: { argb: f[15] === 'REALIZADO' ? COLOR.verdeTxt : COLOR.ambarTxt } };
+        const c = ws.getCell(7 + i, 17);
+        c.fill = fill(f[16] === 'REALIZADO' ? COLOR.verde : COLOR.ambar);
+        c.font = { bold: true, size: 9, color: { argb: f[16] === 'REALIZADO' ? COLOR.verdeTxt : COLOR.ambarTxt } };
       });
       bloqueFirmas(ws, FIRMAS_PROGRAMA);
 
@@ -701,14 +734,25 @@ export const enlacesDePrograma = (programaId) => {
   const mapa = new Map();
   if (!prog) return mapa;
   const nombre = nombreDePrograma(prog);
-  const mants = dbIntervenciones.value.filter(m => upP(m.programaCorrespondiente) === nombre);
+  const esMantProg = esProgramaMantencion(prog);
+  // En programas de MANTENCIÓN solo cuentan registros que sean mantención (la causa dice MANTENCION)
+  const mants = dbIntervenciones.value.filter(m => upP(m.programaCorrespondiente) === nombre && (!esMantProg || claseMantencion(m)));
   if (!mants.length) return mapa;
   const items = obtenerItemsPrograma(programaId);
   const afis = [...new Set(items.map(i => upP(limpiarAfi(i.afi))))];
-  afis.forEach(afi => {
-    const its = items.filter(i => mismoEquipo(i.afi, afi)).sort((a, b) => fechaItem(a).localeCompare(fechaItem(b)) || (a.id - b.id));
-    const ms = mants.filter(m => mismoEquipo(m.afi, afi)).sort((a, b) => String(normalizarFecha(a.fecha)).localeCompare(String(normalizarFecha(b.fecha))) || (a.id - b.id));
+  const porFecha = (a, b) => String(normalizarFecha(a.fecha)).localeCompare(String(normalizarFecha(b.fecha))) || (a.id - b.id);
+  const enlazar = (its, ms) => {
+    its.sort((a, b) => fechaItem(a).localeCompare(fechaItem(b)) || (a.id - b.id));
+    ms.sort(porFecha);
     its.forEach((it, k) => { if (ms[k]) mapa.set(it.id, ms[k]); });
+  };
+  afis.forEach(afi => {
+    const its = items.filter(i => mismoEquipo(i.afi, afi));
+    const ms = mants.filter(m => mismoEquipo(m.afi, afi));
+    if (!esMantProg) return enlazar(its, ms);
+    // INTERMEDIA del programa ↔ "MANTENCION INTERMEDIA" del Historial · 250/500/1000 ↔ mantención completa
+    enlazar(its.filter(esItemIntermedia), ms.filter(m => claseMantencion(m) === 'INTERMEDIA'));
+    enlazar(its.filter(i => !esItemIntermedia(i)), ms.filter(m => claseMantencion(m) === 'COMPLETA'));
   });
   return mapa;
 };
@@ -754,7 +798,7 @@ export const sincronizarProgramaConHistorial = async ({ nombrePrograma = '', pro
         item.realizado = true; item.fecha_fin = base.fecha_fin;
         marcados++;
       } catch (err) { avisos.push(`AFI ${item.afi} (${formatDateForDisplay(item.fecha_programada)}): ${errMsg(err)}`); continue; }
-      if (!yaEstaba && esMant && descuentaBodega(prog.id) && !kitConsumidoItem(item)) {
+      if (!yaEstaba && esMant && descuentaBodega(prog.id) && !esItemIntermedia(item) && !kitConsumidoItem(item)) {
         try {
           const kit = await consumirKitParaItem(item);
           if (!kit) avisos.push(`AFI ${item.afi}: realizado sin descontar KIT (no había en bodega).`);

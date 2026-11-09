@@ -199,6 +199,7 @@ export default /* html */ `
                 <th class="p-2.5">EQUIPO AFI</th>
                 <th class="p-2.5">TIPO EQUIPO</th>
                 <th class="p-2.5">MARCA / MODELO</th>
+                <th class="p-2.5 text-indigo-800 font-bold">TIPO MANT.</th>
                 <th class="p-2.5 text-sky-800 font-bold">UBICACIÓN ACTUAL</th>
                 <th class="p-2.5 text-rose-800 font-bold">ÚLTIMA MANTENCIÓN<span v-if="programaCerrado(progSelect)" class="block text-[8px] text-slate-500">al cierre ({{ formatDateForDisplay(progSelect.fecha_termino_programa) }})</span></th>
                 <th class="p-2.5 text-teal-800 font-bold text-center">FILTROS</th>
@@ -215,6 +216,15 @@ export default /* html */ `
                 <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
                 <td class="p-2.5 font-semibold text-slate-800">{{ obtenerDetalleEquipoPorAfi(item.afi, 'tipo') }}</td>
                 <td class="p-2.5 text-slate-600">{{ obtenerDetalleEquipoPorAfi(item.afi, 'marca') }} {{ obtenerDetalleEquipoPorAfi(item.afi, 'modelo') }}</td>
+
+                <!-- Tipo de mantención (250 / 500 / 1000 / Intermedia) -->
+                <td class="p-2.5">
+                  <select v-if="isAdmin && !item.realizado" :value="tipoMantDeItem(item)" @change="cambiarTipoMantItem(item, $event.target.value)" :class="['p-1 rounded text-[10px] font-bold border-0', claseTipoMant(item)]">
+                    <option value="">Sin tipo</option>
+                    <option v-for="t in TIPOS_MANT_PROG" :key="t.key" :value="t.key">{{ t.key === 'INTERMEDIA' ? 'Intermedia' : t.label }}</option>
+                  </select>
+                  <span v-else :class="['text-[10px] font-bold px-2 py-0.5 rounded', claseTipoMant(item)]">{{ esItemIntermedia(item) ? 'Intermedia' : etiquetaTipoMant(item) }}</span>
+                </td>
 
                 <!-- Ubicación actual (Inventario / último movimiento) -->
                 <td class="p-2.5 bg-sky-50/40">
@@ -240,7 +250,10 @@ export default /* html */ `
 
                 <!-- KIT en bodega (módulo Bodega Filtros) -->
                 <td class="p-2.5">
-                  <template v-if="item.realizado && kitConsumidoItem(item)">
+                  <template v-if="esItemIntermedia(item)">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800" title="Mantención intermedia: solo filtro de aire, no descuenta KIT"><i class="fa-solid fa-wind"></i> Solo filtro aire</span>
+                  </template>
+                  <template v-else-if="item.realizado && kitConsumidoItem(item)">
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700" title="Kit descontado de bodega al marcar Realizado"><i class="fa-solid fa-check"></i> Usado: <span class="font-mono">{{ kitConsumidoItem(item) }}</span></span>
                   </template>
                   <template v-else-if="item.realizado && !descuentaBodega(progSelect.id)">

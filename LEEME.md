@@ -598,3 +598,14 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 ## 2026-11-09 · Perfil de Equipo: columna "Doc." en el historial
 - La tabla "Historial completo de mantenciones del equipo" del Perfil tiene la columna **Doc.** (junto a la fecha) con el botón **Ver** para abrir el documento enlazado (`BD_HISTORIAL.link`, el mismo que se carga con "Cargar documentos" o al registrar la mantención). Si el registro no tiene documento muestra "—".
 - Archivo: `inventario/perfil-equipo.template.js`. No requiere SQL.
+
+## 2026-11-09 · Programa de Mantención: tipos 250 / 500 / 1000 / Intermedia · la intermedia no cambia el equipo
+- Cada equipo del Programa de Mantención tiene **Tipo de mantención**: 250 hrs, 500 hrs, 1000 hrs o **Intermedia (filtros de aire)**. Se elige al asignar el equipo y se puede cambiar en la columna nueva **TIPO MANT.** (Admin, mientras esté pendiente). Se guarda en `bd_programas_items.tipo` (los antiguos quedan "Sin tipo" = mantención normal). No requiere SQL.
+- **Enlace con el Historial** (campo "Programa" de la mantención): en programas de MANTENCIÓN solo cuentan registros cuya causa diga **MANTENCION**:
+  - "MANTENCION INTERMEDIA" → marca REALIZADO un ítem **Intermedia** del equipo.
+  - Mantención normal → marca REALIZADO un ítem 250 / 500 / 1000 (o sin tipo).
+  - En programas de REPARACIÓN sigue igual (cualquier registro con ese programa).
+- **La intermedia no cambia nada del equipo**: `claseMantencion()` en `core/horometros.js` ('COMPLETA' | 'INTERMEDIA' | null). Solo la COMPLETA reinicia horómetro/km, la meta, la mantención anual y la "Última mantención" del programa.
+- La intermedia **no descuenta KIT** de bodega (columna Kit muestra "Solo filtro aire") y no se cuenta en el resumen de kits del programa.
+- Excel del programa: columna nueva **TIPO MANT.**
+- Archivos: `core/horometros.js`, `programas/programas.service.js`, `programas.template.js`, `programas.view.js`, `modal-asignar.template.js`, `modal-asignar.view.js`, `vehiculos/vehiculos.service.js`, `vehiculos.template.js`.

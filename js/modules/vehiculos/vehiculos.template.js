@@ -250,7 +250,7 @@ export default /* html */ `
                     <td class="p-2 font-mono">{{ formatDateForDisplay(l.fecha) }}</td>
                     <td class="p-2 text-right font-mono font-bold">{{ fmtKm(l.km) }}</td>
                     <td class="p-2 text-right font-mono text-slate-500">{{ bitacoraPerfil[i + 1] ? fmtKm(l.km - bitacoraPerfil[i + 1].km) : '-' }}</td>
-                    <td class="p-2"><span :class="['px-2 py-0.5 rounded text-[10px] font-bold', l.tipo === 'MANTENCION' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700']">{{ l.tipo === 'MANTENCION' ? 'MANTENCIÓN' : l.tipo === 'HISTORIAL' ? 'HISTORIAL' : 'LECTURA' }}</span></td>
+                    <td class="p-2"><span :class="['px-2 py-0.5 rounded text-[10px] font-bold', l.tipo === 'MANTENCION' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700']">{{ l.tipo === 'MANTENCION' ? 'MANTENCIÓN' : l.tipo === 'INTERMEDIA' ? 'M. INTERMEDIA' : l.tipo === 'HISTORIAL' ? 'HISTORIAL' : 'LECTURA' }}</span></td>
                     <td class="p-2">{{ l.observacion }}</td>
                     <td class="p-2 text-slate-500">{{ l.creadoPor }}</td>
                     <td v-if="isAdmin" class="p-2 text-right"><button v-if="l.origen === 'LECTURA'" @click="eliminarLecturaKm(l)" class="text-rose-500 hover:text-rose-700" title="Eliminar"><i class="fa-solid fa-trash"></i></button></td>

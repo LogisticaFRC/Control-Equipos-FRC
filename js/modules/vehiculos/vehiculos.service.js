@@ -17,7 +17,7 @@ import { supabaseClient, sb, errMsg, subirArchivoStorage, BUCKET_ARCHIVOS } from
 import { dbEquipos, dbIntervenciones, usuarioActivo, soloAdmin, soloEditor, cargarDatosDesdeSupabase, currentTab } from '../../core/store.js';
 import { hoyISO, diasEntre, sumarDiasISO, normalizarFecha, normalizarClave, parseNum, formatDateForDisplay, compararAfi, mismoAfi } from '../../core/utils.js';
 import { abrirFormularioNuevaMantencion } from '../historial/historial.service.js';
-import { VEH_FRECUENCIA_KM } from '../../core/horometros.js';
+import { VEH_FRECUENCIA_KM, claseMantencion } from '../../core/horometros.js';
 import { TABLA_INVENTARIO, esVehiculo, esPatente, normalizarPatente, empresaDe } from '../inventario/inventario.mapper.js';
 import { abrirPerfilEquipo } from '../inventario/perfil.service.js';
 import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel, COLOR } from '../../core/excel.js';
@@ -155,11 +155,10 @@ export const kmDe = (eq) => {
   };
 };
 const sinTildes = (x) => String(x || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-const esMantencion = (i) => { const c = sinTildes(i.causa), t = sinTildes(i.tipoMant); return c.includes('MANTENCION') || c.includes('MANTENIMIENTO') || t.includes('MANTENCION'); };
 /** Bitácora de km: registros del Historial con km + lecturas del módulo, más nuevo primero. */
 export const bitacoraKm = (v) => {
   const hist = dbIntervenciones.value.filter(i => mismoAfi(i.afi, v.patente) && Number(i.horometro) > 0 && normalizarFecha(i.fecha))
-    .map(i => ({ id: 'h' + (i.id ?? Math.random()), fecha: normalizarFecha(i.fecha), km: Number(i.horometro), tipo: esMantencion(i) ? 'MANTENCION' : 'HISTORIAL',
+    .map(i => ({ id: 'h' + (i.id ?? Math.random()), fecha: normalizarFecha(i.fecha), km: Number(i.horometro), tipo: claseMantencion(i) === 'COMPLETA' ? 'MANTENCION' : claseMantencion(i) === 'INTERMEDIA' ? 'INTERMEDIA' : 'HISTORIAL',
       observacion: [i.causa, i.tipoMant].filter(x => x && x !== '-').join(' · '), creadoPor: 'Historial', origen: 'HISTORIAL' }));
   const lect = v.lecturas.map(l => ({ ...l, origen: 'LECTURA' }));
   return [...hist, ...lect].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.km - a.km);
