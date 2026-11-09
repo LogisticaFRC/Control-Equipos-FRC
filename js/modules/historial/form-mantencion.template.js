@@ -1,12 +1,36 @@
 // Plantilla HTML del componente 'form-mantencion' (extraída del index original)
 export default /* html */ `
       <div v-if="showFormMantencionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
+        <div :class="['bg-white rounded-2xl shadow-2xl border w-full flex flex-col overflow-hidden', hayDoc ? 'max-w-[98vw] h-[95vh]' : 'max-w-5xl max-h-[95vh]']">
           <div class="px-6 py-4 border-b flex items-center justify-between bg-slate-800 text-white">
-            <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-wrench text-amber-400"></i> {{ isEditingMantencion ? 'Editar Mantención' : 'Registrar Nueva Mantención' }}</h3>
-            <button @click="showFormMantencionModal = false" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-wrench text-amber-400"></i> {{ isEditingMantencion ? 'Editar Mantención' : 'Registrar Nueva Mantención' }}
+              <span v-if="enCola" class="ml-2 bg-amber-500 text-slate-950 text-[11px] font-extrabold px-2 py-0.5 rounded-full">Pendiente {{ colaPos + 1 }} de {{ colaIds.length }} · falta: {{ faltaEnRegistro(formMant).join(', ') || 'nada' }}</span>
+            </h3>
+            <div class="flex items-center gap-3">
+              <button v-if="urlDoc" @click="docVisible = !docVisible" class="text-xs font-bold bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg"><i :class="['fa-solid', docVisible ? 'fa-eye-slash' : 'fa-file-lines']"></i> {{ docVisible ? 'Ocultar hoja' : 'Ver hoja al lado' }}</button>
+              <button @click="enCola ? salirCola() : (showFormMantencionModal = false)" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
           </div>
-          <div class="p-6 overflow-y-auto space-y-5 text-xs flex-grow">
+          <div class="flex-grow min-h-0 flex flex-col lg:flex-row">
+          <!-- HOJA AL LADO -->
+          <div v-if="hayDoc" class="lg:w-1/2 h-[42vh] lg:h-auto shrink-0 border-b lg:border-b-0 lg:border-r flex flex-col bg-slate-300">
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-700 text-white text-[11px]">
+              <i class="fa-solid fa-file-pdf text-rose-300"></i><b class="flex-1 truncate">Hoja escaneada</b>
+              <template v-if="docEsImagen">
+                <button @click="zoomImg = Math.max(0.4, zoomImg - 0.2)" class="px-1.5 hover:text-amber-300" title="Alejar"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                <span class="font-mono">{{ Math.round(zoomImg * 100) }}%</span>
+                <button @click="zoomImg = Math.min(4, zoomImg + 0.2)" class="px-1.5 hover:text-amber-300" title="Acercar"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                <button @click="girarImg" class="px-1.5 hover:text-amber-300" title="Girar"><i class="fa-solid fa-rotate-right"></i></button>
+              </template>
+              <span v-else class="text-slate-300 hidden md:inline">Zoom y girar: en la barra del visor</span>
+              <a :href="urlDoc" target="_blank" rel="noopener" class="px-1.5 hover:text-amber-300" title="Abrir en otra pestaña"><i class="fa-solid fa-up-right-from-square"></i></a>
+            </div>
+            <iframe v-if="!docEsImagen" :src="srcDoc" :key="srcDoc" class="flex-1 w-full bg-white border-0" title="Hoja escaneada"></iframe>
+            <div v-else class="flex-1 overflow-auto bg-slate-200 p-2">
+              <img :src="urlDoc" :style="{ transform: 'rotate(' + rotImg + 'deg)', width: (zoomImg * 100) + '%', transformOrigin: 'center center' }" class="max-w-none mx-auto shadow transition-transform" alt="Hoja">
+            </div>
+          </div>
+          <div class="p-6 overflow-y-auto space-y-5 text-xs flex-1 min-h-0">
             <!-- ADJUNTO DE DOCUMENTO -->
 <div class="bg-slate-50 p-4 rounded-xl border space-y-2">
   <div class="flex flex-wrap items-center justify-between gap-2">
@@ -33,8 +57,9 @@ export default /* html */ `
               <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <div><label class="block font-bold mb-1">AFI *</label><select v-model="formMant.afi" class="w-full p-2 border rounded-lg bg-white font-bold"><option value="">-- AFI --</option><option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }}</option></select></div>
                 <div><label class="block font-bold mb-1">Fecha *</label><input type="date" v-model="formMant.fecha" class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" class="w-full p-2 border rounded-lg bg-white" placeholder="Opcional"></div>
-                <div><label class="block font-bold mb-1">{{ esPatente(formMant.afi) ? 'Kilometraje (km)' : 'Horómetro' }}</label><input type="number" step="any" v-model="formMant.horometro" class="w-full p-2 border rounded-lg bg-white font-mono font-bold" placeholder="0"></div>
+                <div><label class="block font-bold mb-1">Lugar</label><input type="text" v-model="formMant.lugar" list="dl-fm-lugar" class="w-full p-2 border rounded-lg bg-white" placeholder="Opcional"></div>
+                <div><label class="block font-bold mb-1">{{ esPatente(formMant.afi) ? 'Kilometraje (km)' : 'Horómetro' }}</label><input type="number" step="any" v-model="formMant.horometro" :class="['w-full p-2 border rounded-lg bg-white font-mono font-bold', chequeoHorometro.nivel === 'error' ? 'border-rose-500 bg-rose-50' : chequeoHorometro.nivel === 'alerta' ? 'border-amber-500 bg-amber-50' : '']" placeholder="0">
+                  <p v-if="chequeoHorometro.texto" :class="['text-[10px] mt-0.5 leading-tight', chequeoHorometro.nivel === 'error' ? 'text-rose-700 font-bold' : chequeoHorometro.nivel === 'alerta' ? 'text-amber-700 font-bold' : 'text-slate-500']"><i v-if="chequeoHorometro.nivel === 'error' || chequeoHorometro.nivel === 'alerta'" class="fa-solid fa-triangle-exclamation"></i> {{ chequeoHorometro.texto }}</p></div>
                 <div>
                   <label class="block font-bold mb-1 text-indigo-700">Programa (Opcional)</label>
                   <select v-model="formMant.programaCorrespondiente" class="w-full p-2 border border-indigo-300 rounded-lg bg-indigo-50 font-bold text-indigo-900">
@@ -94,18 +119,28 @@ export default /* html */ `
             <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
               <h4 class="font-bold text-slate-800 uppercase">Personal Técnico & Descripción</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 1</label><input type="text" v-model="formMant.mec1" list="dl-fm-mec" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 2</label><input type="text" v-model="formMant.mec2" list="dl-fm-mec" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 3</label><input type="text" v-model="formMant.mec3" list="dl-fm-mec" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Mecánico 4</label><input type="text" v-model="formMant.mec4" list="dl-fm-mec" placeholder="Nombre..." class="w-full p-2 border rounded-lg bg-white"></div>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div><label class="block font-bold mb-1">Causa Detallada</label><input type="text" v-model="formMant.causaDetallada" placeholder="Detalle causa..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Descripción del Trabajo</label><input type="text" v-model="formMant.descripcion" placeholder="Descripción..." class="w-full p-2 border rounded-lg bg-white"></div>
-                <div><label class="block font-bold mb-1">Interferencia</label><input type="text" v-model="formMant.interferencia" placeholder="Interferencia..." class="w-full p-2 border rounded-lg bg-white"></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div><label class="block font-bold mb-1">Causa Detallada</label>
+                  <div class="flex gap-1"><input type="text" v-model="formMant.causaDetallada" list="dl-fm-cdet" placeholder="Detalle causa..." class="w-full p-2 border rounded-lg bg-white">
+                  <button v-if="soportaDictado" type="button" @click="dictar('causaDetallada')" :class="['px-2.5 rounded-lg border', dictando === 'causaDetallada' ? 'bg-rose-600 text-white animate-pulse' : 'bg-white text-slate-600 hover:bg-slate-100']" title="Dictar (clic de nuevo para parar)"><i class="fa-solid fa-microphone"></i></button></div></div>
+                <div><label class="block font-bold mb-1">Interferencia</label>
+                  <div class="flex gap-1"><input type="text" v-model="formMant.interferencia" placeholder="Interferencia..." class="w-full p-2 border rounded-lg bg-white">
+                  <button v-if="soportaDictado" type="button" @click="dictar('interferencia')" :class="['px-2.5 rounded-lg border', dictando === 'interferencia' ? 'bg-rose-600 text-white animate-pulse' : 'bg-white text-slate-600 hover:bg-slate-100']" title="Dictar"><i class="fa-solid fa-microphone"></i></button></div></div>
+                <div class="sm:col-span-2"><label class="block font-bold mb-1">Descripción del Trabajo
+                  <button v-if="soportaDictado" type="button" @click="dictar('descripcion')" :class="['ml-2 px-2 py-0.5 rounded-lg border font-bold', dictando === 'descripcion' ? 'bg-rose-600 text-white animate-pulse' : 'bg-white text-slate-600 hover:bg-slate-100']"><i class="fa-solid fa-microphone"></i> {{ dictando === 'descripcion' ? 'Escuchando… (clic para parar)' : 'Dictar' }}</button></label>
+                  <textarea v-model="formMant.descripcion" rows="3" placeholder="Descripción..." class="w-full p-2 border rounded-lg bg-white"></textarea></div>
               </div>
+              <datalist id="dl-fm-mec"><option v-for="x in sugMecanicos" :key="x" :value="x"></option></datalist>
+              <datalist id="dl-fm-lugar"><option v-for="x in sugLugares" :key="x" :value="x"></option></datalist>
+              <datalist id="dl-fm-cdet"><option v-for="x in sugCausasDet" :key="x" :value="x"></option></datalist>
+              <datalist id="dl-fm-emp"><option v-for="x in sugEmpresas" :key="x" :value="x"></option></datalist>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div><label class="block font-bold mb-1">Empresa / Arriendo</label><input type="text" v-model="formMant.empresaArriendo" placeholder="Empresa..." class="w-full p-2 border rounded-lg bg-white"></div>
+                <div><label class="block font-bold mb-1">Empresa / Arriendo</label><input type="text" v-model="formMant.empresaArriendo" list="dl-fm-emp" placeholder="Empresa..." class="w-full p-2 border rounded-lg bg-white"></div>
                 <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono"></div>
                 <div><label class="block font-bold mb-1">N° OT</label><input type="text" v-model="formMant.numeroOT" placeholder="OT..." class="w-full p-2 border rounded-lg bg-white font-mono"></div>
               </div>
@@ -221,9 +256,18 @@ export default /* html */ `
               </div>
             </div>
           </div>
-          <div class="px-6 py-3 border-t bg-slate-100 flex justify-end gap-2">
-            <button @click="showFormMantencionModal = false" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded-lg">Cancelar</button>
-            <button @click="guardarMantencionForm" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg shadow"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+          </div>
+          <div class="px-6 py-3 border-t bg-slate-100 flex flex-wrap justify-end gap-2">
+            <template v-if="enCola">
+              <button @click="salirCola" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded-lg">Salir</button>
+              <button @click="anteriorCola" :disabled="colaPos === 0" class="bg-white border font-bold px-3 py-2 rounded-lg disabled:opacity-40"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+              <button @click="siguienteCola" class="bg-white border font-bold px-3 py-2 rounded-lg">Saltar <i class="fa-solid fa-forward"></i></button>
+              <button @click="guardarYSiguiente" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg shadow"><i class="fa-solid fa-floppy-disk"></i> Guardar y siguiente</button>
+            </template>
+            <template v-else>
+              <button @click="showFormMantencionModal = false" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded-lg">Cancelar</button>
+              <button @click="guardarMantencionForm" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg shadow"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+            </template>
           </div>
         </div>
       </div>

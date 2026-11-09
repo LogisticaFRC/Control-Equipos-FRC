@@ -7,6 +7,7 @@ import * as S from './historial.service.js';
 import { irAOT } from '../ot/ot.service.js';
 import CargaDocumentos from './carga-documentos.view.js';
 import { abrirCargaDocs } from './carga-documentos.service.js';
+import { abrirCola, pendientesCompletar } from './form-ayudas.js';
 import { irAOC, detalleOCsMantencion, totalOCMantencion, fmtCLP } from '../oc/oc.service.js';
 
 export default {
@@ -14,6 +15,6 @@ export default {
   template,
   components: { CargaDocumentos },   // carga masiva de PDF → enlace a cada registro
   setup() {
-    return { ...comunes(), ...S, irAOT, irAOC, detalleOCsMantencion, totalOCMantencion, fmtCLP, abrirCargaDocs };
+    return { ...comunes(), ...S, irAOT, irAOC, detalleOCsMantencion, totalOCMantencion, fmtCLP, abrirCargaDocs, abrirCola, pendientesCompletar };
   }
 };

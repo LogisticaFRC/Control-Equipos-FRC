@@ -73,6 +73,12 @@ const FORM_MANT_DEFAULT = (afiInicial = "") => ({
 });
 
 export const showFormMantencionModal = ref(false);
+// Hoja recién adjuntada (se muestra al lado del formulario antes de terminar de subir) y cola "Completar pendientes"
+export const docUrlLocal = ref('');
+export const docTipoLocal = ref('');
+export const colaIds = ref([]);
+export const colaPos = ref(0);
+const limpiarDocLocal = () => { if (docUrlLocal.value) { try { URL.revokeObjectURL(docUrlLocal.value); } catch (_) {} } docUrlLocal.value = ''; docTipoLocal.value = ''; };
 export const isEditingMantencion = ref(false);
 export const formMant = ref(FORM_MANT_DEFAULT());
 
@@ -80,6 +86,7 @@ export const abrirFormularioNuevaMantencion = (afiInicial = "") => {
   isEditingMantencion.value = false;
   formMant.value = FORM_MANT_DEFAULT(typeof afiInicial === 'string' ? afiInicial : "");
   lecturaForm.value = { estado: '', resumen: '', cambios: [], avisos: [] };
+  limpiarDocLocal();
   showFormMantencionModal.value = true;
 };
 
@@ -88,6 +95,7 @@ export const editarMantencion = (item) => {
   formMant.value = JSON.parse(JSON.stringify(item));
   if (!formMant.value.filtrosLista) formMant.value.filtrosLista = [];
   lecturaForm.value = { estado: '', resumen: '', cambios: [], avisos: [] };
+  limpiarDocLocal();
   showFormMantencionModal.value = true;
 };
 
@@ -161,6 +169,8 @@ export const subirArchivoHistorial = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   lecturaForm.value = { estado: '', resumen: '', cambios: [], avisos: [] };
+  limpiarDocLocal();
+  docUrlLocal.value = URL.createObjectURL(file); docTipoLocal.value = file.type || '';
   // Se lee en paralelo mientras se sube
   const lectura = leerAlAdjuntar.value
     ? leerDocumento(file, (m) => { lecturaForm.value.estado = m; })
@@ -253,8 +263,11 @@ export const guardarMantencionForm = async () => {
     }
   }
 
+  // En "Completar pendientes" no se muestra el mensaje de éxito (solo si hay avisos) y se pasa al siguiente
+  if (colaIds.value.length) { if (aviso.trim()) alert(aviso.trim()); return true; }
   showFormMantencionModal.value = false;
   alert("¡Mantención guardada con éxito!" + aviso);
+  return true;
 };
 
 export const eliminarMantencion = async (id) => {
