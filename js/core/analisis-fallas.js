@@ -23,7 +23,7 @@ export const CATEGORIAS_FALLA = [
   { key: 'MOTOR', label: 'Motor', color: '#dc2626', icon: 'fa-gear',
     kw: ['MOTOR', 'CULATA', 'INYECTOR', 'TURBO', 'EMPAQUETADURA', 'JUNTA', 'PISTON', 'VALVULA', 'COMPRESION', 'CIGUENAL', 'ARBOL DE LEVAS', 'HUMO', 'POTENCIA', 'CORREA', 'POLEA', 'TAPA DE VALVULA', 'CARTER', 'ESCAPE', 'SILENCIADOR', 'ADMISION', 'MULTIPLE', 'GOBERNADOR', 'RPM'] },
   { key: 'COMBUSTIBLE', label: 'Combustible', color: '#a16207', icon: 'fa-gas-pump',
-    kw: ['COMBUSTIBLE', 'OCMBUSTIBLE', 'PETROLEO', 'DIESEL', 'DECANTADOR', 'BOMBA INYECTORA', 'ESTANQUE', 'TANQUE', 'SEPARADOR', 'PURGA', 'PURGAR', 'CEBAR', 'AIRE EN EL SISTEMA', 'BOMBA DE ALIMENTACION', 'FLOTADOR', 'NIVEL DE COMBUSTIBLE'] },
+    kw: ['COMBUSTIBLE', 'OCMBUSTIBLE', 'PETROLEO', 'DIESEL', 'DECANTADOR', 'BOMBA INYECTORA', 'ESTANQUE', 'TANQUE', 'SEPARADOR', 'PURGA', 'PURGAR', 'CEBAR', 'AIRE EN EL SISTEMA', 'BOMBA DE ALIMENTACION', 'FLOTADOR'] },
   { key: 'REFRIGERACION', label: 'Refrigeración', color: '#0ea5e9', icon: 'fa-temperature-arrow-down',
     kw: ['RADIADOR', 'READIADOR', 'REFRIGERANTE', 'REGRIGERANTE', 'REFIGERANTE', 'COOLAN', 'ENFRIADOR', 'TEMPERATURA', 'SOBRECALENT', 'RECALENT', 'VENTILADOR', 'TERMOSTATO', 'BOMBA DE AGUA', 'ASPA', 'ANTICONGELANTE', 'AGUA', 'ENFRIAMIENTO'] },
   { key: 'HIDRAULICO', label: 'Hidráulico', color: '#7c3aed', icon: 'fa-droplet',
@@ -140,11 +140,11 @@ export const MOTIVOS = [
   { key: 'QUEMADO', label: 'Quemado / cortocircuito', kw: ['QUEMAD', 'FUNDID', 'CORTOCIRC', 'CORTO CIRC', 'CHISPORROT', 'SOBRECARGA'] },
   { key: 'DESCARGA', label: 'Descargado / sin carga', kw: ['DESCARGAD', 'SIN CARGA', 'NO CARGA', 'BAJO VOLTAJE', 'SULFAT', 'AGOTAD'] },
   { key: 'OBSTRUCCION', label: 'Tapado / saturado / sucio', kw: ['SATURAD', 'SATURACION', 'TAPAD', 'OBSTRU', 'SUCI', 'BARRO', 'POLVO', 'CONTAMIN', 'AGUA EN', 'BARRA$', 'CARBON'] },
-  { key: 'TEMPERATURA', label: 'Sobrecalentamiento', kw: ['SOBRECALENT', 'RECALENT', 'ALTA TEMPERATURA', 'TEMPERATURA'] },
+  { key: 'TEMPERATURA', label: 'Sobrecalentamiento', kw: ['SOBRECALENT', 'RECALENT', 'ALTA TEMPERATURA', 'TEMPERATURA ALTA', 'EXCESO DE TEMPERATURA'] },
   { key: 'GOLPE', label: 'Golpe / mal uso / accidente', kw: ['GOLPE', 'CHOQUE', 'IMPACTO', 'ACCIDENT', 'MAL USO', 'MALA OPERACION', 'VANDAL', 'TERCEROS'] },
   { key: 'ROBO', label: 'Robo', kw: ['ROBO$', 'ROBAD', 'HURTO', 'SUSTRA'] },
   { key: 'FALTA_MANT', label: 'Falta de nivel / mantención', kw: ['FALTA DE MANTENC', 'SIN MANTENC', 'FALTA DE ACEITE', 'FALTA DE AGUA', 'FALTA DE REFRIGERANTE', 'BAJO NIVEL', 'NIVEL BAJO', 'SIN ACEITE', 'SIN AGUA', 'SIN REFRIGERANTE', 'SIN COMBUSTIBLE', 'FALTA DE COMBUSTIBLE', 'RELLENA', 'RELLENO', 'COMPLETA NIVEL', 'SE AGREGA ACEITE', 'SE AGREGA REFRIGERANTE'] },
-  { key: 'AJUSTE', label: 'Desconfiguración / ajuste', kw: ['DESCONFIGUR', 'CONFIGURA', 'PROGRAMA', 'CALIBRA', 'AJUSTE', 'PARAMETR'] }
+  { key: 'AJUSTE', label: 'Desconfiguración / lectura errónea', kw: ['DESCONFIGUR', 'CONFIGURA', 'PROGRAMA', 'CALIBRA', 'AJUSTE', 'PARAMETR', 'LECTURAS ERRONEA', 'LECTURA ERRONEA', 'ERRONEA', 'MARCA MAL', 'NO MARCA', 'LECTURA INCORRECTA'] }
 ];
 export const MOTIVO_NO_INDICADO = { key: 'SIN_MOTIVO', label: 'Motivo no indicado' };
 
@@ -172,8 +172,22 @@ export const motivoPorKey = (k) => MOTIVOS.find(m => m.key === k) || MOTIVO_NO_I
 
 /** ¿El texto (con espacios al inicio/fin) tiene la palabra clave? "$" al final = palabra exacta. */
 const tiene = (txt, k) => k.endsWith('$') ? txt.includes(` ${k.slice(0, -1)} `) : (k.length <= 3 ? txt.includes(` ${k} `) : txt.includes(` ${k}`));
-/** Texto para pieza/motivo: causa detallada + descripción (sin la causa general). */
-const textoDetalle = (r) => ` ${sinTildes(r.causaDetallada)} ${sinTildes(r.descripcion)} `.replace(/[^A-Z0-9 ]+/g, ' ').replace(/\s+/g, ' ');
+const limpio = (s) => ` ${s} `.replace(/[^A-Z0-9 ]+/g, ' ').replace(/\s+/g, ' ');
+/**
+ * Descripción SIN las revisiones y pruebas de rutina: "se revisa temperatura, nivel de combustible",
+ * "se realizan pruebas quedando presión 10 bar"… Esas frases dicen qué se controló, no qué falló,
+ * así que no deben contar para el sistema, la pieza ni el motivo.
+ */
+const RE_RUTINA = /^(Y\s+)?(SE\s+)?(REVIS|VERIFIC|CHEQUE|INSPECCION|CONTROLA|MIDE|MIDIO|MIDEN|MEDICION|REALIZA(N)?\s+PRUEBA|PRUEBA|QUEDANDO|QUEDA\s+OPERATIV|QUEDA\s+FUNCIONANDO|ENTREGA|LIMPIEZA\s+DE\s+AREA|ORDEN\s+Y\s+ASEO)/;
+const RE_FALLA = /\b(BAJO|FALTA|SIN|VACIO|PERDIDA|FUGA|ROT|DANAD|MAL|FALLA|NO\s+(PARTE|FUNCIONA|ENCIENDE|GENERA|CARGA))/;
+export const descripcionSinRutina = (desc) => sinTildes(desc)
+  .split(/[.;,\n]|\s+Y\s+SE\s+|\s+LUEGO\s+/)
+  .map(x => x.trim())
+  .filter(x => x && !(RE_RUTINA.test(x) && !RE_FALLA.test(x)) && !(/^NIVEL(ES)?\s+DE/.test(x) && !RE_FALLA.test(x)))
+  .join('. ');
+
+/** Texto para pieza/motivo: causa detallada + descripción sin rutina (sin la causa general). */
+const textoDetalle = (r) => limpio(`${sinTildes(r.causaDetallada)} ${descripcionSinRutina(r.descripcion)}`);
 
 /** Piezas mencionadas en un registro (keys). */
 export const detectarPiezas = (r) => {
@@ -195,11 +209,8 @@ export const piezaMotivoTexto = (r) => {
   return (ps.length ? ps.join(', ') : 'Pieza no indicada') + ' · ' + (m === 'SIN_MOTIVO' ? 'motivo no indicado' : motivoPorKey(m).label.toLowerCase());
 };
 
-/** Texto que se analiza de un registro (la causa detallada pesa doble). */
-const textoDe = (r) => {
-  const det = sinTildes(r.causaDetallada);
-  return ` ${sinTildes(r.causa)} ${det} ${det} ${sinTildes(r.descripcion)} `.replace(/[^A-Z0-9 ]+/g, ' ').replace(/\s+/g, ' ');
-};
+/** Texto que se analiza de un registro (todo junto, para "MOTOR DE PARTIDA" y similares). */
+const textoDe = (r) => limpio(`${sinTildes(r.causa)} ${sinTildes(r.causaDetallada)} ${descripcionSinRutina(r.descripcion)}`);
 
 /** Sistema principal de un registro: { key, label, color, puntaje, otras:[keys] }. */
 /** Registro que NO es una falla: mantención (completa o intermedia) o trabajo PREVENTIVO / PREDICTIVO. */
@@ -209,12 +220,14 @@ export const esNoFalla = (r) => Boolean(claseMantencion(r)) || /PREVENTIV|PREDIC
   || CAUSAS_NO_FALLA.test(sinTildes(r.causa).trim());
 
 export const categorizar = (r) => {
+  // La CAUSA DETALLADA (qué falló) pesa x3; la descripción (qué se hizo, sin revisiones de rutina) x1
   const t = textoDe(r);
-  const puntos = CATEGORIAS_FALLA.map(c => ({ c, n: contar(t, c.kw) })).filter(x => x.n > 0)
+  const tCausa = limpio(sinTildes(r.causa)), tDet = limpio(sinTildes(r.causaDetallada)), tDesc = limpio(descripcionSinRutina(r.descripcion));
+  const puntos = CATEGORIAS_FALLA.map(c => ({ c, n: contar(tCausa, c.kw) + 3 * contar(tDet, c.kw) + contar(tDesc, c.kw) })).filter(x => x.n > 0)
     .sort((a, b) => b.n - a.n);
   // "MOTOR DE PARTIDA" es eléctrico: no sumar a MOTOR
   if (t.includes('MOTOR DE PARTIDA') || t.includes('MOTOR PARTIDA')) {
-    const m = puntos.find(x => x.c.key === 'MOTOR'); if (m) m.n -= 2;
+    const m = puntos.find(x => x.c.key === 'MOTOR'); if (m) m.n -= 6;
     puntos.sort((a, b) => b.n - a.n);
   }
   const top = puntos.filter(x => x.n > 0);
