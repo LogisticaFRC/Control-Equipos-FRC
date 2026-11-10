@@ -341,8 +341,12 @@ export default /* html */ `
                     <td class="p-2.5 text-slate-600">{{ obtenerDetalleEquipoPorAfi(item.afi, 'modelo') }}</td>
                     <td class="p-2.5 font-semibold text-slate-700">{{ item.tipo }}</td>
                     <td class="p-2.5"><span class="px-2 py-0.5 rounded font-bold text-[10px] bg-blue-100 text-blue-800">{{ item.condicion || 'Arriendo' }}</span></td>
-                    <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_inicio) }}</td>
-                    <td class="p-2.5 font-mono font-bold text-slate-700">{{ formatDateForDisplay(item.fecha_fin) }}</td>
+                    <td class="p-2.5 font-mono font-bold text-indigo-900 bg-indigo-50/50">
+                      <input type="date" v-model="item.fecha_inicio" :disabled="!puedeEditar" @change="actualizarFechasItemReparacion(item)" class="p-1 border rounded text-xs bg-white font-mono font-bold">
+                    </td>
+                    <td class="p-2.5 font-mono font-bold text-emerald-800 bg-emerald-50/50">
+                      <input type="date" v-model="item.fecha_fin" :min="item.fecha_inicio || undefined" :disabled="!puedeEditar" @change="actualizarFechasItemReparacion(item)" class="p-1 border rounded text-xs bg-white font-mono font-bold">
+                    </td>
                     <td class="p-2.5">
                       <div class="flex items-center gap-3">
                         <label class="relative inline-flex items-center cursor-pointer">

@@ -484,6 +484,20 @@ export const cambiarEstadoRealizadoItem = async (item) => {
 };
 
 let avisoHorometroMostrado = false;
+/** REPARACIÓN: guarda la fecha de inicio y de fin editadas directo en la tabla del programa. */
+export const actualizarFechasItemReparacion = async (item) => {
+  if (!soloEditor()) return;
+  const ini = normalizarFecha(item.fecha_inicio) || null, fin = normalizarFecha(item.fecha_fin) || null;
+  if (ini && fin && fin < ini) { alert('La FECHA FIN no puede ser anterior a la FECHA INICIO.'); item.fecha_fin = ini; return actualizarFechasItemReparacion(item); }
+  try {
+    await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ fecha_inicio: ini, fecha_programada: ini, fecha_fin: fin || ini }).eq('id', item.id));
+    item.fecha_programada = ini;
+    if (!fin) item.fecha_fin = ini;
+  } catch (err) {
+    alert('No se pudo guardar la fecha: ' + errMsg(err));
+  }
+};
+
 export const actualizarItemMantencionProgramado = async (item) => {
   if (!soloAdmin()) return;
   const base = {

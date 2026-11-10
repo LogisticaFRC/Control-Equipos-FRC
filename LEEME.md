@@ -691,3 +691,4 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - El botón "Sincronizar con Historial" del programa hace lo mismo para todos los registros que nombran el programa.
 - Programas de **MANTENCIÓN** sin cambios (los equipos se planifican antes); ahora avisa si el AFI no está en el programa y no se marcó nada.
 - Archivos: `programas/programas.service.js` (agregarFaltantesReparacion), `historial/historial.service.js`. No requiere SQL.
+- (ajuste) En la tabla del **programa de reparación**, FECHA INICIO y FECHA FIN se editan directo en la fila (como en mantención) para Admin y Subadmin; la fecha fin no puede ser anterior a la de inicio (`actualizarFechasItemReparacion`).
