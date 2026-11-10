@@ -317,7 +317,7 @@ export const subirCargaDocs = async () => {
   let i = 0;
   const hilo = async () => { while (i < lista.length) { const g = lista[i++]; await trabajar(g); } };
   await Promise.all([hilo(), hilo(), hilo()]);
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['historial']);
   subiendoCarga.value = false;
   const e = progresoCarga.value.errores.length;
   alert(`Listo: ${progresoCarga.value.total - e} registros enlazados${e ? ` · ${e} con error (ver lista)` : ''}.`);
@@ -377,7 +377,7 @@ export const deshacerLecturas = async () => {
     try { await sb(supabaseClient.from(TABLA_HISTORIAL).update(e.previo).eq('id', e.id)); e.deshecho = true; }
     catch (err) { alert(`AFI ${e.afi}: ${errMsg(err)}`); }
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['historial']);
 };
 
 // ---------- Leer documentos que YA están subidos (sin volver a subirlos) ----------
@@ -420,7 +420,7 @@ export const releerSubidos = async () => {
     } finally { progresoCarga.value.hechos++; }
   }
   releyendo.value = false;
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['historial']);
   const n = lecturasLog.value.slice(0, lecturasLog.value.length - antes).filter(e => e.cambios.length).length;
   alert(`Lectura terminada: ${progresoCarga.value.hechos} documento(s) leídos · ${n} con datos completados.`);
 };

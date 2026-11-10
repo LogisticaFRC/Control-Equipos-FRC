@@ -127,7 +127,7 @@ export const guardarPerfilEquipo = async () => {
     if (/empresa_arriendo/i.test(errMsg(err))) return alert("Falta la columna 'empresa_arriendo' en BD_INVENTARIO. Ejecuta en Supabase → SQL Editor el archivo sql/empresa_arriendo.sql:\n\nALTER TABLE public.\"BD_INVENTARIO\" ADD COLUMN IF NOT EXISTS empresa_arriendo text;\nNOTIFY pgrst, 'reload schema';");
     return alert("Error al guardar el perfil: " + errMsg(err));
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['inventario']);
   showPerfilEquipoModal.value = false;
   alert("¡Perfil guardado correctamente!");
 };
@@ -163,7 +163,7 @@ export const actualizarHorometroPerfil = async () => {
       fecha_horometro_manual: formatIsoDateForSupabase(p.fechaHorometroManual),
       frecuencia_mantencion: Math.round(parseNum(p.frecuenciaMantencion)) || 250
     }).eq('id', p.id));
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['inventario']);
     // Refresca los cálculos del perfil abierto sin perder lo que se está editando
     const eq = dbEquipos.value.find(e => e.id === p.id);
     if (eq) p.horometros = JSON.parse(JSON.stringify(eq.horometros || {}));

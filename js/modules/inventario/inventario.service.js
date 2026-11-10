@@ -128,7 +128,7 @@ export const guardarNuevoEquipo = async () => {
   };
   try {
     await sb(supabaseClient.from(TABLA_INVENTARIO).insert([payload]));
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['inventario']);
     showModalNuevoEquipo.value = false;
     alert("¡Equipo agregado con éxito!");
   } catch (err) {
@@ -158,7 +158,7 @@ export const importarInventarioFile = async (e) => {
     }).filter(Boolean);
     if (!payloads.length) return alert("El archivo no tiene filas con AFI.");
     await sb(supabaseClient.from(TABLA_INVENTARIO).upsert(payloads, { onConflict: 'afi' }));
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['inventario']);
     alert(`¡Importados ${payloads.length} equipos!`);
   } catch (err) {
     alert("Error al importar inventario: " + errMsg(err));

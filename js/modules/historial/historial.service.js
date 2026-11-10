@@ -249,7 +249,7 @@ export const guardarMantencionForm = async () => {
   //    del equipo: ese dato solo lo cambia el usuario desde el Perfil (botón Actualizar horómetro).
   //    El cálculo de horómetros igual considera el historial (core/horometros.js).
 
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['historial', 'filtros']);
 
   // 4) Enlace con el Programa declarado: marca REALIZADO el ítem del equipo
   //    (si el equipo está varias veces en el programa: la 1ª mantención → fecha más baja, la 2ª → la siguiente…)
@@ -304,7 +304,7 @@ export const importarIntervencionesFile = async (e) => {
     })).filter(i => i.afi);
     if (!payloads.length) return alert("El archivo no tiene filas con AFI.");
     await sb(supabaseClient.from(TABLA_HISTORIAL).insert(payloads));
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['historial']);
     alert(`¡Importados ${payloads.length} registros de historial!`);
   } catch (err) {
     alert("Error al importar historial: " + errMsg(err));

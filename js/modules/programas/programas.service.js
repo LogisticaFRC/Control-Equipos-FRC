@@ -290,7 +290,7 @@ export const guardarNuevoProgramaMes = async () => {
   if (sub) payload.subcarpeta = sub;
   try {
     const data = await sb(supabaseClient.from(TABLA_PROGRAMAS).insert([payload]).select());
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['programas']);
     showModalPrograma.value = false;
     if (data && data[0]) seleccionarProgramaObj(data[0]);
     if (sub) openSubfolders.value[claveSub(cp, sub)] = true;

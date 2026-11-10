@@ -150,7 +150,7 @@ const guardarEdicionMovimiento = async () => {
     }
   } catch (err) { return alert("Error al guardar el movimiento: " + errMsg(err)); }
   const aviso = f.actualizarEquipo ? await actualizarEquipoDesdeMov(payload, locId) : '';
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['movimientos', 'inventario']);
   showModalMovimiento.value = false;
   alert("¡Movimiento actualizado!" + (f.actualizarEquipo ? " También se actualizó el equipo." : "") + aviso);
 };
@@ -196,7 +196,7 @@ export const guardarNuevoMovimiento = async () => {
   // Actualiza ubicación y estado del equipo en el inventario
   const avisoEquipo = await actualizarEquipoDesdeMov(payload, locId);
 
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['movimientos', 'inventario']);
   showModalMovimiento.value = false;
   alert("¡Movimiento registrado y equipo actualizado con éxito!" + avisoEquipo);
 };
@@ -220,7 +220,7 @@ export const importarMovimientosFile = async (e) => {
     })).filter(i => i.afi);
     if (!payloads.length) return alert("El archivo no tiene filas con AFI.");
     await sb(supabaseClient.from(TABLA_MOVIMIENTOS).insert(payloads));
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['movimientos', 'inventario']);
     alert(`¡Importados ${payloads.length} movimientos!`);
   } catch (err) {
     alert("Error al importar movimientos: " + errMsg(err));

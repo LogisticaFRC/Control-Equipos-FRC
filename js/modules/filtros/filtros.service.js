@@ -270,10 +270,10 @@ export const guardarCodigo = async () => {
         .eq('equipo_marca', a.equipo_marca).eq('equipo_modelo', a.equipo_modelo).eq('tipo', a.tipo).neq('codigo', codigo));
     }
   } catch (err) {
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['filtros']);
     return alert('Error al guardar el filtro: ' + errMsg(err));
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['filtros']);
   showModalCodigo.value = false;
 };
 
@@ -287,7 +287,7 @@ export const eliminarCodigo = async (c) => {
   } catch (err) {
     alert('Error al eliminar: ' + errMsg(err));
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['filtros']);
   showModalCodigo.value = false;
 };
 
@@ -297,7 +297,7 @@ export const quitarAplicacion = async (fila, modeloTxt) => {
   if (!confirm(`¿Quitar el filtro ${fila.codigo} del modelo ${modeloTxt}? (Sus precios se mantienen)`)) return;
   try { await sb(supabaseClient.from(TABLA_FILTROS).delete().eq('id', fila.appId)); }
   catch (err) { alert('Error: ' + errMsg(err)); }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['filtros']);
 };
 
 // =====================================================================
@@ -410,7 +410,7 @@ export const importarPreciosExcel = async (e) => {
     if (apps && apps.nuevas.length) {
       for (let k = 0; k < apps.nuevas.length; k += 500) await sb(supabaseClient.from(TABLA_FILTROS).insert(apps.nuevas.slice(k, k + 500)));
     }
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['filtros']);
     alert(`¡Lista de precios importada! ${filas.length} precios de ${codigos.size} códigos.` + (apps ? `\n${apps.nuevas.length} filtros enlazados a modelos (${apps.afis} AFI).` : ''));
   } catch (err) {
     alert('Error al importar la lista de precios: ' + errMsg(err));

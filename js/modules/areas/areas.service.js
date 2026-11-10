@@ -248,7 +248,7 @@ export const guardarNodo = async () => {
       if (viejo) { viejo.nombre = nom; viejo.descripcion = f.descripcion || ''; }
       await actualizarTextosEquipos(afectados);
       formNodo.value = null;
-      await cargarDatosDesdeSupabase();
+      await cargarDatosDesdeSupabase(['locaciones', 'inventario']);
     }
   } catch (err) {
     alert('Error al guardar: ' + (faltaSQL(err) ? AVISO_SQL : errMsg(err)));
@@ -392,7 +392,7 @@ export const eliminarNodo = async (n) => {
     if (eqs) await sb(supabaseClient.from(TABLA_INVENTARIO).update({ locacion_id: null }).eq('locacion_id', n.id));
     await sb(supabaseClient.from(TABLA_LOCACIONES).delete().eq('id', n.id));
     if (String(nodoAbierto.value) === String(n.id)) nodoAbierto.value = n.padreId ?? null;
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['locaciones', 'inventario']);
   } catch (err) { alert('Error al eliminar: ' + errMsg(err)); }
 };
 
@@ -421,7 +421,7 @@ export const guardarMover = async () => {
     if (n) n.padreId = f.destinoId;
     await actualizarTextosEquipos(equiposBajo(f.nodo.id));
     formMover.value = null;
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['locaciones', 'inventario']);
     abrirNodo(f.nodo.id);
   } catch (err) { alert('Error al mover: ' + errMsg(err)); }
 };
@@ -486,7 +486,7 @@ export const confirmarAsignar = async () => {
   try {
     const { errores, avisoMov } = await asignarEquipos(lista, f.locacionId, { registrarMov: f.registrarMov && isAdmin.value, fecha: f.fecha, tipo: f.tipo });
     formAsignar.value = null;
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['locaciones', 'inventario']);
     alert(errores.length ? `Asignados con errores:\n${errores.join('\n')}` : `¡${lista.length} equipo(s) asignados a ${rutaTexto(f.locacionId)}!` + avisoMov);
   } catch (err) {
     alert('Error al asignar: ' + errMsg(err));
@@ -499,7 +499,7 @@ export const quitarDeLocacion = async (e) => {
   if (!confirm(`¿Quitar el AFI ${e.afi} de "${rutaTexto(e.locacionId)}"? Quedará "Sin locación".`)) return;
   try {
     await sb(supabaseClient.from(TABLA_INVENTARIO).update({ locacion_id: null }).eq('id', e.id));
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['locaciones', 'inventario']);
   } catch (err) { alert('Error: ' + errMsg(err)); }
 };
 
@@ -518,7 +518,7 @@ export const guardarAsignacionRapida = async () => {
     const { errores } = await asignarEquipos([f.equipo], locId);
     if (errores.length) throw new Error(errores.join('\n'));
     formRapido.value = null;
-    await cargarDatosDesdeSupabase();
+    await cargarDatosDesdeSupabase(['locaciones', 'inventario']);
   } catch (err) { alert('Error: ' + errMsg(err)); }
   finally { asignando.value = false; }
 };

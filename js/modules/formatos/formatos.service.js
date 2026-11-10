@@ -126,7 +126,7 @@ export const subirDocumento = async (carpeta, file, nombre) => {
     alert("Error al subir el archivo: " + errMsg(err));
     return false;
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['formatos', 'modelos']);
   return true;
 };
 
@@ -142,7 +142,7 @@ export const agregarEnlace = async (carpeta, link, nombre) => {
     alert("Error al guardar el enlace: " + errMsg(err));
     return false;
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['formatos', 'modelos']);
   return true;
 };
 
@@ -178,7 +178,7 @@ export const editarDocumento = async (doc, { nombre, carpeta, file, link } = {})
     return false;
   }
   if (linkAnterior) await borrarArchivoStorage(linkAnterior);
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['formatos', 'modelos']);
   return true;
 };
 
@@ -190,7 +190,7 @@ export const eliminarDocumento = async (doc) => {
   } catch (err) {
     return alert("Error al eliminar: " + errMsg(err));
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['formatos', 'modelos']);
 };
 
 // ---------- Subcarpetas (solo admin) ----------
@@ -205,7 +205,7 @@ export const crearSubcarpeta = async (base, nombre) => {
     alert("Error al crear la subcarpeta: " + errMsg(err));
     return null;
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['formatos', 'modelos']);
   return n;
 };
 
@@ -220,7 +220,7 @@ export const renombrarSubcarpeta = async (base, actual, nuevo) => {
     alert("Error al renombrar la subcarpeta: " + errMsg(err));
     return null;
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['formatos', 'modelos']);
   return n;
 };
 
@@ -240,6 +240,6 @@ export const eliminarSubcarpeta = async (base, sub) => {
     alert("Error al eliminar la subcarpeta: " + errMsg(err));
     return false;
   }
-  await cargarDatosDesdeSupabase();
+  await cargarDatosDesdeSupabase(['formatos', 'modelos']);
   return true;
 };

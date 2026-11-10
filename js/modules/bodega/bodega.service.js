@@ -319,7 +319,7 @@ const renombrarCodigoStock = async (viejo, nuevo, info = {}) => {
     await recargarBodega();
     return false;
   }
-  if (tambienFiltros) await cargarDatosDesdeSupabase();
+  if (tambienFiltros) await cargarDatosDesdeSupabase(['filtros', 'bodega']);
   return true;
 };
 

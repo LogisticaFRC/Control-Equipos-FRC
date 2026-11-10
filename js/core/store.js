@@ -136,49 +136,43 @@ export const recalcularHorometros = () => {
 export const cargandoDatos = ref(false);
 
 /** Carga todas las tablas desde Supabase. */
-export const cargarDatosDesdeSupabase = async () => {
+// ---------------------------------------------------------------------
+// Carga de datos. Antes, CADA guardado volvía a descargar las 15 tablas (lento).
+// Ahora cada parte se puede recargar sola: cargarDatosDesdeSupabase(['historial']) solo baja el Historial.
+// Sin parámetro = todo (inicio de la app y casos generales).
+// ---------------------------------------------------------------------
+const empresaPorUltimoMov = () => {
+  const ultimaEmpresa = new Map();
+  [...dbMovimientos.value].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+    .forEach(m => { if (m.empresa_arriendo.trim()) ultimaEmpresa.set(String(m.afi).trim().toUpperCase(), m.empresa_arriendo.trim().toUpperCase()); });
+  dbEquipos.value.forEach(e => { e.empresaUltimoMov = ultimaEmpresa.get(String(e.afi).trim().toUpperCase()) || ''; });
+};
+const PARTES = {
+  inventario: { tablas: [TABLA_INVENTARIO], set: ([eq]) => { dbEquipos.value = eq.map(mapEquipo).sort((a, b) => compararAfi(a.afi, b.afi)); } },
+  movimientos: { tablas: [TABLA_MOVIMIENTOS], set: ([mov]) => { dbMovimientos.value = mov.map(mapMovimiento); } },
+  historial: { tablas: [TABLA_HISTORIAL], set: ([h]) => { dbIntervenciones.value = h.map(mapIntervencion); } },
+  programas: { tablas: [TABLAS.PROGRAMAS, TABLAS.PROGRAMAS_ITEMS], set: ([cal, it]) => { dbProgramasCalendarios.value = cal; dbProgramasItems.value = it; } },
+  modelos: { tablas: [TABLAS.MODELOS_FICHA], set: ([m]) => { dbModelosFichas.value = m; } },
+  formatos: { tablas: [TABLAS.FORMATOS], set: ([f]) => { dbFormatos.value = f; } },
+  filtros: { tablas: [TABLA_FILTROS, TABLA_FILTROS_PRECIOS], set: ([f, p]) => { dbFiltros.value = f.map(mapAplicacion); dbFiltrosPrecios.value = p.map(mapPrecio); } },
+  bodega: { tablas: [TABLAS.BODEGA_STOCK, TABLAS.BODEGA_KITS, TABLAS.BODEGA_KITS_ITEMS, TABLAS.BODEGA_MOV], set: ([stk, kit, kitIt, bmov]) => {
+    dbBodegaStock.value = stk.map(mapStock);
+    const itemsKit = kitIt.map(mapKitItem);
+    dbKits.value = kit.map(r => ({ ...mapKit(r), items: itemsKit.filter(i => String(i.kitId) === String(r.id)) }));
+    dbBodegaMov.value = bmov.map(mapMovBodega).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+  } },
+  oc: { tablas: [TABLA_OC], set: ([oc]) => { dbOC.value = oc.map(mapOC).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))); } },
+  locaciones: { tablas: [TABLA_LOCACIONES], set: ([l]) => { dbLocaciones.value = l.map(mapLocacion); } }
+};
+export const cargarDatosDesdeSupabase = async (partes = null) => {
+  const claves = (Array.isArray(partes) && partes.length ? partes : Object.keys(PARTES)).filter(k => PARTES[k]);
   cargandoDatos.value = true;
   try {
-    const [eqData, movData, intData, calData, itemData, modData, fmtData, filData, preData, stkData, kitData, kitItData, bmovData, ocData, locData] = await Promise.all([
-      fetchAllRows(TABLA_INVENTARIO),
-      fetchAllRows(TABLA_MOVIMIENTOS),
-      fetchAllRows(TABLA_HISTORIAL),
-      fetchAllRows(TABLAS.PROGRAMAS),
-      fetchAllRows(TABLAS.PROGRAMAS_ITEMS),
-      fetchAllRows(TABLAS.MODELOS_FICHA),
-      fetchAllRows(TABLAS.FORMATOS),
-      fetchAllRows(TABLA_FILTROS),
-      fetchAllRows(TABLA_FILTROS_PRECIOS),
-      fetchAllRows(TABLAS.BODEGA_STOCK),
-      fetchAllRows(TABLAS.BODEGA_KITS),
-      fetchAllRows(TABLAS.BODEGA_KITS_ITEMS),
-      fetchAllRows(TABLAS.BODEGA_MOV),
-      fetchAllRows(TABLA_OC),
-      fetchAllRows(TABLA_LOCACIONES)
-    ]);
-
-    dbEquipos.value = eqData.map(mapEquipo).sort((a, b) => compararAfi(a.afi, b.afi));
-    dbMovimientos.value = movData.map(mapMovimiento);
-    // Empresa del último movimiento de cada AFI (se usa si el equipo no tiene empresa guardada)
-    const ultimaEmpresa = new Map();
-    [...dbMovimientos.value].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
-      .forEach(m => { if (m.empresa_arriendo.trim()) ultimaEmpresa.set(String(m.afi).trim().toUpperCase(), m.empresa_arriendo.trim().toUpperCase()); });
-    dbEquipos.value.forEach(e => { e.empresaUltimoMov = ultimaEmpresa.get(String(e.afi).trim().toUpperCase()) || ''; });
-    dbIntervenciones.value = intData.map(mapIntervencion);
-    dbProgramasCalendarios.value = calData;
-    dbProgramasItems.value = itemData;
-    dbModelosFichas.value = modData;
-    dbFormatos.value = fmtData;
-    dbFiltros.value = filData.map(mapAplicacion);
-    dbFiltrosPrecios.value = preData.map(mapPrecio);
-    dbBodegaStock.value = stkData.map(mapStock);
-    const itemsKit = kitItData.map(mapKitItem);
-    dbKits.value = kitData.map(r => ({ ...mapKit(r), items: itemsKit.filter(i => String(i.kitId) === String(r.id)) }));
-    dbBodegaMov.value = bmovData.map(mapMovBodega).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
-    dbLocaciones.value = locData.map(mapLocacion);
-    dbOC.value = ocData.map(mapOC).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
-
-    recalcularHorometros();
+    const datos = await Promise.all(claves.map(k => Promise.all(PARTES[k].tablas.map(fetchAllRows))));
+    claves.forEach((k, i) => PARTES[k].set(datos[i]));
+    if (claves.includes('inventario') || claves.includes('movimientos')) empresaPorUltimoMov();
+    // Los horómetros dependen del inventario y del historial
+    if (claves.includes('inventario') || claves.includes('historial')) recalcularHorometros();
   } catch (err) {
     console.error("Error cargando datos:", err);
   } finally {

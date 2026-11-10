@@ -702,3 +702,8 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - **Historial → "Exportar Excel"** (lo filtrado): Resumen (KPI, gráficos por causa / mes / sistema, equipos con más registros), Historial (detalle con AFI y equipo), Por equipo y Filtros y aceites. El CSV sin formato sigue disponible en el link "CSV".
 - "Falla" = no es mantención/preventivo ni servicio/inspección.
 - (ajuste) En el Excel del Historial (equipo y general) la **causa detallada, la descripción y el lugar salen corregidos** con `core/ortografia.js`: errores de tipeo del diccionario técnico (MODILO → MÓDULO, READIADOR → RADIADOR, MANGERA → MANGUERA, OCMBUSTIBLE, ARRAQUE, RALIZA…), tildes de palabras técnicas (batería, hidráulico, válvula, mantención, revisión…), espacios y mayúscula al inicio de cada oración. Lo guardado en la base de datos NO cambia. Para agregar palabras: listas TIPEO y TILDES.
+
+## 2026-11-10 · Guardar más rápido (recarga parcial)
+- `cargarDatosDesdeSupabase(partes)` en `core/store.js`: antes cada guardado volvía a descargar las 15 tablas; ahora se puede recargar solo lo que cambió. Partes: `inventario`, `movimientos`, `historial`, `programas`, `modelos`, `formatos`, `filtros`, `bodega`, `oc`, `locaciones`. Sin parámetro = todo (inicio de la app y casos generales).
+- Se usa en: Historial (guardar → historial + filtros; importar, cargar/leer documentos → historial), Perfil e Inventario (inventario), Movimientos (movimientos + inventario), Filtros (filtros), Formatos (formatos + modelos), Áreas (locaciones + inventario), Programas (crear programa → programas), Bodega (cambio de código → filtros + bodega).
+- Si al recargar cambia inventario o historial, se recalculan los horómetros.
