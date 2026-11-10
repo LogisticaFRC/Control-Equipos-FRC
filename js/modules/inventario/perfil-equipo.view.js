@@ -10,7 +10,8 @@ import { dbEquipos } from '../../core/store.js';
 import { esVehiculo } from './inventario.mapper.js';
 import { dbIntervenciones } from '../../core/store.js';
 import { analizarFallas, hallazgosEquipo, htmlHallazgo, claseNivel, fmtMin, piezaPorKey, motivoPorKey, sinTildes } from '../../core/analisis-fallas.js';
-import { mismoAfi } from '../../core/utils.js';
+import { mismoAfi, formatDateForDisplay as fmtF } from '../../core/utils.js';
+import { exportarHistorialEquipoExcel, exportandoHistorial } from '../historial/historial.export.js';
 import { tieneConocimiento } from '../../core/conocimiento-fallas.js';
 import { getBadgeClass } from './inventario.service.js';
 import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.js';
@@ -115,6 +116,14 @@ export default {
     const uH = computed(() => esVehPerfil.value ? 'km' : 'h');
 
     // Filtros que usa el equipo: se leen del módulo FILTROS (marca + modelo). Se corrigen solo allá.
+    // Exportar hoja de vida (respeta los filtros de fecha y causa del Perfil)
+    const exportarHojaVida = () => {
+      const t = [];
+      if (P.perfilFiltroCausa.value !== 'ALL') t.push('Causa: ' + P.perfilFiltroCausa.value);
+      if (P.perfilFiltroFechaInicio.value || P.perfilFiltroFechaFin.value) t.push(`Fechas: ${P.perfilFiltroFechaInicio.value ? fmtF(P.perfilFiltroFechaInicio.value) : '…'} a ${P.perfilFiltroFechaFin.value ? fmtF(P.perfilFiltroFechaFin.value) : '…'}`);
+      const eq = dbEquipos.value.find(e => mismoAfi(e.afi, P.perfilEquipo.value.afi)) || P.perfilEquipo.value;
+      return exportarHistorialEquipoExcel(eq, P.getHistorialIntervencionesFiltradoAFI(P.perfilEquipo.value.afi), t.join(' · '));
+    };
     const filtrosRequeridosPerfil = computed(() => requeridosPorModelo(P.perfilEquipo.value.marca, P.perfilEquipo.value.modelo));
     // Costo de mantención (pestaña "Costo mantención")
     onMounted(() => cargarConfigCostos());
@@ -131,6 +140,7 @@ export default {
       fallasIncluirMant, fallasEquipo, totalRegistrosEquipo, fRegs, limpiarFRegs, opcionesRegs, regsFallasFiltrados, piezaPorKey, motivoPorKey, getBadgeEstadoPerfil, htmlHallazgo, claseNivel, fmtMin,
       getHistorialMovimientosAFI, editarMantencion, eliminarMantencion,
       filtrosRequeridosPerfil, verFiltrosDelPerfil, fmtPrecio,
+      exportarHojaVida, exportandoHistorial,
       costoPerfil, proyPerfil, horasProyeccion, exportarCostosExcel, exportandoCostos, TIPOS_MANT, ETIQ_MANT, estiloMant: ESTILO_MANT,
       fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC,
       abrirBajaEquipo, buscarEquipoPorId: (id) => dbEquipos.value.find(e => e.id === id)

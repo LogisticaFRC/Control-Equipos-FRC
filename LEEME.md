@@ -692,3 +692,13 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Programas de **MANTENCIÓN** sin cambios (los equipos se planifican antes); ahora avisa si el AFI no está en el programa y no se marcó nada.
 - Archivos: `programas/programas.service.js` (agregarFaltantesReparacion), `historial/historial.service.js`. No requiere SQL.
 - (ajuste) En la tabla del **programa de reparación**, FECHA INICIO y FECHA FIN se editan directo en la fila (como en mantención) para Admin y Subadmin; la fecha fin no puede ser anterior a la de inicio (`actualizarFechasItemReparacion`).
+
+## 2026-11-10 · Exportar Historial con formato (hoja de vida del equipo + general)
+- `historial/historial.export.js` (nuevo), con el estilo de `core/excel.js` (logo, títulos centrados, encabezados de color, filas alternadas, totales, filtro, impresión apaisada con encabezado repetido y N° de página).
+- **Perfil → Historial → "Exportar hoja de vida"** (respeta los filtros de fecha y causa del Perfil):
+  - Resumen: KPI (registros, mantenciones, fallas, horas de trabajo, costo, total OC), gráficos (fallas por sistema, registros por mes), ficha del equipo (estado, horómetro/km aprox., próxima mantención), registros por causa y piezas que más fallan.
+  - Historial: detalle completo (fecha, tipo/causa, sistema·pieza·motivo, causa detallada, descripción, horómetro, horario, horas, mecánicos, lugar, OT/OC, costo, link al documento). Mantenciones en verde, intermedias en azul. Alto de fila según el texto.
+  - Filtros y aceites usados en cada mantención.
+- **Historial → "Exportar Excel"** (lo filtrado): Resumen (KPI, gráficos por causa / mes / sistema, equipos con más registros), Historial (detalle con AFI y equipo), Por equipo y Filtros y aceites. El CSV sin formato sigue disponible en el link "CSV".
+- "Falla" = no es mantención/preventivo ni servicio/inspección.
+- (ajuste) En el Excel del Historial (equipo y general) la **causa detallada, la descripción y el lugar salen corregidos** con `core/ortografia.js`: errores de tipeo del diccionario técnico (MODILO → MÓDULO, READIADOR → RADIADOR, MANGERA → MANGUERA, OCMBUSTIBLE, ARRAQUE, RALIZA…), tildes de palabras técnicas (batería, hidráulico, válvula, mantención, revisión…), espacios y mayúscula al inicio de cada oración. Lo guardado en la base de datos NO cambia. Para agregar palabras: listas TIPEO y TILDES.

@@ -142,6 +142,7 @@ export default /* html */ `
               </select>
             </div>
             <button @click="resetFiltrosPerfil" class="text-xs text-slate-500 hover:text-slate-800 underline mt-4">Limpiar</button>
+            <button @click="exportarHojaVida" :disabled="exportandoHistorial" class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow disabled:opacity-50" title="Excel con logo: resumen, gráficos, ficha, detalle completo y filtros (respeta los filtros)"><i :class="['fa-solid', exportandoHistorial ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar hoja de vida</button>
           </div>
         </div>
 
