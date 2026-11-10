@@ -183,7 +183,10 @@ export default /* html */ `
         </div>
       </div>
         <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-2">
-          <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2"><i class="fa-solid fa-wrench text-blue-600"></i> Historial de mantenciones e intervenciones <span class="font-normal normal-case text-slate-400">· clic en una fila para ver todo</span></h4>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2"><i class="fa-solid fa-wrench text-blue-600"></i> Historial de mantenciones e intervenciones <span class="font-normal normal-case text-slate-400">· clic en una fila para ver todo</span></h4>
+            <button @click="exportarHojaVida" :disabled="exportandoHistorial" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow disabled:opacity-50" title="Excel con logo: resumen, gráficos, ficha, detalle completo y filtros (respeta los filtros de arriba)"><i :class="['fa-solid', exportandoHistorial ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar hoja de vida</button>
+          </div>
           <tabla-historial :registros="getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi)" :por-pagina="50"></tabla-historial>
         </div>
       </div>
