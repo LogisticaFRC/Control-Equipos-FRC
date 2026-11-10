@@ -240,13 +240,32 @@ const tablaTareas = (ws, fila, items, { extra = [], agrupar = true } = {}) => {
 const anchosTabla = (ws, extra = []) => { ws.columns = [...extra.map(e => e.w), ...COLS_TABLA.map(c => c.w)].map(w => ({ width: w })); };
 const resumenPorSeccionDe = (items) => {
   const map = {};
-  items.forEach(it => { const k = String(it.seccion || '').trim().toUpperCase(); if (k) (map[k] = map[k] || []).push(it); });
+  items.forEach(it => { const k = String(it.seccion || '').trim().replace(/\s+/g, ' ').toUpperCase(); if (k) (map[k] = map[k] || []).push(it); });
   return Object.entries(map).map(([personal, list]) => ({ personal, ...resumenItems(list) }));
 };
 
+const setTimeout0 = [];   // fórmulas de tablaPersonal (se aplican después de escribir los valores)
 /** Tabla de cumplimiento por encargado. */
-const tablaPersonal = (ws, fila, porPersonal, col0 = 1, titulo = 'ENCARGADO') => {
+const tablaPersonal = (ws, fila, porPersonal, col0 = 1, titulo = 'ENCARGADO', vinculo = null) => {
   const cab = [titulo, 'TOTAL', 'REALIZADO', 'ABIERTAS', 'VENCIDAS', 'NO REALIZADO', '% CUMPL.'];
+  // vinculo = { hoja, a, b, col } → las cifras se calculan con fórmulas desde la hoja Minuta (se actualizan solas)
+  if (vinculo) {
+    const H = `'${String(vinculo.hoja).replace(/'/g, "''")}'!`;
+    const R = (c) => `${H}$${c}$${vinculo.a}:$${c}$${vinculo.b}`;
+    porPersonal.forEach((p, k) => {
+      const r = fila + 1 + k, key = `$${ws.getColumn(col0).letter}$${r}`, k2 = `${R(vinculo.col)},${key}`;
+      const L = (i) => ws.getColumn(col0 + i).letter + r;
+      setTimeout0.push(() => {
+        ws.getCell(L(1)).value = { formula: `COUNTIF(${k2})`, result: p.total };
+        ws.getCell(L(2)).value = { formula: `COUNTIFS(${k2},${R('AC')},"REALIZADO")`, result: p.Realizado };
+        ws.getCell(L(3)).value = { formula: `COUNTIFS(${k2},${R('AC')},"PENDIENTE")+COUNTIFS(${k2},${R('AC')},"PROCESO")`, result: p.Pendiente + p.Proceso };
+        ws.getCell(L(4)).value = { formula: `SUMIFS(${R('AP')},${k2})`, result: p.vencidas };
+        ws.getCell(L(5)).value = { formula: `COUNTIFS(${k2},${R('AC')},"NO REALIZADO")`, result: p['No Realizado'] };
+        ws.getCell(L(6)).value = { formula: `IFERROR(${L(2)}/${L(1)},0)`, result: p.cumplimiento / 100 };
+        cfCumplimiento(ws, L(6), L(6));
+      });
+    });
+  }
   cab.forEach((t, i) => { const c = ws.getCell(fila, col0 + i); c.value = t; c.font = { bold: true, size: 9, color: { argb: C.blanco } }; c.fill = fill(C.oscuro); c.alignment = { horizontal: 'center' }; c.border = bordeFino; });
   porPersonal.forEach((p, k) => {
     const vals = [p.personal, p.total, p.Realizado, p.Pendiente + p.Proceso, p.vencidas, p['No Realizado'], p.cumplimiento / 100];
@@ -257,6 +276,7 @@ const tablaPersonal = (ws, fila, porPersonal, col0 = 1, titulo = 'ENCARGADO') =>
       if (i === 4 && v) c.font = { size: 9, bold: true, color: { argb: 'FFBE123C' } };
     });
   });
+  setTimeout0.splice(0).forEach(fn => fn());
   return fila + porPersonal.length + 2;
 };
 
@@ -357,6 +377,32 @@ const bandaTitulo = (ws, r, texto, color = C.teal) => {
   return r + 1;
 };
 
+// ---------------------------------------------------------------------
+// FÓRMULAS: el resumen de arriba se calcula desde la tabla de tareas, así al cambiar el ESTADO
+// (lista desplegable) o la FECHA REALIZADO en Excel, se actualizan los indicadores, los % y la situación.
+// Columnas ocultas de apoyo (a la derecha de la grilla): AO = responsable, AP = vencida (1/0),
+// AQ = realizada a tiempo (1) / atrasada (-1), AR = sección.
+// ---------------------------------------------------------------------
+const COL = { estimada: 'Z', compromiso: 'W', estado: 'AC', realizado: 'AF', situacion: 'AI', resp: 'AO', venc: 'AP', tiempo: 'AQ', sec: 'AR' };
+const ESTADOS_XL = ['PENDIENTE', 'PROCESO', 'REALIZADO', 'NO REALIZADO'];
+const fx = (formula, result) => ({ formula, result });
+const cfColor = (argb) => ({ font: { color: { argb }, bold: true } });
+const cfFill = (argb) => ({ fill: { type: 'pattern', pattern: 'solid', bgColor: { argb } } });
+/** Reglas de color por % de cumplimiento (verde ≥ 80 %, ámbar ≥ 50 %, rojo). */
+const cfCumplimiento = (ws, ref, celda) => ws.addConditionalFormatting({ ref, rules: [
+  { type: 'expression', priority: 1, formulae: [`${celda}>=0.8`], style: cfColor('FF047857') },
+  { type: 'expression', priority: 2, formulae: [`AND(${celda}>=0.5,${celda}<0.8)`], style: cfColor('FFB45309') },
+  { type: 'expression', priority: 3, formulae: [`${celda}<0.5`], style: cfColor('FFBE123C') }
+] });
+const fSituacion = (r) => {
+  const E = `${COL.estado}${r}`, Z0 = `${COL.estimada}${r}`, F0 = `${COL.realizado}${r}`, V = `${COL.venc}${r}`;
+  const Z = `INT(${Z0})`, F = `INT(${F0})`;   // INT: si la fecha trae hora, cuenta días enteros
+  const dias = (x) => `${x}&IF(${x}=1," día"," días")`;
+  return `IF(${E}="REALIZADO",IF(AND(ISNUMBER(${F0}),ISNUMBER(${Z0})),IF(${F}<=${Z},"✔ Realizada a tiempo","Realizada con "&${dias(`(${F}-${Z})`)}&" de atraso"),"✔ Realizada"),` +
+    `IF(${E}="NO REALIZADO","✖ No realizada",IF(ISNUMBER(${Z0}),IF(${Z}<TODAY(),IF(${V}=1,"⚠ VENCIDA hace ","Plazo pasado hace ")&${dias(`(TODAY()-${Z})`)},` +
+    `IF(${Z}=TODAY(),"⚠ Vence HOY","Vence en "&${dias(`(${Z}-TODAY())`)})),IF(${Z0}<>"",${Z0},"Sin fecha estimada"))))`;
+};
+
 const hojaMinuta = (wb, logo, m, nombre = 'Minuta') => {
   const items = itemsDeMinuta(m.id);
   const r = resumenItems(items);
@@ -375,10 +421,12 @@ const hojaMinuta = (wb, logo, m, nombre = 'Minuta') => {
   const responsables = new Set(items.map(it => String(it.personal || '').trim().toUpperCase()).filter(Boolean)).size;
   const secciones = new Set(items.map(it => String(it.seccion || '').trim().toUpperCase()).filter(Boolean)).size;
   const datos = [['FECHA DE REUNIÓN', formatDateForDisplay(m.fecha)], ['TOTAL DE TAREAS', r.total], ['RESPONSABLES', responsables], ['SECCIONES', secciones || '-']];
+  const pend = [];   // fórmulas que se escriben cuando ya se conoce el rango de la tabla
   datos.forEach(([etq, val], i) => {
     const c1 = i * 10 + 1;
     celdaGrilla(ws, f, c1 + 1, 8, etq, { font: { bold: true, size: 8, color: { argb: 'FF64748B' } }, fill: C.gris });
-    celdaGrilla(ws, f + 1, c1 + 1, 8, val, { font: { bold: true, size: 13, color: { argb: C.oscuro } } });
+    const cel = celdaGrilla(ws, f + 1, c1 + 1, 8, val, { font: { bold: true, size: 13, color: { argb: C.oscuro } } });
+    if (etq === 'TOTAL DE TAREAS') pend.push((R) => { cel.value = fx(`COUNTA(${R(COL.estado)})`, r.total); });
   });
   ws.getRow(f).height = 16; ws.getRow(f + 1).height = 24;
   f += 3;
@@ -393,18 +441,43 @@ const hojaMinuta = (wb, logo, m, nombre = 'Minuta') => {
     ['NO REALIZADO', r['No Realizado'], pct(r['No Realizado'], r.total), 'FFBE123C'], ['VENCIDAS', r.vencidas, pct(r.vencidas, r.total), 'FFE11D48'],
     ['A TIEMPO', r.aTiempo, r.pctATiempo / 100, C.teal], ['CUMPLIMIENTO', r.cumplimiento / 100, null, colorCumpl]
   ];
+  const celdas = {};
   tarjetas.forEach(([etq, n, p, color], i) => {
     const c1 = i * 5 + 1;
+    if (etq === 'CUMPLIMIENTO') color = C.oscuro;   // su color lo da la regla según el %
     const marco = { top: { style: 'thin', color: { argb: color } }, bottom: { style: 'thin', color: { argb: color } }, left: { style: 'thin', color: { argb: color } }, right: { style: 'thin', color: { argb: color } } };
     celdaGrilla(ws, f, c1, 5, etq, { font: { bold: true, size: 8, color: { argb: C.blanco } }, fill: color, border: marco });
-    celdaGrilla(ws, f + 1, c1, 5, n, { font: { bold: true, size: 18, color: { argb: color } }, fill: C.blanco, border: marco, numFmt: etq === 'CUMPLIMIENTO' ? '0%' : undefined });
-    celdaGrilla(ws, f + 2, c1, 5, p === null ? 'tareas realizadas' : p, { font: { size: 9, bold: true, color: { argb: 'FF64748B' } }, fill: C.gris, border: marco, numFmt: p === null ? undefined : '0%' });
+    const cn = celdaGrilla(ws, f + 1, c1, 5, n, { font: { bold: true, size: 18, color: { argb: color } }, fill: C.blanco, border: marco, numFmt: etq === 'CUMPLIMIENTO' ? '0%' : undefined });
+    const cp = celdaGrilla(ws, f + 2, c1, 5, p === null ? 'tareas realizadas' : p, { font: { size: 9, bold: true, color: { argb: 'FF64748B' } }, fill: C.gris, border: marco, numFmt: p === null ? undefined : '0%' });
+    celdas[etq] = { n: cn, p: cp };
+  });
+  const A = (c) => c.address.replace(/([A-Z]+)(\d+)/, '$$$1$$$2');   // referencia absoluta
+  pend.push((R) => {
+    const T = A(celdas.TOTAL.n);
+    const tiempo = `COUNTIF(${R(COL.tiempo)},1)`, atraso = `COUNTIF(${R(COL.tiempo)},-1)`;
+    celdas.TOTAL.n.value = fx(`COUNTA(${R(COL.estado)})`, r.total);
+    const cnt = { REALIZADO: ['REALIZADO', r.Realizado], 'EN PROCESO': ['PROCESO', r.Proceso], PENDIENTE: ['PENDIENTE', r.Pendiente], 'NO REALIZADO': ['NO REALIZADO', r['No Realizado']] };
+    Object.entries(cnt).forEach(([etq, [est, val]]) => {
+      celdas[etq].n.value = fx(`COUNTIF(${R(COL.estado)},"${est}")`, val);
+      celdas[etq].p.value = fx(`IFERROR(${A(celdas[etq].n)}/${T},0)`, pct(val, r.total));
+    });
+    celdas.VENCIDAS.n.value = fx(`SUM(${R(COL.venc)})`, r.vencidas);
+    celdas.VENCIDAS.p.value = fx(`IFERROR(${A(celdas.VENCIDAS.n)}/${T},0)`, pct(r.vencidas, r.total));
+    celdas['A TIEMPO'].n.value = fx(tiempo, r.aTiempo);
+    celdas['A TIEMPO'].p.value = fx(`IFERROR(${tiempo}/(${tiempo}+${atraso}),0)`, r.pctATiempo / 100);
+    celdas.CUMPLIMIENTO.n.value = fx(`IFERROR(${A(celdas.REALIZADO.n)}/${T},0)`, r.cumplimiento / 100);
+    cfCumplimiento(ws, celdas.CUMPLIMIENTO.n.address, A(celdas.CUMPLIMIENTO.n));
   });
   ws.getRow(f).height = 18; ws.getRow(f + 1).height = 32; ws.getRow(f + 2).height = 16;
   f += 4;
   // Barra de avance centrada
   const barra = Math.round(r.cumplimiento / 2.5);
-  celdaGrilla(ws, f, 6, 30, `${'█'.repeat(barra)}${'░'.repeat(40 - barra)}   ${r.cumplimiento}% cumplido`, { font: { size: 11, color: { argb: colorCumpl }, bold: true }, border: false });
+  const cBarra = celdaGrilla(ws, f, 6, 30, `${'█'.repeat(barra)}${'░'.repeat(40 - barra)}   ${r.cumplimiento}% cumplido`, { font: { size: 11, color: { argb: colorCumpl }, bold: true }, border: false });
+  pend.push(() => {
+    const X = A(celdas.CUMPLIMIENTO.n);
+    cBarra.value = fx(`REPT("█",ROUND(${X}*40,0))&REPT("░",40-ROUND(${X}*40,0))&"   "&TEXT(${X},"0%")&" cumplido"`, cBarra.value);
+    cfCumplimiento(ws, cBarra.address, X);
+  });
   ws.getRow(f).height = 20;
   f += 2;
 
@@ -421,14 +494,25 @@ const hojaMinuta = (wb, logo, m, nombre = 'Minuta') => {
       const rr = f + 1 + k;
       const vals = [p.personal, p.total, p.Realizado, p.Proceso, p.Pendiente, p['No Realizado'], p.vencidas, p.cumplimiento / 100];
       let cc = 1;
+      const fila = [];
       vals.forEach((v, i) => {
         const [, span] = cab[i];
-        const col = p.cumplimiento >= 80 ? 'FF047857' : p.cumplimiento >= 50 ? 'FFB45309' : 'FFBE123C';
-        celdaGrilla(ws, rr, cc, span, v === 0 && i > 0 && i < 7 ? '-' : v, {
-          font: { size: 9, bold: i === 0 || i === 7, color: { argb: i === 7 ? col : (i === 6 && v ? 'FFBE123C' : C.oscuro) } },
-          fill: k % 2 ? 'FFF8FAFC' : C.blanco, al: i === 0 ? 'left' : 'center', indent: i === 0 ? 1 : 0, numFmt: i === 7 ? '0%' : undefined
-        });
+        fila.push(celdaGrilla(ws, rr, cc, span, v, {
+          font: { size: 9, bold: i === 0 || i === 7, color: { argb: i === 6 ? 'FFBE123C' : C.oscuro } },
+          fill: k % 2 ? 'FFF8FAFC' : C.blanco, al: i === 0 ? 'left' : 'center', indent: i === 0 ? 1 : 0, numFmt: i === 7 ? '0%' : (i > 0 ? '0;-0;"-"' : undefined)
+        }));
         cc += span;
+      });
+      pend.push((R) => {
+        const key = A(fila[0]), cR = `${R(COL.resp)},${key}`;
+        fila[1].value = fx(`COUNTIF(${R(COL.resp)},${key})`, p.total);
+        ESTADOS_XL.forEach((est, j) => {
+          const idx = { PENDIENTE: 4, PROCESO: 3, REALIZADO: 2, 'NO REALIZADO': 5 }[est];
+          fila[idx].value = fx(`COUNTIFS(${cR},${R(COL.estado)},"${est}")`, fila[idx].value);
+        });
+        fila[6].value = fx(`SUMIFS(${R(COL.venc)},${cR})`, p.vencidas);
+        fila[7].value = fx(`IFERROR(${A(fila[2])}/${A(fila[1])},0)`, p.cumplimiento / 100);
+        cfCumplimiento(ws, fila[7].address, A(fila[7]));
       });
       ws.getRow(rr).height = altoPorTexto([[p.personal, 10]], 18);
     });
@@ -442,47 +526,87 @@ const hojaMinuta = (wb, logo, m, nombre = 'Minuta') => {
   COLS_MINUTA.forEach(col => { celdaGrilla(ws, f, c, col.span, col.t, { font: { bold: true, size: 9, color: { argb: C.blanco } }, fill: C.oscuro }); c += col.span; });
   ws.getRow(f).height = 30;
   const filaCab = f;
-  let rr = f + 1, seccionAnt = null, par = 0;
+  let rr = f + 1, seccionAnt = null, par = 0, primeraFila = null, ultimaFila = null;
   items.forEach((it) => {
     const sec = String(it.seccion || '').trim().replace(/\s+/g, ' ').toUpperCase();
     if (sec && sec !== seccionAnt) {
       const n = items.filter(x => String(x.seccion || '').trim().replace(/\s+/g, ' ').toUpperCase() === sec);
       const rs = resumenItems(n);
-      celdaGrilla(ws, rr, 1, GRILLA, `${sec}   ·   ${plural(n.length, 'tarea', 'tareas')}   ·   ${rs.cumplimiento}% cumplido`, { font: { bold: true, size: 10, color: { argb: C.oscuro } }, fill: 'FFFDE68A' });
+      const cs = celdaGrilla(ws, rr, 1, GRILLA, `${sec}   ·   ${plural(n.length, 'tarea', 'tareas')}   ·   ${rs.cumplimiento}% cumplido`, { font: { bold: true, size: 10, color: { argb: C.oscuro } }, fill: 'FFFDE68A' });
+      const txtSec = sec.replace(/"/g, '""');
+      pend.push((R) => {
+        const nT = `COUNTIF(${R(COL.sec)},"${txtSec}")`;
+        cs.value = fx(`"${txtSec}   ·   "&${nT}&IF(${nT}=1," tarea"," tareas")&"   ·   "&TEXT(IFERROR(COUNTIFS(${R(COL.sec)},"${txtSec}",${R(COL.estado)},"REALIZADO")/${nT},0),"0%")&" cumplido"`, cs.value);
+      });
       ws.getRow(rr).height = 20; rr++; par = 0;
     }
     seccionAnt = sec;
     const vencida = esVencida(it);
-    const fondo = vencida ? C.rojoClaro : (par % 2 ? 'FFF8FAFC' : C.blanco);
+    const fondo = par % 2 ? 'FFF8FAFC' : C.blanco;   // el rojo de vencida lo pone una regla (cambia sola)
+    if (primeraFila === null) primeraFila = rr;
     let cc = 1;
     const textos = [];
     COLS_MINUTA.forEach(col => {
       const v = col.v(it);
       const estilo = { font: { size: 9, color: { argb: C.oscuro } }, fill: fondo, al: col.al, indent: col.al === 'left' ? 1 : 0, numFmt: v instanceof Date ? 'dd-mm-yyyy' : undefined };
       if (col.clave === 'estado') { estilo.fill = FILL_ESTADO[it.estado] || fondo; estilo.font = { bold: true, size: 9, color: { argb: FONT_ESTADO[it.estado] || C.oscuro } }; }
-      if (col.clave === 'estimada' && vencida) estilo.font = { bold: true, size: 9, color: { argb: 'FFBE123C' } };
-      if (col.clave === 'realizado' && it.estado === 'Realizado') estilo.font = { bold: true, size: 9, color: { argb: 'FF047857' } };
-      if (col.clave === 'situacion') estilo.font = { bold: true, size: 9, color: { argb: situacionTarea(it).color } };
+      if (col.clave === 'realizado') estilo.font = { bold: true, size: 9, color: { argb: 'FF047857' } };
+      if (col.clave === 'situacion') estilo.font = { bold: true, size: 9, color: { argb: 'FF475569' } };
       if (col.t === 'N°') estilo.font = { bold: true, size: 9, color: { argb: 'FF64748B' } };
-      celdaGrilla(ws, rr, cc, col.span, v, estilo);
+      if (col.clave === 'realizado') estilo.numFmt = 'dd-mm-yyyy';
+      const cel = celdaGrilla(ws, rr, cc, col.span, v, estilo);
+      if (col.clave === 'estado') cel.dataValidation = { type: 'list', allowBlank: false, showErrorMessage: true, errorTitle: 'Estado', error: 'Elige: PENDIENTE, PROCESO, REALIZADO o NO REALIZADO', formulae: [`"${ESTADOS_XL.join(',')}"`] };
+      if (col.clave === 'situacion') cel.value = fx(fSituacion(rr), v);
       if (!(v instanceof Date)) textos.push([v, col.span]);
       cc += col.span;
     });
     ws.getRow(rr).height = altoPorTexto(textos, 20);
+    // Columnas de apoyo (ocultas)
+    const E = `${COL.estado}${rr}`, Z = `${COL.estimada}${rr}`, W = `${COL.compromiso}${rr}`, F = `${COL.realizado}${rr}`;
+    ws.getCell(`${COL.resp}${rr}`).value = String(it.personal || '').trim().toUpperCase() || 'SIN ASIGNAR';
+    ws.getCell(`${COL.sec}${rr}`).value = sec;
+    ws.getCell(`${COL.venc}${rr}`).value = fx(`IF(AND(OR(${E}="PENDIENTE",${E}="PROCESO"),ISNUMBER(${W}),ISNUMBER(${Z}),${Z}<TODAY()),1,0)`, vencida ? 1 : 0);
+    const tA = it.estado === 'Realizado' && it.fecha_realizado && it.fecha_estimada ? (it.fecha_realizado <= it.fecha_estimada ? 1 : -1) : 0;
+    ws.getCell(`${COL.tiempo}${rr}`).value = fx(`IF(AND(${E}="REALIZADO",ISNUMBER(${F}),ISNUMBER(${Z})),IF(INT(${F})<=INT(${Z}),1,-1),0)`, tA);
+    ultimaFila = rr;
     rr++; par++;
   });
   if (!items.length) { celdaGrilla(ws, rr, 1, GRILLA, 'Esta minuta no tiene tareas.', { font: { italic: true, size: 9, color: { argb: 'FF94A3B8' } } }); rr++; }
 
+  // Fórmulas del resumen (ya se conoce el rango de la tabla) + colores que cambian solos
+  const a = primeraFila || filaCab + 1, b = ultimaFila || a;
+  const R = (col) => `$${col}$${a}:$${col}$${b}`;
+  pend.forEach(fn => fn(R));
+  if (primeraFila) {
+    const E = `$${COL.estado}${a}`;
+    ws.addConditionalFormatting({ ref: `${COL.estado}${a}:${COL.estado}${b}`, rules: ESTADOS_XL.map((est, k) => {
+      const clave = ['Pendiente', 'Proceso', 'Realizado', 'No Realizado'][k];
+      return { type: 'expression', priority: k + 1, formulae: [`${E}="${est}"`], style: { ...cfFill(FILL_ESTADO[clave]), font: { bold: true, color: { argb: FONT_ESTADO[clave] } } } };
+    }) });
+    const S = `$${COL.situacion}${a}`;
+    ws.addConditionalFormatting({ ref: `${COL.situacion}${a}:${COL.situacion}${b}`, rules: [
+      { type: 'expression', priority: 5, formulae: [`OR(ISNUMBER(SEARCH("VENCIDA",${S})),ISNUMBER(SEARCH("No realizada",${S})))`], style: cfColor('FFBE123C') },
+      { type: 'expression', priority: 6, formulae: [`LEFT(${S},1)="✔"`], style: cfColor('FF047857') },
+      { type: 'expression', priority: 7, formulae: [`OR(ISNUMBER(SEARCH("atraso",${S})),ISNUMBER(SEARCH("HOY",${S})),ISNUMBER(SEARCH("Plazo pasado",${S})))`], style: cfColor('FFB45309') }
+    ] });
+    ws.addConditionalFormatting({ ref: `${COL.estimada}${a}:${COL.estimada}${b}`, rules: [{ type: 'expression', priority: 8, formulae: [`$${COL.venc}${a}=1`], style: cfColor('FFBE123C') }] });
+    ws.addConditionalFormatting({ ref: `A${a}:AN${b}`, rules: [{ type: 'expression', priority: 20, formulae: [`$${COL.venc}${a}=1`], style: cfFill(C.rojoClaro) }] });
+  }
+  ['AO', 'AP', 'AQ', 'AR'].forEach(c => { ws.getColumn(c).hidden = true; });
+  ws.pageSetup.printArea = `A1:AN${rr + 3}`;
+  wb.calcProperties = { ...(wb.calcProperties || {}), fullCalcOnLoad: true };
+
   // Leyenda
   rr++;
-  celdaGrilla(ws, rr, 1, GRILLA, 'Filas en rojo = tareas VENCIDAS (Pendiente o En proceso con la fecha estimada ya pasada).   ·   Cumplimiento = tareas Realizadas / total de tareas.', { font: { italic: true, size: 8, color: { argb: 'FF64748B' } }, border: false });
+  celdaGrilla(ws, rr, 1, GRILLA, 'Cambia el ESTADO (lista desplegable) y la FECHA REALIZADO: el resumen, los %, la situación y los colores se actualizan solos.   ·   Filas en rojo = VENCIDAS (Pendiente o En proceso con la fecha estimada pasada).   ·   Cumplimiento = Realizadas / total.', { font: { italic: true, size: 8, color: { argb: 'FF64748B' } }, border: false });
 
   // Al imprimir, el encabezado de la tabla se repite en cada página
   ws.pageSetup.printTitlesRow = `${filaCab}:${filaCab}`;
+  ws.__rango = primeraFila ? { hoja: ws.name, a, b } : null;   // para que el Dashboard calcule desde esta hoja
   return ws;
 };
 
-const hojaDashboardMinuta = (wb, logo, m, evo) => {
+const hojaDashboardMinuta = (wb, logo, m, evo, wsMinuta = null) => {
   const items = itemsDeMinuta(m.id);
   const r = resumenItems(items);
   const porPersonal = resumenPorPersonalDe(items);
@@ -493,9 +617,10 @@ const hojaDashboardMinuta = (wb, logo, m, evo) => {
   insertarImagen(wb, ws, graficoPNG(cfgEstados(r), 700, 340), f, 0, 520, 252);
   f += 14;
   const porSeccion = resumenPorSeccionDe(items);
-  if (porSeccion.length) { f = tituloSeccion(ws, f, 'CUMPLIMIENTO POR SECCIÓN', 12); f = tablaPersonal(ws, f, porSeccion, 1, 'SECCIÓN'); }
+  const rg = wsMinuta && wsMinuta.__rango;
+  if (porSeccion.length) { f = tituloSeccion(ws, f, 'CUMPLIMIENTO POR SECCIÓN', 12); f = tablaPersonal(ws, f, porSeccion, 1, 'SECCIÓN', rg && { ...rg, col: 'AR' }); }
   f = tituloSeccion(ws, f, 'CUMPLIMIENTO POR ENCARGADO', 12);
-  f = tablaPersonal(ws, f, porPersonal);
+  f = tablaPersonal(ws, f, porPersonal, 1, 'ENCARGADO', rg && { ...rg, col: 'AO' });
   if (porPersonal.length) { insertarImagen(wb, ws, graficoPNG(cfgPersonal(porPersonal), 900, Math.max(260, porPersonal.length * 42 + 90)), f, 0, 760, Math.max(220, porPersonal.length * 35 + 76)); f += Math.ceil(Math.max(220, porPersonal.length * 35 + 76) / 20) + 2; }
   if (evo.length > 1) {
     f = tituloSeccion(ws, f, 'EVOLUCIÓN SEMANA A SEMANA', 12);
@@ -599,8 +724,8 @@ export const exportarMinutaExcel = async (m = minutaSel.value) => {
   try {
     const [wb, logo] = await Promise.all([nuevoLibro(), logoDataURL()]);
     const hasta = dbMinutas.value.filter(x => String(x.fecha) < String(m.fecha) || (x.fecha === m.fecha && x.id <= m.id));
-    hojaMinuta(wb, logo, m);
-    hojaDashboardMinuta(wb, logo, m, evolucionDe(hasta.slice(-20)));
+    const wsM = hojaMinuta(wb, logo, m);
+    hojaDashboardMinuta(wb, logo, m, evolucionDe(hasta.slice(-20)), wsM);
     await descargar(wb, `${m.nombre}.xlsx`);
   } catch (err) { alert('No se pudo exportar: ' + (err.message || err)); }
   finally { exportando.value = false; }

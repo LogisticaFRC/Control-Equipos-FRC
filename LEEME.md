@@ -679,3 +679,9 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
   - Historial → detalle de una falla: causas probables de la pieza detectada (no en mantenciones).
 - Piezas nuevas en el análisis: Unidad compresora, Separador de aceite (compresor), Válvula de admisión / descarga / seguridad. "Separador" solo cuenta como separador de agua cuando no dice "de aceite".
 - (ajuste) **La pieza manda sobre el sistema**: si la causa detallada nombra una pieza (o la descripción la nombra y dice qué le pasó), el sistema es el de esa pieza (correa → Motor, módulo → Eléctrico / control, manguera → Hidráulico, radiador → Refrigeración…). Sin pieza se usan las palabras clave ("FALLA EN MOTOR, CAMBIO DE ACEITE" → Motor). Una inspección que solo nombra piezas sigue como Servicio / Inspección.
+
+## 2026-11-10 · Minuta en Excel con fórmulas (se actualiza sola)
+- Hoja **Minuta** del Excel: el resumen de arriba (total, realizado, en proceso, pendiente, no realizado, vencidas, a tiempo, % cumplimiento, barra), el **resumen por responsable** y el % de cada **sección** ahora son **fórmulas** que leen la tabla de tareas.
+- **ESTADO** con lista desplegable (PENDIENTE / PROCESO / REALIZADO / NO REALIZADO) y **SITUACIÓN** con fórmula (a tiempo, días de atraso, vencida hace X días, vence en X días). Al cambiar el estado o escribir la FECHA REALIZADO se recalcula todo; colores del estado, situación, % y filas vencidas por formato condicional (usan HOY()).
+- Columnas ocultas de apoyo AO:AR (responsable, vencida 1/0, a tiempo 1/-1, sección); no se imprimen.
+- Hoja **Dashboard**: tablas por sección y por encargado con fórmulas hacia la hoja Minuta. Los gráficos siguen siendo imagen del momento de la descarga.
