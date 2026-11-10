@@ -685,3 +685,9 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - **ESTADO** con lista desplegable (PENDIENTE / PROCESO / REALIZADO / NO REALIZADO) y **SITUACIÓN** con fórmula (a tiempo, días de atraso, vencida hace X días, vence en X días). Al cambiar el estado o escribir la FECHA REALIZADO se recalcula todo; colores del estado, situación, % y filas vencidas por formato condicional (usan HOY()).
 - Columnas ocultas de apoyo AO:AR (responsable, vencida 1/0, a tiempo 1/-1, sección); no se imprimen.
 - Hoja **Dashboard**: tablas por sección y por encargado con fórmulas hacia la hoja Minuta. Los gráficos siguen siendo imagen del momento de la descarga.
+
+## 2026-11-10 · Programa de REPARACIÓN se llena solo desde el Historial
+- Al guardar en el Historial un registro con un **programa de reparación** elegido, si el AFI no está en ese programa se **agrega solo** (tipo Reparación, fecha programada = fecha del registro) y queda **REALIZADO** con esa fecha. Si el mismo AFI tiene más registros con ese programa que ítems, se agregan los que faltan (uno por registro). Funciona aunque el programa se haya creado vacío.
+- El botón "Sincronizar con Historial" del programa hace lo mismo para todos los registros que nombran el programa.
+- Programas de **MANTENCIÓN** sin cambios (los equipos se planifican antes); ahora avisa si el AFI no está en el programa y no se marcó nada.
+- Archivos: `programas/programas.service.js` (agregarFaltantesReparacion), `historial/historial.service.js`. No requiere SQL.

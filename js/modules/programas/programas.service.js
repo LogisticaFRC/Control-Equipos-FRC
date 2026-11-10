@@ -780,9 +780,16 @@ export const programasDelAfi = (afi) => {
 export const sincronizarProgramaConHistorial = async ({ nombrePrograma = '', programaId = null, afi = '' } = {}) => {
   const progs = programaId ? [obtenerProgObj(programaId)].filter(Boolean)
     : dbProgramasCalendarios.value.filter(p => nombreDePrograma(p) === upP(nombrePrograma));
-  let marcados = 0; const avisos = [];
+  let marcados = 0, agregados = 0; const avisos = [], faltaEn = [];
   for (const prog of progs) {
     const esMant = esProgramaMantencion(prog);
+    // REPARACIÓN: si el equipo no está en el programa (o tiene más registros que ítems), se agrega solo,
+    // con la fecha del registro; luego se marca REALIZADO abajo. En MANTENCIÓN los equipos se planifican antes.
+    if (!esMant) {
+      try { agregados += await agregarFaltantesReparacion(prog, afi); }
+      catch (err) { avisos.push(`No se pudo agregar el equipo al programa "${nombreDePrograma(prog)}": ${errMsg(err)}`); }
+    }
+    if (afi && !obtenerItemsPrograma(prog.id).some(i => mismoEquipo(i.afi, afi))) faltaEn.push(nombreDePrograma(prog));
     const enl = enlacesDePrograma(prog.id);
     for (const item of obtenerItemsPrograma(prog.id)) {
       const m = enl.get(item.id);
@@ -806,7 +813,29 @@ export const sincronizarProgramaConHistorial = async ({ nombrePrograma = '', pro
       }
     }
   }
-  return { marcados, avisos };
+  return { marcados, agregados, avisos, faltaEn };
+};
+
+/** Programa de REPARACIÓN: crea los ítems que faltan para los registros del Historial que lo nombran. */
+const agregarFaltantesReparacion = async (prog, afi = '') => {
+  const nombre = nombreDePrograma(prog);
+  const regs = dbIntervenciones.value.filter(m => upP(m.programaCorrespondiente) === nombre && (!afi || mismoEquipo(m.afi, afi)));
+  const porAfi = new Map();
+  regs.forEach(m => { const k = upP(limpiarAfi(m.afi)); if (k) (porAfi.get(k) || porAfi.set(k, []).get(k)).push(m); });
+  let n = 0;
+  for (const [k, ms] of porAfi) {
+    const items = obtenerItemsPrograma(prog.id).filter(i => mismoEquipo(i.afi, k));
+    const faltan = ms.sort((a, b) => String(normalizarFecha(a.fecha)).localeCompare(String(normalizarFecha(b.fecha))) || (a.id - b.id)).slice(items.length);
+    for (const m of faltan) {
+      const fecha = normalizarFecha(m.fecha) || null;
+      const payload = { programa_id: prog.id, afi: limpiarAfi(m.afi), tipo: 'Reparación', nave: null, condicion: 'Arriendo',
+        fecha_programada: fecha, fecha_inicio: fecha, fecha_fin: fecha, realizado: false };
+      const data = await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).insert([payload]).select());
+      if (data && data[0]) dbProgramasItems.value.push(data[0]);
+      n++;
+    }
+  }
+  return n;
 };
 
 /** Botón del programa: sincroniza todo el programa con el Historial. */
@@ -815,8 +844,8 @@ export const sincronizarProgramaSeleccionado = async (prog) => {
   if (!soloEditor() || !prog || !prog.id) return;
   sincronizandoPrograma.value = true;
   try {
-    const { marcados, avisos } = await sincronizarProgramaConHistorial({ programaId: prog.id });
-    alert(`${marcados ? marcados + ' equipo(s) marcados como REALIZADOS según el Historial.' : 'Todo estaba al día con el Historial.'}` + (avisos.length ? '\n\nAvisos:\n' + avisos.join('\n') : ''));
+    const { marcados, agregados, avisos } = await sincronizarProgramaConHistorial({ programaId: prog.id });
+    alert(`${agregados ? agregados + ' equipo(s) agregados al programa desde el Historial.\n' : ''}${marcados ? marcados + ' equipo(s) marcados como REALIZADOS según el Historial.' : (agregados ? '' : 'Todo estaba al día con el Historial.')}` + (avisos.length ? '\n\nAvisos:\n' + avisos.join('\n') : ''));
   } finally {
     sincronizandoPrograma.value = false;
   }

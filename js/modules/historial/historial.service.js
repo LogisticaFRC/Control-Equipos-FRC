@@ -255,8 +255,10 @@ export const guardarMantencionForm = async () => {
   //    (si el equipo está varias veces en el programa: la 1ª mantención → fecha más baja, la 2ª → la siguiente…)
   if (payload.uso_de_art) {
     try {
-      const { marcados, avisos } = await sincronizarProgramaConHistorial({ nombrePrograma: payload.uso_de_art, afi: afiLimpio });
+      const { marcados, agregados, avisos, faltaEn } = await sincronizarProgramaConHistorial({ nombrePrograma: payload.uso_de_art, afi: afiLimpio });
+      if (agregados) aviso += `\n✔ AFI ${afiLimpio} agregado al programa de reparación "${payload.uso_de_art}".`;
       if (marcados) aviso += `\n✔ Programa "${payload.uso_de_art}": AFI ${afiLimpio} marcado como REALIZADO.`;
+      if (faltaEn && faltaEn.length) aviso += `\n(Atención: el AFI ${afiLimpio} no está en el programa de mantención "${payload.uso_de_art}", no se marcó nada. Agrégalo al programa si corresponde.)`;
       if (avisos.length) aviso += '\n' + avisos.join('\n');
     } catch (err) {
       aviso += "\n(Atención: no se pudo actualizar el programa: " + errMsg(err) + ")";
