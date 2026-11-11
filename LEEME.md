@@ -724,3 +724,11 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
   - Si la sesión se cierra por inactividad, sigue avisando las tareas con hora de las próximas 24 h mientras la página siga abierta; al apretar **Salir** se borra.
   - Preferencias por usuario y navegador (localStorage). Los avisos funcionan con el sistema abierto en el navegador (minimizado o en otra pestaña sirve).
 - Inicio (Bienvenida): botón con el resumen de las tareas de hoy.
+
+## 2026-11-11 · Programas: fechas en borrador con botón "Guardar fechas" (igual que la Minuta)
+- **Mantención** (fecha programada y fecha realizada) y **Reparación** (fecha inicio y fecha fin): al escribir, la fecha queda en borrador (casilla amarilla). **No se guarda ni se mueve la fila** mientras se escribe; se puede poner cualquier fecha.
+- Botones **Guardar fechas (N)** y **Descartar** junto a "Vista de Tabla" cuando hay cambios. Al guardar se valida todo; si algo no es válido **no se guarda nada**, aparece el error y la casilla queda en rojo con el motivo:
+  - fecha incompleta o que no existe; año que no tiene 4 dígitos (ej. 202026) o fuera de 2000-2100;
+  - mantención: fecha realizada futura;
+  - reparación: fecha inicio vacía o fecha fin anterior a la fecha inicio.
+- Recién al guardar la tabla se reordena por fecha. `programas.service.js` (fechaVisible, cambiarFechaBorrador, guardarCambiosFechas, descartarCambiosFechas) y `programas.template.js`. No requiere SQL.

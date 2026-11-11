@@ -524,6 +524,103 @@ export const actualizarItemMantencionProgramado = async (item) => {
   }
 };
 
+// ---------- Fechas en BORRADOR (igual que el N° Item de la Minuta) ----------
+// Mantención (fecha programada / fecha realizada) y Reparación (fecha inicio / fecha fin):
+// al escribir, la fecha queda en un borrador (item._borrador) → NO se guarda ni se mueve la fila.
+// Se puede escribir cualquier fecha; al presionar "Guardar fechas" se valida y recién ahí se guarda
+// y la tabla se reordena. Si alguna fecha no es válida se muestra el error y NO se guarda nada.
+const vFecha = (v) => normalizarFecha(v) || '';
+export const fechaVisible = (item, campo) =>
+  (item._borrador && campo in item._borrador) ? item._borrador[campo].v : vFecha(item[campo]);
+export const cambiarFechaBorrador = (item, campo, ev) => {
+  const el = ev && ev.target;
+  if (!item._borrador) item._borrador = {};
+  // badInput = fecha a medio escribir o imposible (ej. 31-02): se avisa recién al guardar
+  item._borrador[campo] = { v: el ? el.value : String(ev || ''), malo: Boolean(el && el.validity && el.validity.badInput) };
+  if (item._errFechas) delete item._errFechas[campo];
+};
+export const fechaPendiente = (item, campo) => Boolean(item._borrador && campo in item._borrador &&
+  (item._borrador[campo].malo || item._borrador[campo].v !== vFecha(item[campo])));
+export const errorFecha = (item, campo) => (item._errFechas && item._errFechas[campo]) || '';
+export const claseFechaBorrador = (item, campo) => errorFecha(item, campo)
+  ? 'border-rose-500 bg-rose-50 text-rose-700 ring-2 ring-rose-300'
+  : fechaPendiente(item, campo) ? 'border-amber-400 bg-amber-50 text-amber-800' : 'bg-white';
+const CAMPOS_BORRADOR = ['fecha_programada', 'fecha_fin', 'fecha_inicio'];
+const itemConBorrador = (item) => CAMPOS_BORRADOR.some(c => fechaPendiente(item, c));
+/** Equipos del programa con fechas sin guardar. */
+export const cambiosFechasPrograma = (programaId) =>
+  dbProgramasItems.value.filter(i => String(i.programa_id) === String(programaId) && itemConBorrador(i));
+
+export const guardandoFechas = ref(false);
+
+/** Valida todas las fechas en borrador del programa. Devuelve [{ item, campo, msg }]. */
+const validarBorradores = (items, esReparacion) => {
+  const errores = [];
+  const hoy = hoyISO();
+  items.forEach(item => {
+    const val = (c) => (item._borrador && c in item._borrador) ? item._borrador[c] : { v: vFecha(item[c]), malo: false };
+    const campos = esReparacion ? ['fecha_inicio', 'fecha_fin'] : ['fecha_programada', 'fecha_fin'];
+    const nombre = { fecha_programada: 'Fecha programada', fecha_fin: esReparacion ? 'Fecha fin' : 'Fecha realizada', fecha_inicio: 'Fecha inicio' };
+    campos.forEach(c => {
+      if (!fechaPendiente(item, c)) return;
+      const { v, malo } = val(c);
+      if (malo) return errores.push({ item, campo: c, msg: `${nombre[c]} incompleta o no existe` });
+      if (!v) { if (esReparacion && c === 'fecha_inicio') errores.push({ item, campo: c, msg: 'Fecha inicio vacía' }); return; }
+      const anio = String(v).match(/^\+?(\d+)-\d{2}-\d{2}$/);
+      if (anio && anio[1].length !== 4) return errores.push({ item, campo: c, msg: `${nombre[c]}: año ${anio[1]} no válido` });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || !vFecha(v)) return errores.push({ item, campo: c, msg: `${nombre[c]} no válida` });
+      const y = Number(v.slice(0, 4));
+      if (y < 2000 || y > 2100) return errores.push({ item, campo: c, msg: `${nombre[c]}: año ${y} fuera de rango (2000-2100)` });
+      if (!esReparacion && c === 'fecha_fin' && v > hoy) errores.push({ item, campo: c, msg: 'Fecha realizada no puede ser futura' });
+    });
+    if (esReparacion) {
+      const ini = val('fecha_inicio'), fin = val('fecha_fin');
+      if (!ini.malo && !fin.malo && ini.v && fin.v && fin.v < ini.v && (fechaPendiente(item, 'fecha_inicio') || fechaPendiente(item, 'fecha_fin')))
+        errores.push({ item, campo: 'fecha_fin', msg: 'Fecha fin anterior a la fecha inicio' });
+    }
+  });
+  return errores;
+};
+
+export const guardarCambiosFechas = async (programaId) => {
+  const prog = obtenerProgObj(programaId);
+  const esReparacion = carpetaDe(prog || {}) === 'REPARACION';
+  if (esReparacion ? !soloEditor() : !soloAdmin()) return;
+  const lista = cambiosFechasPrograma(programaId);
+  if (!lista.length) return;
+  lista.forEach(it => { it._errFechas = {}; });
+  const errores = validarBorradores(lista, esReparacion);
+  if (errores.length) {
+    errores.forEach(e => { e.item._errFechas[e.campo] = e.msg; });
+    alert('No se guardó ningún cambio. Corrige estas fechas:\n\n' + errores.map(e => `• AFI ${e.item.afi}: ${e.msg}`).join('\n'));
+    return;
+  }
+  guardandoFechas.value = true;
+  const fallas = [];
+  try {
+    for (const it of lista) {
+      const b = (c) => (it._borrador && c in it._borrador) ? (it._borrador[c].v || null) : (vFecha(it[c]) || null);
+      try {
+        if (esReparacion) {
+          const ini = b('fecha_inicio'), fin = b('fecha_fin') || ini;
+          await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ fecha_inicio: ini, fecha_programada: ini, fecha_fin: fin }).eq('id', it.id));
+          it.fecha_inicio = ini; it.fecha_programada = ini; it.fecha_fin = fin;
+        } else {
+          const prg = b('fecha_programada'), fin = b('fecha_fin');
+          await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ fecha_programada: prg, fecha_inicio: prg, fecha_fin: fin }).eq('id', it.id));
+          it.fecha_programada = prg; it.fecha_inicio = prg; it.fecha_fin = fin;
+        }
+        delete it._borrador; delete it._errFechas;   // recién ahora la fila toma su lugar según la fecha
+      } catch (err) { fallas.push(`AFI ${it.afi}: ${errMsg(err)}`); }
+    }
+  } finally { guardandoFechas.value = false; }
+  if (fallas.length) alert('No se pudieron guardar algunas fechas:\n' + fallas.join('\n'));
+};
+
+export const descartarCambiosFechas = (programaId) => {
+  dbProgramasItems.value.filter(i => String(i.programa_id) === String(programaId)).forEach(it => { delete it._borrador; delete it._errFechas; });
+};
+
 export const eliminarItemPrograma = async (itemId) => {
   if (!soloAdmin()) return;
   if (!confirm("¿Eliminar este equipo del programa?")) return;

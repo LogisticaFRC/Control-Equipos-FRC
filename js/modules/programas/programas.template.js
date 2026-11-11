@@ -159,6 +159,13 @@ export default /* html */ `
           <button @click="vistaProgramaMode = 'calendario'" :class="['px-3 py-1 rounded text-xs font-bold transition flex items-center gap-1.5', vistaProgramaMode === 'calendario' ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200']">
             <i class="fa-solid fa-calendar-week"></i> {{ progSelect.carpeta === 'REPARACION' ? 'Vista Calendario / Gantt por Naves' : 'Vista Calendario / Carta Gantt' }}
           </button>
+          <!-- Fechas en borrador: no se guardan ni se mueven hasta presionar Guardar fechas -->
+          <template v-if="cambiosFechasPrograma(progSelect.id).length">
+            <div class="flex-grow"></div>
+            <span class="text-[10px] font-bold text-amber-700"><i class="fa-solid fa-pen mr-1"></i>{{ cambiosFechasPrograma(progSelect.id).length }} equipo(s) con fechas sin guardar</span>
+            <button @click="descartarCambiosFechas(progSelect.id)" :disabled="guardandoFechas" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5"><i class="fa-solid fa-rotate-left"></i> Descartar</button>
+            <button @click="guardarCambiosFechas(progSelect.id)" :disabled="guardandoFechas" class="bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow flex items-center gap-1.5"><i :class="['fa-solid', guardandoFechas ? 'fa-spinner fa-spin' : 'fa-floppy-disk']"></i> Guardar fechas ({{ cambiosFechasPrograma(progSelect.id).length }})</button>
+          </template>
         </div>
 
         <!-- CONTENIDO PARA PROGRAMA DE MANTENCIÓN (SIN NAVE: TABLA DIRECTA) -->
@@ -271,12 +278,14 @@ export default /* html */ `
                 
                 <!-- Fecha Programada Fija -->
                 <td class="p-2.5 font-mono font-bold text-indigo-900 bg-indigo-50/50">
-                  <input type="date" v-model="item.fecha_programada" :disabled="!isAdmin || programaCerrado(progSelect)" :title="programaCerrado(progSelect) ? 'Programa cerrado: la fecha programada no se modifica' : ''" @change="actualizarItemMantencionProgramado(item)" class="p-1 border rounded text-xs bg-white font-mono font-bold">
+                  <input type="date" :value="fechaVisible(item, 'fecha_programada')" @input="cambiarFechaBorrador(item, 'fecha_programada', $event)" :disabled="!isAdmin || programaCerrado(progSelect)" :title="programaCerrado(progSelect) ? 'Programa cerrado: la fecha programada no se modifica' : (errorFecha(item, 'fecha_programada') || (fechaPendiente(item, 'fecha_programada') ? 'Sin guardar: presiona Guardar fechas' : ''))" :class="['p-1 border rounded text-xs font-mono font-bold', claseFechaBorrador(item, 'fecha_programada')]">
+                  <span v-if="errorFecha(item, 'fecha_programada')" class="block mt-0.5 text-[9px] font-bold text-rose-600 whitespace-normal">{{ errorFecha(item, 'fecha_programada') }}</span>
                 </td>
 
                 <!-- Fecha Realizada -->
                 <td class="p-2.5 font-mono font-bold text-emerald-800 bg-emerald-50/50">
-                  <input type="date" v-model="item.fecha_fin" :disabled="!isAdmin" @change="actualizarItemMantencionProgramado(item)" class="p-1 border rounded text-xs bg-white font-mono font-bold">
+                  <input type="date" :value="fechaVisible(item, 'fecha_fin')" @input="cambiarFechaBorrador(item, 'fecha_fin', $event)" :disabled="!isAdmin" :title="errorFecha(item, 'fecha_fin') || (fechaPendiente(item, 'fecha_fin') ? 'Sin guardar: presiona Guardar fechas' : '')" :class="['p-1 border rounded text-xs font-mono font-bold', claseFechaBorrador(item, 'fecha_fin')]">
+                  <span v-if="errorFecha(item, 'fecha_fin')" class="block mt-0.5 text-[9px] font-bold text-rose-600 whitespace-normal">{{ errorFecha(item, 'fecha_fin') }}</span>
                   <span v-if="mantencionDeItem(item)" class="block mt-1 text-[9px] font-bold text-indigo-700" :title="'Mantención del Historial: ' + (mantencionDeItem(item).tipoMant || '') + ' ' + (mantencionDeItem(item).descripcion || '')">
                     <i class="fa-solid fa-link"></i> Historial {{ formatDateForDisplay(mantencionDeItem(item).fecha) }}<template v-if="mantencionDeItem(item).numeroOT"> · OT {{ mantencionDeItem(item).numeroOT }}</template>
                   </span>
@@ -342,10 +351,12 @@ export default /* html */ `
                     <td class="p-2.5 font-semibold text-slate-700">{{ item.tipo }}</td>
                     <td class="p-2.5"><span class="px-2 py-0.5 rounded font-bold text-[10px] bg-blue-100 text-blue-800">{{ item.condicion || 'Arriendo' }}</span></td>
                     <td class="p-2.5 font-mono font-bold text-indigo-900 bg-indigo-50/50">
-                      <input type="date" v-model="item.fecha_inicio" :disabled="!puedeEditar" @change="actualizarFechasItemReparacion(item)" class="p-1 border rounded text-xs bg-white font-mono font-bold">
+                      <input type="date" :value="fechaVisible(item, 'fecha_inicio')" @input="cambiarFechaBorrador(item, 'fecha_inicio', $event)" :disabled="!puedeEditar" :title="errorFecha(item, 'fecha_inicio') || (fechaPendiente(item, 'fecha_inicio') ? 'Sin guardar: presiona Guardar fechas' : '')" :class="['p-1 border rounded text-xs font-mono font-bold', claseFechaBorrador(item, 'fecha_inicio')]">
+                      <span v-if="errorFecha(item, 'fecha_inicio')" class="block mt-0.5 text-[9px] font-bold text-rose-600 whitespace-normal">{{ errorFecha(item, 'fecha_inicio') }}</span>
                     </td>
                     <td class="p-2.5 font-mono font-bold text-emerald-800 bg-emerald-50/50">
-                      <input type="date" v-model="item.fecha_fin" :min="item.fecha_inicio || undefined" :disabled="!puedeEditar" @change="actualizarFechasItemReparacion(item)" class="p-1 border rounded text-xs bg-white font-mono font-bold">
+                      <input type="date" :value="fechaVisible(item, 'fecha_fin')" @input="cambiarFechaBorrador(item, 'fecha_fin', $event)" :disabled="!puedeEditar" :title="errorFecha(item, 'fecha_fin') || (fechaPendiente(item, 'fecha_fin') ? 'Sin guardar: presiona Guardar fechas' : '')" :class="['p-1 border rounded text-xs font-mono font-bold', claseFechaBorrador(item, 'fecha_fin')]">
+                      <span v-if="errorFecha(item, 'fecha_fin')" class="block mt-0.5 text-[9px] font-bold text-rose-600 whitespace-normal">{{ errorFecha(item, 'fecha_fin') }}</span>
                     </td>
                     <td class="p-2.5">
                       <div class="flex items-center gap-3">
