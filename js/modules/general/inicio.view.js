@@ -4,6 +4,7 @@
 import { usuarioActivo } from '../../core/store.js';
 import { menuAbierto } from '../../core/menu.js';
 import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js';
+import { irAMisTareas, ocurrenciasHoy, hechasHoy, pendientesHoy, vencidas } from '../recordatorios/recordatorios.service.js';
 
 export default {
   template: /* html */ `
@@ -17,9 +18,17 @@ export default {
         class="mt-8 inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl shadow transition text-sm">
         <i class="fa-solid fa-bars"></i> Abrir menú de módulos
       </button>
+      <!-- Mis Tareas: resumen del día -->
+      <button @click="irAMisTareas" class="mt-4 inline-flex items-center gap-3 bg-white hover:bg-amber-50 border border-slate-200 rounded-2xl px-4 py-3 shadow-sm transition text-left">
+        <span class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-calendar-check"></i></span>
+        <span>
+          <span class="block text-sm font-bold text-slate-800">Mis tareas de hoy: {{ hechasHoy.length }}/{{ ocurrenciasHoy.length }} hechas</span>
+          <span class="block text-xs" :class="vencidas.length ? 'text-rose-600 font-semibold' : 'text-slate-500'">{{ vencidas.length ? vencidas.length + ' vencida(s) · ' : '' }}{{ pendientesHoy.length }} pendiente(s) · ver calendario</span>
+        </span>
+      </button>
     </div>
   `,
   setup() {
-    return { usuarioActivo, menuAbierto, logoSrc, onLogoError };
+    return { usuarioActivo, menuAbierto, logoSrc, onLogoError, irAMisTareas, ocurrenciasHoy, hechasHoy, pendientesHoy, vencidas };
   }
 };

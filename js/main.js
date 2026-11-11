@@ -24,6 +24,9 @@ import EppView from './modules/epp/epp.view.js';
 import VehiculosView from './modules/vehiculos/vehiculos.view.js';
 import FallasView from './modules/fallas/fallas.view.js';
 import CostosView from './modules/costos/costos.view.js';
+import RecordatoriosView from './modules/recordatorios/recordatorios.view.js';
+import { TareaItem, RecordatoriosCampana, RecordatoriosAvisos } from './modules/recordatorios/avisos.view.js';
+import { iniciarMotorAvisos, borrarCacheAvisos } from './modules/recordatorios/recordatorios.service.js';
 import CausasProbables from './modules/fallas/causas-probables.view.js';
 import TablaHistorial from './modules/historial/tabla-historial.view.js';
 import AreasView from './modules/areas/areas.view.js';
@@ -94,8 +97,9 @@ const template = /* html */ `
             <span v-else-if="isSubadmin" class="inline-block px-2.5 py-1 rounded-full bg-sky-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-user-gear mr-1"></i> {{ usuarioActivo.nombre }} (Subadmin {{ areaActual.label }})</span>
             <span v-else class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap"><i class="fa-solid fa-eye mr-1"></i> {{ usuarioActivo.nombre }} (Lectura)</span>
           </div>
+          <recordatorios-campana></recordatorios-campana>
           <button @click="abrirCambioClave" title="Cambiar mi contraseña" aria-label="Cambiar mi contraseña" class="bg-white/10 hover:bg-white/20 text-white px-2.5 py-1.5 rounded-lg text-xs transition border border-white/10"><i class="fa-solid fa-key"></i></button>
-          <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
+          <button @click="salir" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
         </div>
       </div>
     </header>
@@ -159,6 +163,7 @@ const template = /* html */ `
       <historial-view v-if="currentTab === 'hojaVida'"></historial-view>
       <fallas-view v-if="currentTab === 'fallas'"></fallas-view>
       <costos-view v-if="currentTab === 'costosMant'"></costos-view>
+      <recordatorios-view v-if="currentTab === 'misTareas'"></recordatorios-view>
       <aceites-view v-if="currentTab === 'aceites'"></aceites-view>
       <filtros-view v-if="currentTab === 'filtros'"></filtros-view>
       <bodega-view v-if="currentTab === 'bodega'"></bodega-view>
@@ -176,6 +181,7 @@ const template = /* html */ `
     <modal-asignar-equipo v-if="showModalAsignarEquipo"></modal-asignar-equipo>
     <baja-equipo></baja-equipo>
     <cambiar-clave></cambiar-clave>
+    <recordatorios-avisos></recordatorios-avisos>   <!-- Mis Tareas: avisos, resumen al entrar y ventana Nueva tarea -->
   </template>
 `;
 
@@ -210,6 +216,9 @@ const app = createApp({
     watch(areaActual, (a) => { areasAbiertas[a.key] = true; }, { immediate: true });
 
     const switchTab = (tab) => { currentTab.value = tab; menuAbierto.value = false; };
+    // "Salir" apretado a mano: deja de avisar las tareas en este navegador
+    const salir = () => { borrarCacheAvisos(); logout(); };
+    iniciarMotorAvisos();   // Mis Tareas: campana, notificaciones de Windows, sonido
 
     const onKey = (e) => { if (e.key === 'Escape') menuAbierto.value = false; };
     window.addEventListener('keydown', onKey);
@@ -230,7 +239,7 @@ const app = createApp({
 
     return {
       gruposDeArea, usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: AREAS, switchTab,
-      menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
+      menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, salir, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       abrirCambioClave, showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };
   }
@@ -254,7 +263,11 @@ app.component('MinutasView', MinutasView);
 app.component('OtView', OtView);
 app.component('OcView', OcView);
 app.component('VehiculosView', VehiculosView);
-app.component('CostosView', CostosView);         // Operaciones → Costos de Mantención
+app.component('CostosView', CostosView);
+app.component('RecordatoriosView', RecordatoriosView);       // Mis Tareas (recordatorio personal)
+app.component('TareaItem', TareaItem);
+app.component('RecordatoriosCampana', RecordatoriosCampana); // campana del encabezado
+app.component('RecordatoriosAvisos', RecordatoriosAvisos);   // avisos + resumen al entrar + Nueva tarea         // Operaciones → Costos de Mantención
 app.component('CausasProbables', CausasProbables);   // causas probables por pieza (core/conocimiento-fallas.js)
 app.component('FallasView', FallasView);         // Operaciones → Análisis de Fallas
 app.component('TablaHistorial', TablaHistorial); // tabla compacta del Historial (módulo Historial y Perfil)   // Operaciones → Vehículos (AFI = patente XXXX-XX)

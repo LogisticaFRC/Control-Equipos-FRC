@@ -110,6 +110,7 @@ export const iniciarSesion = (perfil) => {
   avisoSesion.value = '';
   ultimaGuardada = Date.now();
   escribirActividad(ultimaGuardada);
+  try { sessionStorage.removeItem('frc_rec_resumen_visto'); } catch (e) { /* */ }   // Mis Tareas: mostrar el resumen al entrar
   currentTab.value = TAB_INICIO;   // al iniciar sesión siempre se parte en la Bienvenida
   history.replaceState(null, '', '#' + currentTab.value);
 };

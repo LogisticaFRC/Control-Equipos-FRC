@@ -707,3 +707,20 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - `cargarDatosDesdeSupabase(partes)` en `core/store.js`: antes cada guardado volvía a descargar las 15 tablas; ahora se puede recargar solo lo que cambió. Partes: `inventario`, `movimientos`, `historial`, `programas`, `modelos`, `formatos`, `filtros`, `bodega`, `oc`, `locaciones`. Sin parámetro = todo (inicio de la app y casos generales).
 - Se usa en: Historial (guardar → historial + filtros; importar, cargar/leer documentos → historial), Perfil e Inventario (inventario), Movimientos (movimientos + inventario), Filtros (filtros), Formatos (formatos + modelos), Áreas (locaciones + inventario), Programas (crear programa → programas), Bodega (cambio de código → filtros + bodega).
 - Si al recargar cambia inventario o historial, se recalculan los horómetros.
+
+## 2026-11-11 · MIS TAREAS · Recordatorio de tareas personal (módulo nuevo)
+- **Ejecutar `sql/recordatorios.sql`** (tablas `bd_recordatorios` y `bd_recordatorios_estado`). RLS por `auth_id = auth.uid()`: **cada usuario solo ve, crea, modifica y elimina SUS tareas**; nadie más las ve (tampoco el Admin general). Sin el SQL, la pantalla avisa que falta.
+- Menú → **Mis Tareas** (botón directo bajo Inicio, para todos los usuarios, sin permisos por área). Archivos: `js/modules/recordatorios/` (service, template, view, avisos.view).
+- **Tareas diarias**: todos los días, lunes a viernes o cada N días. Se marcan cada día por separado y muestran la racha de días cumplidos.
+- **Tareas programadas**: una vez en una fecha, o semanal (días elegidos, cada N semanas), mensual o anual, con fecha "hasta" opcional. Si un día pasa sin marcarla (tarea única) queda **vencida**.
+- Cada tarea: título, notas, fecha, hora o todo el día, prioridad (alta/media/baja), categoría (con colores), checklist de pasos, pausar. Acciones: hecha, pasar a mañana / próximo lunes, omitir solo un día (repetitivas), duplicar, eliminar.
+- Pantalla con pestañas **Hoy** (agregar rápido, vencidas, tareas diarias, programadas, mini calendario, próximos 7 días) · **Semana** · **Mes** (calendario; las diarias se ocultan salvo "Mostrar tareas diarias") · **Todas mis tareas** (buscar/filtrar) · **Avisos** (preferencias). KPI: hoy, vencidas, próximos 7 días y % de cumplimiento de 7 días.
+- **Avisos** (`iniciarMotorAvisos` en main.js, revisa cada 20 s):
+  - **Campana** en el encabezado con contador (pendientes de hoy + vencidas; rojo si hay vencidas) y lista rápida.
+  - **Ventana resumen al iniciar sesión** (vencidas, hoy, se acercan); una vez por inicio de sesión (no se repite con F5).
+  - **Notificación de Windows** + **sonido** + tarjeta en pantalla: N minutos antes y a la hora; botones Hecha / +5 / +10 / +30 min.
+  - **Aviso anticipado** (tareas únicas): desde N días antes, una vez al día.
+  - **Resumen del día** a la hora elegida (08:00 por defecto).
+  - Si la sesión se cierra por inactividad, sigue avisando las tareas con hora de las próximas 24 h mientras la página siga abierta; al apretar **Salir** se borra.
+  - Preferencias por usuario y navegador (localStorage). Los avisos funcionan con el sistema abierto en el navegador (minimizado o en otra pestaña sirve).
+- Inicio (Bienvenida): botón con el resumen de las tareas de hoy.

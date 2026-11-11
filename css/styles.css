@@ -33,3 +33,8 @@
 .ot-in:disabled { color: #0f172a; }
 .ot-marca { display: block; width: 100%; height: 1.15em; border: 0; background: transparent; padding: 0; font: inherit; font-weight: 800; color: #0f172a; cursor: pointer; }
 .ot-marca:hover:not(:disabled) { background: #fde68a; }
+
+/* ---------- Mis Tareas: campana que se mueve cuando hay pendientes ---------- */
+@keyframes frc-campana { 0%,100% { transform: rotate(0); } 15% { transform: rotate(14deg); } 30% { transform: rotate(-12deg); } 45% { transform: rotate(8deg); } 60% { transform: rotate(-5deg); } 75% { transform: rotate(2deg); } }
+.frc-campana { display: inline-block; transform-origin: 50% 0; animation: frc-campana 1.2s ease-in-out 2; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

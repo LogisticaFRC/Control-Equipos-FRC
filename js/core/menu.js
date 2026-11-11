@@ -24,6 +24,11 @@ export const AREAS = [
     modulos: [{ key: 'inicio', label: 'Bienvenida', icon: 'fa-house' }]
   },
   {
+    // Recordatorio PERSONAL de cada usuario (calendario + avisos). Ver modules/recordatorios
+    key: 'tareas', label: 'Mis Tareas', icon: 'fa-calendar-check', color: 'text-amber-300', directo: true,
+    modulos: [{ key: 'misTareas', label: 'Recordatorio de tareas', icon: 'fa-calendar-check' }]
+  },
+  {
     key: 'operaciones', label: 'Operaciones', icon: 'fa-gears', color: 'text-amber-400',
     // grupo → subtítulo dentro del área (ver GRUPOS)
     modulos: [
