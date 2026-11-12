@@ -13,6 +13,7 @@ export default {
   name: 'ConfiguracionView',
   template,
   setup() {
+    Vue.onMounted(() => { if (esAdminGeneral.value) S.cargarPerfilesAcceso(); });
     return {
       ...comunes(), ...S, config, dbUsuarios, esAdminGeneral,
       importarInventarioFile, importarMovimientosFile, importarIntervencionesFile

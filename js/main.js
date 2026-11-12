@@ -1,7 +1,7 @@
 // =====================================================================
 // MAIN · Punto de entrada: arma la app, el header/menú y registra los módulos
 // =====================================================================
-import { usuarioActivo, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, cargarDatosDesdeSupabase } from './core/store.js';
+import { usuarioActivo, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, cargarDatosDesdeSupabase, puedeVerModulo } from './core/store.js';
 
 // Módulos (pantallas)
 import DashboardView from './modules/dashboard/dashboard.view.js';
@@ -215,7 +215,13 @@ const app = createApp({
     const areasAbiertas = reactive(Object.fromEntries(AREAS.map(a => [a.key, false])));
     watch(areaActual, (a) => { areasAbiertas[a.key] = true; }, { immediate: true });
 
-    const switchTab = (tab) => { currentTab.value = tab; menuAbierto.value = false; };
+    // Menú según el perfil del usuario: solo los módulos que puede ver (Inicio y Mis Tareas siempre)
+    const areasVisibles = computed(() => AREAS
+      .map(a => ({ ...a, modulos: a.modulos.filter(m => puedeVerModulo(m.key)) }))
+      .filter(a => a.modulos.length));
+    // Si entra a un módulo que no puede ver (link, F5 o le quitaron el acceso) → Inicio
+    watch([currentTab, usuarioActivo], ([t, u]) => { if (u && !puedeVerModulo(t)) currentTab.value = 'inicio'; }, { immediate: true });
+    const switchTab = (tab) => { if (!puedeVerModulo(tab)) return; currentTab.value = tab; menuAbierto.value = false; };
     // "Salir" apretado a mano: deja de avisar las tareas en este navegador
     const salir = () => { borrarCacheAvisos(); logout(); };
     iniciarMotorAvisos();   // Mis Tareas: campana, notificaciones de Windows, sonido
@@ -238,7 +244,7 @@ const app = createApp({
     });
 
     return {
-      gruposDeArea, usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: AREAS, switchTab,
+      gruposDeArea, usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: areasVisibles, switchTab,
       menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, salir, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       abrirCambioClave, showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };

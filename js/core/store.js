@@ -49,11 +49,45 @@ export const nivelEnArea = (areaKey, u = usuarioActivo.value) => {
   return permisosDe(u)[areaKey] || 'lectura';
 };
 
+// ---------- Acceso por MÓDULO (perfiles) ----------
+// Opcional: permisos._modulos = { inventario: 'lectura', bodega: 'admin', hojaVida: 'oculto', ... }
+//   oculto   → no lo ve en el menú ni puede abrirlo
+//   lectura  → solo ver
+//   subadmin → ver, agregar / subir y modificar (sin eliminar)
+//   admin    → todo, incluido eliminar
+// Si el usuario tiene _modulos, un módulo que no aparece en la lista queda OCULTO.
+// Sin _modulos → como antes: ve todo y manda el nivel del área.
+// Inicio y Mis Tareas los ven SIEMPRE todos los usuarios (Mis Tareas es personal).
+export const MODULOS_SIEMPRE = ['inicio', 'misTareas'];
+export const NIVELES_MODULO = [
+  { key: 'oculto', label: 'No ve', corto: 'No ve' },
+  { key: 'lectura', label: 'Solo ver', corto: 'Ver' },
+  { key: 'subadmin', label: 'Ver, subir y modificar', corto: 'Modificar' },
+  { key: 'admin', label: 'Todo (incluye eliminar)', corto: 'Todo' }
+];
+/** Mapa módulo → nivel del usuario, o null si usa solo niveles por área. */
+export const modulosDe = (u) => {
+  const p = permisosDe(u);
+  const m = p && p._modulos;
+  return m && typeof m === 'object' && !Array.isArray(m) ? m : null;
+};
+/** Nivel del usuario en un módulo (pantalla): 'oculto' | 'lectura' | 'subadmin' | 'admin'. */
+export const nivelEnModulo = (tab, u = usuarioActivo.value) => {
+  if (!u) return 'lectura';
+  if (u.rol === 'admin') return 'admin';
+  if (MODULOS_SIEMPRE.includes(tab)) return 'admin';
+  const m = modulosDe(u);
+  if (m) return m[tab] || 'oculto';
+  return nivelEnArea(areaDeTab(tab).key, u);
+};
+export const puedeVerModulo = (tab, u = usuarioActivo.value) => nivelEnModulo(tab, u) !== 'oculto';
+
 /** Admin general (dueño del sistema). */
 export const esAdminGeneral = computed(() => Boolean(usuarioActivo.value && usuarioActivo.value.rol === 'admin'));
 /** Área de la pantalla actual y nivel del usuario en ella. */
 export const areaActualKey = computed(() => areaDeTab(currentTab.value).key);
-export const nivelActual = computed(() => nivelEnArea(areaActualKey.value));
+/** Nivel en la pantalla actual: el del módulo si el usuario tiene perfil por módulo; si no, el del área. */
+export const nivelActual = computed(() => { const n = nivelEnModulo(currentTab.value); return n === 'oculto' ? 'lectura' : n; });
 
 /** Admin en el área actual (el Admin general siempre lo es). Todos los módulos usan esto. */
 export const isAdmin = computed(() => nivelActual.value === 'admin');

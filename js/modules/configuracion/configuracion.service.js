@@ -5,9 +5,9 @@ import { supabaseClient, emailDeUsuario } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
 import {
   usuarioActivo, currentTab, config, CONFIG_DEFAULT, LOGO_DEFAULT, LOGO_VERSION, dbUsuarios,
-  dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems, soloAdminGeneral, permisosDe, nivelEnArea, NIVELES } from '../../core/store.js';
-import { AREAS_PERMISOS } from '../../core/menu.js';
-export { permisosDe, nivelEnArea, NIVELES, AREAS_PERMISOS };
+  dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems, soloAdminGeneral, permisosDe, nivelEnArea, NIVELES, modulosDe, nivelEnModulo, NIVELES_MODULO, MODULOS_SIEMPRE } from '../../core/store.js';
+import { AREAS_PERMISOS, gruposDeArea } from '../../core/menu.js';
+export { permisosDe, nivelEnArea, NIVELES, AREAS_PERMISOS, modulosDe, nivelEnModulo, NIVELES_MODULO, MODULOS_SIEMPRE, gruposDeArea };
 import { placeholderImg } from '../../core/utils.js';
 import { iniciarSesion, cerrarSesion, cargarPerfil, debeCambiarClave, COLUMNAS_USUARIO } from '../../core/sesion.js';
 
@@ -105,7 +105,7 @@ export const guardarNuevaClave = async () => {
 // tipo 'general' → rol 'admin' (todo).  tipo 'areas' → rol 'lectura' + permisos por área (columna jsonb `permisos`).
 /** Usuario principal: no se puede eliminar ni bajar de Admin general. */
 export const USUARIO_PRINCIPAL = 'logistica';
-const usuarioVacio = () => ({ usuario: "", clave: "", tipo: "areas", permisos: Object.fromEntries(AREAS_PERMISOS.map(a => [a.key, "lectura"])) });
+const usuarioVacio = () => ({ usuario: "", clave: "", tipo: "areas", perfilId: "", permisos: Object.fromEntries(AREAS_PERMISOS.map(a => [a.key, "lectura"])) });
 export const nuevoUsuario = ref(usuarioVacio());
 
 /** Deja solo las áreas con nivel distinto de 'lectura'. */
@@ -141,7 +141,7 @@ export const crearNuevoUsuario = async () => {
   const general = u.tipo === 'general';
   const { error } = await supabaseClient.rpc('frc_admin_crear_usuario', {
     p_usuario: u.usuario.trim(), p_clave: u.clave, p_rol: general ? 'admin' : 'lectura',
-    p_permisos: general ? {} : limpiarPermisos(u.permisos)
+    p_permisos: general ? {} : (u.perfilId ? permisosDesdeModulos(perfilPorId(u.perfilId)?.modulos || {}, perfilPorId(u.perfilId)) : limpiarPermisos(u.permisos))
   });
   if (error) return avisarError('crear usuario', error);
   await cargarUsuariosDesdeSupabase();
@@ -152,6 +152,7 @@ export const crearNuevoUsuario = async () => {
 /** Cambia el nivel de un usuario en un área (se guarda al tiro). */
 export const cambiarPermisoArea = async (u, areaKey, nivel) => {
   if (!soloAdminGeneral()) return;
+  if (modulosDe(u)) { alert('Este usuario tiene acceso POR MÓDULO: cambia sus permisos con el botón "Módulos".'); return cargarUsuariosDesdeSupabase(); }
   const permisos = limpiarPermisos({ ...permisosDe(u), [areaKey]: nivel });
   const { error } = await supabaseClient.from(TABLAS.USUARIOS).update({ permisos, rol: 'lectura' }).eq('usuario', u.usuario);
   if (error) avisarError('guardar permisos', error);
@@ -259,3 +260,173 @@ export const exportarTodasLasTablasExcel = () => {
 
   XLSX.writeFile(wb, "Base_De_Datos_Completa_FRC.xlsx");
 };
+
+// =====================================================================
+// ACCESO POR MÓDULO Y PERFILES
+// ---------------------------------------------------------------------
+// · Cada usuario (no Admin general) puede tener permisos._modulos = { modulo: nivel }.
+//   Niveles: oculto (no ve) · lectura (ver) · subadmin (ver, subir y modificar) · admin (todo, incluye eliminar).
+// · El nivel de cada ÁREA se guarda igual (= el mayor de sus módulos) porque la base de datos (RLS)
+//   revisa los permisos por área. Ocultar un módulo lo saca del menú y no se puede abrir.
+// · Inicio y Mis Tareas siempre se ven (no se pueden quitar).
+// · Perfiles: plantillas con nombre (ej. "Bodega", "Mecánico") guardadas en bd_config clave 'perfiles_acceso'.
+//   Al asignar un perfil se copian sus módulos al usuario; si después se edita el perfil, se puede
+//   actualizar a todos los usuarios que lo tienen.
+// =====================================================================
+const ORDEN_NIVEL = { oculto: 0, lectura: 1, subadmin: 2, admin: 3 };
+const CLAVE_PERFILES = 'perfiles_acceso';
+
+/** Áreas con sus módulos configurables (sin Inicio ni Mis Tareas, que siempre se ven). */
+export const AREAS_MODULOS = AREAS_PERMISOS
+  .map(a => ({ ...a, modulos: a.modulos.filter(m => !MODULOS_SIEMPRE.includes(m.key)) }))
+  .filter(a => a.modulos.length);
+const TODOS_MODULOS = AREAS_MODULOS.flatMap(a => a.modulos.map(m => ({ ...m, area: a.key })));
+
+/** Arma `permisos` desde un mapa de módulos: niveles por área (máximo de sus módulos) + _modulos (+ _perfil). */
+export const permisosDesdeModulos = (mapa, perfil = null) => {
+  const out = {};
+  const limpio = {};
+  TODOS_MODULOS.forEach(m => {
+    const n = mapa[m.key] || 'oculto';
+    if (n !== 'oculto') limpio[m.key] = n;
+    if (ORDEN_NIVEL[n] > ORDEN_NIVEL[out[m.area] || 'lectura']) out[m.area] = n;
+  });
+  Object.keys(out).forEach(k => { if (out[k] === 'lectura') delete out[k]; });
+  out._modulos = limpio;
+  if (perfil) out._perfil = { id: perfil.id, nombre: perfil.nombre };
+  return out;
+};
+
+/** Mapa de módulos actual de un usuario (si no tiene, se arma desde sus niveles por área: ve todo). */
+export const mapaModulosUsuario = (u) => {
+  const m = modulosDe(u);
+  if (m) return { ...m };
+  return Object.fromEntries(TODOS_MODULOS.map(x => [x.key, nivelEnArea(x.area, u)]));
+};
+export const perfilDeUsuario = (u) => { const p = permisosDe(u); return p && p._perfil ? p._perfil : null; };
+export const resumenAcceso = (u) => {
+  if (u.rol === 'admin') return 'Todo';
+  const m = modulosDe(u);
+  if (!m) return 'Por área (ve todo)';
+  const n = TODOS_MODULOS.filter(x => (m[x.key] || 'oculto') !== 'oculto').length;
+  const pf = perfilDeUsuario(u);
+  return (pf ? `Perfil ${pf.nombre} · ` : 'Personalizado · ') + `${n} de ${TODOS_MODULOS.length} módulos`;
+};
+
+// ---------- Perfiles guardados ----------
+export const perfilesAcceso = ref([]);
+export const faltaTablaConfig = ref(false);
+export const perfilPorId = (id) => perfilesAcceso.value.find(p => String(p.id) === String(id));
+export const cargarPerfilesAcceso = async () => {
+  try {
+    const { data, error } = await supabaseClient.from('bd_config').select('valor').eq('clave', CLAVE_PERFILES).limit(1);
+    if (error) throw error;
+    perfilesAcceso.value = (data && data[0] && Array.isArray(data[0].valor?.perfiles)) ? data[0].valor.perfiles : [];
+    faltaTablaConfig.value = false;
+  } catch (err) {
+    if (/bd_config|does not exist|schema cache|relation/i.test(err.message || '')) faltaTablaConfig.value = true;
+    else console.warn('No se pudieron leer los perfiles:', err);
+  }
+};
+const guardarPerfilesAcceso = async (lista) => {
+  const { error } = await supabaseClient.from('bd_config').upsert([{ clave: CLAVE_PERFILES, valor: { perfiles: lista }, updated_at: new Date().toISOString() }], { onConflict: 'clave' });
+  if (error) {
+    if (/bd_config|does not exist|schema cache|relation/i.test(error.message || '')) { faltaTablaConfig.value = true; alert('Falta la tabla bd_config: ejecuta sql/costos_mantencion.sql en Supabase (crea esa tabla) y vuelve a intentar.'); }
+    else alert('No se pudo guardar el perfil: ' + error.message);
+    return false;
+  }
+  perfilesAcceso.value = lista;
+  return true;
+};
+
+// ---------- Ventana "Módulos" (usuario o perfil) ----------
+// editorAcceso = { modo: 'usuario' | 'perfil', usuario?, perfil?: { id, nombre }, mapa: { modulo: nivel }, perfilId }
+export const editorAcceso = ref(null);
+export const abrirAccesoUsuario = (u) => {
+  if (!soloAdminGeneral()) return;
+  const pf = perfilDeUsuario(u);
+  editorAcceso.value = { modo: 'usuario', usuario: u, mapa: mapaModulosUsuario(u), perfilId: pf ? pf.id : '', porArea: !modulosDe(u) };
+};
+export const abrirNuevoPerfil = () => {
+  if (!soloAdminGeneral()) return;
+  editorAcceso.value = { modo: 'perfil', perfil: { id: null, nombre: '', descripcion: '' }, mapa: Object.fromEntries(TODOS_MODULOS.map(m => [m.key, 'oculto'])) };
+};
+export const abrirEditarPerfil = (p) => {
+  if (!soloAdminGeneral()) return;
+  editorAcceso.value = { modo: 'perfil', perfil: { ...p }, mapa: { ...Object.fromEntries(TODOS_MODULOS.map(m => [m.key, 'oculto'])), ...(p.modulos || {}) } };
+};
+export const cerrarEditorAcceso = () => { editorAcceso.value = null; };
+/** Pone el mismo nivel a todos los módulos de un área (o a todos si areaKey es null). */
+export const nivelParaArea = (areaKey, nivel) => {
+  const e = editorAcceso.value; if (!e) return;
+  TODOS_MODULOS.filter(m => !areaKey || m.area === areaKey).forEach(m => { e.mapa[m.key] = nivel; });
+  e.perfilId = ''; e.porArea = false;
+};
+export const cambiarNivelModulo = (key, nivel) => { const e = editorAcceso.value; e.mapa[key] = nivel; e.perfilId = ''; e.porArea = false; };
+export const aplicarPerfilEnEditor = (id) => {
+  const e = editorAcceso.value; const p = perfilPorId(id);
+  e.perfilId = id; e.porArea = false;
+  if (p) e.mapa = { ...Object.fromEntries(TODOS_MODULOS.map(m => [m.key, 'oculto'])), ...(p.modulos || {}) };
+};
+export const visiblesEnEditor = () => { const e = editorAcceso.value; return e ? TODOS_MODULOS.filter(m => (e.mapa[m.key] || 'oculto') !== 'oculto').length : 0; };
+export const TOTAL_MODULOS = TODOS_MODULOS.length;
+export const guardandoAcceso = ref(false);
+
+export const guardarEditorAcceso = async () => {
+  if (!soloAdminGeneral()) return;
+  const e = editorAcceso.value; if (!e) return;
+  guardandoAcceso.value = true;
+  try {
+    if (e.modo === 'perfil') {
+      const nombre = String(e.perfil.nombre || '').trim();
+      if (!nombre) return alert('Escribe el nombre del perfil.');
+      if (perfilesAcceso.value.some(p => p.nombre.toLowerCase() === nombre.toLowerCase() && String(p.id) !== String(e.perfil.id))) return alert('Ya existe un perfil con ese nombre.');
+      const limpio = Object.fromEntries(Object.entries(e.mapa).filter(([, n]) => n && n !== 'oculto'));
+      const perfil = { id: e.perfil.id || Date.now(), nombre, descripcion: String(e.perfil.descripcion || '').trim(), modulos: limpio };
+      const lista = e.perfil.id ? perfilesAcceso.value.map(p => (String(p.id) === String(perfil.id) ? perfil : p)) : [...perfilesAcceso.value, perfil];
+      if (!(await guardarPerfilesAcceso(lista))) return;
+      // Usuarios que tienen este perfil → se actualizan
+      const conPerfil = dbUsuarios.value.filter(u => u.rol !== 'admin' && String(perfilDeUsuario(u)?.id) === String(perfil.id));
+      if (conPerfil.length && confirm(`¿Aplicar los cambios también a los ${conPerfil.length} usuario(s) con el perfil "${nombre}"?\n${conPerfil.map(u => u.usuario).join(', ')}`)) {
+        for (const u of conPerfil) {
+          const { error } = await supabaseClient.from(TABLAS.USUARIOS).update({ permisos: permisosDesdeModulos(perfil.modulos, perfil), rol: 'lectura' }).eq('usuario', u.usuario);
+          if (error) avisarError('actualizar ' + u.usuario, error);
+        }
+        await cargarUsuariosDesdeSupabase();
+      }
+    } else {
+      const u = e.usuario;
+      let permisos;
+      if (e.porArea) {
+        // volver al sistema antiguo: solo niveles por área (ve todo)
+        permisos = Object.fromEntries(Object.entries(permisosDe(u)).filter(([k]) => !k.startsWith('_')));
+      } else {
+        const perfil = e.perfilId ? perfilPorId(e.perfilId) : null;
+        permisos = permisosDesdeModulos(e.mapa, perfil);
+      }
+      const { error } = await supabaseClient.from(TABLAS.USUARIOS).update({ permisos, rol: 'lectura' }).eq('usuario', u.usuario);
+      if (error) return avisarError('guardar el acceso', error);
+      await cargarUsuariosDesdeSupabase();
+    }
+    editorAcceso.value = null;
+  } finally { guardandoAcceso.value = false; }
+};
+
+export const eliminarPerfilAcceso = async (p) => {
+  if (!soloAdminGeneral()) return;
+  const n = dbUsuarios.value.filter(u => String(perfilDeUsuario(u)?.id) === String(p.id)).length;
+  if (!confirm(`¿Eliminar el perfil "${p.nombre}"?` + (n ? `\n${n} usuario(s) lo tienen: conservan sus módulos actuales (quedan como personalizados).` : ''))) return;
+  await guardarPerfilesAcceso(perfilesAcceso.value.filter(x => String(x.id) !== String(p.id)));
+};
+export const usuariosConPerfil = (p) => dbUsuarios.value.filter(u => u.rol !== 'admin' && String(perfilDeUsuario(u)?.id) === String(p.id)).map(u => u.usuario);
+export const contarModulos = (mapa) => Object.values(mapa || {}).filter(n => n && n !== 'oculto').length;
+
+// ---------- Estilos / nombres para la ventana de módulos ----------
+const ETIQUETA_MOD = Object.fromEntries(AREAS_MODULOS.flatMap(a => a.modulos.map(m => [m.key, m.label])));
+export const etiquetaModulo = (k) => ETIQUETA_MOD[k] || k;
+export const cortoNivelModulo = (n) => (NIVELES_MODULO.find(x => x.key === n) || NIVELES_MODULO[0]).corto;
+export const claseNivelModulo = (n) => ({
+  oculto: 'bg-slate-100 text-slate-500 border-slate-300', lectura: 'bg-white text-slate-700 border-slate-300',
+  subadmin: 'bg-sky-50 text-sky-800 border-sky-300', admin: 'bg-emerald-50 text-emerald-800 border-emerald-300'
+}[n] || '');
+export const botonNivelActivo = (n) => ({ oculto: 'bg-slate-500 text-white', lectura: 'bg-slate-800 text-white', subadmin: 'bg-sky-600 text-white', admin: 'bg-emerald-600 text-white' }[n]);

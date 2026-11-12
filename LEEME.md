@@ -732,3 +732,11 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
   - mantención: fecha realizada futura;
   - reparación: fecha inicio vacía o fecha fin anterior a la fecha inicio.
 - Recién al guardar la tabla se reordena por fecha. `programas.service.js` (fechaVisible, cambiarFechaBorrador, guardarCambiosFechas, descartarCambiosFechas) y `programas.template.js`. No requiere SQL.
+
+## 2026-11-12 · Acceso por SUBMÓDULO y PERFILES de acceso
+- Config & Usuarios → columna **Acceso a módulos** + botón **Módulos** por usuario: se elige módulo por módulo **No ve · Ver · Modificar (ver, agregar/subir y editar) · Todo (además eliminar)**. Botones para poner un nivel a toda un área o a todo. Opción "Sin restricción por módulo" = como antes (ve todo, manda el nivel por área).
+- **Perfiles de acceso** (sección nueva): plantillas con nombre (ej. Bodega, Mecánico) que se asignan al crear el usuario o en la ventana Módulos. Al editar un perfil pregunta si actualizar a los usuarios que lo tienen. Se guardan en `bd_config` clave `perfiles_acceso` (requiere `sql/costos_mantencion.sql`, que crea esa tabla).
+- **Inicio y Mis Tareas siempre se ven** (no se pueden quitar).
+- Cómo se guarda: `usuarios.permisos._modulos = { modulo: nivel }` (+ `_perfil`). El nivel de cada área se guarda igual (= el mayor de sus módulos) porque la base de datos (RLS) revisa por área. Un módulo no marcado queda oculto del menú y si se abre por enlace vuelve a Inicio. En la pantalla, los botones de agregar/editar/eliminar siguen el nivel del módulo actual (`nivelEnModulo` en core/store.js).
+- Ojo: ocultar es a nivel de pantallas. Los datos de un módulo oculto siguen siendo legibles para cualquier usuario conectado (RLS de lectura por miembro), igual que antes.
+- No requiere SQL nuevo (usa la columna `permisos` existente).
