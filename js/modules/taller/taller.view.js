@@ -4,7 +4,7 @@
 import template from './taller.template.js';
 import { comunes } from '../../core/comunes.js';
 import * as S from './taller.service.js';
-import { folioSugerido, imprimirOT, irAOT, ESTILO_ESTADO_OT, estadoOT, N_ACTIVIDADES } from '../ot/ot.service.js';
+import { folioSugerido, imprimirOT, irAOT, ESTILO_ESTADO_OT, ETIQUETA_ESTADO_OT, estadoOT, N_ACTIVIDADES } from '../ot/ot.service.js';
 import { cargarDatosDesdeSupabase } from '../../core/store.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 
@@ -137,7 +137,7 @@ export default {
     return {
       quitarOTSel,
       ...comunes(), ...S,
-      folioSugerido, imprimirOT, ESTILO_ESTADO_OT, estadoOT, N_ACTIVIDADES, formatDateForDisplay,
+      folioSugerido, imprimirOT, ESTILO_ESTADO_OT, ETIQUETA_ESTADO_OT, estadoOT, N_ACTIVIDADES, formatDateForDisplay,
       naveIngreso, afiNuevo, repTrabajo, otSel, nuevaAct, formOT, repSalida, formSalida, afiSinProg, naveDestino, ocupado,
       pantallaCompleta, alternarPantallaCompleta, actualizarTodo, horaActualizacion,
       abrirIngreso, ingresar, ingresarDesdeLista, agregarSinProg,

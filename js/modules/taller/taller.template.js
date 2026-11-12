@@ -229,7 +229,7 @@ export default /* html */ `
             <td class="p-3"><span v-if="repPorId(o.reparacion_id)" :class="['text-xs font-bold px-2 py-0.5 rounded-full border', ESTILO_ESTADO[repPorId(o.reparacion_id).estado]]">{{ ubicacionRep(repPorId(o.reparacion_id)) }}</span></td>
             <td class="p-3 text-xs font-semibold">{{ repPorId(o.reparacion_id) && repPorId(o.reparacion_id).programa_id != null ? nombreProgId(repPorId(o.reparacion_id).programa_id) : 'Sin programa' }}</td>
             <td class="p-3"><div class="flex items-center gap-2"><div class="flex-1 h-2.5 bg-slate-200 rounded-full overflow-hidden"><div :class="['h-2.5 rounded-full', colorAvance(progresoOT(o).pct)]" :style="{ width: progresoOT(o).pct + '%' }"></div></div><span class="text-xs font-black w-10 text-right">{{ progresoOT(o).pct }}%</span></div></td>
-            <td class="p-3"><span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(o)]]">{{ estadoOT(o) }}</span></td>
+            <td class="p-3"><span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(o)]]">{{ ETIQUETA_ESTADO_OT[estadoOT(o)] }}</span></td>
             <td class="p-3 text-right whitespace-nowrap">
               <button v-if="repPorId(o.reparacion_id)" @click="abrirReparar(repPorId(o.reparacion_id))" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold"><i class="fa-solid fa-screwdriver-wrench mr-1"></i>Actividades</button>
               <button @click="abrirFormatoOT(o)" class="ml-1 px-2.5 py-1 rounded-lg border text-xs font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>Formato</button>

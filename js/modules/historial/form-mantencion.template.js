@@ -65,7 +65,7 @@ export default /* html */ `
                   <select v-model="formMant.programaCorrespondiente" class="w-full p-2 border border-indigo-300 rounded-lg bg-indigo-50 font-bold text-indigo-900">
                     <option value="">-- Sin Programa --</option>
                     <optgroup v-if="programasDelAfi(formMant.afi).length" :label="'Programas con el AFI ' + formMant.afi">
-                      <option v-for="x in programasDelAfi(formMant.afi)" :key="'a' + x.prog.id" :value="x.nombre">[{{ x.prog.carpeta || x.prog.tipo }}] {{ x.nombre }}{{ x.pendientes.length ? ' · pendiente ' + formatDateForDisplay(x.pendientes[0]) : ' · ya realizado' }}</option>
+                      <option v-for="x in programasDelAfi(formMant.afi)" :key="'a' + x.prog.id" :value="x.nombre">[{{ x.prog.carpeta || x.prog.tipo }}] {{ x.nombre }} · {{ x.etiqueta }}</option>
                     </optgroup>
                     <optgroup label="Otros programas">
                       <option v-for="p in dbProgramasCalendarios.filter(p => !programasDelAfi(formMant.afi).some(x => x.prog.id === p.id))" :key="p.id" :value="p.nombre_programa || p.mes">[{{ p.carpeta || p.tipo }}] {{ p.nombre_programa || p.mes }}</option>
@@ -148,7 +148,16 @@ export default /* html */ `
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 <div><label class="block font-bold mb-1">Empresa / Arriendo</label><input type="text" v-model="formMant.empresaArriendo" list="dl-fm-emp" placeholder="Empresa..." class="w-full p-2 border rounded-lg bg-white"></div>
                 <div><label class="block font-bold mb-1">Costo ($)</label><input type="number" v-model="formMant.costo" placeholder="0" class="w-full p-2 border rounded-lg bg-white font-mono"></div>
-                <div><label class="block font-bold mb-1">N° OT</label><input type="text" v-model="formMant.numeroOT" placeholder="OT..." class="w-full p-2 border rounded-lg bg-white font-mono"></div>
+                <div><label class="block font-bold mb-1">N° OT</label><input type="text" v-model="formMant.numeroOT" list="dl-fm-ot" placeholder="OT..." class="w-full p-2 border rounded-lg bg-white font-mono">
+                  <datalist id="dl-fm-ot"><option v-for="o in otsAbiertasDeAfi(formMant.afi)" :key="o.id" :value="o.folio">{{ textoOT(o) }}</option></datalist>
+                  <div v-if="otsAbiertasDeAfi(formMant.afi).length" class="mt-1 flex flex-wrap gap-1">
+                    <span class="text-[9px] font-bold text-slate-500 w-full">OT abiertas del AFI {{ formMant.afi }}:</span>
+                    <button v-for="o in otsAbiertasDeAfi(formMant.afi).slice(0, 6)" :key="o.id" type="button" @click="formMant.numeroOT = String(o.folio)" :title="textoOT(o)"
+                      :class="['text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border', String(formMant.numeroOT).replace(/\D/g, '') === String(o.folio) ? 'bg-indigo-600 text-white border-indigo-600' : (estadoOT(o) === 'EN_PROCESO' ? 'bg-sky-50 text-sky-800 border-sky-300 hover:bg-sky-100' : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100')]">{{ o.folio }}<span class="font-sans font-semibold"> · {{ o.tipo_mantencion ? o.tipo_mantencion.slice(0, 4) : 'OT' }}</span></button>
+                  </div>
+                  <p v-else-if="formMant.afi && dbOTCargadas" class="text-[9px] text-slate-400 mt-0.5">Sin OT abiertas para este AFI.</p>
+                  <p v-if="otCerradaForm" class="text-[10px] font-bold text-rose-600 mt-0.5"><i class="fa-solid fa-lock"></i> OT {{ otCerradaForm }}: solo el Admin puede agregar documentos.</p>
+                </div>
               </div>
 
               <!-- ÓRDENES DE COMPRA (una mantención puede tener varias OC → módulo OC) -->

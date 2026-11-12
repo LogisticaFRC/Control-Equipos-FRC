@@ -7,8 +7,8 @@
 // =====================================================================
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
-import { usuarioActivo, currentTab, dbIntervenciones, buscarEquipoPorAfi, soloAdmin, soloEditor } from '../../core/store.js';
-import { hoyISO, limpiarAfi } from '../../core/utils.js';
+import { usuarioActivo, currentTab, dbIntervenciones, dbProgramasCalendarios, buscarEquipoPorAfi, soloAdmin, soloEditor, isAdmin } from '../../core/store.js';
+import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, formatDateForDisplay } from '../../core/utils.js';
 import { FORMATO_OT } from './ot.formato.js';
 import { abrirFormularioNuevaMantencion, formMant } from '../historial/historial.service.js';
 
@@ -71,16 +71,66 @@ export const cargarOT = async () => {
 const numeroDe = (v) => { const m = String(v || '').match(/\d+/); return m ? Number(m[0]) : null; };
 /** Mantenciones del Historial cuyo N° OT es el folio. */
 export const mantencionesDeOT = (folio) => dbIntervenciones.value.filter(i => folio && numeroDe(i.numeroOT) === Number(folio));
-/** 'REALIZADA' (registrada en Historial) · 'ANULADA' · 'PENDIENTE' */
+/** ¿El registro del Historial pertenece a un programa de REPARACIÓN? */
+const regDeReparacion = (m) => {
+  const n = String(m.programaCorrespondiente || '').trim().toUpperCase();
+  if (!n) return false;
+  const p = dbProgramasCalendarios.value.find(x => String(x.nombre_programa || x.mes || '').trim().toUpperCase() === n);
+  return Boolean(p) && String(p.tipo || p.carpeta || '').toUpperCase() === 'REPARACION';
+};
+/**
+ * Estado de la OT (2026-11-12):
+ *  ANULADA · CERRADA (guardado: se cerró al quedar reparado el equipo, o a mano)
+ *  OT de REPARACIÓN (enlazada al Taller o con reportes de un programa de reparación):
+ *     EN_PROCESO mientras tenga reportes sin "Reparación terminada" → REALIZADA con el reporte final
+ *  OT normal (mantención): REALIZADA apenas se registra en el Historial
+ *  PENDIENTE: sin registros. ABIERTAS = PENDIENTE o EN_PROCESO (las que se ofrecen en el N° OT del Historial).
+ *  Reabrir una OT cerrada (para agregar documentos pasados) = solo Admin.
+ */
 export const estadoOT = (ot) => {
   if (!ot) return 'PENDIENTE';
   if (ot.estado === 'ANULADA') return 'ANULADA';
-  return mantencionesDeOT(ot.folio).length ? 'REALIZADA' : 'PENDIENTE';
+  if (ot.estado === 'CERRADA') return 'CERRADA';
+  const regs = mantencionesDeOT(ot.folio);
+  const deRep = regs.filter(regDeReparacion);
+  if (deRep.length || ot.reparacion_id != null) {
+    if (deRep.some(m => m.reparacionTerminada)) return 'REALIZADA';
+    return regs.length ? 'EN_PROCESO' : 'PENDIENTE';
+  }
+  return regs.length ? 'REALIZADA' : 'PENDIENTE';
 };
+export const otAbierta = (ot) => ['PENDIENTE', 'EN_PROCESO'].includes(estadoOT(ot));
+export const ETIQUETA_ESTADO_OT = { PENDIENTE: 'PENDIENTE', EN_PROCESO: 'EN PROCESO', REALIZADA: 'REALIZADA', CERRADA: 'CERRADA', ANULADA: 'ANULADA' };
 export const ESTILO_ESTADO_OT = {
   PENDIENTE: 'bg-amber-100 text-amber-800 border-amber-300',
+  EN_PROCESO: 'bg-sky-100 text-sky-800 border-sky-300',
   REALIZADA: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  CERRADA: 'bg-slate-700 text-white border-slate-700',
   ANULADA: 'bg-slate-200 text-slate-500 border-slate-300 line-through'
+};
+/** OT abiertas de un AFI (más nueva primero) → sugerencias del N° OT en el formulario del Historial. */
+export const otsAbiertasDeAfi = (afi) => (afi ? dbOT.value
+  .filter(o => mismoAfi(o.afi, afi) && otAbierta(o))
+  .sort((a, b) => (Number(b.folio) || 0) - (Number(a.folio) || 0)) : []);
+export const otPorFolio = (v) => { const n = numeroDe(v); return n ? dbOT.value.find(o => Number(o.folio) === n) || null : null; };
+export const textoOT = (o) => `OT ${o.folio} · ${o.tipo_mantencion || 'OT'}${o.fecha ? ' · ' + formatDateForDisplay(normalizarFecha(o.fecha)) : ''} · ${ETIQUETA_ESTADO_OT[estadoOT(o)]}`;
+
+/** Cierra (o reabre) OT por id. Reabrir solo lo hace el Admin (salvo `forzar` interno). */
+export const cerrarOTs = async (ids, cerrar = true) => {
+  const lista = dbOT.value.filter(o => ids.some(id => String(id) === String(o.id)) && o.estado !== 'ANULADA' && (cerrar ? o.estado !== 'CERRADA' : o.estado === 'CERRADA'));
+  if (!lista.length) return 0;
+  if (!cerrar && !isAdmin.value) return 0;
+  await sb(supabaseClient.from(TABLA_OT).update({ estado: cerrar ? 'CERRADA' : 'ABIERTA' }).in('id', lista.map(o => o.id)));
+  lista.forEach(o => { o.estado = cerrar ? 'CERRADA' : 'ABIERTA'; });
+  if (otActual.value && lista.some(o => o.id === otActual.value.id)) otActual.value.estado = cerrar ? 'CERRADA' : 'ABIERTA';
+  return lista.length;
+};
+/** Botón del editor de OT: Cerrar (Admin/Subadmin) · Reabrir (solo Admin). */
+export const alternarCierreOT = async (ot) => {
+  const cerrada = ot.estado === 'CERRADA';
+  if (cerrada ? !soloAdmin() : !soloEditor()) return;
+  if (!confirm(cerrada ? `¿Reabrir la OT N° ${ot.folio}? Volverá a aparecer en el N° OT del Historial para agregar documentos.` : `¿Cerrar la OT N° ${ot.folio}? Ya no aparecerá para agregar documentos (solo el Admin la puede reabrir).`)) return;
+  try { await cerrarOTs([ot.id], !cerrada); } catch (err) { alert('Error: ' + errMsg(err)); }
 };
 
 export const listaOT = computed(() => {
@@ -94,7 +144,7 @@ export const listaOT = computed(() => {
   });
 });
 export const resumenOT = computed(() => {
-  const r = { total: dbOT.value.length, PENDIENTE: 0, REALIZADA: 0, ANULADA: 0 };
+  const r = { total: dbOT.value.length, PENDIENTE: 0, EN_PROCESO: 0, REALIZADA: 0, CERRADA: 0, ANULADA: 0 };
   dbOT.value.forEach(o => { r[estadoOT(o)]++; });
   return r;
 });

@@ -5,7 +5,7 @@
 import { isAdmin, puedeEditar } from '../../core/store.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 import * as S from './taller.service.js';
-import { irAOT, ESTILO_ESTADO_OT, estadoOT } from '../ot/ot.service.js';
+import { irAOT, ESTILO_ESTADO_OT, ETIQUETA_ESTADO_OT, estadoOT } from '../ot/ot.service.js';
 
 const { ref, computed, onMounted } = Vue;
 
@@ -45,7 +45,7 @@ export default {
               <td class="p-3 text-slate-600">{{ o.equipo }} <span class="text-slate-400">{{ o.marca }} {{ o.modelo }}</span></td>
               <td class="p-3 text-xs font-semibold">{{ programaDeOT(o) }}</td>
               <td class="p-3"><span v-if="repPorId(o.reparacion_id)" :class="['text-xs font-bold px-2 py-0.5 rounded-full border', ESTILO_ESTADO[repPorId(o.reparacion_id).estado]]">{{ ubicacionRep(repPorId(o.reparacion_id)) }}</span></td>
-              <td class="p-3"><span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(o)]]">{{ estadoOT(o) }}</span></td>
+              <td class="p-3"><span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(o)]]">{{ ETIQUETA_ESTADO_OT[estadoOT(o)] }}</span></td>
               <td class="p-3 text-right whitespace-nowrap">
                 <button @click="irAOT(o.folio)" class="px-2.5 py-1 rounded-lg border text-xs font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>Formato</button>
                 <button v-if="puedeEditar" @click="desenlazarOT(o)" title="Quitar del taller (la OT no se borra)" class="ml-1 px-2.5 py-1 rounded-lg border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50"><i class="fa-solid fa-link-slash mr-1"></i>Quitar</button>
@@ -87,7 +87,7 @@ export default {
 
 
     return {
-      isAdmin, puedeEditar, formatDateForDisplay, irAOT, ESTILO_ESTADO_OT, estadoOT,
+      isAdmin, puedeEditar, formatDateForDisplay, irAOT, ESTILO_ESTADO_OT, ETIQUETA_ESTADO_OT, estadoOT,
       repPorId: S.repPorId, ubicacionRep: S.ubicacionRep, ESTILO_ESTADO: S.ESTILO_ESTADO, nombreProg: S.nombreProg, desenlazarOT: S.desenlazarOT,
       cargandoTaller: S.cargandoTaller,
       filtroProg, texto, recargar, programaDeOT, programasConOT, otsFiltradas

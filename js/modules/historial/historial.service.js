@@ -2,12 +2,12 @@
 // HISTORIAL · Lógica (filtros, formulario de mantención, adjuntos, importación)
 // =====================================================================
 import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
-import { dbEquipos, dbIntervenciones, cargarDatosDesdeSupabase, buscarEquipoPorAfi, recalcularHorometros, soloAdmin, soloEditor } from '../../core/store.js';
+import { dbEquipos, dbIntervenciones, cargarDatosDesdeSupabase, buscarEquipoPorAfi, recalcularHorometros, soloAdmin, soloEditor, isAdmin } from '../../core/store.js';
 import { parseNum, parseStr, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, limpiarAfi, mismoAfi, hoyISO, calcularRestaHoras, getVal, parseFileAnyFormat, resetInputFile } from '../../core/utils.js';
 import { TABLA_HISTORIAL, ACEITES, aceitesVacios, COL_FILTROS_ESCRITURA } from './historial.mapper.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
 import { registrarFiltrosDesdeMantencion, requeridosPorModelo, autocompletarFiltro } from '../filtros/filtros.service.js';
-import { sincronizarProgramaConHistorial } from '../programas/programas.service.js';
+import { sincronizarProgramaConHistorial, programaEsReparacion } from '../programas/programas.service.js';
 import { leerDocumento, resumenLectura, avisoVariasHojas } from '../../core/ocr-documentos.js';
 import { leerNombre } from './carga-documentos.service.js';
 import { ocsDeTexto } from '../oc/oc.mapper.js';
@@ -49,7 +49,9 @@ export const filteredIntervenciones = computed(() => {
 
 // ---------- Columnas nuevas del documento (ART, folio, causa de la falla) ----------
 // Si todavía no se ejecutó sql/historial_documentos.sql, se guarda sin ellas y se avisa (no se pierde el registro).
-const COLS_DOCUMENTO = (f) => ({ art: parseStr(f.usoArt), numero_folio: parseStr(f.numeroFolio), causa_falla: parseStr(f.causaFalla), reparacion_terminada: Boolean(f.reparacionTerminada) });
+const COLS_DOCUMENTO = (f) => ({ art: parseStr(f.usoArt), numero_folio: parseStr(f.numeroFolio), causa_falla: parseStr(f.causaFalla),
+  // solo se envía en programas de REPARACIÓN (así los demás registros no dependen de sql/reparacion_terminada.sql)
+  ...((f.reparacionTerminada || programaEsReparacion(f.programaCorrespondiente)) ? { reparacion_terminada: Boolean(f.reparacionTerminada) } : {}) });
 let avisoSqlDocs = false;
 let avisoSqlRep = false;
 const guardarConRespaldo = async (payload, op) => {
@@ -237,6 +239,19 @@ export const guardarMantencionForm = async () => {
     ...COLS_DOCUMENTO(f)
   };
   ACEITES.forEach(a => { payload[a.col] = parseNum(f[a.key]); });
+
+  // 0) N° OT: una OT CERRADA (o ya realizada) solo la puede usar el Admin para agregar documentos pasados
+  if (payload.numero_ot) {
+    try {
+      const O = await import('../ot/ot.service.js');
+      const ot = O.otPorFolio(payload.numero_ot);
+      const yaEra = f.id && O.mantencionesDeOT(ot?.folio).some(m => m.id === f.id);
+      if (ot && !yaEra && !O.otAbierta(ot) && O.estadoOT(ot) !== 'ANULADA') {
+        if (!isAdmin.value) return alert(`La OT N° ${ot.folio} está ${O.ETIQUETA_ESTADO_OT[O.estadoOT(ot)]}: no se pueden agregar más documentos.\nSolo el Admin puede reabrirla (módulo Órdenes de Trabajo → Reabrir OT).`);
+        if (!confirm(`La OT N° ${ot.folio} está ${O.ETIQUETA_ESTADO_OT[O.estadoOT(ot)]}.\n¿Agregar igual este documento? (Admin)`)) return;
+      }
+    } catch (e) { /* sin módulo OT: sigue normal */ }
+  }
 
   // 1) Guardar el registro del historial
   try {

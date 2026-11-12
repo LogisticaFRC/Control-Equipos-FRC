@@ -18,10 +18,12 @@ export default /* html */ `
       </div>
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       <div @click="filtroOT.estado = ''" class="rounded-xl border p-3 bg-white cursor-pointer hover:shadow"><p class="text-[10px] font-bold text-slate-500 uppercase">Total OT</p><p class="text-2xl font-extrabold text-slate-800">{{ resumenOT.total }}</p></div>
       <div @click="filtroOT.estado = 'PENDIENTE'" class="rounded-xl border p-3 bg-amber-100 text-amber-800 border-amber-300 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Pendientes</p><p class="text-2xl font-extrabold">{{ resumenOT.PENDIENTE }}</p></div>
+      <div @click="filtroOT.estado = 'EN_PROCESO'" class="rounded-xl border p-3 bg-sky-100 text-sky-800 border-sky-300 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">En proceso</p><p class="text-2xl font-extrabold">{{ resumenOT.EN_PROCESO }}</p></div>
       <div @click="filtroOT.estado = 'REALIZADA'" class="rounded-xl border p-3 bg-emerald-100 text-emerald-800 border-emerald-300 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Realizadas</p><p class="text-2xl font-extrabold">{{ resumenOT.REALIZADA }}</p></div>
+      <div @click="filtroOT.estado = 'CERRADA'" class="rounded-xl border p-3 bg-slate-700 text-white border-slate-700 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Cerradas</p><p class="text-2xl font-extrabold">{{ resumenOT.CERRADA }}</p></div>
       <div @click="filtroOT.estado = 'ANULADA'" class="rounded-xl border p-3 bg-slate-100 text-slate-600 cursor-pointer hover:shadow"><p class="text-[10px] font-bold uppercase">Anuladas</p><p class="text-2xl font-extrabold">{{ resumenOT.ANULADA }}</p></div>
     </div>
 
@@ -44,7 +46,7 @@ export default /* html */ `
               <td class="p-2.5">{{ o.equipo }} <span class="text-slate-400">{{ o.marca }} {{ o.modelo }}</span></td>
               <td class="p-2.5 font-semibold">{{ o.tipo_mantencion || '-' }}<span v-if="o.pauta" class="text-slate-500"> · {{ o.pauta }} h</span></td>
               <td class="p-2.5 max-w-[320px] truncate">{{ o.actividades.filter(a => a.descripcion).map(a => a.descripcion).join(' · ') || '-' }}</td>
-              <td class="p-2.5"><span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(o)]]">{{ estadoOT(o) }}</span></td>
+              <td class="p-2.5"><span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(o)]]">{{ ETIQUETA_ESTADO_OT[estadoOT(o)] }}</span></td>
               <td class="p-2.5 whitespace-nowrap"><span v-if="etiquetaTallerOT(o)" class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold" :title="'Enlazada al taller de reparación'"><i class="fa-solid fa-warehouse mr-1"></i>{{ etiquetaTallerOT(o) }}</span><span v-else class="text-slate-300">—</span></td>
               <td class="p-2.5 text-center whitespace-nowrap">
                 <span v-if="documentosDeOT(o.folio).length" class="font-bold text-emerald-700" :title="'Registros en Historial con N° OT ' + o.folio"><i class="fa-solid fa-clipboard-check mr-0.5"></i>{{ documentosDeOT(o.folio).length }}</span>
@@ -70,7 +72,7 @@ export default /* html */ `
       <div class="flex items-center gap-3 flex-wrap">
         <button @click="cerrarOT" class="px-3 py-2 rounded-lg border font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-arrow-left mr-1"></i> Volver</button>
         <span class="text-base font-extrabold text-slate-800">OT N° <span class="text-rose-700 font-mono">{{ otActual.folio || 'nueva — escribe el folio en la hoja' }}</span></span>
-        <span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(otActual)]]">{{ estadoOT(otActual) }}</span>
+        <span :class="['px-2 py-0.5 rounded-full border text-[10px] font-bold', ESTILO_ESTADO_OT[estadoOT(otActual)]]">{{ ETIQUETA_ESTADO_OT[estadoOT(otActual)] }}</span>
         <label class="flex items-center gap-1 font-bold text-slate-600">Fecha OT <input type="date" v-model="otActual.fecha" :disabled="!puedeEditar" class="p-1.5 border rounded-lg"></label>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
@@ -78,6 +80,7 @@ export default /* html */ `
         <button @click="imprimirOT(otActual)" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-print mr-1"></i> Imprimir</button>
         <button @click="exportarOTExcel(otActual)" :disabled="exportandoOT" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-3 py-2 rounded-lg border border-emerald-300 disabled:opacity-60"><i :class="['fa-solid mr-1', exportandoOT ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Excel</button>
         <button v-if="puedeEditar && estadoOT(otActual) === 'PENDIENTE'" @click="registrarEnHistorial(otActual)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-clipboard-check mr-1"></i> Registrar en Historial</button>
+        <button v-if="otActual.id && otActual.estado !== 'ANULADA' && (otActual.estado === 'CERRADA' ? isAdmin : puedeEditar)" @click="alternarCierreOT(otActual)" :class="['px-3 py-2 rounded-lg font-bold border', otActual.estado === 'CERRADA' ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100' : 'bg-slate-700 text-white border-slate-700 hover:bg-slate-800']"><i :class="['fa-solid mr-1', otActual.estado === 'CERRADA' ? 'fa-lock-open' : 'fa-lock']"></i>{{ otActual.estado === 'CERRADA' ? 'Reabrir OT' : 'Cerrar OT' }}</button>
         <button v-if="isAdmin && otActual.id" @click="anularOT(otActual)" class="px-3 py-2 rounded-lg border font-bold text-slate-600 hover:bg-slate-50">{{ otActual.estado === 'ANULADA' ? 'Reactivar' : 'Anular' }}</button>
       </div>
     </div>

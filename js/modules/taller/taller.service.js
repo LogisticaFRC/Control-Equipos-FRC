@@ -19,7 +19,7 @@ import { usuarioActivo, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPo
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, formatDateForDisplay, placeholderImg } from '../../core/utils.js';
 import { NAVES, carpetaDe, obtenerItemsPrograma, obtenerProgObj } from '../programas/programas.service.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
-import { dbOT, cargarOT, otVacia, mapOT, payloadOT, folioSugerido, N_ACTIVIDADES, N_ACEITES, TABLA_OT, estadoOT } from '../ot/ot.service.js';
+import { dbOT, cargarOT, otVacia, mapOT, payloadOT, folioSugerido, N_ACTIVIDADES, N_ACEITES, TABLA_OT, estadoOT, cerrarOTs } from '../ot/ot.service.js';
 
 const { ref, computed } = Vue;
 
@@ -323,6 +323,8 @@ export const sacarDeNave = async (rep, { reparado, faltante = '', agregarAOT = t
         catch (err) { alert('El equipo salió, pero no se pudo marcar REPARADO en el programa: ' + errMsg(err)); }
       }
       await fijarDisponibilidad(rep.afi, 'Disponible');
+      // OT de esta reparación → CERRADAS (ya no se ofrecen para agregar documentos)
+      try { await cerrarOTs(otsDeRep(rep).map(o => o.id), true); } catch (err) { console.warn('[Taller] No se pudieron cerrar las OT:', errMsg(err)); }
     } else {
       const txt = String(faltante || '').trim();
       if (!txt) { alert('Escribe qué le falta al equipo.'); return false; }

@@ -474,7 +474,8 @@ export const cambiarEstadoRealizadoItem = async (item) => {
     return alert("No se pudo actualizar el estado: " + errMsg(err));
   }
 
-  if (!esMant) return;
+  // REPARACIÓN: al quedar REPARADO se cierran sus OT; al desmarcar, solo el Admin las reabre
+  if (!esMant) { await cerrarOTsDeItem(item, Boolean(item.realizado)); return; }
   try {
     if (item.realizado) { if (descuenta) await consumirKitParaItem(item); }
     else await devolverKitDeItem(item);   // si se había descontado un kit, se devuelve aunque el switch esté en OFF
@@ -859,6 +860,21 @@ export const textoReportesItem = (item) => {
   if (!r.length) return '';
   return `${r.length} reporte${r.length === 1 ? '' : 's'} · último ${formatDateForDisplay(normalizarFecha(r[r.length - 1].fecha))}`;
 };
+/** REPARACIÓN: cierra (o reabre, solo Admin) las OT del equipo en este programa:
+ *  las enlazadas a su reparación del Taller y las nombradas en sus reportes del Historial (mismo AFI). */
+export const cerrarOTsDeItem = async (item, cerrar = true) => {
+  try {
+    const O = await import('../ot/ot.service.js');
+    if (!O.dbOT.value.length) await O.cargarOT();
+    let repIds = [];
+    try { repIds = (await sb(supabaseClient.from(TABLAS.TALLER).select('id').eq('programa_item_id', item.id))).map(r => String(r.id)); } catch (e) { repIds = []; }
+    const folios = new Set(reportesDeItem(item).map(m => (String(m.numeroOT || '').match(/\d+/) || [])[0]).filter(Boolean).map(Number));
+    const ids = O.dbOT.value.filter(o => (o.reparacion_id != null && repIds.includes(String(o.reparacion_id)))
+      || (folios.has(Number(o.folio)) && mismoEquipo(o.afi, item.afi))).map(o => o.id);
+    return await O.cerrarOTs(ids, cerrar);
+  } catch (err) { console.warn('[Programas] No se pudieron actualizar las OT:', errMsg(err)); return 0; }
+};
+
 /** REPARACIÓN: hay reportes pero el equipo aún no está reparado. */
 export const itemEnProceso = (item) => !item.realizado && reportesDeItem(item).length > 0;
 
@@ -899,9 +915,15 @@ export const programasDelAfi = (afi) => {
   return dbProgramasCalendarios.value.map(p => {
     const its = obtenerItemsPrograma(p.id).filter(i => mismoEquipo(i.afi, afi));
     if (!its.length) return null;
+    // REPARACIÓN: un reporte no cierra el equipo → sigue pendiente / en proceso hasta quedar REPARADO
+    if (!esProgramaMantencion(p)) {
+      const abiertos = its.filter(i => !i.realizado);
+      const enProceso = abiertos.some(i => reportesDeItem(i).length);
+      return { prog: p, nombre: p.nombre_programa || p.mes, pendientes: abiertos.map(i => fechaItem(i)), etiqueta: abiertos.length ? (enProceso ? 'en proceso' : 'pendiente ' + formatDateForDisplay(fechaItem(abiertos[0]))) : 'reparado' };
+    }
     const enl = enlacesDePrograma(p.id);
     const pendientes = its.filter(i => !enl.has(i.id) && !i.realizado).map(i => fechaItem(i));
-    return { prog: p, nombre: p.nombre_programa || p.mes, pendientes };
+    return { prog: p, nombre: p.nombre_programa || p.mes, pendientes, etiqueta: pendientes.length ? 'pendiente ' + formatDateForDisplay(pendientes[0]) : 'ya realizado' };
   }).filter(Boolean).sort((a, b) => (b.pendientes.length > 0) - (a.pendientes.length > 0) || String(a.pendientes[0] || '').localeCompare(String(b.pendientes[0] || '')));
 };
 
@@ -935,6 +957,7 @@ export const sincronizarProgramaConHistorial = async ({ nombrePrograma = '', pro
             const f = normalizarFecha(fin.fecha) || null;
             await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ realizado: true, fecha_fin: f }).eq('id', item.id));
             item.realizado = true; item.fecha_fin = f; marcados++;
+            await cerrarOTsDeItem(item, true);
           } else if (!item.realizado) {
             enProceso++;
             // la barra del Gantt se alarga hasta el último reporte

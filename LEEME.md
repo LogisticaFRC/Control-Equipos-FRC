@@ -750,3 +750,12 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
   3. Taller · Naves → botón nuevo **EQUIPO LISTO / REPARADO** en la tarjeta de la nave (o Sacar → "Sí, reparado"): sale de la nave, queda Disponible y REPARADO en el programa. Pensado para los mecánicos (darles "Modificar" en Programas Reparación).
 - Botón **Unir equipos repetidos (N)** (Admin) en el programa de reparación cuando un equipo aparece en varias filas: deja una (fecha inicio más antigua, fin más reciente, estado de la fila más reciente) y pasa la reparación del Taller a esa fila.
 - Programas de MANTENCIÓN sin cambios (un documento = realizado).
+
+## 2026-11-12 · OT abiertas en el Historial · cierre de OT · arreglos
+- **Historial → N° OT**: muestra las **OT abiertas del AFI** (botones + lista al escribir). Abiertas = PENDIENTE (sin registros) o **EN PROCESO** (OT de reparación con reportes sin "Reparación terminada").
+- Estados de OT (`estadoOT` en ot.service.js): PENDIENTE · EN PROCESO · REALIZADA · **CERRADA** (guardado en bd_ot.estado) · ANULADA. OT normal (mantención) = REALIZADA al registrarse en el Historial; OT de reparación = EN PROCESO hasta el reporte final.
+- Las OT se **CIERRAN solas** cuando el equipo queda REPARADO: switch del programa de reparación, reporte con "Reparación terminada" o botón EQUIPO LISTO / Sacar → reparado en la nave (OT enlazadas al Taller + OT nombradas en sus reportes).
+- En una OT cerrada / realizada **no se pueden agregar documentos**; solo el **Admin** puede (con confirmación) o **reabrirla** (Órdenes de Trabajo → botón Reabrir OT). Botón **Cerrar OT** manual para Admin/Subadmin. Desmarcar REPARADO reabre las OT solo si lo hace el Admin.
+- Arreglo: el aviso del horómetro calculaba mal los días ("subió X h en 1 día"); ahora usa los días reales entre registros.
+- Arreglo: en el formulario, un programa de REPARACIÓN con reportes sin terminar ya no dice "ya realizado": dice "en proceso" / "pendiente" / "reparado".
+- No requiere SQL.

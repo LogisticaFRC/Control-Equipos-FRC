@@ -109,7 +109,7 @@ export const chequeoHorometro = computed(() => {
   if (ant && h < ant.h) return { nivel: 'error', texto: `Es MENOR que el anterior: ${fmt(ant)}. ¿Está bien leído?` };
   if (sig && h > sig.h) return { nivel: 'error', texto: `Es MAYOR que el siguiente: ${fmt(sig)}. ¿Está bien leído?` };
   if (ant) {
-    const dias = Math.max(1, diasEntre(ant.f, fecha) || 1);
+    const dias = Math.max(1, diasEntre(fecha, ant.f) || 1);   // diasEntre(a, b) = a − b
     const max = esKm ? dias * 1500 : dias * 24;   // no puede subir más que las horas (o km razonables) que pasaron
     if (h - ant.h > max) return { nivel: 'alerta', texto: `Subió ${(h - ant.h).toLocaleString('es-CL')} ${u} en ${dias} día(s) desde ${fmt(ant)}. Revisa.` };
     return { nivel: 'ok', texto: `Anterior: ${fmt(ant)} → +${(h - ant.h).toLocaleString('es-CL')} ${u}` };
