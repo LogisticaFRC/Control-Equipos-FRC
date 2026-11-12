@@ -768,3 +768,4 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - KPI (clic = filtrar), filtros por proveedor y status, atrasados (fecha término pasada) en rojo.
 - **Exportar Excel**: Resumen (KPI + gráficos por status y por proveedor + atrasados/próximos), Programa (colores por status + firmas), Por proveedor, Etapas (bitácora completa).
 - Permisos: agregar/modificar = Subadmin u Admin de Operaciones; eliminar = Admin. Con perfiles por módulo, darle acceso a "Programa Reparación Motores".
+- (ajuste) Cada etapa del historial tiene un **mini basurero** (Admin): borra solo esa etapa; el resto del historial y el equipo quedan. En la etapa actual, el basurero la borra y el equipo vuelve a la etapa anterior. El basurero grande de la fila sigue eliminando el equipo completo.

@@ -82,11 +82,13 @@ export default /* html */ `
             <td class="p-2.5 whitespace-normal min-w-[220px]">
               <!-- línea de tiempo de todo lo que ha pasado con el equipo -->
               <ol class="relative border-l-2 border-slate-200 ml-1.5 space-y-1.5">
-                <li v-for="(e, k) in (verEtapas === m.id ? historialMotor(m) : historialMotor(m).slice(-3))" :key="k" class="pl-3 relative">
+                <li v-for="(e, k) in (verEtapas === m.id ? historialMotor(m) : historialMotor(m).slice(-3))" :key="k" class="pl-3 pr-5 relative group">
                   <span :class="['absolute -left-[7px] top-1 w-3 h-3 rounded-full border-2 border-white', e.actual ? (e.estado === 'TERMINADO' ? 'bg-emerald-500' : 'bg-orange-500') : 'bg-slate-400']"></span>
                   <span class="font-mono text-[10px] text-slate-500">{{ e.desde ? formatDateForDisplay(e.desde) : '¿?' }} → {{ e.fecha ? formatDateForDisplay(e.fecha) : '¿?' }}</span>
                   <span :class="['block text-[11px] leading-tight', e.actual ? 'font-extrabold text-slate-800' : 'font-semibold text-slate-600']">{{ e.trabajo || '—' }} <span class="font-normal text-slate-400">· {{ e.proveedor }}</span></span>
                   <span v-if="e.nota" class="block text-[10px] text-slate-500 italic">{{ e.nota }}</span>
+                  <button v-if="isAdmin && !e.actual" @click="eliminarEtapa(m, e._i)" title="Borrar solo esta etapa del historial" class="absolute right-0 top-0.5 text-rose-300 hover:text-rose-600 px-1 text-[10px]"><i class="fa-solid fa-trash-can"></i></button>
+                  <button v-if="isAdmin && e.actual && m.etapas.length" @click="borrarEtapaActual(m)" title="Borrar la etapa actual (vuelve a la anterior)" class="absolute right-0 top-0.5 text-rose-300 hover:text-rose-600 px-1 text-[10px]"><i class="fa-solid fa-trash-can"></i></button>
                 </li>
               </ol>
               <button v-if="historialMotor(m).length > 3" @click="verEtapas = verEtapas === m.id ? null : m.id" class="mt-1 text-[10px] font-bold text-indigo-600 hover:underline">{{ verEtapas === m.id ? 'Ver menos' : 'Ver todo (' + historialMotor(m).length + ' etapas)' }}</button>
@@ -96,7 +98,7 @@ export default /* html */ `
               <div class="flex justify-center gap-1">
                 <button v-if="puedeEditar && m.estado !== 'TERMINADO'" @click="abrirNuevaEtapa(m)" title="Anotar lo que sigue: la etapa actual queda guardada en el historial" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg font-bold"><i class="fa-solid fa-plus mr-0.5"></i>Nueva etapa</button>
                 <button v-if="puedeEditar" @click="abrirEditarMotor(m)" title="Editar" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button v-if="isAdmin" @click="eliminarMotor(m)" title="Eliminar" class="text-rose-500 hover:bg-rose-50 px-2 py-1 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                <button v-if="isAdmin" @click="eliminarMotor(m)" title="Eliminar el equipo del programa (con todo su historial)" class="text-rose-500 hover:bg-rose-50 px-2 py-1 rounded-lg"><i class="fa-solid fa-trash"></i></button>
               </div>
             </td>
           </tr>

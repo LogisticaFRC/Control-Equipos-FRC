@@ -74,7 +74,7 @@ export const diasFuera = (m) => {
   return diasEntre(hasta, ini);
 };
 /** Historial completo del equipo: etapas anteriores + la actual (más antigua primero). */
-export const historialMotor = (m) => [...m.etapas, { desde: m.fecha_envio, fecha: m.fecha_termino, trabajo: m.trabajo, estado: m.estado, proveedor: m.proveedor, nota: m.observacion, actual: true }];
+export const historialMotor = (m) => [...m.etapas.map((e, i) => ({ ...e, _i: i })), { desde: m.fecha_envio, fecha: m.fecha_termino, trabajo: m.trabajo, estado: m.estado, proveedor: m.proveedor, nota: m.observacion, actual: true }];
 /** Días para la fecha de término (negativo = atrasado). null si no hay fecha o ya terminó. */
 export const diasParaTermino = (m) => (m.estado === 'TERMINADO' || !m.fecha_termino ? null : diasEntre(m.fecha_termino, hoyISO()));
 export const atrasado = (m) => { const d = diasParaTermino(m); return d !== null && d < 0; };
@@ -173,6 +173,34 @@ export const cambiarEstadoMotor = async (m, estado) => {
     await sb(supabaseClient.from(TABLA_MOTORES).update(cambios).eq('id', m.id));
     Object.assign(m, cambios);
   } catch (err) { alert('No se pudo cambiar el status: ' + errMsg(err)); }
+};
+
+/** Borra UNA etapa del historial (no el equipo ni las demás etapas). */
+export const eliminarEtapa = async (m, i) => {
+  if (!soloAdmin()) return;
+  const e = m.etapas[i]; if (!e) return;
+  if (!confirm(`¿Borrar del historial del AFI ${m.afi} la etapa "${e.trabajo || '—'}" (${formatDateForDisplay(e.desde) || '¿?'} → ${formatDateForDisplay(e.fecha) || '¿?'})?\nEl resto del historial y la etapa actual no cambian.`)) return;
+  const etapas = m.etapas.filter((_, k) => k !== i);
+  try {
+    await sb(supabaseClient.from(TABLA_MOTORES).update({ etapas, updated_at: new Date().toISOString() }).eq('id', m.id));
+    m.etapas = etapas;
+  } catch (err) { alert('No se pudo borrar la etapa: ' + errMsg(err)); }
+};
+/** Borra la etapa ACTUAL (ej. se agregó por error): el equipo vuelve a la etapa anterior del historial. */
+export const borrarEtapaActual = async (m) => {
+  if (!soloAdmin()) return;
+  if (!m.etapas.length) return alert('Es la única etapa del equipo: para quitarlo del programa usa el botón eliminar (basurero).');
+  const prev = m.etapas[m.etapas.length - 1];
+  if (!confirm(`¿Borrar la etapa actual "${m.trabajo || '—'}" del AFI ${m.afi}?\nEl equipo vuelve a la etapa anterior: "${prev.trabajo || '—'}" (${formatDateForDisplay(prev.desde) || '¿?'} → ${formatDateForDisplay(prev.fecha) || '¿?'}).`)) return;
+  const cambios = {
+    proveedor: prev.proveedor || m.proveedor || null, fecha_envio: normalizarFecha(prev.desde) || null, fecha_termino: normalizarFecha(prev.fecha) || null,
+    trabajo: prev.trabajo || null, observacion: prev.nota || null, estado: m.estado === 'TERMINADO' ? 'TERMINADO' : 'PROCESO',
+    etapas: m.etapas.slice(0, -1), updated_at: new Date().toISOString()
+  };
+  try {
+    await sb(supabaseClient.from(TABLA_MOTORES).update(cambios).eq('id', m.id));
+    Object.assign(m, mapMotor({ ...m, ...cambios }));
+  } catch (err) { alert('No se pudo borrar la etapa: ' + errMsg(err)); }
 };
 
 export const eliminarMotor = async (m) => {
