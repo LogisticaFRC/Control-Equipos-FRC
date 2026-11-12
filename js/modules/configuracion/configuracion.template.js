@@ -31,9 +31,13 @@ export default /* html */ `
           <label class="block font-bold mb-1">Tipo</label>
           <select v-model="nuevoUsuario.tipo" class="w-full p-2 border rounded-lg bg-white font-bold">
             <option value="areas">Permisos por área</option>
+            <option value="mecanico">Mecánico (app del celular)</option>
+            <option value="supervisor_mec">Supervisor de mecánicos (firma)</option>
             <option value="general">Admin general (todo)</option>
           </select>
         </div>
+        <div v-if="nuevoUsuario.tipo === 'mecanico'" class="sm:col-span-4 bg-lime-50 border border-lime-200 rounded-lg p-2 text-[11px] text-lime-900"><i class="fa-solid fa-mobile-screen mr-1"></i>Entra directo a la <b>app de mecánicos</b>: ve los equipos, actualiza horómetros y llena intervenciones con firma. No ve el resto del sistema.</div>
+        <div v-if="nuevoUsuario.tipo === 'supervisor_mec'" class="sm:col-span-4 bg-lime-50 border border-lime-200 rounded-lg p-2 text-[11px] text-lime-900"><i class="fa-solid fa-signature mr-1"></i>Ve el área <b>Mecánicos</b> del menú para revisar y firmar las intervenciones. Además tiene los niveles por área que elijas abajo.</div>
         <div v-if="nuevoUsuario.tipo === 'areas'" class="sm:col-span-4">
           <label class="block font-bold mb-1">Perfil de acceso (opcional)</label>
           <select v-model="nuevoUsuario.perfilId" class="w-full sm:w-80 p-2 border rounded-lg bg-white font-bold">
@@ -43,7 +47,7 @@ export default /* html */ `
         </div>
         <div class="flex items-end"><button @click="crearNuevoUsuario" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2 rounded-lg shadow"><i class="fa-solid fa-plus-circle"></i> Guardar</button></div>
       </div>
-      <div v-if="nuevoUsuario.tipo === 'areas' && !nuevoUsuario.perfilId" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
+      <div v-if="(nuevoUsuario.tipo === 'areas' && !nuevoUsuario.perfilId) || nuevoUsuario.tipo === 'supervisor_mec'" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
         <div v-for="a in AREAS_PERMISOS" :key="a.key" class="bg-white border rounded-lg p-2">
           <label class="block font-bold mb-1 text-[11px] text-slate-700"><i :class="['fa-solid mr-1 text-slate-500', a.icon]"></i>{{ a.label }}</label>
           <select v-model="nuevoUsuario.permisos[a.key]" class="w-full p-1.5 border rounded bg-white text-[11px]">

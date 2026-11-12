@@ -38,3 +38,14 @@
 @keyframes frc-campana { 0%,100% { transform: rotate(0); } 15% { transform: rotate(14deg); } 30% { transform: rotate(-12deg); } 45% { transform: rotate(8deg); } 60% { transform: rotate(-5deg); } 75% { transform: rotate(2deg); } }
 .frc-campana { display: inline-block; transform-origin: 50% 0; animation: frc-campana 1.2s ease-in-out 2; }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ---------- App de mecánicos (modules/mecanicos/app.view.js) ---------- */
+.lbl { display:block; font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:.02em; }
+.inp { display:block; width:100%; margin-top:4px; border:1.5px solid #cbd5e1; border-radius:12px; padding:11px 12px; font-size:16px; background:#fff; outline:none; }
+.inp:focus { border-color:#059669; box-shadow:0 0 0 3px rgba(5,150,105,.15); }
+.chip { border:1.5px solid #cbd5e1; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:700; background:#fff; color:#334155; }
+.chip.on { background:#059669; border-color:#059669; color:#fff; }
+.chip-lg { border:2px solid #cbd5e1; border-radius:14px; padding:12px 14px; font-size:15px; font-weight:800; background:#fff; color:#334155; }
+.chip-lg.on { background:#ecfdf5; border-color:#059669; color:#065f46; }
+.mini { border:1.5px solid #cbd5e1; border-radius:10px; padding:6px 10px; font-size:12px; font-weight:800; background:#fff; color:#475569; }
+.sec { font-size:13px; font-weight:900; color:#1f4d3a; text-transform:uppercase; margin-bottom:6px; }

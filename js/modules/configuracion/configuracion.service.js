@@ -112,6 +112,7 @@ export const nuevoUsuario = ref(usuarioVacio());
 const limpiarPermisos = (p) => Object.fromEntries(Object.entries(p || {}).filter(([, n]) => n && n !== 'lectura'));
 const avisarError = (accion, error) => {
   const msg = error.message || JSON.stringify(error);
+  if (/failed to fetch|load failed|networkerror/i.test(msg)) return alert(`Error al ${accion}: no hubo conexión con la base de datos (se intentó 3 veces).\nRevisa internet, actualiza la página (F5) y vuelve a intentar. Si sigue, prueba sin extensiones (ventana de incógnito).`);
   if (/permisos/i.test(msg)) return alert(`Error al ${accion}: falta la columna "permisos" en la tabla usuarios.\nEjecuta el archivo sql/permisos_areas.sql en Supabase (SQL Editor).`);
   alert(`Error al ${accion}: ${msg}`);
 };
@@ -139,9 +140,13 @@ export const crearNuevoUsuario = async () => {
   const problema = problemaClave(u.clave, u.usuario.trim());
   if (problema) return alert("Contraseña inicial: " + problema);
   const general = u.tipo === 'general';
+  // Mecánico: solo la app móvil · Supervisor de mecánicos: área Mecánicos = admin + sus niveles por área
+  const permisos = general ? {}
+    : u.tipo === 'mecanico' ? { mecanicos: 'subadmin' }
+    : u.tipo === 'supervisor_mec' ? { ...limpiarPermisos(u.permisos), mecanicos: 'admin' }
+    : (u.perfilId ? permisosDesdeModulos(perfilPorId(u.perfilId)?.modulos || {}, perfilPorId(u.perfilId)) : limpiarPermisos(u.permisos));
   const { error } = await supabaseClient.rpc('frc_admin_crear_usuario', {
-    p_usuario: u.usuario.trim(), p_clave: u.clave, p_rol: general ? 'admin' : 'lectura',
-    p_permisos: general ? {} : (u.perfilId ? permisosDesdeModulos(perfilPorId(u.perfilId)?.modulos || {}, perfilPorId(u.perfilId)) : limpiarPermisos(u.permisos))
+    p_usuario: u.usuario.trim(), p_clave: u.clave, p_rol: general ? 'admin' : 'lectura', p_permisos: permisos
   });
   if (error) return avisarError('crear usuario', error);
   await cargarUsuariosDesdeSupabase();
@@ -274,6 +279,17 @@ export const exportarTodasLasTablasExcel = () => {
 //   actualizar a todos los usuarios que lo tienen.
 // =====================================================================
 const ORDEN_NIVEL = { oculto: 0, lectura: 1, subadmin: 2, admin: 3 };
+/** "Failed to fetch" = se cortó la conexión con Supabase: se reintenta 2 veces antes de avisar. */
+const esErrorRed = (e) => /failed to fetch|network|load failed|fetch/i.test((e && (e.message || e.details)) || '');
+const conReintento = async (fn, intentos = 3) => {
+  let r;
+  for (let i = 0; i < intentos; i++) {
+    try { r = await fn(); } catch (err) { r = { error: err }; }
+    if (!r.error || !esErrorRed(r.error)) return r;
+    await new Promise(res => setTimeout(res, 1200 * (i + 1)));
+  }
+  return r;
+};
 const CLAVE_PERFILES = 'perfiles_acceso';
 
 /** Áreas con sus módulos configurables (sin Inicio ni Mis Tareas, que siempre se ven). */
@@ -329,7 +345,7 @@ export const cargarPerfilesAcceso = async () => {
   }
 };
 const guardarPerfilesAcceso = async (lista) => {
-  const { error } = await supabaseClient.from('bd_config').upsert([{ clave: CLAVE_PERFILES, valor: { perfiles: lista }, updated_at: new Date().toISOString() }], { onConflict: 'clave' });
+  const { error } = await conReintento(() => supabaseClient.from('bd_config').upsert([{ clave: CLAVE_PERFILES, valor: { perfiles: lista }, updated_at: new Date().toISOString() }], { onConflict: 'clave' }));
   if (error) {
     if (/bd_config|does not exist|schema cache|relation/i.test(error.message || '')) { faltaTablaConfig.value = true; alert('Falta la tabla bd_config: ejecuta sql/costos_mantencion.sql en Supabase (crea esa tabla) y vuelve a intentar.'); }
     else alert('No se pudo guardar el perfil: ' + error.message);
@@ -389,7 +405,7 @@ export const guardarEditorAcceso = async () => {
       const conPerfil = dbUsuarios.value.filter(u => u.rol !== 'admin' && String(perfilDeUsuario(u)?.id) === String(perfil.id));
       if (conPerfil.length && confirm(`¿Aplicar los cambios también a los ${conPerfil.length} usuario(s) con el perfil "${nombre}"?\n${conPerfil.map(u => u.usuario).join(', ')}`)) {
         for (const u of conPerfil) {
-          const { error } = await supabaseClient.from(TABLAS.USUARIOS).update({ permisos: permisosDesdeModulos(perfil.modulos, perfil), rol: 'lectura' }).eq('usuario', u.usuario);
+          const { error } = await conReintento(() => supabaseClient.from(TABLAS.USUARIOS).update({ permisos: permisosDesdeModulos(perfil.modulos, perfil), rol: 'lectura' }).eq('usuario', u.usuario));
           if (error) avisarError('actualizar ' + u.usuario, error);
         }
         await cargarUsuariosDesdeSupabase();
@@ -404,7 +420,7 @@ export const guardarEditorAcceso = async () => {
         const perfil = e.perfilId ? perfilPorId(e.perfilId) : null;
         permisos = permisosDesdeModulos(e.mapa, perfil);
       }
-      const { error } = await supabaseClient.from(TABLAS.USUARIOS).update({ permisos, rol: 'lectura' }).eq('usuario', u.usuario);
+      const { error } = await conReintento(() => supabaseClient.from(TABLAS.USUARIOS).update({ permisos, rol: 'lectura' }).eq('usuario', u.usuario));
       if (error) return avisarError('guardar el acceso', error);
       await cargarUsuariosDesdeSupabase();
     }

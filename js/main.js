@@ -26,6 +26,9 @@ import FallasView from './modules/fallas/fallas.view.js';
 import CostosView from './modules/costos/costos.view.js';
 import RecordatoriosView from './modules/recordatorios/recordatorios.view.js';
 import MotoresView from './modules/motores/motores.view.js';
+import MecanicoApp from './modules/mecanicos/app.view.js';
+import MecanicosPanelView from './modules/mecanicos/panel.view.js';
+import { esModoMecanico, esSupervisorMec, vistaAppForzada } from './modules/mecanicos/mecanicos.service.js';
 import { TareaItem, RecordatoriosCampana, RecordatoriosAvisos } from './modules/recordatorios/avisos.view.js';
 import { iniciarMotorAvisos, borrarCacheAvisos } from './modules/recordatorios/recordatorios.service.js';
 import CausasProbables from './modules/fallas/causas-probables.view.js';
@@ -65,6 +68,8 @@ const template = /* html */ `
     <i class="fa-solid fa-spinner fa-spin mr-2"></i> Cargando...
   </div>
   <login-view v-else-if="!usuarioActivo"></login-view>
+  <!-- MECÁNICO: plataforma móvil propia (modules/mecanicos/app.view.js) -->
+  <mecanico-app v-else-if="esModoMecanico" :salir="salir"></mecanico-app>
 
   <template v-else>
     <header :style="headerStyle" class="text-white shadow-lg sticky top-0 z-40 transition-colors duration-300">
@@ -156,6 +161,7 @@ const template = /* html */ `
       <programas-view v-if="currentTab === 'progMantencion'" tipo="MANTENCION"></programas-view>
       <reparacion-view v-if="currentTab === 'progReparacion'"></reparacion-view>
       <motores-view v-if="currentTab === 'progMotores'"></motores-view>
+      <mecanicos-panel-view v-if="currentTab === 'mecPanel' && esSupervisorMec"></mecanicos-panel-view>
       <minutas-view v-if="currentTab === 'minutas'"></minutas-view>
       <ot-view v-if="currentTab === 'ot'"></ot-view>
       <oc-view v-if="currentTab === 'oc'"></oc-view>
@@ -184,6 +190,8 @@ const template = /* html */ `
     <baja-equipo></baja-equipo>
     <cambiar-clave></cambiar-clave>
     <recordatorios-avisos></recordatorios-avisos>   <!-- Mis Tareas: avisos, resumen al entrar y ventana Nueva tarea -->
+    <!-- Vista previa de la app de mecánicos (panel MECÁNICOS → "Ver la app como mecánico") -->
+    <div v-if="vistaAppForzada" class="fixed inset-0 z-[75] bg-slate-900/80 overflow-y-auto"><mecanico-app preview :salir="cerrarVistaApp"></mecanico-app></div>
   </template>
 `;
 
@@ -219,10 +227,12 @@ const app = createApp({
 
     // Menú según el perfil del usuario: solo los módulos que puede ver (Inicio y Mis Tareas siempre)
     const areasVisibles = computed(() => AREAS
+      .filter(a => !a.soloSupervisor || esSupervisorMec.value)   // MECÁNICOS: solo Admin general / supervisores
       .map(a => ({ ...a, modulos: a.modulos.filter(m => puedeVerModulo(m.key)) }))
       .filter(a => a.modulos.length));
     // Si entra a un módulo que no puede ver (link, F5 o le quitaron el acceso) → Inicio
-    watch([currentTab, usuarioActivo], ([t, u]) => { if (u && !puedeVerModulo(t)) currentTab.value = 'inicio'; }, { immediate: true });
+    watch([currentTab, usuarioActivo], ([t, u]) => { if (u && (!puedeVerModulo(t) || (t === 'mecPanel' && !esSupervisorMec.value))) currentTab.value = 'inicio'; }, { immediate: true });
+    const cerrarVistaApp = () => { vistaAppForzada.value = false; };
     const switchTab = (tab) => { if (!puedeVerModulo(tab)) return; currentTab.value = tab; menuAbierto.value = false; };
     // "Salir" apretado a mano: deja de avisar las tareas en este navegador
     const salir = () => { borrarCacheAvisos(); logout(); };
@@ -247,7 +257,7 @@ const app = createApp({
 
     return {
       gruposDeArea, usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: areasVisibles, switchTab,
-      menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, salir, headerStyle, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
+      menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, salir, headerStyle, esModoMecanico, esSupervisorMec, vistaAppForzada, cerrarVistaApp, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       abrirCambioClave, showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };
   }
@@ -273,7 +283,9 @@ app.component('OcView', OcView);
 app.component('VehiculosView', VehiculosView);
 app.component('CostosView', CostosView);
 app.component('RecordatoriosView', RecordatoriosView);
-app.component('MotoresView', MotoresView);                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
+app.component('MotoresView', MotoresView);
+app.component('MecanicoApp', MecanicoApp);                   // app móvil de mecánicos
+app.component('MecanicosPanelView', MecanicosPanelView);     // Mecánicos → intervenciones y firmas (supervisor)                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
 app.component('TareaItem', TareaItem);
 app.component('RecordatoriosCampana', RecordatoriosCampana); // campana del encabezado
 app.component('RecordatoriosAvisos', RecordatoriosAvisos);   // avisos + resumen al entrar + Nueva tarea         // Operaciones → Costos de Mantención
