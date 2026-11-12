@@ -35,6 +35,7 @@ export const AREAS = [
       { key: 'dashboard', grupo: 'gestion', label: 'Dashboard', icon: 'fa-chart-line' },
       { key: 'progMantencion', grupo: 'gestion', label: 'Programas Mantención', icon: 'fa-oil-can' },
       { key: 'progReparacion', grupo: 'gestion', label: 'Programas Reparación', icon: 'fa-warehouse' },   // Taller (naves) + programas/Gantt
+      { key: 'progMotores', grupo: 'gestion', label: 'Programa Reparación Motores', icon: 'fa-gear' },     // motores a proveedores externos (modules/motores)
       { key: 'minutas', grupo: 'gestion', label: 'Minutas', icon: 'fa-clipboard-list' },
 
       { key: 'inventario', grupo: 'equipos', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.filter(e => !esVehiculo(e)).length },

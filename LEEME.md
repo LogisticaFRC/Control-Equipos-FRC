@@ -759,3 +759,12 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Arreglo: el aviso del horómetro calculaba mal los días ("subió X h en 1 día"); ahora usa los días reales entre registros.
 - Arreglo: en el formulario, un programa de REPARACIÓN con reportes sin terminar ya no dice "ya realizado": dice "en proceso" / "pendiente" / "reparado".
 - No requiere SQL.
+
+## 2026-11-12 · PROGRAMA REPARACIÓN MOTORES (módulo nuevo)
+- **Ejecutar `sql/motores_externos.sql`** (tabla `bd_motores_externos` + carga del programa escrito a mano del 09-11-2026: AFI 365, 367, 366, 739, 362, 742, 747).
+- Operaciones → Gestión operacional → **Programa Reparación Motores** (`js/modules/motores/`). Equipos elegibles: por ahora solo COMPRESORES (`TIPOS_EQUIPO` en motores.service.js).
+- Cada equipo: **STATUS** (PENDIENTE · PROCESO · TERMINADO, se cambia directo en la tabla), AFI, **proveedor / taller** (Diego Torres, Taller TNTE, Taller FRC… o escribir otro), **fecha en que se lleva / se llevó**, **fecha término** de la etapa, **trabajo / etapa** (Evaluación, Reparación inyectores, Montaje motor ajustado y pruebas, Limpieza estanques diésel…) y observación.
+- **Nueva etapa**: la etapa actual queda guardada en el **historial del equipo** (con su fecha de término) y se anota la siguiente desde ese día (ej. 09→13 limpieza; 13→20 reparación). La columna "Historial del equipo" muestra la línea de tiempo completa.
+- KPI (clic = filtrar), filtros por proveedor y status, atrasados (fecha término pasada) en rojo.
+- **Exportar Excel**: Resumen (KPI + gráficos por status y por proveedor + atrasados/próximos), Programa (colores por status + firmas), Por proveedor, Etapas (bitácora completa).
+- Permisos: agregar/modificar = Subadmin u Admin de Operaciones; eliminar = Admin. Con perfiles por módulo, darle acceso a "Programa Reparación Motores".

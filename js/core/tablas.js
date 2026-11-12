@@ -32,5 +32,6 @@ export const TABLAS = {
   VEHICULOS_KM: 'bd_vehiculos_km',            // VEHÍCULOS: lecturas de kilometraje (LECTURA / MANTENCION)
   VEHICULOS_DOCS: 'bd_vehiculos_documentos',  // VEHÍCULOS: Revisión Técnica, Permiso de Circulación, SOAP y secundarios (con vencimiento)
   RECORDATORIOS: 'bd_recordatorios',          // MIS TAREAS: recordatorio PERSONAL de cada usuario (RLS: solo el dueño)
-  RECORDATORIOS_ESTADO: 'bd_recordatorios_estado'   // MIS TAREAS: Hecha / Omitida por día de cada tarea
+  RECORDATORIOS_ESTADO: 'bd_recordatorios_estado',  // MIS TAREAS: Hecha / Omitida por día de cada tarea
+  MOTORES_EXTERNOS: 'bd_motores_externos'     // PROGRAMA REPARACIÓN MOTORES: motores enviados a proveedores externos / taller
 };

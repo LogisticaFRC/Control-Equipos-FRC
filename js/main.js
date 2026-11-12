@@ -25,6 +25,7 @@ import VehiculosView from './modules/vehiculos/vehiculos.view.js';
 import FallasView from './modules/fallas/fallas.view.js';
 import CostosView from './modules/costos/costos.view.js';
 import RecordatoriosView from './modules/recordatorios/recordatorios.view.js';
+import MotoresView from './modules/motores/motores.view.js';
 import { TareaItem, RecordatoriosCampana, RecordatoriosAvisos } from './modules/recordatorios/avisos.view.js';
 import { iniciarMotorAvisos, borrarCacheAvisos } from './modules/recordatorios/recordatorios.service.js';
 import CausasProbables from './modules/fallas/causas-probables.view.js';
@@ -154,6 +155,7 @@ const template = /* html */ `
       <vehiculos-view v-if="currentTab === 'vehiculos'"></vehiculos-view>
       <programas-view v-if="currentTab === 'progMantencion'" tipo="MANTENCION"></programas-view>
       <reparacion-view v-if="currentTab === 'progReparacion'"></reparacion-view>
+      <motores-view v-if="currentTab === 'progMotores'"></motores-view>
       <minutas-view v-if="currentTab === 'minutas'"></minutas-view>
       <ot-view v-if="currentTab === 'ot'"></ot-view>
       <oc-view v-if="currentTab === 'oc'"></oc-view>
@@ -270,7 +272,8 @@ app.component('OtView', OtView);
 app.component('OcView', OcView);
 app.component('VehiculosView', VehiculosView);
 app.component('CostosView', CostosView);
-app.component('RecordatoriosView', RecordatoriosView);       // Mis Tareas (recordatorio personal)
+app.component('RecordatoriosView', RecordatoriosView);
+app.component('MotoresView', MotoresView);                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
 app.component('TareaItem', TareaItem);
 app.component('RecordatoriosCampana', RecordatoriosCampana); // campana del encabezado
 app.component('RecordatoriosAvisos', RecordatoriosAvisos);   // avisos + resumen al entrar + Nueva tarea         // Operaciones → Costos de Mantención
