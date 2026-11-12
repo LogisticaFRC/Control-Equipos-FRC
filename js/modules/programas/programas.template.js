@@ -159,6 +159,10 @@ export default /* html */ `
           <button @click="vistaProgramaMode = 'calendario'" :class="['px-3 py-1 rounded text-xs font-bold transition flex items-center gap-1.5', vistaProgramaMode === 'calendario' ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200']">
             <i class="fa-solid fa-calendar-week"></i> {{ progSelect.carpeta === 'REPARACION' ? 'Vista Calendario / Gantt por Naves' : 'Vista Calendario / Carta Gantt' }}
           </button>
+          <button v-if="progSelect.carpeta === 'REPARACION' && isAdmin && duplicadosReparacion(progSelect.id).length" @click="unirDuplicadosReparacion(progSelect.id)"
+            class="px-3 py-1 rounded text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 flex items-center gap-1.5" title="Equipos que aparecen más de una vez (antes cada reporte creaba otra fila)">
+            <i class="fa-solid fa-object-group"></i> Unir equipos repetidos ({{ duplicadosReparacion(progSelect.id).length }})
+          </button>
           <!-- Fechas en borrador: no se guardan ni se mueven hasta presionar Guardar fechas -->
           <template v-if="cambiosFechasPrograma(progSelect.id).length">
             <div class="flex-grow"></div>
@@ -344,7 +348,8 @@ export default /* html */ `
                 </thead>
                 <tbody class="divide-y text-[11px]">
                   <tr v-for="item in obtenerItemsProgramaEnRangoPorNave(progSelect.id, n_nave)" :key="item.id" :class="item.realizado ? 'bg-emerald-50/50' : 'hover:bg-slate-50'">
-                    <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</td>
+                    <td class="p-2.5"><span class="font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</span>
+                      <span v-if="textoReportesItem(item)" class="block text-[9px] font-semibold text-indigo-700" :title="'Reportes del Historial con este programa'"><i class="fa-solid fa-file-lines mr-0.5"></i>{{ textoReportesItem(item) }}</span></td>
                     <td class="p-2.5 font-semibold text-slate-800">{{ obtenerDetalleEquipoPorAfi(item.afi, 'tipo') }}</td>
                     <td class="p-2.5 text-slate-600">{{ obtenerDetalleEquipoPorAfi(item.afi, 'marca') }}</td>
                     <td class="p-2.5 text-slate-600">{{ obtenerDetalleEquipoPorAfi(item.afi, 'modelo') }}</td>
@@ -364,8 +369,8 @@ export default /* html */ `
                           <input type="checkbox" v-model="item.realizado" :disabled="!puedeEditar" @change="cambiarEstadoRealizadoItem(item)" class="sr-only peer">
                           <div class="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
                         </label>
-                        <span :class="['text-[10px] font-bold px-2 py-0.5 rounded', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600']">
-                          {{ item.realizado ? 'REPARADO (ON)' : 'PENDIENTE (OFF)' }}
+                        <span :class="['text-[10px] font-bold px-2 py-0.5 rounded', item.realizado ? 'bg-emerald-100 text-emerald-800' : itemEnProceso(item) ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600']">
+                          {{ item.realizado ? 'REPARADO (ON)' : itemEnProceso(item) ? 'EN PROCESO' : 'PENDIENTE (OFF)' }}
                         </span>
                       </div>
                     </td>

@@ -120,9 +120,9 @@ export default {
     };
 
     // ---------- Sacar de nave ----------
-    const abrirSalida = (rep) => {
+    const abrirSalida = (rep, listo = false) => {
       repSalida.value = rep;
-      formSalida.value = { reparado: null, faltante: rep.faltante || S.faltanteSugerido(rep), agregarAOT: true };
+      formSalida.value = { reparado: listo ? true : null, faltante: rep.faltante || S.faltanteSugerido(rep), agregarAOT: true };
     };
     const confirmarSalida = async () => {
       ocupado.value = true;

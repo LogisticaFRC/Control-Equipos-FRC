@@ -100,6 +100,7 @@ export const mapIntervencion = (item) => {
     horaFalla: String(item.hora_falla || ''),
     numeroFolio: String(item.numero_folio || ''),
     causaFalla: String(item.causa_falla || ''),
+    reparacionTerminada: item.reparacion_terminada === true,   // programa de REPARACIÓN: este reporte cierra la reparación
     filtrosLista,
     filtrosTexto,
     ...aceitesObj,

@@ -839,6 +839,29 @@ export const nombreDePrograma = (p) => upP(p?.nombre_programa || p?.mes);
 const mismoEquipo = (a, b) => upP(limpiarAfi(a)) === upP(limpiarAfi(b));
 const fechaItem = (i) => normalizarFecha(i.fecha_programada || i.fecha_inicio) || '9999-12-31';
 
+/** ¿El programa con ese nombre es de REPARACIÓN? (formulario del Historial) */
+export const programaEsReparacion = (nombre) => {
+  const p = dbProgramasCalendarios.value.find(x => nombreDePrograma(x) === upP(nombre));
+  return Boolean(p) && !esProgramaMantencion(p);
+};
+/** REPARACIÓN: todos los reportes del Historial de ese equipo en ese programa (más antiguo primero). */
+export const reportesDeItem = (item) => {
+  const prog = obtenerProgObj(item.programa_id);
+  if (!prog || esProgramaMantencion(prog)) return [];
+  const nombre = nombreDePrograma(prog);
+  return dbIntervenciones.value
+    .filter(m => upP(m.programaCorrespondiente) === nombre && mismoEquipo(m.afi, item.afi))
+    .sort((a, b) => String(normalizarFecha(a.fecha)).localeCompare(String(normalizarFecha(b.fecha))) || (a.id - b.id));
+};
+/** REPARACIÓN: "N reportes · último dd-mm-aaaa" (vacío si no tiene). */
+export const textoReportesItem = (item) => {
+  const r = reportesDeItem(item);
+  if (!r.length) return '';
+  return `${r.length} reporte${r.length === 1 ? '' : 's'} · último ${formatDateForDisplay(normalizarFecha(r[r.length - 1].fecha))}`;
+};
+/** REPARACIÓN: hay reportes pero el equipo aún no está reparado. */
+export const itemEnProceso = (item) => !item.realizado && reportesDeItem(item).length > 0;
+
 /** Mapa itemId → mantención del Historial enlazada, para un programa. */
 export const enlacesDePrograma = (programaId) => {
   const prog = obtenerProgObj(programaId);
@@ -891,14 +914,38 @@ export const programasDelAfi = (afi) => {
 export const sincronizarProgramaConHistorial = async ({ nombrePrograma = '', programaId = null, afi = '' } = {}) => {
   const progs = programaId ? [obtenerProgObj(programaId)].filter(Boolean)
     : dbProgramasCalendarios.value.filter(p => nombreDePrograma(p) === upP(nombrePrograma));
-  let marcados = 0, agregados = 0; const avisos = [], faltaEn = [];
+  let marcados = 0, agregados = 0, enProceso; const avisos = [], faltaEn = [];
   for (const prog of progs) {
     const esMant = esProgramaMantencion(prog);
-    // REPARACIÓN: si el equipo no está en el programa (o tiene más registros que ítems), se agrega solo,
-    // con la fecha del registro; luego se marca REALIZADO abajo. En MANTENCIÓN los equipos se planifican antes.
+    // REPARACIÓN (2026-11-12): un equipo puede tener MUCHOS reportes. Una sola fila por equipo en el programa;
+    // los reportes se suman y el equipo queda EN PROCESO. Solo se marca REPARADO si un reporte tiene
+    // "Reparación terminada" (también se cierra con el switch del programa o "Sacar → reparado" en la nave).
     if (!esMant) {
+      enProceso = enProceso || 0;
       try { agregados += await agregarFaltantesReparacion(prog, afi); }
       catch (err) { avisos.push(`No se pudo agregar el equipo al programa "${nombreDePrograma(prog)}": ${errMsg(err)}`); }
+      for (const item of obtenerItemsPrograma(prog.id)) {
+        if (afi && !mismoEquipo(item.afi, afi)) continue;
+        const reps = reportesDeItem(item);
+        if (!reps.length) continue;
+        const fin = [...reps].reverse().find(r => r.reparacionTerminada);
+        const ultima = normalizarFecha(reps[reps.length - 1].fecha);
+        try {
+          if (fin && !item.realizado) {
+            const f = normalizarFecha(fin.fecha) || null;
+            await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ realizado: true, fecha_fin: f }).eq('id', item.id));
+            item.realizado = true; item.fecha_fin = f; marcados++;
+          } else if (!item.realizado) {
+            enProceso++;
+            // la barra del Gantt se alarga hasta el último reporte
+            if (ultima && ultima > (normalizarFecha(item.fecha_fin) || '')) {
+              await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ fecha_fin: ultima }).eq('id', item.id));
+              item.fecha_fin = ultima;
+            }
+          }
+        } catch (err) { avisos.push(`AFI ${item.afi}: ${errMsg(err)}`); }
+      }
+      continue;
     }
     if (afi && !obtenerItemsPrograma(prog.id).some(i => mismoEquipo(i.afi, afi))) faltaEn.push(nombreDePrograma(prog));
     const enl = enlacesDePrograma(prog.id);
@@ -924,8 +971,48 @@ export const sincronizarProgramaConHistorial = async ({ nombrePrograma = '', pro
       }
     }
   }
-  return { marcados, agregados, avisos, faltaEn };
+  return { marcados, agregados, avisos, faltaEn, enProceso };
 };
+
+// ---------- REPARACIÓN: unir filas repetidas del mismo equipo ----------
+// Antes, cada reporte del Historial creaba otra fila del mismo equipo. Esto deja UNA por equipo:
+// fecha inicio = la más antigua · fecha fin = la más reciente · estado = el de la fila más reciente ·
+// la reparación del Taller (naves) que apuntaba a una fila borrada pasa a la que queda.
+export const duplicadosReparacion = (programaId) => {
+  const prog = obtenerProgObj(programaId);
+  if (!prog || esProgramaMantencion(prog)) return [];
+  const g = new Map();
+  obtenerItemsPrograma(programaId).forEach(i => { const k = upP(limpiarAfi(i.afi)); (g.get(k) || g.set(k, []).get(k)).push(i); });
+  return [...g.values()].filter(x => x.length > 1);
+};
+export const unirDuplicadosReparacion = async (programaId) => {
+  if (!soloAdmin()) return;
+  const grupos = duplicadosReparacion(programaId);
+  if (!grupos.length) return alert('No hay equipos repetidos en este programa.');
+  const filas = grupos.reduce((n, g) => n + g.length - 1, 0);
+  if (!confirm(`Hay ${grupos.length} equipo(s) repetidos (${filas} fila(s) de más).\n¿Dejar UNA fila por equipo?\n\n· Fecha inicio = la más antigua, fecha fin = la más reciente\n· Estado REPARADO/PENDIENTE = el de la fila más reciente (revísalo después)\n· Los reportes del Historial no se tocan`)) return;
+  const avisos = [];
+  for (const g of grupos) {
+    const ids = g.map(i => i.id);
+    let deTaller = [];
+    try { deTaller = await sb(supabaseClient.from(TABLAS.TALLER).select('id, programa_item_id').in('programa_item_id', ids)); } catch (e) { deTaller = []; }
+    const conTaller = g.find(i => deTaller.some(t => String(t.programa_item_id) === String(i.id)));
+    const ordFin = [...g].sort((a, b) => fechaFinItem(a).localeCompare(fechaFinItem(b)) || (a.id - b.id));
+    const queda = conTaller || [...g].sort((a, b) => a.id - b.id)[0];
+    const ini = [...g].map(i => normalizarFecha(i.fecha_inicio || i.fecha_programada)).filter(Boolean).sort()[0] || null;
+    const fin = ordFin.map(i => normalizarFecha(i.fecha_fin || i.fecha_inicio)).filter(Boolean).sort().slice(-1)[0] || ini;
+    const realizado = Boolean(ordFin[ordFin.length - 1].realizado);
+    try {
+      await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).update({ fecha_inicio: ini, fecha_programada: ini, fecha_fin: fin, realizado }).eq('id', queda.id));
+      const otros = ids.filter(id => id !== queda.id);
+      if (deTaller.length) { try { await sb(supabaseClient.from(TABLAS.TALLER).update({ programa_item_id: queda.id }).in('programa_item_id', otros)); } catch (e) { /* sin taller */ } }
+      await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).delete().in('id', otros));
+    } catch (err) { avisos.push(`AFI ${queda.afi}: ${errMsg(err)}`); }
+  }
+  await cargarDatosDesdeSupabase(['programas']);
+  alert(`Listo: ${grupos.length} equipo(s) quedaron en una sola fila.` + (avisos.length ? '\n\nAvisos:\n' + avisos.join('\n') : ''));
+};
+const fechaFinItem = (i) => normalizarFecha(i.fecha_fin || i.fecha_inicio || i.fecha_programada) || '';
 
 /** Programa de REPARACIÓN: crea los ítems que faltan para los registros del Historial que lo nombran. */
 const agregarFaltantesReparacion = async (prog, afi = '') => {
@@ -935,12 +1022,14 @@ const agregarFaltantesReparacion = async (prog, afi = '') => {
   regs.forEach(m => { const k = upP(limpiarAfi(m.afi)); if (k) (porAfi.get(k) || porAfi.set(k, []).get(k)).push(m); });
   let n = 0;
   for (const [k, ms] of porAfi) {
-    const items = obtenerItemsPrograma(prog.id).filter(i => mismoEquipo(i.afi, k));
-    const faltan = ms.sort((a, b) => String(normalizarFecha(a.fecha)).localeCompare(String(normalizarFecha(b.fecha))) || (a.id - b.id)).slice(items.length);
-    for (const m of faltan) {
+    // Una sola fila por equipo: si ya está en el programa no se agrega nada (los reportes se suman a esa fila)
+    if (obtenerItemsPrograma(prog.id).some(i => mismoEquipo(i.afi, k))) continue;
+    const ord = ms.sort((a, b) => String(normalizarFecha(a.fecha)).localeCompare(String(normalizarFecha(b.fecha))) || (a.id - b.id));
+    for (const m of ord.slice(0, 1)) {
       const fecha = normalizarFecha(m.fecha) || null;
+      const ult = normalizarFecha(ord[ord.length - 1].fecha) || fecha;
       const payload = { programa_id: prog.id, afi: limpiarAfi(m.afi), tipo: 'Reparación', nave: null, condicion: 'Arriendo',
-        fecha_programada: fecha, fecha_inicio: fecha, fecha_fin: fecha, realizado: false };
+        fecha_programada: fecha, fecha_inicio: fecha, fecha_fin: ult, realizado: false };
       const data = await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).insert([payload]).select());
       if (data && data[0]) dbProgramasItems.value.push(data[0]);
       n++;
@@ -955,8 +1044,9 @@ export const sincronizarProgramaSeleccionado = async (prog) => {
   if (!soloEditor() || !prog || !prog.id) return;
   sincronizandoPrograma.value = true;
   try {
-    const { marcados, agregados, avisos } = await sincronizarProgramaConHistorial({ programaId: prog.id });
-    alert(`${agregados ? agregados + ' equipo(s) agregados al programa desde el Historial.\n' : ''}${marcados ? marcados + ' equipo(s) marcados como REALIZADOS según el Historial.' : (agregados ? '' : 'Todo estaba al día con el Historial.')}` + (avisos.length ? '\n\nAvisos:\n' + avisos.join('\n') : ''));
+    const { marcados, agregados, avisos, enProceso } = await sincronizarProgramaConHistorial({ programaId: prog.id });
+    const rep = enProceso !== undefined;
+    alert(`${agregados ? agregados + ' equipo(s) agregados al programa desde el Historial.\n' : ''}${marcados ? marcados + ` equipo(s) marcados como ${rep ? 'REPARADOS (reporte con "Reparación terminada")' : 'REALIZADOS según el Historial'}.\n` : ''}${rep && enProceso ? enProceso + ' equipo(s) EN PROCESO (tienen reportes, sin "Reparación terminada").' : ''}${!marcados && !agregados && !(rep && enProceso) ? 'Todo estaba al día con el Historial.' : ''}` + (avisos.length ? '\n\nAvisos:\n' + avisos.join('\n') : ''));
   } finally {
     sincronizandoPrograma.value = false;
   }

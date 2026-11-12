@@ -9,7 +9,7 @@ import {
   equipoFormMant, filtrosRequeridosFormMant, cargarFiltrosDelModelo, autocompletarFilaFiltro
 } from './historial.service.js';
 import { listaTiposFiltro, listaProveedoresFiltro, listaMarcasFiltro, fmtPrecio } from '../filtros/filtros.service.js';
-import { programasDelAfi } from '../programas/programas.service.js';
+import { programasDelAfi, programaEsReparacion } from '../programas/programas.service.js';
 import { dbOC } from '../../core/store.js';
 import * as A from './form-ayudas.js';
 import { colaIds, colaPos } from './historial.service.js';
@@ -27,7 +27,7 @@ export default {
       guardarMantencionForm: () => { agregarOCFormMant(); return guardarMantencionForm(); },
       agregarFilaFiltro, eliminarFilaFiltro, subirArchivoHistorial, leerAlAdjuntar, lecturaForm, CAUSAS_FALLA_HOJA,
       equipoFormMant, filtrosRequeridosFormMant, cargarFiltrosDelModelo, autocompletarFilaFiltro,
-      listaTiposFiltro, listaProveedoresFiltro, listaMarcasFiltro, fmtPrecio, programasDelAfi,
+      listaTiposFiltro, listaProveedoresFiltro, listaMarcasFiltro, fmtPrecio, programasDelAfi, programaEsReparacion,
       dbOC, fmtCLP, ocNuevaFormMant, ocsFormMant, totalOcsFormMant, agregarOCFormMant, quitarOCFormMant, ocsSugeridasFormMant
     };
   }

@@ -49,14 +49,22 @@ export const filteredIntervenciones = computed(() => {
 
 // ---------- Columnas nuevas del documento (ART, folio, causa de la falla) ----------
 // Si todavía no se ejecutó sql/historial_documentos.sql, se guarda sin ellas y se avisa (no se pierde el registro).
-const COLS_DOCUMENTO = (f) => ({ art: parseStr(f.usoArt), numero_folio: parseStr(f.numeroFolio), causa_falla: parseStr(f.causaFalla) });
+const COLS_DOCUMENTO = (f) => ({ art: parseStr(f.usoArt), numero_folio: parseStr(f.numeroFolio), causa_falla: parseStr(f.causaFalla), reparacion_terminada: Boolean(f.reparacionTerminada) });
 let avisoSqlDocs = false;
+let avisoSqlRep = false;
 const guardarConRespaldo = async (payload, op) => {
   try { await sb(op(payload)); }
   catch (err) {
-    if (!/'(art|numero_folio|causa_falla)' column|column \S*(art|numero_folio|causa_falla)\b/i.test(errMsg(err))) throw err;
+    const m = errMsg(err);
+    if (/'reparacion_terminada' column|column \S*reparacion_terminada\b/i.test(m)) {
+      const p = { ...payload }; delete p.reparacion_terminada;
+      await guardarConRespaldo(p, op);
+      if (!avisoSqlRep) { avisoSqlRep = true; alert('Guardado. OJO: falta ejecutar sql/reparacion_terminada.sql en Supabase para guardar "Reparación terminada".'); }
+      return;
+    }
+    if (!/'(art|numero_folio|causa_falla)' column|column \S*(art|numero_folio|causa_falla)\b/i.test(m)) throw err;
     const p = { ...payload }; delete p.art; delete p.numero_folio; delete p.causa_falla;
-    await sb(op(p));
+    await guardarConRespaldo(p, op);
     if (!avisoSqlDocs) { avisoSqlDocs = true; alert('Guardado. OJO: falta ejecutar sql/historial_documentos.sql en Supabase para guardar ART, N° folio y causa de la falla.'); }
   }
 };
@@ -67,7 +75,7 @@ const FORM_MANT_DEFAULT = (afiInicial = "") => ({
   fecha: hoyISO(), lugar: "", causa: "MANTENCION", tipoMant: "PREVENTIVA 250 HRS", tipoHorasMant: "250 hrs", horometro: "",
   programaCorrespondiente: "", horaInicio: "", horaTermino: "", linkDrive: "",
   mec1: "", mec2: "", mec3: "", mec4: "", causaDetallada: "", descripcion: "", interferencia: "", empresaArriendo: "", costo: 0, numeroOC: "", numeroOT: "",
-  usoArt: "", bloqueo: "", horaFalla: "", numeroFolio: "", causaFalla: "",
+  usoArt: "", bloqueo: "", horaFalla: "", numeroFolio: "", causaFalla: "", reparacionTerminada: false,
   filtrosLista: [],
   ...aceitesVacios()
 });
@@ -255,9 +263,10 @@ export const guardarMantencionForm = async () => {
   //    (si el equipo está varias veces en el programa: la 1ª mantención → fecha más baja, la 2ª → la siguiente…)
   if (payload.uso_de_art) {
     try {
-      const { marcados, agregados, avisos, faltaEn } = await sincronizarProgramaConHistorial({ nombrePrograma: payload.uso_de_art, afi: afiLimpio });
+      const { marcados, agregados, avisos, faltaEn, enProceso } = await sincronizarProgramaConHistorial({ nombrePrograma: payload.uso_de_art, afi: afiLimpio });
       if (agregados) aviso += `\n✔ AFI ${afiLimpio} agregado al programa de reparación "${payload.uso_de_art}".`;
-      if (marcados) aviso += `\n✔ Programa "${payload.uso_de_art}": AFI ${afiLimpio} marcado como REALIZADO.`;
+      if (marcados) aviso += `\n✔ Programa "${payload.uso_de_art}": AFI ${afiLimpio} marcado como ${enProceso !== undefined ? 'REPARADO' : 'REALIZADO'}.`;
+      else if (enProceso) aviso += `\n✔ Reporte enlazado al programa de reparación "${payload.uso_de_art}": el AFI ${afiLimpio} sigue EN PROCESO (se cierra con "Reparación terminada", el switch del programa o "Sacar → reparado" en la nave).`;
       if (faltaEn && faltaEn.length) aviso += `\n(Atención: el AFI ${afiLimpio} no está en el programa de mantención "${payload.uso_de_art}", no se marcó nada. Agrégalo al programa si corresponde.)`;
       if (avisos.length) aviso += '\n' + avisos.join('\n');
     } catch (err) {

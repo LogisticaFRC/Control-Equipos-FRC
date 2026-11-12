@@ -71,7 +71,13 @@ export default /* html */ `
                       <option v-for="p in dbProgramasCalendarios.filter(p => !programasDelAfi(formMant.afi).some(x => x.prog.id === p.id))" :key="p.id" :value="p.nombre_programa || p.mes">[{{ p.carpeta || p.tipo }}] {{ p.nombre_programa || p.mes }}</option>
                     </optgroup>
                   </select>
-                  <p v-if="formMant.programaCorrespondiente" class="text-[10px] text-indigo-700 mt-0.5"><i class="fa-solid fa-link"></i> Al guardar se marca REALIZADO en el programa (fecha programada más baja pendiente).</p>
+                  <template v-if="formMant.programaCorrespondiente && programaEsReparacion(formMant.programaCorrespondiente)">
+                    <label :class="['mt-1.5 flex items-start gap-2 rounded-lg border p-2 cursor-pointer', formMant.reparacionTerminada ? 'bg-emerald-50 border-emerald-400' : 'bg-white border-indigo-200']">
+                      <input type="checkbox" v-model="formMant.reparacionTerminada" class="mt-0.5 accent-emerald-600">
+                      <span class="text-[11px] leading-tight"><b :class="formMant.reparacionTerminada ? 'text-emerald-800' : 'text-slate-700'">Reparación terminada</b><br><span class="text-slate-500">Marcar solo en el reporte final: deja el equipo REPARADO en el programa. Sin marcar, el reporte se suma y el equipo sigue EN PROCESO.</span></span>
+                    </label>
+                  </template>
+                  <p v-else-if="formMant.programaCorrespondiente" class="text-[10px] text-indigo-700 mt-0.5"><i class="fa-solid fa-link"></i> Al guardar se marca REALIZADO en el programa (fecha programada más baja pendiente).</p>
                 </div>
               </div>
             </div>

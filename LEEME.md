@@ -740,3 +740,13 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Cómo se guarda: `usuarios.permisos._modulos = { modulo: nivel }` (+ `_perfil`). El nivel de cada área se guarda igual (= el mayor de sus módulos) porque la base de datos (RLS) revisa por área. Un módulo no marcado queda oculto del menú y si se abre por enlace vuelve a Inicio. En la pantalla, los botones de agregar/editar/eliminar siguen el nivel del módulo actual (`nivelEnModulo` en core/store.js).
 - Ojo: ocultar es a nivel de pantallas. Los datos de un módulo oculto siguen siendo legibles para cualquier usuario conectado (RLS de lectura por miembro), igual que antes.
 - No requiere SQL nuevo (usa la columna `permisos` existente).
+
+## 2026-11-12 · Programa de REPARACIÓN: varios reportes por equipo (no se cierra solo)
+- **Ejecutar `sql/reparacion_terminada.sql`** (columna `reparacion_terminada` en BD_HISTORIAL).
+- Antes cada reporte del Historial con un programa de reparación marcaba el equipo REALIZADO y creaba otra fila del mismo equipo. Ahora: **una fila por equipo**; los reportes se suman ("N reportes · último dd-mm-aaaa") y el equipo queda **EN PROCESO** (la fecha fin se alarga hasta el último reporte).
+- El equipo queda **REPARADO** con cualquiera de estas 3 formas:
+  1. Historial → al elegir un programa de reparación aparece la casilla **"Reparación terminada"** (marcarla solo en el reporte final).
+  2. Switch REPARADO en la tabla del programa (como antes).
+  3. Taller · Naves → botón nuevo **EQUIPO LISTO / REPARADO** en la tarjeta de la nave (o Sacar → "Sí, reparado"): sale de la nave, queda Disponible y REPARADO en el programa. Pensado para los mecánicos (darles "Modificar" en Programas Reparación).
+- Botón **Unir equipos repetidos (N)** (Admin) en el programa de reparación cuando un equipo aparece en varias filas: deja una (fecha inicio más antigua, fin más reciente, estado de la fila más reciente) y pasa la reparación del Taller a esa fila.
+- Programas de MANTENCIÓN sin cambios (un documento = realizado).

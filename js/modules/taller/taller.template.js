@@ -75,6 +75,8 @@ export default /* html */ `
               <button @click="abrirReparar(repEnNave(nave))" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-lg font-black py-3.5 rounded-2xl shadow"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>REPARAR</button>
               <button v-if="puedeEditar" @click="abrirSalida(repEnNave(nave))" class="bg-slate-800 hover:bg-slate-900 text-white text-base font-bold px-5 py-3.5 rounded-2xl shadow"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sacar</button>
             </div>
+            <!-- El mecánico avisa que el equipo quedó listo: sale de la nave y queda REPARADO en el programa -->
+            <button v-if="puedeEditar" @click="abrirSalida(repEnNave(nave), true)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-black py-3.5 rounded-2xl shadow"><i class="fa-solid fa-circle-check mr-2"></i>EQUIPO LISTO / REPARADO</button>
             <button v-if="isAdmin" @click="sacarError(repEnNave(nave))" class="w-full text-xs font-bold text-slate-500 hover:text-slate-800 border border-dashed border-slate-300 hover:border-slate-500 rounded-xl py-2"><i class="fa-solid fa-rotate-left mr-1"></i>Sacar por error / prueba (Admin)</button>
           </div>
         </div>
