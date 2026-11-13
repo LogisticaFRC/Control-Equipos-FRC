@@ -14,7 +14,7 @@
 // =====================================================================
 import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
-import { usuarioActivo, dbEquipos, dbIntervenciones, nivelEnArea, esAdminGeneral, cargarDatosDesdeSupabase, permisosDe } from '../../core/store.js';
+import { usuarioActivo, dbEquipos, dbIntervenciones, dbUsuarios, nivelEnArea, esAdminGeneral, cargarDatosDesdeSupabase, permisosDe } from '../../core/store.js';
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, calcularRestaHoras } from '../../core/utils.js';
 import { esVehiculo, empresaDe, EMPRESA_TALLER } from '../inventario/inventario.mapper.js';
 import { logoDataURL } from '../../core/excel.js';
@@ -107,7 +107,34 @@ export const cargarMec = async () => {
     else console.warn('[Mecánicos]', errMsg(err));
   } finally { cargandoMec.value = false; }
 };
-export const misRegistros = computed(() => dbMec.value.filter(r => String(r.creado_por || '').toLowerCase() === String(usuarioActivo.value?.usuario || '').toLowerCase()));
+// ---------- Carpetas por cuenta (2026-11-13) ----------
+// Cada intervención queda en la carpeta de quien la creó Y de los compañeros agregados con su cuenta
+// (mecanicos[].usuario). Todos ven el PDF aunque falte la firma; pasa a "Realizados" con la firma del supervisor.
+const yo = () => String(usuarioActivo.value?.usuario || '').toLowerCase();
+export const participa = (r, u = yo()) => Boolean(u) && (String(r.creado_por || '').toLowerCase() === u || (r.mecanicos || []).some(m => String(m.usuario || '').toLowerCase() === u));
+export const misRegistros = computed(() => dbMec.value.filter(r => participa(r)));
+export const esRealizado = (r) => r.estado === 'EN_HISTORIAL';
+export const misSinFirma = computed(() => misRegistros.value.filter(r => !esRealizado(r)));
+export const misRealizados = computed(() => misRegistros.value.filter(esRealizado));
+export const carpetaApp = ref('SIN_FIRMA');   // 'SIN_FIRMA' | 'REALIZADOS'
+/** Cuentas para agregar como compañero: primero los mecánicos. */
+export const cuentasUsuarios = computed(() => dbUsuarios.value
+  .map(u => ({ usuario: u.usuario, nombre: u.nombre || u.usuario, mec: ['subadmin', 'admin'].includes(permisosDe(u).mecanicos) }))
+  .sort((a, b) => (b.mec - a.mec) || a.nombre.localeCompare(b.nombre)));
+export const nombreDeCuenta = (usuario) => (cuentasUsuarios.value.find(c => c.usuario === usuario) || {}).nombre || '';
+/** Panel: carpetas por cuenta (todas las que aparecen en algún documento). */
+export const carpetasPanel = computed(() => {
+  const m = new Map();
+  dbMec.value.forEach(r => {
+    const cuentas = new Set([String(r.creado_por || '').toLowerCase(), ...(r.mecanicos || []).map(x => String(x.usuario || '').toLowerCase())].filter(Boolean));
+    cuentas.forEach(u => {
+      const c = m.get(u) || m.set(u, { usuario: u, nombre: nombreDeCuenta(u) || u, sinFirma: 0, realizados: 0 }).get(u);
+      if (esRealizado(r)) c.realizados++; else c.sinFirma++;
+    });
+  });
+  return [...m.values()].sort((a, b) => b.sinFirma - a.sinFirma || a.nombre.localeCompare(b.nombre));
+});
+export const carpetaPanel = ref('');   // usuario elegido en el panel ('' = todas)
 export const ESTADOS_MEC = {
   PENDIENTE_FIRMA: { t: 'Falta firma supervisor', c: 'bg-amber-100 text-amber-800 border-amber-300', i: 'fa-hourglass-half' },
   FIRMADA: { t: 'Firmada (pasando al Historial)', c: 'bg-sky-100 text-sky-800 border-sky-300', i: 'fa-signature' },
@@ -124,7 +151,7 @@ export const nuevaIntervencion = (tipo, e) => ({
   fecha: hoyISO(), horometro: e.horometros?.hTomado ? String(e.horometros.hTomado) : '', turno: new Date().getHours() >= 20 || new Date().getHours() < 8 ? 'NOCHE' : 'DÍA',
   lugar: enTaller(e) ? 'TALLER FRC' : (e.ubicacion || empresaDe(e) || ''), hora_falla: '', hora_inicio: horaAhora(), hora_termino: '',
   uso_art: false, bloqueo: false,
-  mecanicos: [{ nombre: usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || '', firma: '' }],
+  mecanicos: [{ nombre: usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || '', usuario: usuarioActivo.value?.usuario || '', firma: '' }],
   causa_intervencion: '', descripcion: '', interferencia: '', causa_falla: '',
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
@@ -210,7 +237,8 @@ export const enviarIntervencion = async () => {
     if (f.id) reg = (await sb(supabaseClient.from(TABLA_MEC).update(fila).eq('id', f.id).select()))[0];
     else reg = (await sb(supabaseClient.from(TABLA_MEC).insert([{ ...fila, creado_por: usuarioActivo.value?.usuario || null }]).select()))[0];
     try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
-    formInt.value = null; equipoSel.value = null; tabApp.value = 'registros';   // vuelve a "Mis registros"
+    formInt.value = null; equipoSel.value = null; tabApp.value = 'registros';   // vuelve a "Mis documentos"
+    carpetaApp.value = fila.estado === 'FIRMADA' ? 'REALIZADOS' : 'SIN_FIRMA';
 
     if (conFirma && reg) {
       const ok = await pasarAHistorial(reg);
@@ -328,7 +356,7 @@ export const pasarAHistorial = async (r) => {
 
 // ---------- Panel del supervisor ----------
 export const filtroPanel = ref('PENDIENTE_FIRMA');
-export const listaPanel = computed(() => dbMec.value.filter(r => !filtroPanel.value || r.estado === filtroPanel.value));
+export const listaPanel = computed(() => dbMec.value.filter(r => (!filtroPanel.value || r.estado === filtroPanel.value) && (!carpetaPanel.value || participa(r, carpetaPanel.value))));
 export const conteoPanel = computed(() => {
   const c = { PENDIENTE_FIRMA: 0, FIRMADA: 0, EN_HISTORIAL: 0, RECHAZADA: 0 };
   dbMec.value.forEach(r => { c[r.estado] = (c[r.estado] || 0) + 1; });

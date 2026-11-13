@@ -19,6 +19,8 @@ const lineasTexto = (texto, n, h = 19) => {
   return `<div style="position:relative;border:1px solid #333;border-top:0;min-height:${n * h}px;background:repeating-linear-gradient(to bottom,transparent 0,transparent ${h - 1}px,#999 ${h - 1}px,#999 ${h}px)">
     <div style="padding:1px 8px;line-height:${h}px;white-space:pre-wrap;font-size:11.5px;color:#0f172a">${t}</div></div>`;
 };
+/** Banda de sección (formato mecánico 2026-11-13): número + título en verde. */
+const banda = (n, t) => `<div style="display:flex;align-items:center;gap:8px;background:${V};color:#fff;border:1.5px solid #333;padding:2px 10px 6px;font-weight:800;font-size:11px;letter-spacing:.5px">${n ? `<span style="display:inline-block;background:#fff;color:${V};border-radius:9px;width:17px;height:17px;text-align:center;line-height:15px;font-size:10px;font-weight:900">${n}</span>` : ''}${t}</div>`;
 const titulo = (t, color = V) => `<div style="border:1.5px solid #333;text-align:center;font-weight:700;font-style:italic;color:${color};font-size:11.5px;padding:1px 2px 6px;line-height:14px">${t}</div>`;
 
 /** Encabezado con logo, título y cuadro código / fecha / versión. */
@@ -74,36 +76,36 @@ export const hojaIntervencion = (r, logo) => {
   ${titulo('CAUSA DE LA INTERVENCIÓN')}
   <div style="border:1px solid #333;border-top:0;padding:8px 6px;display:flex;justify-content:space-around;font-size:9.5px;font-weight:700;text-align:center">
     ${CAUSAS_ELECTRICA.map(c => `<div style="width:19%">${check(String(r.causa_intervencion || '').toUpperCase() === c)}<div style="margin-top:3px">${c}</div></div>`).join('')}
-  </div>` : `
-  ${titulo('CAUSA DE LA INTERVENCION')}
-  ${lineasTexto([r.causa_falla, r.causa_intervencion].filter(Boolean).join(' — '), 1, 22)}`}
+  </div>
   <div style="height:10px"></div>
-  ${titulo(elec ? 'DESCRIPCIÓN DE LO REALIZADO' : 'DESCRIPCION DE LO REALIZADO')}
-  ${lineasTexto(r.descripcion, elec ? 11 : 8)}
+  ${titulo('DESCRIPCIÓN DE LO REALIZADO')}
+  ${lineasTexto(r.descripcion, 11)}
   <div style="height:10px"></div>
   ${titulo('INTERFERENCIA')}
-  ${lineasTexto(r.interferencia, elec ? 3 : 1, 22)}
-  ${elec ? '' : `
-  <table style="width:100%;border-collapse:collapse;margin-top:12px"><tr>
-    <td style="width:52%;vertical-align:top">
-      <div style="border:1.5px solid #333">
-        <div style="text-align:center;font-style:italic;color:${V};font-weight:700;font-size:11px;border-bottom:1.5px solid #333;padding:2px">CAUSA DE LA FALLA</div>
-        <table style="width:100%;font-size:9.5px;font-weight:700;color:${V}"><tr>
-          <td style="padding:6px;text-align:center">Accidente</td><td>${check(cf === 'ACCIDENTE')}</td>
-          <td style="padding:6px;text-align:center">Falla operacional</td><td>${check(cf === 'FALLA OPERACIONAL')}</td></tr><tr>
-          <td style="padding:6px;text-align:center">Condicion de la operacion<br>(polvo, piso, pendiente)</td><td>${check(cf === 'CONDICION DE LA OPERACION')}</td>
-          <td style="padding:6px;text-align:center">Falla Mecanica</td><td>${check(cf === 'FALLA MECANICA')}</td></tr></table>
-      </div></td>
-    <td style="width:6%"></td>
-    <td style="vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10px">
-      <tr><td style="border:1px solid #333;text-align:center;font-style:italic;font-weight:700;color:${V}">Lubricante Utilizado</td><td style="border:1px solid #333;text-align:center;font-style:italic;font-weight:700;color:${V}">Cantidad Lubricante</td></tr>
-      ${lubs.slice(0, Math.max(4, lubs.length)).map(l => `<tr><td style="border-bottom:1px solid #333;height:18px;padding:0 4px;font-weight:700">${esc(l.tipo)}</td><td style="border-bottom:1px solid #333;padding:0 4px;font-weight:700;text-align:center">${esc(l.cantidad)}${l.cantidad && /^[\d.,]+$/.test(String(l.cantidad).trim()) ? ' L' : ''}</td></tr>`).join('')}
-    </table></td></tr></table>
-  <table style="width:88%;margin:14px auto 0;border-collapse:collapse;font-size:9.5px;font-weight:700;color:${V}">
-    <tr><td style="width:42%;padding:4px 6px;text-align:center">Nombre de Usuario Arriendo</td><td>${caja(r.usuario_arriendo, '100%', 'display:block')}</td></tr>
-    <tr><td style="padding:4px 6px;text-align:center">Si es falla operacional indique el nombre del operador.</td><td>${caja(r.operador, '100%', 'display:block')}</td></tr>
-    <tr><td style="padding:4px 6px;text-align:center">Si existe consumo de repuestos retirados de bodega, indique N° de vale de consumo</td><td>${caja(r.vale_consumo, '100%', 'display:block')}</td></tr>
-  </table>`}
+  ${lineasTexto(r.interferencia, 3, 22)}` : `
+  <!-- MECÁNICA (2026-11-13): 1) causa de la intervención · 2) descripción · 3) causa de la falla (razón) -->
+  ${banda('1', 'CAUSA DE LA INTERVENCIÓN')}
+  <div style="border:1.5px solid #333;border-top:0;padding:8px 12px 10px;display:flex;align-items:center;gap:10px;min-height:30px">
+    ${r.causa_falla ? `<span style="display:inline-block;background:#ecfdf5;border:1.5px solid ${V};border-radius:16px;padding:2px 14px 6px;font-weight:900;color:${V};font-size:13px;letter-spacing:.3px">${esc(r.causa_falla)}</span>` : '<span style="color:#94a3b8;font-size:10px">—</span>'}
+  </div>
+  <div style="height:9px"></div>
+  ${banda('2', 'DESCRIPCIÓN DE LO REALIZADO')}
+  ${lineasTexto(r.descripcion, 8, 20)}
+  <div style="height:9px"></div>
+  ${banda('3', 'CAUSA DE LA FALLA')}
+  <div style="border:1.5px solid #333;border-top:0;padding:6px 12px 9px;min-height:26px;font-size:12px;font-weight:800;color:#0f172a">${esc(r.causa_intervencion) || '&nbsp;'}</div>
+  <div style="height:9px"></div>
+  ${banda('', 'INTERFERENCIA')}
+  ${lineasTexto(r.interferencia, 1, 22)}
+  <table style="width:100%;border-collapse:collapse;margin-top:10px"><tr>
+    <td style="width:48%;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10px">
+      <tr><td style="background:${V};color:#fff;font-weight:800;padding:2px 6px 5px;border:1px solid #333">LUBRICANTE UTILIZADO</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 6px 5px;border:1px solid #333;text-align:center;width:34%">CANTIDAD</td></tr>
+      ${lubs.slice(0, Math.max(3, lubs.length)).map(l => `<tr><td style="border:1px solid #9ca3af;height:18px;padding:0 6px 3px;font-weight:700">${esc(l.tipo)}</td><td style="border:1px solid #9ca3af;padding:0 4px 3px;font-weight:700;text-align:center">${esc(l.cantidad)}${l.cantidad && /^[\d.,]+$/.test(String(l.cantidad).trim()) ? ' L' : ''}</td></tr>`).join('')}
+    </table></td>
+    <td style="width:4%"></td>
+    <td style="vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:9.5px">
+      ${[['Usuario arriendo', r.usuario_arriendo], ['Operador (si es falla operacional)', r.operador], ['N° vale de consumo (repuestos)', r.vale_consumo]].map(([l, v]) => `<tr><td style="font-weight:700;color:${V};padding:3px 6px 6px;border-bottom:1px solid #9ca3af;width:52%">${l}</td><td style="font-weight:800;padding:3px 6px 6px;border-bottom:1px solid #9ca3af">${esc(v) || '&nbsp;'}</td></tr>`).join('')}
+    </table></td></tr></table>`}
   <table style="width:100%;border-collapse:collapse;margin-top:${elec ? 26 : 16}px;font-size:10px"><tr>
     <td style="width:44%;text-align:center;vertical-align:bottom">
       <div style="height:42px">${firmaImg(resp.firma, 40)}</div>

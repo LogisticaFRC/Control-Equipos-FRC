@@ -40,7 +40,17 @@ export default {
 
   <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
     <!-- Lista -->
-    <div class="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-fit">
+    <div class="xl:col-span-2 space-y-3">
+    <!-- Carpetas por cuenta -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-3">
+      <div class="text-[10px] font-extrabold uppercase text-slate-500 mb-2"><i class="fa-solid fa-folder-tree mr-1"></i>Carpetas por mecánico</div>
+      <div class="flex flex-wrap gap-1.5">
+        <button @click="S.carpetaPanel.value = ''" :class="['px-2.5 py-1.5 rounded-lg border font-bold', !S.carpetaPanel.value ? 'bg-slate-800 text-white border-slate-800' : 'bg-white']"><i class="fa-solid fa-folder mr-1"></i>Todas</button>
+        <button v-for="c in S.carpetasPanel.value" :key="c.usuario" @click="S.carpetaPanel.value = c.usuario" :class="['px-2.5 py-1.5 rounded-lg border font-bold', S.carpetaPanel.value === c.usuario ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-slate-700']">
+          <i class="fa-solid fa-folder mr-1 text-amber-500"></i>{{ c.nombre }} <span class="ml-1 text-[10px] px-1.5 rounded bg-amber-100 text-amber-800">{{ c.sinFirma }} sin firma</span> <span class="text-[10px] px-1.5 rounded bg-emerald-100 text-emerald-800">{{ c.realizados }}</span></button>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-fit">
       <div v-for="r in S.listaPanel.value" :key="r.id" @click="S.abrirRegPanel(r)" :class="['p-3 border-b cursor-pointer hover:bg-slate-50', S.regPanel.value && S.regPanel.value.id === r.id ? 'bg-emerald-50' : '']">
         <div class="flex items-start justify-between gap-2">
           <div><b class="text-amber-700">AFI {{ r.afi }}</b> <span class="font-bold text-slate-700">· {{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span>
@@ -51,6 +61,7 @@ export default {
         <div v-if="r.bloqueo" class="text-[10px] font-bold text-violet-700 mt-0.5"><i class="fa-solid fa-lock mr-0.5"></i>Con registro de bloqueo</div>
       </div>
       <div v-if="!S.listaPanel.value.length" class="p-10 text-center text-slate-400 font-bold">No hay intervenciones en este estado.</div>
+    </div>
     </div>
 
     <!-- Detalle -->

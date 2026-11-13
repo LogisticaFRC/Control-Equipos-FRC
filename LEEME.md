@@ -783,3 +783,9 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Intervención MECÁNICA (paso 2): **Causa de la intervención** = lista desplegable del Historial (REPARACION, IMPLEMENTACION, FALLA MECANICA…) → **Razón de la causa** (título corto) → **Descripción de lo realizado**. Se quitaron los 4 botones de "Causa de la falla". (En la tabla se guarda la causa en `causa_falla` y la razón en `causa_intervencion`; sin SQL.)
 - Al pasar al Historial: causa = la elegida, causa detallada = la razón. En el PDF la línea "Causa de la intervención" muestra "CAUSA — razón".
 - **Lubricantes**: lista desplegable con los mismos aceites del Historial + litros; al pasar al Historial se guardan en sus columnas de aceite (igual que una mantención). Eléctrica sin cambios.
+
+## Mecánicos · carpetas por cuenta y hoja rediseñada (2026-11-13)
+- Hoja mecánica: bloques numerados 1 Causa de la intervención · 2 Descripción · 3 Causa de la falla (razón), luego Interferencia, lubricantes y datos.
+- Paso 4: cada compañero se elige desde las cuentas creadas (o nombre libre). El documento aparece en la carpeta de todos los participantes.
+- App: "Mis documentos" con carpetas **Sin firma** (pendiente/rechazado) y **Realizados** (en Historial). Todos ven el PDF aunque falte firma.
+- Panel: carpetas por mecánico con conteo sin firma / realizados. Sin SQL (usa el jsonb `mecanicos[].usuario`).

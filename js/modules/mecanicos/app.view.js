@@ -178,10 +178,17 @@ export default {
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <h4 class="sec">{{ f.tipo === 'ELECTRICA' ? 'Electricista(s)' : 'Mecánico(s) responsable(s)' }}</h4>
           <div v-for="(m, i) in f.mecanicos" :key="i" class="border rounded-xl p-3 space-y-2">
-            <div class="flex items-center gap-2"><input v-model="m.nombre" class="inp flex-1" :placeholder="i === 0 ? 'Nombre (responsable)' : 'Nombre'"><button v-if="i > 0" @click="f.mecanicos.splice(i, 1)" class="w-10 text-rose-500"><i class="fa-solid fa-trash"></i></button></div>
+            <div class="flex items-center gap-2">
+              <select v-model="m.usuario" @change="m.nombre = S.nombreDeCuenta(m.usuario) || m.nombre" :disabled="i === 0 && m.usuario === (usuarioActivo && usuarioActivo.usuario)" class="inp flex-1 font-bold">
+                <option value="">— Sin cuenta (escribir nombre) —</option>
+                <option v-for="c in S.cuentasUsuarios.value" :key="c.usuario" :value="c.usuario">{{ c.nombre }}{{ c.mec ? ' · mecánico' : '' }}</option>
+              </select>
+              <button v-if="i > 0" @click="f.mecanicos.splice(i, 1)" class="w-10 text-rose-500"><i class="fa-solid fa-trash"></i></button></div>
+            <input v-model="m.nombre" class="inp" :placeholder="i === 0 ? 'Nombre (responsable)' : 'Nombre'">
+            <p v-if="i > 0 && m.usuario" class="text-[11px] text-emerald-700"><i class="fa-solid fa-share-nodes mr-1"></i>Le aparecerá en su carpeta (puede ver el PDF y firmar su parte).</p>
             <firma-pad :firma="m.firma" :titulo="'Firma · ' + (m.nombre || 'mecánico')" @guardar="v => m.firma = v"></firma-pad>
           </div>
-          <button v-if="f.mecanicos.length < 4" @click="f.mecanicos.push({ nombre: '', firma: '' })" class="text-sm font-bold text-emerald-700"><i class="fa-solid fa-user-plus mr-1"></i>Agregar otro</button>
+          <button v-if="f.mecanicos.length < 4" @click="f.mecanicos.push({ nombre: '', usuario: '', firma: '' })" class="text-sm font-bold text-emerald-700"><i class="fa-solid fa-user-plus mr-1"></i>Agregar otro</button>
         </div>
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <h4 class="sec">Firma del supervisor</h4>
@@ -272,19 +279,26 @@ export default {
       </section>
 
       <section v-show="tab === 'registros'" class="p-4 space-y-3">
-        <div v-for="r in S.misRegistros.value" :key="r.id" class="bg-white rounded-2xl shadow-sm p-4">
+        <!-- Mi carpeta: sin firma / realizados y entregados -->
+        <div class="grid grid-cols-2 gap-2 bg-white rounded-2xl p-1.5 shadow-sm">
+          <button @click="S.carpetaApp.value = 'SIN_FIRMA'" :class="['py-3 rounded-xl font-extrabold text-sm', S.carpetaApp.value === 'SIN_FIRMA' ? 'bg-amber-500 text-white' : 'text-slate-500']"><i class="fa-solid fa-folder-open mr-1"></i>Sin firma ({{ S.misSinFirma.value.length }})</button>
+          <button @click="S.carpetaApp.value = 'REALIZADOS'" :class="['py-3 rounded-xl font-extrabold text-sm', S.carpetaApp.value === 'REALIZADOS' ? 'bg-emerald-600 text-white' : 'text-slate-500']"><i class="fa-solid fa-folder-closed mr-1"></i>Realizados ({{ S.misRealizados.value.length }})</button>
+        </div>
+        <div v-for="r in (S.carpetaApp.value === 'SIN_FIRMA' ? S.misSinFirma.value : S.misRealizados.value)" :key="r.id" class="bg-white rounded-2xl shadow-sm p-4">
           <div class="flex items-start justify-between gap-2">
             <div><b class="text-[#1f4d3a]">AFI {{ r.afi }}</b> · <span class="text-sm">{{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span><div class="text-xs text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }}</div></div>
             <span :class="['text-[10px] font-bold px-2 py-1 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]"><i :class="['fa-solid mr-1', S.ESTADOS_MEC[r.estado]?.i]"></i>{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
           </div>
           <div class="text-sm text-slate-600 mt-1 line-clamp-2"><b v-if="r.tipo === 'MECANICA' && r.causa_falla">{{ r.causa_falla }} · </b>{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
+          <div class="text-[11px] text-slate-500 mt-1"><i class="fa-solid fa-users mr-1"></i>{{ (r.mecanicos || []).map(m => m.nombre + (m.firma ? ' ✔' : ' (sin firma)')).join(' · ') }}
+            <span v-if="String(r.creado_por || '').toLowerCase() !== String(usuarioActivo && usuarioActivo.usuario || '').toLowerCase()" class="ml-1 font-bold text-indigo-600"><i class="fa-solid fa-share-nodes mr-0.5"></i>compartido por {{ S.nombreDeCuenta(r.creado_por) || r.creado_por }}</span></div>
           <div v-if="r.estado === 'RECHAZADA'" class="mt-2 text-sm bg-rose-50 text-rose-800 rounded-lg p-2"><b>Corregir:</b> {{ r.motivo_rechazo }}</div>
           <div class="flex gap-2 mt-3">
             <button v-if="['PENDIENTE_FIRMA','RECHAZADA'].includes(r.estado)" @click="S.editarRegistro(r)" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm"><i class="fa-solid fa-pen mr-1"></i>{{ r.estado === 'RECHAZADA' ? 'Corregir y reenviar' : 'Editar / firma supervisor' }}</button>
             <button @click="S.descargarPDF(r)" class="flex-1 py-2.5 rounded-xl border font-bold text-sm text-slate-700"><i class="fa-solid fa-file-pdf mr-1 text-rose-600"></i>Ver hoja</button>
           </div>
         </div>
-        <div v-if="!S.misRegistros.value.length" class="text-center text-slate-400 py-10">Aún no has enviado intervenciones.</div>
+        <div v-if="!(S.carpetaApp.value === 'SIN_FIRMA' ? S.misSinFirma.value : S.misRealizados.value).length" class="text-center text-slate-400 py-10">{{ S.carpetaApp.value === 'SIN_FIRMA' ? 'No tienes documentos esperando firma.' : 'Aún no hay documentos realizados.' }}</div>
       </section>
 
       <section v-if="tab === 'tareas'" class="p-3"><recordatorios-view></recordatorios-view></section>
@@ -292,7 +306,7 @@ export default {
       <!-- Barra inferior -->
       <nav class="fixed bottom-0 left-0 right-0 z-30 max-w-xl mx-auto bg-white border-t grid grid-cols-3">
         <button @click="tab = 'equipos'" :class="['py-3 font-bold text-sm', tab === 'equipos' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-truck-monster block text-xl mb-0.5"></i>Equipos</button>
-        <button @click="tab = 'registros'; S.cargarMec()" :class="['py-3 font-bold text-sm relative', tab === 'registros' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-clipboard-list block text-xl mb-0.5"></i>Mis registros
+        <button @click="tab = 'registros'; S.cargarMec()" :class="['py-3 font-bold text-sm relative', tab === 'registros' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-folder block text-xl mb-0.5"></i>Mis documentos
           <span v-if="pendientesMios" class="absolute top-2 right-1/4 bg-rose-500 text-white text-[10px] rounded-full px-1.5">{{ pendientesMios }}</span></button>
         <button @click="tab = 'tareas'" :class="['py-3 font-bold text-sm', tab === 'tareas' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-calendar-check block text-xl mb-0.5"></i>Mis tareas</button>
       </nav>
@@ -326,7 +340,7 @@ export default {
       dictando.value = campo; rec.start();
     };
     onMounted(() => S.cargarMec());
-    return { S, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
+    return { S, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };
