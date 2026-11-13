@@ -164,6 +164,7 @@ export default /* html */ `
             <i class="fa-solid fa-object-group"></i> Unir equipos repetidos ({{ duplicadosReparacion(progSelect.id).length }})
           </button>
           <!-- Fechas en borrador: no se guardan ni se mueven hasta presionar Guardar fechas -->
+          <span v-if="vistaProgramaMode === 'tabla' && !cambiosFechasPrograma(progSelect.id).length" class="ml-auto text-[10px] text-slate-400 italic"><i class="fa-solid fa-circle-info mr-1"></i>Cambia las fechas y presiona "Guardar fechas"</span>
           <template v-if="cambiosFechasPrograma(progSelect.id).length">
             <div class="flex-grow"></div>
             <span class="text-[10px] font-bold text-amber-700"><i class="fa-solid fa-pen mr-1"></i>{{ cambiosFechasPrograma(progSelect.id).length }} equipo(s) con fechas sin guardar</span>
