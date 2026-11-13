@@ -72,7 +72,7 @@ const columnasDetalle = (conEquipo) => [
   { t: 'DOC.', w: 6, v: r => r.linkDrive ? { text: 'Ver', hyperlink: r.linkDrive } : '-' }
 ];
 
-const hojaDetalle = (wb, logo, lista, { titulo, subtitulo, conEquipo }) => {
+export const hojaDetalle = (wb, logo, lista, { titulo, subtitulo, conEquipo }) => {
   const cols = columnasDetalle(conEquipo);
   const filas = lista.map(r => cols.map(c => c.v(r)));
   const iH = cols.findIndex(c => c.t === 'HORAS'), iC = cols.findIndex(c => c.t === 'COSTO');
@@ -91,7 +91,70 @@ const hojaDetalle = (wb, logo, lista, { titulo, subtitulo, conEquipo }) => {
   return ws;
 };
 
-const hojaFiltros = (wb, logo, lista, { titulo, subtitulo, conEquipo }) => {
+// ---------------------------------------------------------------------
+// DATOS COMPLETOS: TODOS los campos de cada registro (una columna por dato)
+// ---------------------------------------------------------------------
+const siNo = (v) => { const t = String(v ?? '').trim().toUpperCase(); return !t ? '-' : /^(SI|SÍ|TRUE|1|X)$/.test(t) ? 'SÍ' : /^(NO|FALSE|0)$/.test(t) ? 'NO' : String(v); };
+const txt = (v) => (String(v ?? '').trim() && String(v).trim() !== '-' ? String(v).trim() : '-');
+const COLUMNAS_COMPLETAS = [
+  { t: 'ID', w: 7, v: r => r.id ?? '-' },
+  { t: 'FECHA', w: 11, fmt: 'dd-mm-yyyy', bold: true, v: r => fechaExcel(normalizarFecha(r.fecha)) },
+  { t: 'AFI', w: 8, bold: true, v: r => r.afi || '-' },
+  { t: 'TIPO EQUIPO', w: 14, v: r => buscarEquipoPorAfi(r.afi)?.tipo || txt(r.equipo) },
+  { t: 'MARCA', w: 12, v: r => txt(buscarEquipoPorAfi(r.afi)?.marca) },
+  { t: 'MODELO', w: 12, v: r => txt(buscarEquipoPorAfi(r.afi)?.modelo) },
+  { t: 'EQUIPO (REGISTRO)', w: 16, v: r => txt(r.equipo) },
+  { t: 'TIPO REGISTRO', w: 14, v: r => tipoReg(r) },
+  { t: 'CAUSA', w: 16, v: r => txt(r.causa) },
+  { t: 'TIPO MANTENCIÓN', w: 16, v: r => txt(r.tipoMant) },
+  { t: 'TIPO HORAS MANT.', w: 11, v: r => txt(r.tipoHorasMant) },
+  { t: 'PROGRAMA', w: 14, v: r => txt(r.programaCorrespondiente) },
+  { t: 'SISTEMA (FALLA)', w: 14, v: r => esFalla(r) ? categorizar(r).label : '-' },
+  { t: 'PIEZA · MOTIVO', w: 20, v: r => esFalla(r) ? piezaMotivoTexto(r) : '-' },
+  { t: 'CAUSA DE LA FALLA', w: 16, v: r => txt(r.causaFalla) },
+  { t: 'CAUSA DETALLADA', w: 28, al: 'left', v: r => txt(ok(r.causaDetallada)) },
+  { t: 'DESCRIPCIÓN DEL TRABAJO', w: 50, al: 'left', v: r => txt(ok(r.descripcion)) },
+  { t: 'INTERFERENCIA', w: 22, al: 'left', v: r => txt(r.interferencia) },
+  { t: 'HORÓMETRO / KM', w: 11, fmt: '#,##0', v: r => Number(r.horometro) > 0 ? Number(r.horometro) : '-' },
+  { t: 'LUGAR', w: 14, v: r => txt(ok(r.lugar)) },
+  { t: 'EMPRESA / CLIENTE', w: 16, v: r => txt(r.empresaArriendo) },
+  { t: 'HORA FALLA', w: 8, v: r => txt(r.horaFalla) },
+  { t: 'HORA INICIO', w: 8, v: r => txt(r.horaInicio) },
+  { t: 'HORA TÉRMINO', w: 8, v: r => txt(r.horaTermino) },
+  { t: 'HORA TOTAL', w: 8, v: r => txt(r.horaTotal) },
+  { t: 'HORAS (CALC.)', w: 8, fmt: '0.0', v: r => horas(r) },
+  { t: 'MECÁNICO 1', w: 15, v: r => txt(r.mec1) },
+  { t: 'MECÁNICO 2', w: 15, v: r => txt(r.mec2) },
+  { t: 'MECÁNICO 3', w: 15, v: r => txt(r.mec3) },
+  { t: 'MECÁNICO 4', w: 15, v: r => txt(r.mec4) },
+  { t: 'USO ART', w: 8, v: r => siNo(r.usoArt) },
+  { t: 'BLOQUEO EQUIPO', w: 9, v: r => siNo(r.bloqueo) },
+  { t: 'N° FOLIO', w: 11, v: r => txt(r.numeroFolio) },
+  { t: 'N° OT', w: 10, v: r => txt(r.numeroOT) },
+  { t: 'N° OC', w: 12, v: r => txt(r.numeroOC) },
+  { t: 'COSTO', w: 12, fmt: PESOS, v: r => costoReg(r) || '' },
+  { t: 'FILTROS', w: 40, al: 'left', v: r => txt(r.filtrosTexto) },
+  { t: 'ACEITES / LUBRICANTES', w: 30, al: 'left', v: r => r.aceites && r.aceites !== 'Sin consumo' ? r.aceites.split('; ').join('\n') : '-' },
+  { t: 'REPARACIÓN TERMINADA', w: 11, v: r => r.reparacionTerminada ? 'SÍ' : '-' },
+  { t: 'DOCUMENTO', w: 10, v: r => r.linkDrive ? { text: 'Abrir', hyperlink: r.linkDrive } : '-' }
+];
+export const hojaCompleta = (wb, logo, lista, { titulo, subtitulo }) => {
+  const cols = COLUMNAS_COMPLETAS;
+  const filas = lista.map(r => cols.map(c => { try { return c.v(r); } catch { return '-'; } }));
+  const iH = cols.findIndex(c => c.t === 'HORAS (CALC.)'), iC = cols.findIndex(c => c.t === 'COSTO');
+  const totales = cols.map((c, i) => i === 0 ? 'TOTAL' : i === 1 ? `${lista.length} reg.` : i === iH ? lista.reduce((s, r) => s + (Number(horas(r)) || 0), 0) : i === iC ? lista.reduce((s, r) => s + costoReg(r), 0) : '');
+  const ws = hojaTabla(wb, logo, {
+    nombre: 'Datos completos', titulo: titulo + ' · DATOS COMPLETOS', subtitulo, columnas: cols, filas, totales,
+    estiloFila: (v, i) => { const t = tipoReg(lista[i]); return t === 'MANTENCIÓN' ? { fill: 'FFECFDF5' } : t === 'MANT. INTERMEDIA' ? { fill: 'FFEFF6FF' } : null; }
+  });
+  ajustarAltos(ws, cols, 7, filas.length);
+  estilizarLinks(ws, cols.length, 7, filas.length);
+  ws.headerFooter = { oddFooter: `&L&8FAST RENTAL CHILE · ${titulo.replace(/&/g, '&&')} · DATOS COMPLETOS&R&8Página &P de &N` };
+  ws.pageSetup.printTitlesRow = '6:6';
+  return ws;
+};
+
+export const hojaFiltros = (wb, logo, lista, { titulo, subtitulo, conEquipo }) => {
   const filas = [];
   lista.filter(r => (r.filtrosLista || []).length || (r.aceites && r.aceites !== 'Sin consumo')).forEach(r => {
     const fl = r.filtrosLista && r.filtrosLista.length ? r.filtrosLista : [null];
@@ -127,7 +190,7 @@ const porMes = (lista) => {
   const N = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   return meses.map(k => [`${N[Number(k.slice(5)) - 1]} ${k.slice(2, 4)}`, m.get(k)]);
 };
-const kpisDe = (lista, extra = []) => {
+export const kpisDe = (lista, extra = []) => {
   const mant = lista.filter(r => claseMantencion(r) === 'COMPLETA').length;
   const fallas = lista.filter(esFalla).length;
   const hrs = lista.reduce((s, r) => s + (Number(horas(r)) || 0), 0);
@@ -181,6 +244,7 @@ export const exportarHistorialEquipoExcel = async (equipo, registros, filtroTxt 
       ]
     });
     hojaDetalle(wb, logo, lista, { titulo, subtitulo: sub, conEquipo: false });
+    hojaCompleta(wb, logo, lista, { titulo, subtitulo: sub });
     hojaFiltros(wb, logo, lista, { titulo: `${titulo} · FILTROS Y ACEITES`, subtitulo: desc, conEquipo: false });
     await descargarLibro(wb, `Hoja_de_vida_AFI_${String(equipo.afi).replace(/[^\w-]/g, '')}_${hoyISO()}.xlsx`);
   } catch (err) { alert('No se pudo exportar: ' + errMsg(err)); }
@@ -224,6 +288,7 @@ export const exportarHistorialGeneralExcel = async (registros, filtroTxt = '') =
       ]
     });
     hojaDetalle(wb, logo, lista, { titulo, subtitulo: sub, conEquipo: true });
+    hojaCompleta(wb, logo, lista, { titulo, subtitulo: sub });
     hojaTabla(wb, logo, {
       nombre: 'Por equipo', titulo: 'HISTORIAL · RESUMEN POR EQUIPO', subtitulo: sub,
       columnas: [{ t: 'AFI', w: 9, bold: true }, { t: 'TIPO', w: 18 }, { t: 'MARCA', w: 14 }, { t: 'MODELO', w: 14 }, { t: 'REGISTROS', w: 10 }, { t: 'MANTENCIONES', w: 12 },

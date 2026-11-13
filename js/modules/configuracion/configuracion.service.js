@@ -3,6 +3,7 @@
 // =====================================================================
 import { supabaseClient, emailDeUsuario } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
+import { exportarTodoExcel } from '../../core/exportar-todo.js';
 import {
   usuarioActivo, currentTab, config, CONFIG_DEFAULT, LOGO_DEFAULT, LOGO_VERSION, dbUsuarios,
   dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems, soloAdminGeneral, permisosDe, nivelEnArea, NIVELES, modulosDe, nivelEnModulo, NIVELES_MODULO, MODULOS_SIEMPRE } from '../../core/store.js';
@@ -251,20 +252,9 @@ export const subirNuevaFotoLogo = (e) => {
   reader.readAsDataURL(file);
 };
 
-// ---------- Exportar toda la base ----------
-export const exportarTodasLasTablasExcel = () => {
-  if (!window.XLSX) return alert("Librería SheetJS no disponible.");
-  const wb = XLSX.utils.book_new();
-  const add = (rows, name) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), name);
-
-  add(dbEquipos.value.map(e => ({ AFI: e.afi, Tipo: e.tipo, Marca: e.marca, Modelo: e.modelo, Ubicacion: e.ubicacion, Disponibilidad: e.disponibilidad, Horometro: e.horometroActual, GPS: e.gps })), "Inventario");
-  add(dbMovimientos.value.map(m => ({ Fecha: m.fecha, AFI: m.afi, Tipo: m.tipo, Origen: m.origen, Destino: m.destino, Empresa: m.empresa_arriendo, Estado: m.estado, Camion: m.camion, Conductor: m.conductor })), "Movimientos");
-  add(dbIntervenciones.value.map(i => ({ AFI: i.afi, Fecha: i.fecha, Programa: i.programaCorrespondiente, Equipo: i.equipo, Lugar: i.lugar, Causa: i.causa, TipoMant: i.tipoMant, Horometro: i.horometro, Costo: i.costo, OC: i.numeroOC, OT: i.numeroOT })), "Historial Mantenciones");
-  add(dbProgramasCalendarios.value.map(p => ({ ID: p.id, Tipo: p.tipo || p.carpeta, Nombre: p.nombre_programa || p.mes, FechaInicio: p.fecha_inicio_programa, FechaTermino: p.fecha_termino_programa })), "Programas");
-  add(dbProgramasItems.value.map(it => ({ ProgramaID: it.programa_id, AFI: it.afi, TipoTrabajo: it.tipo, Nave: it.nave || 'N/A', Condicion: it.condicion, FechaProgramada: it.fecha_programada, Realizado: it.realizado ? 'Sí' : 'No' })), "Asignaciones Programas");
-
-  XLSX.writeFile(wb, "Base_De_Datos_Completa_FRC.xlsx");
-};
+// ---------- Exportar toda la base (Excel con formato: logo, centrado, todas las tablas y columnas) ----------
+export { exportandoTodo, progresoTodo } from '../../core/exportar-todo.js';
+export const exportarTodasLasTablasExcel = () => exportarTodoExcel();
 
 // =====================================================================
 // ACCESO POR MÓDULO Y PERFILES

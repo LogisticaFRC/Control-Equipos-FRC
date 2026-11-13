@@ -791,3 +791,9 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Panel: carpetas por mecánico con conteo sin firma / realizados. Sin SQL (usa el jsonb `mecanicos[].usuario`).
 - Hoja eléctrica con el mismo diseño (1 Causa · 2 Descripción · 3 Causa de la falla). En la app, la eléctrica pide además "Causa de la falla (razón)", que va a Causa Detallada del Historial.
 - Formatos › (área) › **NUEVOS DOCUMENTOS CREADOS**: en OPERACIONES se descargan en blanco la intervención mecánica, la eléctrica y el registro de bloqueo (generados con el diseño actual).
+- Hoja v3: 1 CAUSA · 2 CAUSA DETALLADA (TÍTULO) · 3 DESCRIPCIÓN · 4 INTERFERENCIA; sin fila Operador; cuadro código/fecha/versión centrado; casillas ART/bloqueo alineadas.
+
+## Exportaciones completas (2026-11-13)
+- Historial (general y hoja de vida): nueva hoja **Datos completos** con TODOS los campos (40 columnas: equipo, causa, causa detallada, descripción, interferencia, horarios, 4 mecánicos, ART, bloqueo, folio, OT, OC, costo, filtros, aceites, documento…).
+- Configuración › **Exportar todo**: Excel con logo y formato → Resumen (KPI + índice), Historial (detalle, datos completos, filtros) y una hoja por CADA tabla de Supabase con todas sus columnas (lee la base directo, de a 1000 filas). Archivo nuevo: js/core/exportar-todo.js.
+- Programas: el lápiz ahora edita nombre, subcarpeta y rango de fechas (si cambia el nombre se actualiza en el Historial; avisa equipos fuera del nuevo rango).

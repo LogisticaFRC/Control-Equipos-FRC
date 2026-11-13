@@ -279,8 +279,43 @@ export const abrirModalCrearPrograma = (tipoCarpeta) => {
   showModalPrograma.value = true;
 };
 
+/** Editar nombre, subcarpeta y RANGO DE FECHAS de un programa existente (lápiz). */
+export const abrirModalEditarPrograma = (prog) => {
+  if (!prog) return;
+  formProgMes.value = {
+    id: prog.id, nombreAnterior: nombreDePrograma(prog), carpeta: carpetaDe(prog) || 'REPARACION', subcarpeta: subDe(prog),
+    nombre_programa: nombreDePrograma(prog), fecha_inicio_programa: normalizarFecha(prog.fecha_inicio_programa) || '',
+    fecha_termino_programa: normalizarFecha(prog.fecha_termino_programa) || ''
+  };
+  showModalPrograma.value = true;
+};
+
+const guardarEdicionPrograma = async () => {
+  const f = formProgMes.value;
+  const nom = String(f.nombre_programa || '').trim().toUpperCase();
+  if (!nom || !f.fecha_inicio_programa || !f.fecha_termino_programa) return;
+  if (f.fecha_termino_programa < f.fecha_inicio_programa) return alert('La fecha de término no puede ser anterior a la de inicio.');
+  const payload = { nombre_programa: nom, mes: nom, fecha_inicio_programa: f.fecha_inicio_programa, fecha_termino_programa: f.fecha_termino_programa, subcarpeta: String(f.subcarpeta || '').trim().toUpperCase() || null };
+  try {
+    await sb(supabaseClient.from(TABLA_PROGRAMAS).update(payload).eq('id', f.id));
+  } catch (err) {
+    if (!/subcarpeta/i.test(errMsg(err))) return alert('No se pudo guardar el programa: ' + errMsg(err));
+    delete payload.subcarpeta;   // BD sin columna subcarpeta: guarda igual nombre y fechas
+    try { await sb(supabaseClient.from(TABLA_PROGRAMAS).update(payload).eq('id', f.id)); } catch (e2) { return alert('No se pudo guardar el programa: ' + errMsg(e2)); }
+  }
+  // Si cambió el nombre, se actualiza en las mantenciones del Historial que lo usan
+  if (f.nombreAnterior && f.nombreAnterior !== nom) {
+    try { await sb(supabaseClient.from(TABLAS.HISTORIAL).update({ uso_de_art: nom }).eq('uso_de_art', f.nombreAnterior)); } catch (e) { console.warn('Historial no actualizado:', errMsg(e)); }
+  }
+  await cargarDatosDesdeSupabase(['programas', 'historial']);
+  showModalPrograma.value = false;
+  const fuera = obtenerItemsFueraDeRangoPrograma(f.id).length;
+  alert(`Programa "${nom}" actualizado: del ${formatDateForDisplay(f.fecha_inicio_programa)} al ${formatDateForDisplay(f.fecha_termino_programa)}.` + (fuera ? `\n\n⚠️ ${fuera} equipo(s) quedaron con fechas fuera del nuevo rango: revísalos en el programa.` : ''));
+};
+
 export const guardarNuevoProgramaMes = async () => {
   if (!soloAdmin()) return;
+  if (formProgMes.value.id) return guardarEdicionPrograma();
   const { carpeta: cp, fecha_inicio_programa: f_ini, fecha_termino_programa: f_fin } = formProgMes.value;
   const nom = formProgMes.value.nombre_programa.trim().toUpperCase();
   if (!nom || !f_ini || !f_fin) return;

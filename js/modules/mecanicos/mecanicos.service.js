@@ -194,7 +194,7 @@ export const faltantes = (f) => {
   if (!f.hora_inicio) x.push('Hora inicio');
   if (!f.hora_termino) x.push('Hora término');
   if (f.tipo === 'MECANICA' && !f.causa_falla) x.push('Causa de la intervención');
-  if (!String(f.causa_intervencion || '').trim()) x.push(f.tipo === 'MECANICA' ? 'Razón de la causa' : 'Causa de la intervención');
+  if (!String(f.causa_intervencion || '').trim()) x.push(f.tipo === 'MECANICA' ? 'Causa detallada (título)' : 'Causa de la intervención');
   if ((f.lubricantes || []).some(l => l.key && !(Number(String(l.cantidad).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
   if (!String(f.descripcion || '').trim()) x.push('Descripción de lo realizado');
   if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');

@@ -5,10 +5,10 @@ export default /* html */ `
   <div v-if="esAdminGeneral" class="bg-gradient-to-r from-emerald-800 to-slate-900 p-6 rounded-2xl shadow-xl text-white flex flex-wrap justify-between items-center gap-4">
     <div>
       <h3 class="text-base font-extrabold flex items-center gap-2"><i class="fa-solid fa-file-excel text-emerald-400 text-xl"></i> Exportar Base de Datos Completa</h3>
-      <p class="text-xs text-slate-300 mt-1">Descarga todas las tablas del sistema en un solo archivo Excel con pestañas independientes para Inventario, Movimientos, Historial, Programas y Asignaciones.</p>
+      <p class="text-xs text-slate-300 mt-1">Descarga TODO el sistema en un Excel con formato (logo, títulos centrados, filtros): resumen, historial detallado y una hoja por cada tabla con todas sus columnas.</p>
     </div>
-    <button @click="exportarTodasLasTablasExcel" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-5 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-xs uppercase tracking-wider">
-      <i class="fa-solid fa-download"></i> Descargar Todas las Tablas (Excel)
+    <button @click="exportarTodasLasTablasExcel" :disabled="exportandoTodo" class="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-70 text-slate-950 font-extrabold px-5 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-xs uppercase tracking-wider">
+      <i :class="['fa-solid', exportandoTodo ? 'fa-spinner fa-spin' : 'fa-download']"></i> {{ exportandoTodo ? (progresoTodo || 'Exportando…') : 'Exportar todo (Excel completo)' }}
     </button>
   </div>
 

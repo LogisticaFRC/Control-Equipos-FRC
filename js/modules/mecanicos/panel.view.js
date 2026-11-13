@@ -86,7 +86,7 @@ export default {
           <label v-if="r.tipo === 'ELECTRICA'" class="block sm:col-span-2"><span class="font-bold">Causa</span><select v-model="r.causa_intervencion" class="mt-1 w-full p-2 border rounded-lg"><option v-for="c in CAUSAS_ELECTRICA" :key="c">{{ c }}</option></select></label>
           <template v-else>
             <label class="block"><span class="font-bold">Causa de la intervención</span><select v-model="r.causa_falla" class="mt-1 w-full p-2 border rounded-lg"><option value="">—</option><option v-for="c in listaCausas" :key="c">{{ c }}</option></select></label>
-            <label class="block"><span class="font-bold">Razón de la causa</span><input v-model="r.causa_intervencion" class="mt-1 w-full p-2 border rounded-lg"></label>
+            <label class="block"><span class="font-bold">Causa detallada (título)</span><input v-model="r.causa_intervencion" class="mt-1 w-full p-2 border rounded-lg"></label>
           </template>
           <label class="block sm:col-span-2"><span class="font-bold">Descripción de lo realizado</span><textarea v-model="r.descripcion" rows="5" class="mt-1 w-full p-2 border rounded-lg"></textarea></label>
           <label class="block sm:col-span-2"><span class="font-bold">Interferencia</span><input v-model="r.interferencia" class="mt-1 w-full p-2 border rounded-lg"></label>

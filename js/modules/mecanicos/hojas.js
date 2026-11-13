@@ -28,11 +28,13 @@ const encabezado = (logo, nombre, codigo, fechaDoc, version) => `
   <table style="width:100%;border-collapse:collapse;margin-bottom:6px"><tr>
     <td style="width:150px">${logo ? `<img src="${logo}" style="height:46px">` : '<b style="font-size:22px;color:' + VO + '">FRC</b>'}</td>
     <td style="text-align:center;font-size:20px;color:${V};letter-spacing:.5px">${nombre}</td>
-    <td style="width:170px"><table style="border-collapse:collapse;font-size:9.5px;width:100%;color:${V};font-weight:700">
-      <tr><td style="border:1px solid #333;padding:2px 4px">CÓDIGO:</td><td style="border:1px solid #333;padding:2px 4px;text-align:center">${codigo}</td></tr>
-      <tr><td style="border:1px solid #333;padding:2px 4px">FECHA:</td><td style="border:1px solid #333;padding:2px 4px;text-align:center">${fechaDoc}</td></tr>
-      <tr><td style="border:1px solid #333;padding:2px 4px">VERSIÓN:</td><td style="border:1px solid #333;padding:2px 4px;text-align:center">${version}</td></tr>
+    <td style="width:180px;vertical-align:middle"><table style="border-collapse:collapse;font-size:9.5px;width:100%;color:${V};font-weight:700">
+      ${[['CÓDIGO:', codigo], ['FECHA:', fechaDoc], ['VERSIÓN:', version]].map(([l, v]) => `<tr><td style="${CELDA_ENC};width:44%">${l}</td><td style="${CELDA_ENC}">${v}</td></tr>`).join('')}
     </table></td></tr></table>`;
+// Celda del cuadro código/fecha/versión: texto centrado (html2canvas baja el texto, se compensa con padding inferior)
+const CELDA_ENC = 'border:1px solid #333;height:20px;padding:0 4px 5px;line-height:13px;text-align:center;vertical-align:middle';
+/** Casilla + texto alineados (USO DE ART / BLOQUEO). */
+const casilla = (on, txt) => `<span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle">${check(on)}<span style="font-size:9.5px;font-weight:700;color:#0f172a;padding-bottom:4px">${txt}</span></span>`;
 
 export const CAUSAS_ELECTRICA = ['FALLA OPERACIONAL', 'PUESTA EN MARCHA', 'CONEXIÓN/DESCONEXIÓN DE EQUIPO', 'INSPECCIÓN', 'PRUEBAS MEDICIONES'];
 export const CAUSAS_FALLA_MEC = ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'];
@@ -62,8 +64,8 @@ export const hojaIntervencion = (r, logo) => {
   </div>
   <table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:10px"><tr>
     <td style="width:180px;vertical-align:top;padding-top:16px">
-      <div style="margin-bottom:12px">${lbl('USO DE ART:')} ${check(r.uso_art)} <span style="font-size:9px">${!r.afi ? 'SI / NO' : r.uso_art ? 'SI' : 'NO'}</span></div>
-      <div>${lbl('BLOQUEO DE EQUIPO:')} ${check(r.bloqueo)} <span style="font-size:9px">${!r.afi ? 'SI / NO' : r.bloqueo ? 'SI' : 'NO'}</span></div>
+      <div style="margin-bottom:12px">${lbl('USO DE ART:')} ${casilla(r.uso_art, !r.afi ? 'SI / NO' : r.uso_art ? 'SI' : 'NO')}</div>
+      <div>${lbl('BLOQUEO DE EQUIPO:')} ${casilla(r.bloqueo, !r.afi ? 'SI / NO' : r.bloqueo ? 'SI' : 'NO')}</div>
     </td>
     <td style="vertical-align:top">
       <table style="width:100%;border-collapse:collapse">
@@ -73,35 +75,35 @@ export const hojaIntervencion = (r, logo) => {
     </td></tr></table>
   ${elec ? `
   <!-- ELÉCTRICA (2026-11-13): mismo orden que la mecánica -->
-  ${banda('1', 'CAUSA DE LA INTERVENCIÓN')}
+  ${banda('1', 'CAUSA')}
   <div style="border:1.5px solid #333;border-top:0;padding:8px 6px;display:flex;justify-content:space-around;font-size:9.5px;font-weight:700;text-align:center">
     ${CAUSAS_ELECTRICA.map(c => `<div style="width:19%">${check(String(r.causa_intervencion || '').toUpperCase() === c)}<div style="margin-top:3px">${c}</div></div>`).join('')}
   </div>
   <div style="height:9px"></div>
-  ${banda('2', 'DESCRIPCIÓN DE LO REALIZADO')}
-  ${lineasTexto(r.descripcion, 9, 20)}
-  <div style="height:9px"></div>
-  ${banda('3', 'CAUSA DE LA FALLA')}
+  ${banda('2', 'CAUSA DETALLADA (TÍTULO)')}
   <div style="border:1.5px solid #333;border-top:0;padding:6px 12px 9px;min-height:26px;font-size:12px;font-weight:800;color:#0f172a">${esc(r.causa_falla) || '&nbsp;'}</div>
   <div style="height:9px"></div>
-  ${banda('', 'INTERFERENCIA')}
+  ${banda('3', 'DESCRIPCIÓN DE LO REALIZADO')}
+  ${lineasTexto(r.descripcion, 9, 20)}
+  <div style="height:9px"></div>
+  ${banda('4', 'INTERFERENCIA')}
   ${lineasTexto(r.interferencia, 2, 22)}
   <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-top:10px">
-    ${[['Usuario arriendo', r.usuario_arriendo], ['Operador (si es falla operacional)', r.operador], ['N° vale de consumo (repuestos)', r.vale_consumo]].map(([l, v]) => `<tr><td style="font-weight:700;color:${V};padding:3px 6px 6px;border-bottom:1px solid #9ca3af;width:30%">${l}</td><td style="font-weight:800;padding:3px 6px 6px;border-bottom:1px solid #9ca3af">${esc(v) || '&nbsp;'}</td></tr>`).join('')}
+    ${[['Usuario arriendo', r.usuario_arriendo], ['N° vale de consumo (repuestos)', r.vale_consumo]].map(([l, v]) => `<tr><td style="font-weight:700;color:${V};padding:3px 6px 6px;border-bottom:1px solid #9ca3af;width:30%">${l}</td><td style="font-weight:800;padding:3px 6px 6px;border-bottom:1px solid #9ca3af">${esc(v) || '&nbsp;'}</td></tr>`).join('')}
   </table>` : `
   <!-- MECÁNICA (2026-11-13): 1) causa de la intervención · 2) descripción · 3) causa de la falla (razón) -->
-  ${banda('1', 'CAUSA DE LA INTERVENCIÓN')}
+  ${banda('1', 'CAUSA')}
   <div style="border:1.5px solid #333;border-top:0;padding:8px 12px 10px;display:flex;align-items:center;gap:10px;min-height:30px">
     ${r.causa_falla ? `<span style="display:inline-block;background:#ecfdf5;border:1.5px solid ${V};border-radius:16px;padding:2px 14px 6px;font-weight:900;color:${V};font-size:13px;letter-spacing:.3px">${esc(r.causa_falla)}</span>` : (r.afi ? '<span style="color:#94a3b8;font-size:10px">—</span>' : '&nbsp;')}
   </div>
   <div style="height:9px"></div>
-  ${banda('2', 'DESCRIPCIÓN DE LO REALIZADO')}
-  ${lineasTexto(r.descripcion, 8, 20)}
-  <div style="height:9px"></div>
-  ${banda('3', 'CAUSA DE LA FALLA')}
+  ${banda('2', 'CAUSA DETALLADA (TÍTULO)')}
   <div style="border:1.5px solid #333;border-top:0;padding:6px 12px 9px;min-height:26px;font-size:12px;font-weight:800;color:#0f172a">${esc(r.causa_intervencion) || '&nbsp;'}</div>
   <div style="height:9px"></div>
-  ${banda('', 'INTERFERENCIA')}
+  ${banda('3', 'DESCRIPCIÓN DE LO REALIZADO')}
+  ${lineasTexto(r.descripcion, 8, 20)}
+  <div style="height:9px"></div>
+  ${banda('4', 'INTERFERENCIA')}
   ${lineasTexto(r.interferencia, 1, 22)}
   <table style="width:100%;border-collapse:collapse;margin-top:10px"><tr>
     <td style="width:48%;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10px">
@@ -110,7 +112,7 @@ export const hojaIntervencion = (r, logo) => {
     </table></td>
     <td style="width:4%"></td>
     <td style="vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:9.5px">
-      ${[['Usuario arriendo', r.usuario_arriendo], ['Operador (si es falla operacional)', r.operador], ['N° vale de consumo (repuestos)', r.vale_consumo]].map(([l, v]) => `<tr><td style="font-weight:700;color:${V};padding:3px 6px 6px;border-bottom:1px solid #9ca3af;width:52%">${l}</td><td style="font-weight:800;padding:3px 6px 6px;border-bottom:1px solid #9ca3af">${esc(v) || '&nbsp;'}</td></tr>`).join('')}
+      ${[['Usuario arriendo', r.usuario_arriendo], ['N° vale de consumo (repuestos)', r.vale_consumo]].map(([l, v]) => `<tr><td style="font-weight:700;color:${V};padding:3px 6px 6px;border-bottom:1px solid #9ca3af;width:52%">${l}</td><td style="font-weight:800;padding:3px 6px 6px;border-bottom:1px solid #9ca3af">${esc(v) || '&nbsp;'}</td></tr>`).join('')}
     </table></td></tr></table>`}
   <table style="width:100%;border-collapse:collapse;margin-top:${elec ? 26 : 16}px;font-size:10px"><tr>
     <td style="width:44%;text-align:center;vertical-align:bottom">
