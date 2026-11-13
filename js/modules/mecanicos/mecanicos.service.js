@@ -212,7 +212,7 @@ const filaDB = (f) => ({
   uso_art: Boolean(f.uso_art), bloqueo: Boolean(f.bloqueo),
   mecanicos: (f.mecanicos || []).filter(m => String(m.nombre || '').trim()),
   causa_intervencion: String(f.causa_intervencion || '').trim() || null, descripcion: String(f.descripcion || '').trim() || null,
-  interferencia: String(f.interferencia || '').trim() || null, causa_falla: f.tipo === 'MECANICA' ? (f.causa_falla || null) : null,
+  interferencia: String(f.interferencia || '').trim() || null, causa_falla: String(f.causa_falla || '').trim() || null,   // MECÁNICA: causa de la lista · ELÉCTRICA: razón de la falla
   lubricantes: (f.lubricantes || []).filter(l => l.key || String(l.tipo || '').trim()),
   usuario_arriendo: String(f.usuario_arriendo || '').trim() || null, operador: String(f.operador || '').trim() || null,
   vale_consumo: String(f.vale_consumo || '').trim() || null,
@@ -330,10 +330,10 @@ export const pasarAHistorial = async (r) => {
       mecanico_1: mecs[0] || '', mecanico_2: mecs[1] || '', mecanico_3: mecs[2] || '', mecanico_4: mecs[3] || '',
       bloqueo_de_equipo: r.bloqueo ? 'SI' : 'NO', hora_falla: r.hora_falla || '', hora_inicio: r.hora_inicio || '', hora_termino: r.hora_termino || '',
       hora_total: String(calcularRestaHoras(r.hora_inicio, r.hora_termino) || ''),
-      causa_intervencion: r.causa_intervencion || '', descripcion: [r.descripcion || '', ...extras].filter(Boolean).join('\n'),
+      causa_intervencion: (r.tipo === 'ELECTRICA' ? (r.causa_falla || r.causa_intervencion) : r.causa_intervencion) || '', descripcion: [r.descripcion || '', ...extras].filter(Boolean).join('\n'),
       interferencia: r.interferencia || '', empresa: r.usuario_arriendo || '', link: url,
       art: r.uso_art ? 'SI' : 'NO', numero_folio: `APP-${r.id}`,
-      causa_falla: ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'].includes(r.causa_falla) ? r.causa_falla : '',
+      causa_falla: r.tipo === 'MECANICA' && ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'].includes(r.causa_falla) ? r.causa_falla : '',
       ...aceites
     };
     let data;
@@ -403,5 +403,22 @@ export const eliminarReg = async (r) => {
   catch (err) { alert('Error: ' + errMsg(err)); }
 };
 /** HTML de la hoja para verla en pantalla. */
+/** Formato oficial EN BLANCO (sin datos) para Formatos › Nuevos documentos creados. tipo: MECANICA | ELECTRICA | BLOQUEO */
+export const descargarFormatoVacio = async (tipo) => {
+  try {
+    const { html2canvas, jsPDF } = await libsPDF();
+    const logo = (await logoDataURL())?.url || '';
+    const r = { tipo: tipo === 'ELECTRICA' ? 'ELECTRICA' : 'MECANICA', mecanicos: [], lubricantes: [], registro_bloqueo: bloqueoVacio() };
+    const horizontal = tipo === 'BLOQUEO';
+    const pdf = new jsPDF({ orientation: horizontal ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+    const c = await renderHTML(horizontal ? hojaBloqueo(r, logo) : hojaIntervencion(r, logo), horizontal ? ANCHO_HORIZONTAL : ANCHO_VERTICAL, html2canvas);
+    const W = horizontal ? 297 : 210, Hmax = horizontal ? 210 : 297;
+    pdf.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, W, Math.min(Hmax, c.height * W / c.width));
+    const nombre = { MECANICA: 'INTERVENCION MECANICA FRC-RE-OPE-017', ELECTRICA: 'INTERVENCION ELECTRICA IE-FRC', BLOQUEO: 'REGISTRO DE BLOQUEO FRC-RE-OP-015' }[tipo];
+    const a = document.createElement('a'); a.href = URL.createObjectURL(pdf.output('blob')); a.download = nombre + ' (en blanco).pdf'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch (err) { alert('No se pudo generar el formato: ' + errMsg(err)); }
+};
+
 export const htmlHoja = (r, logo = '') => hojaIntervencion(r, logo);
 export const htmlBloqueo = (r, logo = '') => hojaBloqueo(r, logo);

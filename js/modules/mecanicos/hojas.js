@@ -45,7 +45,6 @@ export const hojaIntervencion = (r, logo) => {
   const resp = (r.mecanicos || [])[0] || {};
   const sup = r.supervisor || {};
   const lubs = [...(r.lubricantes || [])]; while (lubs.length < 4) lubs.push({ tipo: '', cantidad: '' });
-  const cf = String(r.causa_falla || '').toUpperCase();
   const lbl = (t) => `<b style="color:${V};font-size:10.5px">${t}</b>`;
   return `
 <div style="width:${ANCHO_VERTICAL}px;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:26px 34px;box-sizing:border-box">
@@ -63,8 +62,8 @@ export const hojaIntervencion = (r, logo) => {
   </div>
   <table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:10px"><tr>
     <td style="width:180px;vertical-align:top;padding-top:16px">
-      <div style="margin-bottom:12px">${lbl('USO DE ART:')} ${check(r.uso_art)} <span style="font-size:9px">${r.uso_art ? 'SI' : 'NO'}</span></div>
-      <div>${lbl('BLOQUEO DE EQUIPO:')} ${check(r.bloqueo)} <span style="font-size:9px">${r.bloqueo ? 'SI' : 'NO'}</span></div>
+      <div style="margin-bottom:12px">${lbl('USO DE ART:')} ${check(r.uso_art)} <span style="font-size:9px">${!r.afi ? 'SI / NO' : r.uso_art ? 'SI' : 'NO'}</span></div>
+      <div>${lbl('BLOQUEO DE EQUIPO:')} ${check(r.bloqueo)} <span style="font-size:9px">${!r.afi ? 'SI / NO' : r.bloqueo ? 'SI' : 'NO'}</span></div>
     </td>
     <td style="vertical-align:top">
       <table style="width:100%;border-collapse:collapse">
@@ -73,20 +72,27 @@ export const hojaIntervencion = (r, logo) => {
       </table>
     </td></tr></table>
   ${elec ? `
-  ${titulo('CAUSA DE LA INTERVENCIÓN')}
-  <div style="border:1px solid #333;border-top:0;padding:8px 6px;display:flex;justify-content:space-around;font-size:9.5px;font-weight:700;text-align:center">
+  <!-- ELÉCTRICA (2026-11-13): mismo orden que la mecánica -->
+  ${banda('1', 'CAUSA DE LA INTERVENCIÓN')}
+  <div style="border:1.5px solid #333;border-top:0;padding:8px 6px;display:flex;justify-content:space-around;font-size:9.5px;font-weight:700;text-align:center">
     ${CAUSAS_ELECTRICA.map(c => `<div style="width:19%">${check(String(r.causa_intervencion || '').toUpperCase() === c)}<div style="margin-top:3px">${c}</div></div>`).join('')}
   </div>
-  <div style="height:10px"></div>
-  ${titulo('DESCRIPCIÓN DE LO REALIZADO')}
-  ${lineasTexto(r.descripcion, 11)}
-  <div style="height:10px"></div>
-  ${titulo('INTERFERENCIA')}
-  ${lineasTexto(r.interferencia, 3, 22)}` : `
+  <div style="height:9px"></div>
+  ${banda('2', 'DESCRIPCIÓN DE LO REALIZADO')}
+  ${lineasTexto(r.descripcion, 9, 20)}
+  <div style="height:9px"></div>
+  ${banda('3', 'CAUSA DE LA FALLA')}
+  <div style="border:1.5px solid #333;border-top:0;padding:6px 12px 9px;min-height:26px;font-size:12px;font-weight:800;color:#0f172a">${esc(r.causa_falla) || '&nbsp;'}</div>
+  <div style="height:9px"></div>
+  ${banda('', 'INTERFERENCIA')}
+  ${lineasTexto(r.interferencia, 2, 22)}
+  <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-top:10px">
+    ${[['Usuario arriendo', r.usuario_arriendo], ['Operador (si es falla operacional)', r.operador], ['N° vale de consumo (repuestos)', r.vale_consumo]].map(([l, v]) => `<tr><td style="font-weight:700;color:${V};padding:3px 6px 6px;border-bottom:1px solid #9ca3af;width:30%">${l}</td><td style="font-weight:800;padding:3px 6px 6px;border-bottom:1px solid #9ca3af">${esc(v) || '&nbsp;'}</td></tr>`).join('')}
+  </table>` : `
   <!-- MECÁNICA (2026-11-13): 1) causa de la intervención · 2) descripción · 3) causa de la falla (razón) -->
   ${banda('1', 'CAUSA DE LA INTERVENCIÓN')}
   <div style="border:1.5px solid #333;border-top:0;padding:8px 12px 10px;display:flex;align-items:center;gap:10px;min-height:30px">
-    ${r.causa_falla ? `<span style="display:inline-block;background:#ecfdf5;border:1.5px solid ${V};border-radius:16px;padding:2px 14px 6px;font-weight:900;color:${V};font-size:13px;letter-spacing:.3px">${esc(r.causa_falla)}</span>` : '<span style="color:#94a3b8;font-size:10px">—</span>'}
+    ${r.causa_falla ? `<span style="display:inline-block;background:#ecfdf5;border:1.5px solid ${V};border-radius:16px;padding:2px 14px 6px;font-weight:900;color:${V};font-size:13px;letter-spacing:.3px">${esc(r.causa_falla)}</span>` : (r.afi ? '<span style="color:#94a3b8;font-size:10px">—</span>' : '&nbsp;')}
   </div>
   <div style="height:9px"></div>
   ${banda('2', 'DESCRIPCIÓN DE LO REALIZADO')}
@@ -117,7 +123,7 @@ export const hojaIntervencion = (r, logo) => {
       <div style="border-top:1px solid #333;padding-top:2px;font-weight:700">${esc(sup.nombre)}${sup.empresa ? ' · ' + esc(sup.empresa) : ''}</div>
       <div style="font-style:italic;color:${V}">Nombre y firma supervisor${sup.tipo === 'CLIENTE' ? ' (cliente)' : ''}</div></td>
   </tr></table>
-  <div style="text-align:right;font-size:8px;color:#94a3b8;margin-top:8px">Registro N° ${esc(r.id || '')} · llenado en la app de mecánicos${r.created_at ? ' · ' + fecha(String(r.created_at).slice(0, 10)) : ''}</div>
+  ${r.id ? `<div style="text-align:right;font-size:8px;color:#94a3b8;margin-top:8px">Registro N° ${esc(r.id)} · llenado en la app de mecánicos${r.created_at ? ' · ' + fecha(String(r.created_at).slice(0, 10)) : ''}</div>` : ''}
  </div>
 </div>`;
 };

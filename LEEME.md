@@ -789,3 +789,5 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Paso 4: cada compañero se elige desde las cuentas creadas (o nombre libre). El documento aparece en la carpeta de todos los participantes.
 - App: "Mis documentos" con carpetas **Sin firma** (pendiente/rechazado) y **Realizados** (en Historial). Todos ven el PDF aunque falte firma.
 - Panel: carpetas por mecánico con conteo sin firma / realizados. Sin SQL (usa el jsonb `mecanicos[].usuario`).
+- Hoja eléctrica con el mismo diseño (1 Causa · 2 Descripción · 3 Causa de la falla). En la app, la eléctrica pide además "Causa de la falla (razón)", que va a Causa Detallada del Historial.
+- Formatos › (área) › **NUEVOS DOCUMENTOS CREADOS**: en OPERACIONES se descargan en blanco la intervención mecánica, la eléctrica y el registro de bloqueo (generados con el diseño actual).

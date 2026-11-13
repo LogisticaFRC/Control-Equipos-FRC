@@ -72,6 +72,7 @@ export default {
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <div v-if="f.tipo === 'ELECTRICA'"><span class="lbl">Causa de la intervención</span>
             <div class="grid grid-cols-1 gap-2 mt-1"><button v-for="c in CAUSAS_ELECTRICA" :key="c" @click="f.causa_intervencion = c" :class="['chip-lg text-left', f.causa_intervencion === c ? 'on' : '']"><i :class="['fa-solid mr-2', f.causa_intervencion === c ? 'fa-circle-check' : 'fa-circle']"></i>{{ c }}</button></div>
+            <label class="block mt-3"><span class="lbl">Causa de la falla (razón)</span><input v-model="f.causa_falla" class="inp" placeholder="Título corto, ej: Contactor quemado"></label>
           </div>
           <template v-else>
             <label class="block"><span class="lbl">Causa de la intervención</span>

@@ -49,6 +49,16 @@ export default /* html */ `
       </button>
     </div>
 
+    <!-- Formatos nuevos del sistema (en blanco) -->
+    <div v-if="normaActiva === NORMA_NUEVOS && areaActiva === 'OPERACIONES'" class="border-2 border-dashed border-emerald-300 rounded-xl p-3 bg-emerald-50/40">
+      <p class="text-[11px] font-extrabold text-emerald-800 mb-2"><i class="fa-solid fa-file-pdf mr-1"></i>Formatos en blanco (los mismos que llenan los mecánicos en la app)</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <button v-for="fs in FORMATOS_SISTEMA" :key="fs.tipo" @click="descargarFormatoVacio(fs.tipo)" class="flex items-center gap-3 p-3 rounded-lg border bg-white hover:shadow text-left">
+          <span :class="['w-10 h-10 rounded-lg flex items-center justify-center text-lg', fs.color]"><i :class="['fa-solid', fs.icon]"></i></span>
+          <span class="flex-1"><b class="block text-xs text-slate-800">{{ fs.nombre }}</b><span class="text-[10px] text-slate-500 font-mono">{{ fs.codigo }}</span></span>
+          <i class="fa-solid fa-download text-slate-400"></i></button>
+      </div>
+    </div>
     <!-- 3) Documentos de la carpeta seleccionada -->
     <documentos-carpeta :key="carpetaFormato(areaActiva, normaActiva)" :carpeta="carpetaFormato(areaActiva, normaActiva)"></documentos-carpeta>
   </div>

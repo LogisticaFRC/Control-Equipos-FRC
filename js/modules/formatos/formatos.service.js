@@ -25,7 +25,15 @@ export const AREAS = [
 export const NORMAS = [
   { key: 'ISO CALIDAD 9001', icon: 'fa-award' },
   { key: 'ISO MEDIO AMBIENTE 14001', icon: 'fa-leaf' },
-  { key: 'ISO SEGURIDAD 45001', icon: 'fa-helmet-safety' }
+  { key: 'ISO SEGURIDAD 45001', icon: 'fa-helmet-safety' },
+  { key: 'NUEVOS DOCUMENTOS CREADOS', icon: 'fa-file-circle-plus' }
+];
+/** Carpeta con los formatos nuevos generados por el sistema (en blanco, siempre actualizados). */
+export const NORMA_NUEVOS = 'NUEVOS DOCUMENTOS CREADOS';
+export const FORMATOS_SISTEMA = [
+  { tipo: 'MECANICA', nombre: 'Intervención mecánica', codigo: 'FRC-RE-OPE-017', icon: 'fa-wrench', color: 'text-emerald-700 bg-emerald-50' },
+  { tipo: 'ELECTRICA', nombre: 'Intervención eléctrica', codigo: 'IE-FRC', icon: 'fa-bolt', color: 'text-sky-700 bg-sky-50' },
+  { tipo: 'BLOQUEO', nombre: 'Registro de bloqueo', codigo: 'FRC-RE-OP-015', icon: 'fa-lock', color: 'text-amber-700 bg-amber-50' }
 ];
 
 export const areaActiva = ref('OPERACIONES');
