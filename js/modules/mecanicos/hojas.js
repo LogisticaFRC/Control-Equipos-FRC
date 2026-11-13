@@ -76,7 +76,7 @@ export const hojaIntervencion = (r, logo) => {
     ${CAUSAS_ELECTRICA.map(c => `<div style="width:19%">${check(String(r.causa_intervencion || '').toUpperCase() === c)}<div style="margin-top:3px">${c}</div></div>`).join('')}
   </div>` : `
   ${titulo('CAUSA DE LA INTERVENCION')}
-  ${lineasTexto(r.causa_intervencion, 1, 22)}`}
+  ${lineasTexto([r.causa_falla, r.causa_intervencion].filter(Boolean).join(' — '), 1, 22)}`}
   <div style="height:10px"></div>
   ${titulo(elec ? 'DESCRIPCIÓN DE LO REALIZADO' : 'DESCRIPCION DE LO REALIZADO')}
   ${lineasTexto(r.descripcion, elec ? 11 : 8)}
@@ -97,7 +97,7 @@ export const hojaIntervencion = (r, logo) => {
     <td style="width:6%"></td>
     <td style="vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10px">
       <tr><td style="border:1px solid #333;text-align:center;font-style:italic;font-weight:700;color:${V}">Lubricante Utilizado</td><td style="border:1px solid #333;text-align:center;font-style:italic;font-weight:700;color:${V}">Cantidad Lubricante</td></tr>
-      ${lubs.slice(0, Math.max(4, lubs.length)).map(l => `<tr><td style="border-bottom:1px solid #333;height:18px;padding:0 4px;font-weight:700">${esc(l.tipo)}</td><td style="border-bottom:1px solid #333;padding:0 4px;font-weight:700;text-align:center">${esc(l.cantidad)}</td></tr>`).join('')}
+      ${lubs.slice(0, Math.max(4, lubs.length)).map(l => `<tr><td style="border-bottom:1px solid #333;height:18px;padding:0 4px;font-weight:700">${esc(l.tipo)}</td><td style="border-bottom:1px solid #333;padding:0 4px;font-weight:700;text-align:center">${esc(l.cantidad)}${l.cantidad && /^[\d.,]+$/.test(String(l.cantidad).trim()) ? ' L' : ''}</td></tr>`).join('')}
     </table></td></tr></table>
   <table style="width:88%;margin:14px auto 0;border-collapse:collapse;font-size:9.5px;font-weight:700;color:${V}">
     <tr><td style="width:42%;padding:4px 6px;text-align:center">Nombre de Usuario Arriendo</td><td>${caja(r.usuario_arriendo, '100%', 'display:block')}</td></tr>

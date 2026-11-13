@@ -7,6 +7,8 @@
 import * as S from './mecanicos.service.js';
 import { CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 import { usuarioActivo, config } from '../../core/store.js';
+import { listaCausas } from '../historial/historial.service.js';
+import { ACEITES } from '../historial/historial.mapper.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js';
 
@@ -71,26 +73,29 @@ export default {
           <div v-if="f.tipo === 'ELECTRICA'"><span class="lbl">Causa de la intervención</span>
             <div class="grid grid-cols-1 gap-2 mt-1"><button v-for="c in CAUSAS_ELECTRICA" :key="c" @click="f.causa_intervencion = c" :class="['chip-lg text-left', f.causa_intervencion === c ? 'on' : '']"><i :class="['fa-solid mr-2', f.causa_intervencion === c ? 'fa-circle-check' : 'fa-circle']"></i>{{ c }}</button></div>
           </div>
-          <label v-else class="block"><span class="lbl">Causa de la intervención</span>
-            <input v-model="f.causa_intervencion" class="inp" placeholder="¿Por qué se interviene?">
-            <div class="flex flex-wrap gap-1.5 mt-2"><button v-for="c in CAUSAS_MEC_RAPIDAS" :key="c" @click="f.causa_intervencion = c" class="chip">{{ c }}</button></div>
-          </label>
+          <template v-else>
+            <label class="block"><span class="lbl">Causa de la intervención</span>
+              <select v-model="f.causa_falla" class="inp font-bold"><option value="">— Elegir —</option><option v-for="c in listaCausas" :key="c" :value="c">{{ c }}</option></select>
+              <span class="text-[11px] text-slate-500">Para ubicar qué tipo de trabajo es (igual que en el Historial).</span></label>
+            <label class="block"><span class="lbl">Razón de la causa</span>
+              <input v-model="f.causa_intervencion" class="inp" placeholder="Título corto: ej. Correa de alternador cortada">
+              <div class="flex flex-wrap gap-1.5 mt-2"><button v-for="c in CAUSAS_MEC_RAPIDAS" :key="c" @click="f.causa_intervencion = c" class="chip">{{ c }}</button></div>
+            </label>
+            <label v-if="f.causa_falla === 'FALLA OPERACIONAL'" class="block"><span class="lbl">Nombre del operador</span><input v-model="f.operador" class="inp"></label>
+          </template>
           <label class="block"><span class="lbl flex items-center justify-between">Descripción de lo realizado
             <button v-if="hayVoz" type="button" @click="dictar('descripcion')" :class="['text-xs font-bold px-2 py-1 rounded-lg', dictando === 'descripcion' ? 'bg-rose-600 text-white animate-pulse' : 'bg-emerald-50 text-emerald-700']"><i class="fa-solid fa-microphone mr-1"></i>{{ dictando === 'descripcion' ? 'Escuchando…' : 'Dictar' }}</button></span>
             <textarea v-model="f.descripcion" rows="7" class="inp" placeholder="Qué se revisó, qué se cambió, cómo quedó el equipo…"></textarea></label>
           <label class="block"><span class="lbl">Interferencia (opcional)</span><textarea v-model="f.interferencia" rows="2" class="inp" placeholder="Algo que impidió o atrasó el trabajo"></textarea></label>
         </div>
         <div v-if="f.tipo === 'MECANICA'" class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-          <div><span class="lbl">Causa de la falla</span>
-            <div class="grid grid-cols-2 gap-2 mt-1"><button v-for="c in CAUSAS_FALLA_MEC" :key="c" @click="f.causa_falla = f.causa_falla === c ? '' : c" :class="['chip-lg text-[13px]', f.causa_falla === c ? 'on' : '']">{{ c === 'CONDICION DE LA OPERACION' ? 'Condición operación (polvo, piso, pendiente)' : c.charAt(0) + c.slice(1).toLowerCase() }}</button></div>
-          </div>
-          <label v-if="f.causa_falla === 'FALLA OPERACIONAL'" class="block"><span class="lbl">Nombre del operador</span><input v-model="f.operador" class="inp"></label>
           <div><span class="lbl">Lubricante utilizado</span>
             <div v-for="(l, i) in f.lubricantes" :key="i" class="flex gap-2 mt-1.5">
-              <input v-model="l.tipo" class="inp flex-1" placeholder="Ej: Aceite 15W40"><input v-model="l.cantidad" class="inp w-24" placeholder="Litros">
+              <select v-model="l.key" @change="l.tipo = (ACEITES.find(a => a.key === l.key) || {}).label || ''" class="inp flex-1 font-bold"><option value="">— Lubricante —</option><option v-for="a in ACEITES" :key="a.key" :value="a.key">{{ a.label }}</option></select>
+              <input v-model="l.cantidad" inputmode="decimal" class="inp w-24" placeholder="Litros">
               <button @click="f.lubricantes.splice(i, 1)" class="w-10 text-rose-500"><i class="fa-solid fa-trash"></i></button>
             </div>
-            <button @click="f.lubricantes.push({ tipo: '', cantidad: '' })" class="mt-2 text-sm font-bold text-emerald-700"><i class="fa-solid fa-plus mr-1"></i>Agregar lubricante</button>
+            <button @click="f.lubricantes.push({ key: '', tipo: '', cantidad: '' })" class="mt-2 text-sm font-bold text-emerald-700"><i class="fa-solid fa-plus mr-1"></i>Agregar lubricante</button>
           </div>
           <label class="block"><span class="lbl">Usuario del arriendo (cliente)</span><input v-model="f.usuario_arriendo" class="inp uppercase"></label>
           <label class="block"><span class="lbl">N° vale de consumo (repuestos de bodega)</span><input v-model="f.vale_consumo" inputmode="numeric" class="inp"></label>
@@ -272,7 +277,7 @@ export default {
             <div><b class="text-[#1f4d3a]">AFI {{ r.afi }}</b> · <span class="text-sm">{{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span><div class="text-xs text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }}</div></div>
             <span :class="['text-[10px] font-bold px-2 py-1 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]"><i :class="['fa-solid mr-1', S.ESTADOS_MEC[r.estado]?.i]"></i>{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
           </div>
-          <div class="text-sm text-slate-600 mt-1 line-clamp-2">{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
+          <div class="text-sm text-slate-600 mt-1 line-clamp-2"><b v-if="r.tipo === 'MECANICA' && r.causa_falla">{{ r.causa_falla }} · </b>{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
           <div v-if="r.estado === 'RECHAZADA'" class="mt-2 text-sm bg-rose-50 text-rose-800 rounded-lg p-2"><b>Corregir:</b> {{ r.motivo_rechazo }}</div>
           <div class="flex gap-2 mt-3">
             <button v-if="['PENDIENTE_FIRMA','RECHAZADA'].includes(r.estado)" @click="S.editarRegistro(r)" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm"><i class="fa-solid fa-pen mr-1"></i>{{ r.estado === 'RECHAZADA' ? 'Corregir y reenviar' : 'Editar / firma supervisor' }}</button>
@@ -322,6 +327,6 @@ export default {
     };
     onMounted(() => S.cargarMec());
     return { S, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
-      CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
+      CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };

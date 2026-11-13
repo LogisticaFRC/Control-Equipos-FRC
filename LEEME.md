@@ -778,3 +778,8 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - **Firmas**: mecánico(s) en el celular. Supervisor: (a) **en terreno** firma el supervisor del CLIENTE ahí mismo → pasa sola al Historial; (b) **en taller** queda "Falta firma supervisor" y el supervisor FRC firma en el panel (PC o celular), puede corregir o rechazar (el mecánico corrige y reenvía).
 - Con la firma del supervisor se genera el **PDF con el formato oficial** (hoja de intervención + registro de bloqueo en hoja 2, `modules/mecanicos/hojas.js`, html2canvas + jsPDF), se sube y se crea el registro en el **Historial** (tipo INTERVENCION, causa según la hoja, folio APP-N°, mecánicos, horas, ART/bloqueo, link al PDF).
 - Panel: "Ver la app como mecánico" para probar.
+
+## 2026-11-13 · App mecánicos: causa de la lista, razón de la causa y lubricantes de la lista
+- Intervención MECÁNICA (paso 2): **Causa de la intervención** = lista desplegable del Historial (REPARACION, IMPLEMENTACION, FALLA MECANICA…) → **Razón de la causa** (título corto) → **Descripción de lo realizado**. Se quitaron los 4 botones de "Causa de la falla". (En la tabla se guarda la causa en `causa_falla` y la razón en `causa_intervencion`; sin SQL.)
+- Al pasar al Historial: causa = la elegida, causa detallada = la razón. En el PDF la línea "Causa de la intervención" muestra "CAUSA — razón".
+- **Lubricantes**: lista desplegable con los mismos aceites del Historial + litros; al pasar al Historial se guardan en sus columnas de aceite (igual que una mantención). Eléctrica sin cambios.

@@ -18,6 +18,8 @@ import { usuarioActivo, dbEquipos, dbIntervenciones, nivelEnArea, esAdminGeneral
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, calcularRestaHoras } from '../../core/utils.js';
 import { esVehiculo, empresaDe, EMPRESA_TALLER } from '../inventario/inventario.mapper.js';
 import { logoDataURL } from '../../core/excel.js';
+import { listaCausas } from '../historial/historial.service.js';
+import { ACEITES } from '../historial/historial.mapper.js';
 import { hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 
 const { ref, computed } = Vue;
@@ -164,7 +166,9 @@ export const faltantes = (f) => {
   if (!f.fecha) x.push('Fecha');
   if (!f.hora_inicio) x.push('Hora inicio');
   if (!f.hora_termino) x.push('Hora término');
-  if (!String(f.causa_intervencion || '').trim()) x.push('Causa de la intervención');
+  if (f.tipo === 'MECANICA' && !f.causa_falla) x.push('Causa de la intervención');
+  if (!String(f.causa_intervencion || '').trim()) x.push(f.tipo === 'MECANICA' ? 'Razón de la causa' : 'Causa de la intervención');
+  if ((f.lubricantes || []).some(l => l.key && !(Number(String(l.cantidad).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
   if (!String(f.descripcion || '').trim()) x.push('Descripción de lo realizado');
   if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
   if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
@@ -182,7 +186,7 @@ const filaDB = (f) => ({
   mecanicos: (f.mecanicos || []).filter(m => String(m.nombre || '').trim()),
   causa_intervencion: String(f.causa_intervencion || '').trim() || null, descripcion: String(f.descripcion || '').trim() || null,
   interferencia: String(f.interferencia || '').trim() || null, causa_falla: f.tipo === 'MECANICA' ? (f.causa_falla || null) : null,
-  lubricantes: (f.lubricantes || []).filter(l => String(l.tipo || '').trim()),
+  lubricantes: (f.lubricantes || []).filter(l => l.key || String(l.tipo || '').trim()),
   usuario_arriendo: String(f.usuario_arriendo || '').trim() || null, operador: String(f.operador || '').trim() || null,
   vale_consumo: String(f.vale_consumo || '').trim() || null,
   registro_bloqueo: f.bloqueo ? f.registro_bloqueo : null,
@@ -266,7 +270,9 @@ export const descargarPDF = async (r) => {
 // ---------- Paso al Historial ----------
 const CAUSA_HIST_MEC = { 'FALLA MECANICA': 'FALLA MECANICA', 'FALLA OPERACIONAL': 'FALLA OPERACIONAL', ACCIDENTE: 'DAÑO OPERACIÓN', 'CONDICION DE LA OPERACION': 'FALLA CONDICION' };
 const CAUSA_HIST_ELEC = { 'FALLA OPERACIONAL': 'FALLA ELECTRICA', 'PUESTA EN MARCHA': 'PUESTA EN MARCHA', 'CONEXIÓN/DESCONEXIÓN DE EQUIPO': 'CONEXIÓN/DESCONEXION', 'INSPECCIÓN': 'INSPECCION (ELECTRICA)', 'PRUEBAS MEDICIONES': 'PRUEBAS MEDICIONES' };
-const causaHistorial = (r) => (r.tipo === 'ELECTRICA' ? (CAUSA_HIST_ELEC[String(r.causa_intervencion || '').toUpperCase()] || 'FALLA ELECTRICA') : (CAUSA_HIST_MEC[r.causa_falla] || 'REPARACION'));
+// MECÁNICA (2026-11-13): causa_falla guarda la CAUSA elegida de la lista del Historial (REPARACION, IMPLEMENTACION…)
+// y causa_intervencion la RAZÓN de la causa (título corto). Registros antiguos: ACCIDENTE/… → equivalente.
+const causaHistorial = (r) => (r.tipo === 'ELECTRICA' ? (CAUSA_HIST_ELEC[String(r.causa_intervencion || '').toUpperCase()] || 'FALLA ELECTRICA') : (CAUSA_HIST_MEC[r.causa_falla] && !listaCausas.includes(r.causa_falla) ? CAUSA_HIST_MEC[r.causa_falla] : (r.causa_falla || 'REPARACION')));
 
 /** Crea el registro del Historial con la hoja en PDF. Devuelve true si quedó EN_HISTORIAL. */
 export const pasarAHistorial = async (r) => {
@@ -281,8 +287,11 @@ export const pasarAHistorial = async (r) => {
     }
     // 2) Registro en el Historial
     const mecs = (r.mecanicos || []).map(m => m.nombre);
+    // Lubricantes de la lista → columnas de aceites del Historial (litros); otros → al texto
+    const aceites = {};
+    (r.lubricantes || []).forEach(l => { const a = ACEITES.find(x => x.key === l.key); const v = Number(String(l.cantidad || '').replace(',', '.')) || 0; if (a && v) aceites[a.col] = (aceites[a.col] || 0) + v; });
     const extras = [
-      ...(r.lubricantes || []).filter(l => l.tipo).map(l => `Lubricante: ${l.tipo}${l.cantidad ? ' (' + l.cantidad + ')' : ''}`),
+      ...(r.lubricantes || []).filter(l => !ACEITES.some(x => x.key === l.key) && l.tipo).map(l => `Lubricante: ${l.tipo}${l.cantidad ? ' (' + l.cantidad + ')' : ''}`),
       r.operador ? `Operador: ${r.operador}` : '', r.vale_consumo ? `Vale de consumo N° ${r.vale_consumo}` : ''
     ].filter(Boolean);
     const payload = {
@@ -295,7 +304,9 @@ export const pasarAHistorial = async (r) => {
       hora_total: String(calcularRestaHoras(r.hora_inicio, r.hora_termino) || ''),
       causa_intervencion: r.causa_intervencion || '', descripcion: [r.descripcion || '', ...extras].filter(Boolean).join('\n'),
       interferencia: r.interferencia || '', empresa: r.usuario_arriendo || '', link: url,
-      art: r.uso_art ? 'SI' : 'NO', numero_folio: `APP-${r.id}`, causa_falla: r.causa_falla || ''
+      art: r.uso_art ? 'SI' : 'NO', numero_folio: `APP-${r.id}`,
+      causa_falla: ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'].includes(r.causa_falla) ? r.causa_falla : '',
+      ...aceites
     };
     let data;
     try { data = await sb(supabaseClient.from(TABLAS.HISTORIAL).insert([payload]).select('id')); }

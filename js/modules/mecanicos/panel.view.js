@@ -8,6 +8,7 @@ import { logoSrc } from '../configuracion/configuracion.service.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 import { dbUsuarios, permisosDe } from '../../core/store.js';
 import { CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC } from './hojas.js';
+import { listaCausas } from '../historial/historial.service.js';
 
 const { ref, computed, onMounted } = Vue;
 
@@ -46,7 +47,7 @@ export default {
             <div class="text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }} · {{ (r.mecanicos || []).map(m => m.nombre).join(', ') }}</div></div>
           <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]">{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
         </div>
-        <div class="text-slate-600 mt-1 line-clamp-2">{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
+        <div class="text-slate-600 mt-1 line-clamp-2"><b v-if="r.tipo === 'MECANICA' && r.causa_falla">{{ r.causa_falla }} · </b>{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
         <div v-if="r.bloqueo" class="text-[10px] font-bold text-violet-700 mt-0.5"><i class="fa-solid fa-lock mr-0.5"></i>Con registro de bloqueo</div>
       </div>
       <div v-if="!S.listaPanel.value.length" class="p-10 text-center text-slate-400 font-bold">No hay intervenciones en este estado.</div>
@@ -72,10 +73,12 @@ export default {
           <label class="block"><span class="font-bold">Lugar</span><input v-model="r.lugar" class="mt-1 w-full p-2 border rounded-lg"></label>
           <div class="grid grid-cols-3 gap-2"><label v-for="h in [['hora_falla','H. falla'],['hora_inicio','H. inicio'],['hora_termino','H. término']]" :key="h[0]"><span class="font-bold">{{ h[1] }}</span><input type="time" v-model="r[h[0]]" class="mt-1 w-full p-2 border rounded-lg"></label></div>
           <label v-if="r.tipo === 'ELECTRICA'" class="block sm:col-span-2"><span class="font-bold">Causa</span><select v-model="r.causa_intervencion" class="mt-1 w-full p-2 border rounded-lg"><option v-for="c in CAUSAS_ELECTRICA" :key="c">{{ c }}</option></select></label>
-          <label v-else class="block sm:col-span-2"><span class="font-bold">Causa de la intervención</span><input v-model="r.causa_intervencion" class="mt-1 w-full p-2 border rounded-lg"></label>
+          <template v-else>
+            <label class="block"><span class="font-bold">Causa de la intervención</span><select v-model="r.causa_falla" class="mt-1 w-full p-2 border rounded-lg"><option value="">—</option><option v-for="c in listaCausas" :key="c">{{ c }}</option></select></label>
+            <label class="block"><span class="font-bold">Razón de la causa</span><input v-model="r.causa_intervencion" class="mt-1 w-full p-2 border rounded-lg"></label>
+          </template>
           <label class="block sm:col-span-2"><span class="font-bold">Descripción de lo realizado</span><textarea v-model="r.descripcion" rows="5" class="mt-1 w-full p-2 border rounded-lg"></textarea></label>
           <label class="block sm:col-span-2"><span class="font-bold">Interferencia</span><input v-model="r.interferencia" class="mt-1 w-full p-2 border rounded-lg"></label>
-          <label v-if="r.tipo === 'MECANICA'" class="block"><span class="font-bold">Causa de la falla</span><select v-model="r.causa_falla" class="mt-1 w-full p-2 border rounded-lg"><option value="">—</option><option v-for="c in CAUSAS_FALLA_MEC" :key="c">{{ c }}</option></select></label>
           <label v-if="r.tipo === 'MECANICA'" class="block"><span class="font-bold">Usuario arriendo</span><input v-model="r.usuario_arriendo" class="mt-1 w-full p-2 border rounded-lg"></label>
           <p class="sm:col-span-2 text-[11px] text-slate-500">Los cambios se guardan al firmar.</p>
         </div>
@@ -125,6 +128,6 @@ export default {
     const mecanicos = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'subadmin').map(u => u.usuario));
     const supervisores = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'admin').map(u => u.usuario));
     onMounted(() => S.cargarMec());
-    return { S, r, editando, escala, altoHoja, kpis, mecanicos, supervisores, logoSrc, formatDateForDisplay, CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC };
+    return { S, r, editando, escala, altoHoja, kpis, mecanicos, supervisores, logoSrc, formatDateForDisplay, CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, listaCausas };
   }
 };
