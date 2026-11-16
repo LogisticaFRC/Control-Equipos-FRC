@@ -826,3 +826,10 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - REPARAR: botón **Eliminar OT N° (Admin)** junto a "Quitar OT del taller"; también ícono basurero en la tabla "OT de reparación" y en la pestaña "OT enlazadas". Al borrar la OT, las fallas de la inspección que estaban en ella vuelven a "Esperando OT".
 - Hallazgos: **Eliminar inspección** (todos sus ítems) y basurero por falla. Si una falla ya estaba en una OT, la OT no se borra.
 - `eliminarOTTaller` y `eliminarHallazgos` en taller.service.js (soloAdmin). Sin SQL nuevo (RLS eliminar = Admin de Operaciones).
+
+## 2026-11-16 · Libro de equivalencias de filtros (parte 1)
+- `js/core/filtros-equivalencias.js`: 15 familias / 125 códigos investigados en internet (finditparts, industrialstop, oilfilter-crossreference, fridayparts, filterfinder) a partir de la lista de filtros del sistema.
+  - `identificarMarca(codigo)` → marca (segura si está en el libro; "probable" por la forma del código).
+  - `equivalentesDe(codigo)` / `resumenFiltro(codigo)` → equivalentes en otras marcas.
+- Todavía NO está conectado a pantallas: se usará cuando los mecánicos registren mantenciones en la app (al escribir el filtro → marca + equivalencias).
+- Libro en Excel: Claude outputs/LIBRO EQUIVALENCIAS FILTROS FRC.xlsx (libro, índice por código, alertas de la lista FRC, cómo reconocer la marca).
