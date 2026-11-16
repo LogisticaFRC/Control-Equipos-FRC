@@ -50,7 +50,7 @@ export default /* html */ `
             <th class="p-2.5">ESTADO</th>
             <th class="p-2.5">CAMIÓN ENCARGADO</th>
             <th class="p-2.5">CONDUCTOR</th>
-            <th v-if="isAdmin" class="p-2.5 text-center">EDITAR</th>
+            <th v-if="isAdmin" class="p-2.5 text-center">ACCIONES</th>
           </tr>
         </thead>
         <tbody class="divide-y bg-white">
@@ -69,7 +69,7 @@ export default /* html */ `
             </td>
             <td class="p-2.5">{{ m.camion || '-' }}</td>
             <td class="p-2.5 font-semibold">{{ m.conductor || '-' }}</td>
-            <td v-if="isAdmin" class="p-2.5 text-center"><button @click="abrirEditarMovimiento(m)" title="Editar movimiento" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded font-bold"><i class="fa-solid fa-pen-to-square"></i></button></td>
+            <td v-if="isAdmin" class="p-2.5 text-center whitespace-nowrap"><button @click="abrirEditarMovimiento(m)" title="Editar movimiento" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded font-bold"><i class="fa-solid fa-pen-to-square"></i></button><button @click="eliminarMovimiento(m)" title="Eliminar movimiento" class="ml-1 bg-rose-100 hover:bg-rose-200 text-rose-700 px-2 py-1 rounded font-bold"><i class="fa-solid fa-trash"></i></button></td>
           </tr>
           <tr v-if="filteredMovimientos.length === 0"><td colspan="11" class="p-8 text-center text-slate-500 font-bold">No se encontraron movimientos.</td></tr>
         </tbody>

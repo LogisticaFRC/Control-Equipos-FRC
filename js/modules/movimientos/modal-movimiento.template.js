@@ -89,6 +89,7 @@ export default /* html */ `
       </div>
     </div>
     <div class="px-6 py-4 bg-white border-t flex justify-end gap-2">
+      <button v-if="formMov.id" @click="eliminarMovimiento({ id: formMov.id, afi: formMov.afi === OTRO_AFI ? formMov.afiTexto : formMov.afi, fecha: formMov.fecha, origen: formMov.origen, destino: formMov.destino })" class="mr-auto px-4 py-2 rounded-lg font-bold bg-rose-600 hover:bg-rose-700 text-white text-xs"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>
       <button @click="showModalMovimiento = false" class="px-4 py-2 rounded-lg font-bold bg-slate-200 text-slate-800 text-xs">Cancelar</button>
       <button @click="guardarNuevoMovimiento" :disabled="!formMov.afi || !formMov.fecha" class="px-5 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 shadow-md text-xs">{{ formMov.id ? 'Guardar cambios' : 'Guardar Movimiento' }}</button>
     </div>

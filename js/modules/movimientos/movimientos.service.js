@@ -87,6 +87,28 @@ export const abrirEditarMovimiento = (m) => {
   };
   showModalMovimiento.value = true;
 };
+// ---------- Eliminar movimiento (solo Admin) · 2026-11-16 ----------
+/** Borra el movimiento. Si era el último de un equipo del sistema, ofrece devolver el equipo
+ *  a la ubicación / estado del movimiento anterior (o dejar el equipo como está). */
+export const eliminarMovimiento = async (m) => {
+  if (!soloAdmin() || !m || m.id == null) return;
+  const externo = esAfiExterno(m.afi);
+  const ultimo = !externo && esUltimoMovDelEquipo(m);
+  if (!confirm(`¿Eliminar el movimiento del AFI ${m.afi} (${m.fecha}) · ${m.origen || '—'} → ${m.destino || '—'}?\nNo se puede deshacer.`)) return;
+  // Movimiento anterior del mismo equipo (para devolverlo ahí)
+  const anterior = ultimo ? dbMovimientos.value
+    .filter(x => mismoAfi(x.afi, m.afi) && x.id !== m.id)
+    .sort((a, b) => parseIsoDate(b.fecha) - parseIsoDate(a.fecha) || b.id - a.id)[0] : null;
+  const revertir = Boolean(anterior && anterior.destino && confirm(`Era el último movimiento del AFI ${m.afi}.\n¿Devolver el equipo a su ubicación anterior: ${anterior.destino}${anterior.estado ? ' (' + anterior.estado + ')' : ''}?\n\nAceptar = sí · Cancelar = el equipo queda como está.`));
+  try { await sb(supabaseClient.from(TABLA_MOVIMIENTOS).delete().eq('id', m.id)); }
+  catch (err) { return alert('No se pudo eliminar el movimiento: ' + errMsg(err) + (/permission|policy|denied|rls/i.test(errMsg(err)) ? '\n(Requiere ser Admin de Operaciones.)' : '')); }
+  let aviso = '';
+  if (revertir) aviso = await actualizarEquipoDesdeMov({ afi: m.afi, ubicacion_actual: anterior.destino, estado: anterior.estado, empresa_arriendo: anterior.empresa_arriendo }, anterior.locacionId);
+  await cargarDatosDesdeSupabase(['movimientos', 'inventario']);
+  if (showModalMovimiento.value && formMov.value.id === m.id) showModalMovimiento.value = false;
+  alert('Movimiento eliminado.' + (revertir ? ` El AFI ${m.afi} volvió a ${anterior.destino}.` : '') + aviso);
+};
+
 /** Ruta completa del origen (Empresa › Área › Sector › Locación), para mostrar bajo el campo. */
 export const origenRuta = computed(() => {
   const eq = buscarEquipoPorAfi(formMov.value.afi);

@@ -897,3 +897,7 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   (en quiosco no se puede salir con Esc; para cerrarlo: Alt+F4 o el botón Cerrar sesión del tótem).
 - (2026-11-16) En REPARAR (columna izquierda, equipos EN NAVE) se agregó `taller/trabajo-nave.view.js`: **horómetro actual** del equipo (guardar) y las **actividades** igual que la app TALLER del celular (Intervención mecánica / eléctrica, Agregar bloqueo, ART y mantención). El formulario de intervención se abre encima a pantalla completa (es el mismo `<mecanico-app>` del celular). Lo ven el tótem, los mecánicos y los editores de Operaciones.
 - (2026-11-16) Tótem: al entrar a pantalla completa usa la Keyboard Lock API (`navigator.keyboard.lock()`, Chrome/Edge): Esc ya no sale con un toque, hay que mantenerlo apretado. Para bloqueo TOTAL (sin Esc, sin X, sin Alt+F4): Windows **Acceso asignado / Quiosco** con Edge en modo quiosco (solo se sale con Ctrl+Alt+Supr y la clave de Windows).
+
+## 2026-11-16 · Movimientos: eliminar
+- Botón **Eliminar** (papelero) en cada fila (columna ACCIONES, solo Admin de Operaciones) y dentro del modal Editar. `eliminarMovimiento(m)` en movimientos.service.js.
+- Si era el **último movimiento** de un equipo del sistema, pregunta si se devuelve el equipo a la ubicación/estado del movimiento anterior (o queda como está). Subarrendados (OTRO) solo se borran.
