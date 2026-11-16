@@ -371,6 +371,8 @@ export default /* html */ `
             <button v-if="isAdmin && repTrabajo.estado === 'EN_NAVE'" @click="sacarError(repTrabajo)" class="w-full border-2 border-dashed border-slate-400 text-slate-600 hover:bg-white font-bold py-2.5 rounded-xl text-sm"><i class="fa-solid fa-rotate-left mr-2"></i>Sacar por error / prueba</button>
             <button v-if="!esTotem" @click="verDetallePorAfiString(repTrabajo.afi)" class="w-full border font-bold py-2.5 rounded-xl text-slate-600 hover:bg-white"><i class="fa-solid fa-id-card mr-2"></i>Perfil del equipo</button>
           </div>
+          <!-- Horómetro + intervenciones / bloqueo / ART / mantención (igual que la app TALLER del celular) · 2026-11-16 -->
+          <trabajo-nave v-if="editaTaller && repTrabajo.estado === 'EN_NAVE'" :afi="repTrabajo.afi"></trabajo-nave>
         </div>
 
         <!-- OT -->

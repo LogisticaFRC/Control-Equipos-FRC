@@ -7,7 +7,8 @@ import * as S from './taller.service.js';
 import { folioSugerido, imprimirOT, irAOT, ESTILO_ESTADO_OT, ETIQUETA_ESTADO_OT, estadoOT, N_ACTIVIDADES } from '../ot/ot.service.js';
 import { cargarDatosDesdeSupabase } from '../../core/store.js';
 import { formatDateForDisplay } from '../../core/utils.js';
-import HallazgosAdmin from './hallazgos-admin.view.js';   // hallazgos del mecánico → OT (2026-11-13)
+import HallazgosAdmin from './hallazgos-admin.view.js';
+import TrabajoNave from './trabajo-nave.view.js';   // horómetro + intervenciones del equipo en nave (2026-11-16)   // hallazgos del mecánico → OT (2026-11-13)
 
 const { ref, computed, onMounted, onBeforeUnmount } = Vue;
 
@@ -16,7 +17,7 @@ const REFRESCO_MS = 45 * 1000;
 
 export default {
   name: 'TallerView',
-  components: { HallazgosAdmin },
+  components: { HallazgosAdmin, TrabajoNave },
   template,
   // totem: PC fijo del taller (usuario tipo "Tótem"): solo las naves, sin pantalla completa manual (2026-11-16)
   props: { totem: { type: Boolean, default: false } },

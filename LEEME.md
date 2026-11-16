@@ -895,3 +895,4 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Bloqueo total recomendado: abrir Chrome en **modo quiosco** en el PC del taller, ej. acceso directo:
   `"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk https://logisticafrc.github.io/Control-Equipos-FRC/`
   (en quiosco no se puede salir con Esc; para cerrarlo: Alt+F4 o el botón Cerrar sesión del tótem).
+- (2026-11-16) En REPARAR (columna izquierda, equipos EN NAVE) se agregó `taller/trabajo-nave.view.js`: **horómetro actual** del equipo (guardar) y las **actividades** igual que la app TALLER del celular (Intervención mecánica / eléctrica, Agregar bloqueo, ART y mantención). El formulario de intervención se abre encima a pantalla completa (es el mismo `<mecanico-app>` del celular). Lo ven el tótem, los mecánicos y los editores de Operaciones.
