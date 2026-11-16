@@ -847,3 +847,6 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - taller.service.js: `CAPACIDAD_NAVE = 4`, `repsEnNave(nave)`, `cuposNave(nave)`, `equiposEnNaves`; `navesLibres` = naves con cupo.
 - Taller (PC/tótem): cada nave muestra todos sus equipos (cada uno con REPARAR / Sacar / EQUIPO LISTO) y "Ingresar otro equipo (quedan N)". Selectores muestran "NAVE X (quedan N)".
 - App mecánicos: lista todos los equipos de cada nave; al ingresar muestra cupos por nave.
+
+## 2026-11-16 · NAVE 5
+- `NAVES` (programas.service.js) ahora incluye 'NAVE 5' → aparece en el Taller (tótem y app mecánicos), en Asignar equipo del programa de reparación, en la vista por naves / Gantt del programa y en el Excel. Sin SQL (la nave es texto). Total taller: 5 naves × 4 equipos = 20.

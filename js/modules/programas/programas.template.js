@@ -325,7 +325,7 @@ export default /* html */ `
 
         <!-- CONTENIDO VISTA TABLA SEPARADA POR NAVES (REPARACIÓN) -->
         <div v-else-if="progSelect.carpeta === 'REPARACION' && vistaProgramaMode === 'tabla'" class="flex-grow overflow-y-auto space-y-6">
-          <template v-for="n_nave in ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4']" :key="n_nave">
+          <template v-for="n_nave in ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4', 'NAVE 5']" :key="n_nave">
             <div v-if="obtenerItemsProgramaEnRangoPorNave(progSelect.id, n_nave).length > 0" class="space-y-2 border rounded-xl p-3 bg-slate-50/50 shadow-sm">
               <div class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase flex justify-between items-center">
                 <span><i class="fa-solid fa-warehouse mr-1.5 text-amber-400"></i> {{ n_nave }}</span>
@@ -389,7 +389,7 @@ export default /* html */ `
 
         <!-- CONTENIDO VISTA CALENDARIO / GANTT (REPARACIÓN) -->
         <div v-else-if="progSelect.carpeta === 'REPARACION' && vistaProgramaMode === 'calendario'" class="flex-grow overflow-auto p-3 bg-slate-50 border rounded-xl space-y-6">
-          <template v-for="n_nave in ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4']" :key="n_nave">
+          <template v-for="n_nave in ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4', 'NAVE 5']" :key="n_nave">
             <div v-if="obtenerItemsProgramaEnRangoPorNave(progSelect.id, n_nave).length > 0" class="space-y-2">
               <div class="text-xs font-extrabold text-slate-800 bg-blue-100 border border-blue-300 px-3 py-1.5 rounded-md uppercase flex items-center justify-between">
                 <span><i class="fa-solid fa-warehouse mr-1.5 text-blue-700"></i> {{ n_nave }}</span>

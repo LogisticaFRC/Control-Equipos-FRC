@@ -17,7 +17,7 @@ const { ref, computed } = Vue;
 import { TABLAS } from '../../core/tablas.js';
 export const TABLA_PROGRAMAS = TABLAS.PROGRAMAS;
 export const TABLA_PROGRAMAS_ITEMS = TABLAS.PROGRAMAS_ITEMS;
-export const NAVES = ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4'];
+export const NAVES = ['NAVE 1', 'NAVE 2', 'NAVE 3', 'NAVE 4', 'NAVE 5'];   // 2026-11-16: se agregó la NAVE 5
 
 export const carpetaDe = (prog) => String(prog?.tipo || prog?.carpeta || '').toUpperCase();
 export const esProgramaMantencion = (prog) => carpetaDe(prog) === 'MANTENCION';
