@@ -11,6 +11,7 @@
 // =====================================================================
 import * as S from './taller.service.js';
 import InspeccionEquipo from './inspeccion-equipo.view.js';
+import { mantAfi, tabApp } from '../mecanicos/mecanicos.service.js';
 import { formatDateForDisplay, hoyISO } from '../../core/utils.js';
 
 const { ref, computed, onMounted, onBeforeUnmount } = Vue;
@@ -72,6 +73,12 @@ export default {
         <i class="fa-solid fa-circle-info mr-1"></i>Aún no hay OT. Haz la <b>INSPECCIÓN EQUIPO</b>: con esa información Operaciones arma la OT.
       </div>
 
+      <!-- Mantención del equipo (pestaña Mantención: pauta, bloqueo, ART) -->
+      <button v-if="enNave(sel)" @click="irMantencion(sel)" class="w-full bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left border-2 border-emerald-200 active:scale-[.99]">
+        <span class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl"><i class="fa-solid fa-oil-can"></i></span>
+        <span class="flex-1"><b class="block">Ingresar mantención</b><span class="text-xs text-slate-500">Formato de mantención, bloqueo y ART</span></span>
+        <i class="fa-solid fa-chevron-right text-slate-300"></i>
+      </button>
       <!-- INSPECCIÓN EQUIPO (2026-11-16): todas las fallas y repuestos de una vez -->
       <button @click="inspAbierta = true" class="w-full bg-[#1f4d3a] text-white rounded-2xl shadow p-4 flex items-center gap-4 text-left active:scale-[.99]">
         <span class="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-2xl text-amber-300"><i class="fa-solid fa-clipboard-list"></i></span>
@@ -194,6 +201,7 @@ export default {
       finally { ocupado.value = false; }
     };
     const marcar = (ot, i) => S.alternarActividad(ot, i);
+    const irMantencion = (c) => { mantAfi.value = c.afi; tabApp.value = 'mantencion'; window.scrollTo(0, 0); };
     const fechaHora = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
 
     let timer = null;
@@ -203,6 +211,6 @@ export default {
     });
     onBeforeUnmount(() => clearInterval(timer));
 
-    return { S, inspAbierta, sel, grupos, abrir, cerrar, form, ocupado, enNave, estadoCarta, etiquetaCarta, pendientes, conFecha, prog, abierta, ingresar, enviar, marcar, fechaHora, formatDateForDisplay, hoyISO };
+    return { S, irMantencion, inspAbierta, sel, grupos, abrir, cerrar, form, ocupado, enNave, estadoCarta, etiquetaCarta, pendientes, conFecha, prog, abierta, ingresar, enviar, marcar, fechaHora, formatDateForDisplay, hoyISO };
   }
 };

@@ -42,6 +42,14 @@ export const permisosDe = (u) => {
   if (p && typeof p === 'object' && Object.keys(p).length) return p;
   return u.rol === 'subadmin' ? { operaciones: 'subadmin' } : {};
 };
+/** Cargo del usuario (ej. "Mecánico", "Eléctrico") · se guarda en usuarios.permisos.cargo (2026-11-16). */
+export const cargoDe = (u) => String((permisosDe(u) || {}).cargo || '').trim();
+/** Técnico (app del celular): 'taller' | 'terreno' | '' · permisos.mecanicos = 'subadmin' + permisos.mec_modo. */
+export const modoTecnicoDe = (u) => {
+  const p = permisosDe(u) || {};
+  if (!u || u.rol === 'admin' || p.mecanicos !== 'subadmin') return '';
+  return p.mec_modo === 'taller' ? 'taller' : 'terreno';
+};
 /** Nivel ('admin' | 'subadmin' | 'lectura') de un usuario en un área. */
 export const nivelEnArea = (areaKey, u = usuarioActivo.value) => {
   if (!u) return 'lectura';

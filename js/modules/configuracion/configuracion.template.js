@@ -31,12 +31,16 @@ export default /* html */ `
           <label class="block font-bold mb-1">Tipo</label>
           <select v-model="nuevoUsuario.tipo" class="w-full p-2 border rounded-lg bg-white font-bold">
             <option value="areas">Permisos por área</option>
-            <option value="mecanico">Mecánico (app del celular)</option>
+            <option value="terreno">Técnico TERRENO (app del celular)</option>
+            <option value="taller">Técnico TALLER (app del celular)</option>
             <option value="supervisor_mec">Supervisor de mecánicos (firma)</option>
             <option value="general">Admin general (todo)</option>
           </select>
         </div>
-        <div v-if="nuevoUsuario.tipo === 'mecanico'" class="sm:col-span-4 bg-lime-50 border border-lime-200 rounded-lg p-2 text-[11px] text-lime-900"><i class="fa-solid fa-mobile-screen mr-1"></i>Entra directo a la <b>app de mecánicos</b>: ve los equipos, actualiza horómetros y llena intervenciones con firma. No ve el resto del sistema.</div>
+        <div><label class="block font-bold mb-1">Cargo</label><input type="text" v-model="nuevoUsuario.cargo" list="cfg-cargos" placeholder="Ej: Mecánico, Eléctrico" class="w-full p-2 border rounded-lg bg-white"></div>
+        <datalist id="cfg-cargos"><option v-for="c in CARGOS_SUGERIDOS" :key="c" :value="c"></option></datalist>
+        <div v-if="nuevoUsuario.tipo === 'terreno'" class="sm:col-span-4 bg-lime-50 border border-lime-200 rounded-lg p-2 text-[11px] text-lime-900"><i class="fa-solid fa-mobile-screen mr-1"></i><b>TERRENO</b>: entra directo a la app del celular · equipos, horómetros e intervenciones con firma. No ve el resto del sistema.</div>
+        <div v-if="nuevoUsuario.tipo === 'taller'" class="sm:col-span-4 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] text-amber-900"><i class="fa-solid fa-warehouse mr-1"></i><b>TALLER</b>: app del celular con equipos, <b>naves del programa de reparación</b> (cartas, inspección, OT) y <b>mantención</b> (pauta, bloqueo, ART). Horómetro solo de equipos en nave.</div>
         <div v-if="nuevoUsuario.tipo === 'supervisor_mec'" class="sm:col-span-4 bg-lime-50 border border-lime-200 rounded-lg p-2 text-[11px] text-lime-900"><i class="fa-solid fa-signature mr-1"></i>Ve el área <b>Mecánicos</b> del menú para revisar y firmar las intervenciones. Además tiene los niveles por área que elijas abajo.</div>
         <div v-if="nuevoUsuario.tipo === 'areas'" class="sm:col-span-4">
           <label class="block font-bold mb-1">Perfil de acceso (opcional)</label>
@@ -63,6 +67,7 @@ export default /* html */ `
         <thead class="bg-slate-800 text-white uppercase text-[10px]">
           <tr>
             <th class="p-2.5">Usuario</th>
+            <th class="p-2.5">Cargo</th>
             <th class="p-2.5">Tipo</th>
             <th class="p-2.5 whitespace-nowrap"><i class="fa-solid fa-table-cells mr-1"></i>Acceso a módulos</th>
             <th v-for="a in AREAS_PERMISOS" :key="a.key" class="p-2.5 whitespace-nowrap"><i :class="['fa-solid mr-1', a.icon]"></i>{{ a.label }}</th>
@@ -74,12 +79,15 @@ export default /* html */ `
           <tr v-for="u in dbUsuarios" :key="u.usuario" class="hover:bg-slate-50">
             <td class="p-2.5 font-bold text-slate-800 whitespace-nowrap">{{ u.usuario }}<span v-if="u.usuario === USUARIO_PRINCIPAL" class="ml-1 text-[9px] text-amber-600 font-bold">PRINCIPAL</span></td>
             <td class="p-2.5">
-              <select v-if="esAdminGeneral" :value="u.rol === 'admin' ? 'general' : 'areas'" @change="cambiarTipoUsuario(u, $event.target.value)"
-                :class="['p-1.5 border rounded font-bold text-[11px]', u.rol === 'admin' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-white']">
-                <option value="general">Admin general</option>
-                <option value="areas">Por área</option>
+              <input v-if="esAdminGeneral" :value="cargoDe(u)" @change="guardarCargo(u, $event.target.value)" list="cfg-cargos" placeholder="Cargo…" class="w-32 p-1.5 border rounded text-[11px] font-semibold">
+              <span v-else class="text-[11px] font-semibold text-slate-700">{{ cargoDe(u) || '-' }}</span>
+            </td>
+            <td class="p-2.5">
+              <select v-if="esAdminGeneral" :value="tipoUsuario(u)" @change="cambiarTipoUsuario(u, $event.target.value)"
+                :class="['p-1.5 border rounded font-bold text-[11px]', tipoUsuario(u) === 'general' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : tipoUsuario(u) === 'taller' ? 'bg-amber-50 text-amber-900 border-amber-300' : tipoUsuario(u) === 'terreno' ? 'bg-lime-50 text-lime-900 border-lime-300' : 'bg-white']">
+                <option v-for="t in TIPOS_USUARIO" :key="t.key" :value="t.key">{{ t.label }}</option>
               </select>
-              <span v-else :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', u.rol === 'admin' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700']">{{ u.rol === 'admin' ? 'Admin general' : 'Por área' }}</span>
+              <span v-else class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700">{{ (TIPOS_USUARIO.find(t => t.key === tipoUsuario(u)) || {}).label }}</span>
             </td>
             <td class="p-2.5 whitespace-nowrap">
               <span v-if="u.rol === 'admin'" class="text-emerald-700 font-bold text-[11px]"><i class="fa-solid fa-check"></i> Todo</span>

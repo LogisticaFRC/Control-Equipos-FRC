@@ -11,7 +11,9 @@ import { listaCausas } from '../historial/historial.service.js';
 import { ACEITES } from '../historial/historial.mapper.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js';
-import TallerMecanico from '../taller/taller-mecanico.view.js';   // pestaña TALLER: cartas del programa de reparación + OT asignada + hallazgos
+import TallerMecanico from '../taller/taller-mecanico.view.js';
+import MantencionTaller from './mantencion-taller.view.js';   // pestaña MANTENCIÓN (modo taller)
+import { naveDeAfi, colorNave, recargarTaller } from '../taller/taller.service.js';   // pestaña TALLER: cartas del programa de reparación + OT asignada + hallazgos
 
 const { ref, computed, onMounted, watch } = Vue;
 
@@ -20,7 +22,7 @@ const LUGARES = ['TALLER FRC', 'TERRENO', 'FAENA CLIENTE'];
 
 export default {
   name: 'MecanicoApp',
-  components: { TallerMecanico },
+  components: { TallerMecanico, MantencionTaller },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
 <div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
@@ -31,8 +33,9 @@ export default {
     <div v-else class="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center"><img :src="logoSrc" @error="onLogoError" class="max-h-full max-w-full object-contain" referrerpolicy="no-referrer"></div>
     <div class="flex-1 min-w-0">
       <div class="font-extrabold leading-tight truncate">{{ S.formInt.value ? (S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : 'Hola, ' + nombreCorto }}</div>
-      <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Mecánicos FRC' }}</div>
+      <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Técnicos FRC' + (S.cargoActual.value ? ' · ' + S.cargoActual.value : '') + ' · ' + (S.esTaller.value ? 'Taller' : 'Terreno') }}</div>
     </div>
+ <select v-if="preview && !S.formInt.value" v-model="S.modoPreview.value" class="text-slate-900 text-xs font-bold rounded-lg px-1.5 py-1.5" title="Ver como"><option value="taller">Taller</option><option value="terreno">Terreno</option></select>
     <button v-if="salir && !S.formInt.value" @click="salir" class="px-3 py-2 rounded-xl bg-rose-600 text-xs font-bold"><i class="fa-solid fa-right-from-bracket mr-1"></i>{{ preview ? 'Cerrar' : 'Salir' }}</button>
   </header>
 
@@ -236,8 +239,9 @@ export default {
             <div class="p-4"><div class="lbl">Última mantención</div><div class="text-2xl font-black font-mono text-slate-800">{{ fmtH(eq.horometros?.hUltimaMant) }}</div><div class="text-xs text-slate-500">{{ formatDateForDisplay(eq.horometros?.ultimaMantFecha) }}</div></div>
           </div>
         </div>
-        <!-- Actualizar horómetro -->
-        <div class="bg-white rounded-2xl shadow-sm p-4">
+        <!-- Actualizar horómetro (TALLER: solo equipos que están en una nave) -->
+        <div v-if="S.esTaller.value && !naveDeAfi(eq.afi)" class="bg-slate-50 border rounded-2xl p-4 text-sm text-slate-500"><i class="fa-solid fa-lock mr-1"></i>En taller el horómetro solo se actualiza en equipos que están dentro de una <b>nave</b>.</div>
+        <div v-else class="bg-white rounded-2xl shadow-sm p-4">
           <div class="lbl mb-1"><i class="fa-solid fa-gauge-high mr-1"></i>Actualizar horómetro</div>
           <div class="flex gap-2"><input v-model="S.horoForm.value.valor" inputmode="decimal" class="inp flex-1 font-mono text-lg" placeholder="Nuevo horómetro"><input type="date" v-model="S.horoForm.value.fecha" class="inp w-36 px-2"></div>
           <button @click="S.guardarHorometro(eq)" :disabled="S.guardandoHoro.value || !S.horoForm.value.valor" class="mt-2 w-full py-3 rounded-xl bg-[#1f4d3a] text-white font-extrabold disabled:opacity-40"><i :class="['fa-solid mr-1', S.guardandoHoro.value ? 'fa-spinner fa-spin' : 'fa-floppy-disk']"></i>Guardar horómetro</button>
@@ -270,7 +274,8 @@ export default {
         <button v-for="e in S.equiposApp.value.slice(0, limite)" :key="e.id" @click="S.abrirEquipo(e)" class="w-full bg-white rounded-2xl shadow-sm p-4 text-left active:scale-[.99] transition">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0"><div class="text-lg font-black text-[#1f4d3a] leading-tight">AFI {{ e.afi }} <span class="text-sm font-bold text-slate-700">{{ e.tipo }}</span></div><div class="text-xs text-slate-500 truncate">{{ e.marca }} {{ e.modelo }} · {{ e.ubicacion || '—' }}</div></div>
-            <span v-if="S.enTaller(e)" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 whitespace-nowrap">En taller</span>
+            <span v-if="S.esTaller.value && naveDeAfi(e.afi)" :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', colorNave(naveDeAfi(e.afi)).chip]">{{ naveDeAfi(e.afi) }}</span>
+            <span v-else-if="S.enTaller(e)" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 whitespace-nowrap">En taller</span>
           </div>
           <div class="grid grid-cols-2 gap-2 mt-3">
             <div class="bg-slate-50 rounded-xl px-3 py-2"><div class="text-[10px] font-bold uppercase text-slate-500">Último horómetro</div><div class="font-mono font-black">{{ fmtH(e.horometros?.hTomado) }}</div><div class="text-[10px] text-slate-500">{{ formatDateForDisplay(e.horometros?.fechaUltimoHorometro) }}</div></div>
@@ -305,17 +310,19 @@ export default {
         <div v-if="!(S.carpetaApp.value === 'SIN_FIRMA' ? S.misSinFirma.value : S.misRealizados.value).length" class="text-center text-slate-400 py-10">{{ S.carpetaApp.value === 'SIN_FIRMA' ? 'No tienes documentos esperando firma.' : 'Aún no hay documentos realizados.' }}</div>
       </section>
 
-      <section v-if="tab === 'taller'"><taller-mecanico></taller-mecanico></section>
+      <section v-if="tab === 'taller' && S.esTaller.value"><taller-mecanico></taller-mecanico></section>
+      <section v-if="tab === 'mantencion' && S.esTaller.value"><mantencion-taller></mantencion-taller></section>
 
       <section v-if="tab === 'tareas'" class="p-3"><recordatorios-view></recordatorios-view></section>
 
       <!-- Barra inferior -->
-      <nav class="fixed bottom-0 left-0 right-0 z-30 max-w-xl mx-auto bg-white border-t grid grid-cols-4">
+      <nav :class="['fixed bottom-0 left-0 right-0 z-30 max-w-xl mx-auto bg-white border-t grid', S.esTaller.value ? 'grid-cols-5' : 'grid-cols-3']">
         <button @click="tab = 'equipos'" :class="['py-3 font-bold text-sm', tab === 'equipos' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-truck-monster block text-xl mb-0.5"></i>Equipos</button>
-        <button @click="tab = 'taller'" :class="['py-3 font-bold text-sm', tab === 'taller' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-warehouse block text-xl mb-0.5"></i>Taller</button>
-        <button @click="tab = 'registros'; S.cargarMec()" :class="['py-3 font-bold text-sm relative', tab === 'registros' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-folder block text-xl mb-0.5"></i>Mis documentos
+        <button v-if="S.esTaller.value" @click="tab = 'taller'" :class="['py-3 font-bold text-sm', tab === 'taller' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-warehouse block text-xl mb-0.5"></i>Taller</button>
+        <button v-if="S.esTaller.value" @click="tab = 'mantencion'" :class="['py-3 font-bold text-sm', tab === 'mantencion' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-oil-can block text-xl mb-0.5"></i>Mantención</button>
+        <button @click="tab = 'registros'; S.cargarMec()" :class="['py-3 font-bold text-sm relative', tab === 'registros' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-folder block text-xl mb-0.5"></i>{{ S.esTaller.value ? 'Docs' : 'Mis documentos' }}
           <span v-if="pendientesMios" class="absolute top-2 right-1/4 bg-rose-500 text-white text-[10px] rounded-full px-1.5">{{ pendientesMios }}</span></button>
-        <button @click="tab = 'tareas'" :class="['py-3 font-bold text-sm', tab === 'tareas' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-calendar-check block text-xl mb-0.5"></i>Mis tareas</button>
+        <button @click="tab = 'tareas'" :class="['py-3 font-bold text-sm', tab === 'tareas' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-calendar-check block text-xl mb-0.5"></i>{{ S.esTaller.value ? 'Tareas' : 'Mis tareas' }}</button>
       </nav>
     </template>
   </main>
@@ -346,8 +353,10 @@ export default {
       rec.onend = () => { dictando.value = ''; };
       dictando.value = campo; rec.start();
     };
-    onMounted(() => S.cargarMec());
-    return { S, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
+    onMounted(() => { S.cargarMec(); if (S.esTaller.value) recargarTaller(); });
+    // TERRENO no tiene Taller ni Mantención: si quedó en esa pestaña, vuelve a Equipos
+    watch(() => S.esTaller.value, (t) => { if (!t && ['taller', 'mantencion'].includes(tab.value)) tab.value = 'equipos'; if (t) recargarTaller(); }, { immediate: true });
+    return { S, naveDeAfi, colorNave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };

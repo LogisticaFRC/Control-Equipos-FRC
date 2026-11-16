@@ -14,7 +14,7 @@
 // =====================================================================
 import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
-import { usuarioActivo, dbEquipos, dbIntervenciones, dbUsuarios, nivelEnArea, esAdminGeneral, cargarDatosDesdeSupabase, permisosDe } from '../../core/store.js';
+import { usuarioActivo, dbEquipos, dbIntervenciones, dbUsuarios, nivelEnArea, esAdminGeneral, cargarDatosDesdeSupabase, permisosDe, cargoDe, modoTecnicoDe } from '../../core/store.js';
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, calcularRestaHoras } from '../../core/utils.js';
 import { esVehiculo, empresaDe, EMPRESA_TALLER } from '../inventario/inventario.mapper.js';
 import { logoDataURL } from '../../core/excel.js';
@@ -42,6 +42,23 @@ export const puedeUsarApp = computed(() => {
 /** Vista previa de la app dentro del sistema (panel → "Ver app como mecánico"). */
 export const vistaAppForzada = ref(false);
 
+// ---------- TALLER / TERRENO (2026-11-16) ----------
+// Técnicos (permisos.mecanicos = 'subadmin') tienen un modo: permisos.mec_modo = 'taller' | 'terreno' (sin modo = terreno).
+//   TERRENO: Equipos · Mis documentos · Mis tareas
+//   TALLER:  Equipos · Taller (naves del programa de reparación) · Mantención · Mis documentos · Mis tareas
+//            y el horómetro solo se actualiza en equipos que están dentro de una nave.
+/** Modo elegido en la vista previa del panel (Admin / supervisor). */
+export const modoPreview = ref('taller');
+export const modoApp = computed(() => {
+  if (vistaAppForzada.value || !esModoMecanico.value) return modoPreview.value;
+  return modoTecnicoDe(usuarioActivo.value) || 'terreno';
+});
+export const esTaller = computed(() => modoApp.value === 'taller');
+/** Cargo del usuario conectado (se muestra arriba). */
+export const cargoActual = computed(() => cargoDe(usuarioActivo.value));
+/** AFI elegido para la mantención (desde una carta del taller o la lista). */
+export const mantAfi = ref('');
+
 // ---------- Equipos ----------
 export const busquedaEq = ref('');
 const up = (s) => String(s || '').trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -54,7 +71,7 @@ export const equiposApp = computed(() => {
       || String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true }));
 });
 export const equipoSel = ref(null);
-/** Pestaña de la app: 'equipos' | 'taller' | 'registros' | 'tareas'. */
+/** Pestaña de la app: 'equipos' | 'taller' | 'mantencion' | 'registros' | 'tareas'. */
 export const tabApp = ref('equipos');
 export const abrirEquipo = (e) => { equipoSel.value = e; horoForm.value = { valor: '', fecha: hoyISO() }; };
 export const cerrarEquipo = () => { equipoSel.value = null; };

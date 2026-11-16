@@ -6,7 +6,7 @@ import { TABLAS } from '../../core/tablas.js';
 import { exportarTodoExcel } from '../../core/exportar-todo.js';
 import {
   usuarioActivo, currentTab, config, CONFIG_DEFAULT, LOGO_DEFAULT, LOGO_VERSION, dbUsuarios,
-  dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems, soloAdminGeneral, permisosDe, nivelEnArea, NIVELES, modulosDe, nivelEnModulo, NIVELES_MODULO, MODULOS_SIEMPRE } from '../../core/store.js';
+  dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios, dbProgramasItems, soloAdminGeneral, permisosDe, nivelEnArea, NIVELES, modulosDe, nivelEnModulo, NIVELES_MODULO, MODULOS_SIEMPRE, cargoDe, modoTecnicoDe } from "../../core/store.js";
 import { AREAS_PERMISOS, gruposDeArea } from '../../core/menu.js';
 export { permisosDe, nivelEnArea, NIVELES, AREAS_PERMISOS, modulosDe, nivelEnModulo, NIVELES_MODULO, MODULOS_SIEMPRE, gruposDeArea };
 import { placeholderImg } from '../../core/utils.js';
@@ -106,7 +106,7 @@ export const guardarNuevaClave = async () => {
 // tipo 'general' → rol 'admin' (todo).  tipo 'areas' → rol 'lectura' + permisos por área (columna jsonb `permisos`).
 /** Usuario principal: no se puede eliminar ni bajar de Admin general. */
 export const USUARIO_PRINCIPAL = 'logistica';
-const usuarioVacio = () => ({ usuario: "", clave: "", tipo: "areas", perfilId: "", permisos: Object.fromEntries(AREAS_PERMISOS.map(a => [a.key, "lectura"])) });
+const usuarioVacio = () => ({ usuario: "", clave: "", cargo: "", tipo: "areas", perfilId: "", permisos: Object.fromEntries(AREAS_PERMISOS.map(a => [a.key, "lectura"])) });
 export const nuevoUsuario = ref(usuarioVacio());
 
 /** Deja solo las áreas con nivel distinto de 'lectura'. */
@@ -143,9 +143,10 @@ export const crearNuevoUsuario = async () => {
   const general = u.tipo === 'general';
   // Mecánico: solo la app móvil · Supervisor de mecánicos: área Mecánicos = admin + sus niveles por área
   const permisos = general ? {}
-    : u.tipo === 'mecanico' ? { mecanicos: 'subadmin' }
+    : (u.tipo === 'terreno' || u.tipo === 'taller' || u.tipo === 'mecanico') ? { mecanicos: 'subadmin', mec_modo: u.tipo === 'taller' ? 'taller' : 'terreno' }
     : u.tipo === 'supervisor_mec' ? { ...limpiarPermisos(u.permisos), mecanicos: 'admin' }
     : (u.perfilId ? permisosDesdeModulos(perfilPorId(u.perfilId)?.modulos || {}, perfilPorId(u.perfilId)) : limpiarPermisos(u.permisos));
+  if (String(u.cargo || '').trim()) permisos.cargo = String(u.cargo).trim();
   const { error } = await supabaseClient.rpc('frc_admin_crear_usuario', {
     p_usuario: u.usuario.trim(), p_clave: u.clave, p_rol: general ? 'admin' : 'lectura', p_permisos: permisos
   });
@@ -165,7 +166,28 @@ export const cambiarPermisoArea = async (u, areaKey, nivel) => {
   await cargarUsuariosDesdeSupabase();
 };
 
-/** Sube a Admin general o lo pasa a "permisos por área". */
+/** Tipo del usuario para la tabla: 'general' | 'areas' | 'terreno' | 'taller'. */
+export const TIPOS_USUARIO = [
+  { key: 'general', label: 'Admin general' },
+  { key: 'areas', label: 'Por área' },
+  { key: 'terreno', label: 'Terreno (app celular)' },
+  { key: 'taller', label: 'Taller (app celular)' }
+];
+export const tipoUsuario = (u) => (u.rol === 'admin' ? 'general' : (modoTecnicoDe(u) || 'areas'));
+/** Cargos sugeridos (se puede escribir otro). */
+export const CARGOS_SUGERIDOS = ['Mecánico', 'Eléctrico', 'Electromecánico', 'Ayudante técnico', 'Supervisor de taller', 'Jefe de taller', 'Supervisor de terreno', 'Operaciones', 'Logística', 'Bodega', 'Administración', 'Prevención de riesgos'];
+/** Guarda el cargo del usuario (se muestra arriba en la app y en el sistema). */
+export const guardarCargo = async (u, cargo) => {
+  if (!soloAdminGeneral()) return;
+  const c = String(cargo || '').trim();
+  const permisos = { ...permisosDe(u) };
+  if (c) permisos.cargo = c; else delete permisos.cargo;
+  const { error } = await supabaseClient.from(TABLAS.USUARIOS).update({ permisos }).eq('usuario', u.usuario);
+  if (error) avisarError('guardar el cargo', error);
+  await cargarUsuariosDesdeSupabase();
+};
+
+/** Cambia el tipo: Admin general · Por área · Terreno / Taller (técnicos: entran a la app del celular). */
 export const cambiarTipoUsuario = async (u, tipo) => {
   if (!soloAdminGeneral()) return;
   if (tipo !== 'general' && (u.usuario === USUARIO_PRINCIPAL || esMismoUsuario(u.usuario, usuarioActivo.value && usuarioActivo.value.usuario))) {
@@ -173,7 +195,21 @@ export const cambiarTipoUsuario = async (u, tipo) => {
     return cargarUsuariosDesdeSupabase();
   }
   if (tipo === 'general' && !confirm(`¿Dar a ${u.usuario} acceso de Admin general (todo el sistema, incluidos usuarios)?`)) return cargarUsuariosDesdeSupabase();
+  const cargo = cargoDe(u);
+  if (tipo === 'terreno' || tipo === 'taller') {
+    const ya = modoTecnicoDe(u);
+    if (!ya && !confirm(`¿Pasar a ${u.usuario} a técnico de ${tipo.toUpperCase()}?\nEntrará directo a la app del celular y dejará de ver el resto del sistema (se quitan sus permisos por área).`)) return cargarUsuariosDesdeSupabase();
+    const permisos = { mecanicos: 'subadmin', mec_modo: tipo, ...(cargo ? { cargo } : {}) };
+    const { error } = await supabaseClient.from(TABLAS.USUARIOS).update({ rol: 'lectura', permisos }).eq('usuario', u.usuario);
+    if (error) avisarError('cambiar el tipo de usuario', error);
+    return cargarUsuariosDesdeSupabase();
+  }
   const cambios = { rol: tipo === 'general' ? 'admin' : 'lectura' };
+  // Si era técnico (app del celular) y pasa a "Por área": se le quita la app (queda sin permisos; se asignan en la tabla)
+  if (tipo === 'areas' && modoTecnicoDe(u)) {
+    const p = { ...permisosDe(u) }; delete p.mecanicos; delete p.mec_modo;
+    cambios.permisos = p;
+  }
   const { error } = await supabaseClient.from(TABLAS.USUARIOS).update(cambios).eq('usuario', u.usuario);
   if (error) avisarError('cambiar el tipo de usuario', error);
   await cargarUsuariosDesdeSupabase();
@@ -312,6 +348,7 @@ export const mapaModulosUsuario = (u) => {
 export const perfilDeUsuario = (u) => { const p = permisosDe(u); return p && p._perfil ? p._perfil : null; };
 export const resumenAcceso = (u) => {
   if (u.rol === 'admin') return 'Todo';
+  if (modoTecnicoDe(u)) return `App celular · ${modoTecnicoDe(u) === 'taller' ? 'TALLER' : 'TERRENO'}`;
   const m = modulosDe(u);
   if (!m) return 'Por área (ve todo)';
   const n = TODOS_MODULOS.filter(x => (m[x.key] || 'oculto') !== 'oculto').length;
@@ -395,7 +432,7 @@ export const guardarEditorAcceso = async () => {
       const conPerfil = dbUsuarios.value.filter(u => u.rol !== 'admin' && String(perfilDeUsuario(u)?.id) === String(perfil.id));
       if (conPerfil.length && confirm(`¿Aplicar los cambios también a los ${conPerfil.length} usuario(s) con el perfil "${nombre}"?\n${conPerfil.map(u => u.usuario).join(', ')}`)) {
         for (const u of conPerfil) {
-          const { error } = await conReintento(() => supabaseClient.from(TABLAS.USUARIOS).update({ permisos: permisosDesdeModulos(perfil.modulos, perfil), rol: 'lectura' }).eq('usuario', u.usuario));
+          const { error } = await conReintento(() => supabaseClient.from(TABLAS.USUARIOS).update({ permisos: { ...permisosDesdeModulos(perfil.modulos, perfil), ...(cargoDe(u) ? { cargo: cargoDe(u) } : {}) }, rol: 'lectura' }).eq('usuario', u.usuario));
           if (error) avisarError('actualizar ' + u.usuario, error);
         }
         await cargarUsuariosDesdeSupabase();
@@ -410,6 +447,8 @@ export const guardarEditorAcceso = async () => {
         const perfil = e.perfilId ? perfilPorId(e.perfilId) : null;
         permisos = permisosDesdeModulos(e.mapa, perfil);
       }
+      const ant = permisosDe(u) || {};
+      ['cargo', 'mecanicos', 'mec_modo'].forEach(k => { if (ant[k] && permisos[k] === undefined) permisos[k] = ant[k]; });
       const { error } = await conReintento(() => supabaseClient.from(TABLAS.USUARIOS).update({ permisos, rol: 'lectura' }).eq('usuario', u.usuario));
       if (error) return avisarError('guardar el acceso', error);
       await cargarUsuariosDesdeSupabase();
@@ -436,3 +475,4 @@ export const claseNivelModulo = (n) => ({
   subadmin: 'bg-sky-50 text-sky-800 border-sky-300', admin: 'bg-emerald-50 text-emerald-800 border-emerald-300'
 }[n] || '');
 export const botonNivelActivo = (n) => ({ oculto: 'bg-slate-500 text-white', lectura: 'bg-slate-800 text-white', subadmin: 'bg-sky-600 text-white', admin: 'bg-emerald-600 text-white' }[n]);
+export { cargoDe, modoTecnicoDe };   // usados en la tabla de usuarios (cargo / tipo)

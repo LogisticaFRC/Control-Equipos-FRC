@@ -25,7 +25,7 @@ export default {
       </div>
       <div class="flex gap-2">
         <button @click="S.cargarMec()" class="w-9 h-9 rounded-xl border text-slate-500 hover:bg-slate-50" title="Actualizar"><i :class="['fa-solid fa-rotate', S.cargandoMec.value ? 'fa-spin' : '']"></i></button>
-        <button @click="S.vistaAppForzada.value = true" class="bg-[#1f4d3a] hover:bg-emerald-900 text-white font-bold px-4 py-2 rounded-xl shadow"><i class="fa-solid fa-mobile-screen mr-1"></i>Ver la app como mecánico</button>
+        <button @click="S.vistaAppForzada.value = true" class="bg-[#1f4d3a] hover:bg-emerald-900 text-white font-bold px-4 py-2 rounded-xl shadow"><i class="fa-solid fa-mobile-screen mr-1"></i>Ver la app de técnicos</button>
       </div>
     </div>
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">

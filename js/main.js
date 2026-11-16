@@ -1,7 +1,7 @@
 // =====================================================================
 // MAIN · Punto de entrada: arma la app, el header/menú y registra los módulos
 // =====================================================================
-import { usuarioActivo, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, cargarDatosDesdeSupabase, puedeVerModulo } from './core/store.js';
+import { usuarioActivo, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, cargarDatosDesdeSupabase, puedeVerModulo, cargoDe } from './core/store.js';
 
 // Módulos (pantallas)
 import DashboardView from './modules/dashboard/dashboard.view.js';
@@ -98,6 +98,7 @@ const template = /* html */ `
           <button v-if="puedeEditar && enOperaciones" @click="abrirFormularioNuevaMantencion()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
             <i class="fa-solid fa-plus-circle text-sm"></i> Agregar Mantención
           </button>
+          <span v-if="cargoDe(usuarioActivo)" class="hidden sm:inline text-[11px] font-bold text-white/80 bg-white/10 border border-white/15 rounded-full px-2.5 py-1 whitespace-nowrap"><i class="fa-solid fa-id-badge mr-1"></i>{{ cargoDe(usuarioActivo) }}</span>
           <div class="text-right text-xs">
             <span v-if="esAdminGeneral" class="inline-block px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-bold shadow-sm whitespace-nowrap"><i class="fa-solid fa-crown mr-1"></i> {{ usuarioActivo.nombre }} (Admin general)</span>
             <span v-else-if="areaActual.directo" class="inline-block px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 whitespace-nowrap"><i class="fa-solid fa-user mr-1"></i> {{ usuarioActivo.nombre }}</span>
@@ -263,7 +264,7 @@ const app = createApp({
     });
 
     return {
-      gruposDeArea, usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: areasVisibles, switchTab,
+      gruposDeArea, cargoDe, usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: areasVisibles, switchTab,
       menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, salir, headerStyle, esModoMecanico, esSupervisorMec, vistaAppForzada, cerrarVistaApp, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       abrirCambioClave, showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };

@@ -859,3 +859,13 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - En Registrar Nuevo Movimiento, la lista de AFI tiene **✏️ OTRO · subarrendado / no está en el sistema**: se escribe el AFI a mano (+ equipo/proveedor opcional).
 - Queda SOLO como información en BD_MOVIMIENTOS (tipo = "… · SUBARRENDADO: descripción"). NO se agrega al Inventario ni actualiza ningún equipo. Si el AFI escrito ya existe en el sistema, pide elegirlo de la lista.
 - En la tabla de movimientos el equipo aparece como "Externo / subarrendado (no está en el sistema)". Sin SQL.
+
+## 2026-11-16 · Técnicos TALLER / TERRENO + cargo de cada usuario
+- Config & Usuarios → columna **Tipo**: Admin general · Por área · **Terreno (app celular)** · **Taller (app celular)**. Se guarda en `usuarios.permisos`: `mecanicos: 'subadmin'` + `mec_modo: 'taller' | 'terreno'` (técnicos antiguos sin modo = terreno). Al crear usuario: "Técnico TERRENO / TALLER".
+- Columna **Cargo** (permisos.cargo, con sugerencias: Mecánico, Eléctrico, Electromecánico…): se muestra arriba en la app ("App Técnicos FRC · Eléctrico · Taller") y en la cabecera del sistema.
+- App del celular (`mecanicos/app.view.js`, `modoApp` / `esTaller` en mecanicos.service):
+  - TERRENO: Equipos · Mis documentos · Mis tareas (sin Taller).
+  - TALLER: Equipos (con la nave de cada equipo) · Taller (naves, cartas, inspección, OT) · **Mantención** (`mecanicos/mantencion-taller.view.js`) · Docs · Tareas. Horómetro solo en equipos dentro de una nave.
+  - Mantención: equipo en nave + tipo (250/500/1000/Intermedia/Otra) + horómetro + documentos tomados del módulo Formatos (pauta/mantención, bloqueo, ART: aparecen solos cuando se suben) + registro de bloqueo en blanco (PDF del sistema).
+- Vista previa del panel Mecánicos: selector Taller / Terreno. Sin SQL.
+- Al salir de la nave como EQUIPO LISTO el equipo queda **Disponible** en el Inventario y REPARADO en el programa (ya existía).
