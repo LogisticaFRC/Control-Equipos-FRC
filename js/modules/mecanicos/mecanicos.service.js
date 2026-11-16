@@ -30,7 +30,7 @@ const nivelMec = (u = usuarioActivo.value) => (u ? (u.rol === 'admin' ? 'admin' 
 /** Mecánico "puro": entra directo a la app móvil. */
 export const esModoMecanico = computed(() => {
   const u = usuarioActivo.value;
-  return Boolean(u && u.rol !== 'admin' && nivelMec(u) === 'subadmin');
+  return Boolean(u && u.rol !== 'admin' && nivelMec(u) === 'subadmin' && modoTecnicoDe(u) !== 'totem');
 });
 /** Supervisor (o Admin general): ve el panel MECÁNICOS y firma. */
 export const esSupervisorMec = computed(() => Boolean(usuarioActivo.value && (esAdminGeneral.value || nivelMec() === 'admin')));

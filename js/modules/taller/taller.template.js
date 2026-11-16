@@ -26,15 +26,15 @@ export default /* html */ `
       <div class="text-center px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-400/40"><p class="text-[10px] font-bold uppercase text-emerald-300">Listos programa</p><p class="text-2xl font-black">{{ resumenPrograma.LISTO.length }}<span class="text-sm font-bold text-emerald-300"> / {{ totalPrograma }}</span></p></div>
       <div class="flex flex-col gap-1.5 ml-1">
         <button @click="actualizarTodo" :disabled="cargandoTaller" class="bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-60"><i :class="['fa-solid mr-1', cargandoTaller ? 'fa-spinner fa-spin' : 'fa-arrows-rotate']"></i> Actualizar<span v-if="horaActualizacion" class="font-normal text-slate-400"> · {{ horaActualizacion }}</span></button>
-        <button @click="alternarPantallaCompleta" class="bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold"><i :class="['fa-solid mr-1', pantallaCompleta ? 'fa-compress' : 'fa-expand']"></i> {{ pantallaCompleta ? 'Salir pantalla completa' : 'Pantalla completa' }}</button>
+        <button v-if="!esTotem" @click="alternarPantallaCompleta" class="bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold"><i :class="['fa-solid mr-1', pantallaCompleta ? 'fa-compress' : 'fa-expand']"></i> {{ pantallaCompleta ? 'Salir pantalla completa' : 'Pantalla completa' }}</button>
       </div>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 xl:grid-cols-4 gap-5">
+  <div :class="['grid grid-cols-1 gap-5', esTotem ? '' : 'xl:grid-cols-4']">
 
     <!-- ===================== NAVES (tarjetas grandes) ===================== -->
-    <div class="xl:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div :class="['grid grid-cols-1 md:grid-cols-2 gap-5', esTotem ? 'xl:grid-cols-3' : 'xl:col-span-3']">
       <template v-for="nave in NAVES" :key="nave">
 
         <!-- Nave OCUPADA (hasta {{ CAPACIDAD_NAVE }} equipos · cada nave con su color · 2026-11-16) -->
@@ -115,7 +115,7 @@ export default /* html */ `
             </div>
           </div>
           <!-- Cupo libre en la nave -->
-          <div v-if="cuposNave(nave) > 0 && puedeEditar && !faltaTablaTaller" class="p-4 border-t-2 border-dashed border-slate-200 bg-slate-50 space-y-2">
+          <div v-if="cuposNave(nave) > 0 && editaTaller && !faltaTablaTaller" class="p-4 border-t-2 border-dashed border-slate-200 bg-slate-50 space-y-2">
             <div v-if="recomendadoParaNave(nave)" class="text-xs text-amber-800 font-bold"><i class="fa-solid fa-star mr-1"></i>Recomendado: AFI {{ recomendadoParaNave(nave).item.afi }} · {{ descEquipo(recomendadoParaNave(nave).item.afi) }}</div>
             <button @click="abrirIngreso(nave)" class="w-full border-2 border-dashed border-emerald-400 text-emerald-700 hover:bg-emerald-50 font-black py-3 rounded-2xl"><i class="fa-solid fa-plus mr-2"></i>Ingresar otro equipo (quedan {{ cuposNave(nave) }})</button>
           </div>
@@ -133,13 +133,13 @@ export default /* html */ `
               <p class="text-xs text-slate-500 truncate">{{ descEquipo(recomendadoParaNave(nave).item.afi) }}</p>
             </div>
           </div>
-          <button v-if="puedeEditar && !faltaTablaTaller" @click="abrirIngreso(nave)" class="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-black px-8 py-4 rounded-2xl shadow-lg"><i class="fa-solid fa-plus mr-2"></i>Ingresar equipo</button>
+          <button v-if="editaTaller && !faltaTablaTaller" @click="abrirIngreso(nave)" class="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-black px-8 py-4 rounded-2xl shadow-lg"><i class="fa-solid fa-plus mr-2"></i>Ingresar equipo</button>
         </div>
       </template>
     </div>
 
-    <!-- ===================== COLUMNA DERECHA ===================== -->
-    <div class="space-y-5">
+    <!-- ===================== COLUMNA DERECHA (no en el tótem) ===================== -->
+    <div v-if="!esTotem" class="space-y-5">
       <!-- Problemas nuevos enviados por los mecánicos (los procesa el Admin) -->
       <div v-if="problemasPendientes.length" class="bg-white rounded-2xl shadow-sm border-2 border-violet-300 overflow-hidden">
         <div class="bg-violet-700 text-white px-4 py-3 font-extrabold text-sm flex items-center justify-between">
@@ -216,7 +216,7 @@ export default /* html */ `
   </div>
 
   <!-- ===================== RESUMEN DEL PROGRAMA ===================== -->
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+  <div v-if="!esTotem" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h3 class="text-lg font-black text-slate-800"><i class="fa-solid fa-list-check text-amber-600 mr-2"></i>Resumen de reparación · {{ programaTaller ? nombreProg(programaTaller) : 'sin programa seleccionado' }}</h3>
       <div v-if="totalPrograma" class="flex items-center gap-3 min-w-[260px]">
@@ -254,7 +254,7 @@ export default /* html */ `
   </div>
 
   <!-- ===================== OT DEL TALLER ===================== -->
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+  <div v-if="!esTotem" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
     <div class="px-5 py-3 border-b flex items-center justify-between">
       <h3 class="text-lg font-black text-slate-800"><i class="fa-solid fa-file-signature text-rose-600 mr-2"></i>OT de reparación <span class="text-amber-600">· {{ programaTaller ? nombreProg(programaTaller) : 'sin programa' }}</span></h3>
       <span class="text-xs font-bold text-slate-500">{{ otsTallerPrograma.length }} OT enlazadas a este programa</span>
@@ -369,7 +369,7 @@ export default /* html */ `
           <div class="flex flex-col gap-2 pt-2">
             <button v-if="puedeEditar && repTrabajo.estado === 'EN_NAVE'" @click="abrirSalida(repTrabajo)" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sacar de la nave</button>
             <button v-if="isAdmin && repTrabajo.estado === 'EN_NAVE'" @click="sacarError(repTrabajo)" class="w-full border-2 border-dashed border-slate-400 text-slate-600 hover:bg-white font-bold py-2.5 rounded-xl text-sm"><i class="fa-solid fa-rotate-left mr-2"></i>Sacar por error / prueba</button>
-            <button @click="verDetallePorAfiString(repTrabajo.afi)" class="w-full border font-bold py-2.5 rounded-xl text-slate-600 hover:bg-white"><i class="fa-solid fa-id-card mr-2"></i>Perfil del equipo</button>
+            <button v-if="!esTotem" @click="verDetallePorAfiString(repTrabajo.afi)" class="w-full border font-bold py-2.5 rounded-xl text-slate-600 hover:bg-white"><i class="fa-solid fa-id-card mr-2"></i>Perfil del equipo</button>
           </div>
         </div>
 
@@ -422,8 +422,8 @@ export default /* html */ `
                 <p class="text-xs text-slate-500 font-semibold">Todo se guarda solo al escribir. Toca el cuadro grande para marcar una actividad terminada.</p>
               </div>
               <div class="flex gap-2">
-                <button @click="imprimirOT(otSel, 'formato')" title="OT para entregar al mecánico: actividades y repuestos, el resto en blanco" class="px-3 py-2 rounded-xl border font-bold text-sm text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-print mr-1"></i>Imprimir OT (formato)</button>
-                <button @click="imprimirOT(otSel, 'respondida')" title="OT con todo lo que respondió el mecánico" class="px-3 py-2 rounded-xl border font-bold text-sm text-emerald-700 hover:bg-emerald-50"><i class="fa-solid fa-print mr-1"></i>Imprimir OT respondida</button>
+                <button v-if="!esTotem" @click="imprimirOT(otSel, 'formato')" title="OT para entregar al mecánico: actividades y repuestos, el resto en blanco" class="px-3 py-2 rounded-xl border font-bold text-sm text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-print mr-1"></i>Imprimir OT (formato)</button>
+                <button v-if="!esTotem" @click="imprimirOT(otSel, 'respondida')" title="OT con todo lo que respondió el mecánico" class="px-3 py-2 rounded-xl border font-bold text-sm text-emerald-700 hover:bg-emerald-50"><i class="fa-solid fa-print mr-1"></i>Imprimir OT respondida</button>
                 <button v-if="isAdmin" @click="abrirFormatoOT(otSel)" class="px-3 py-2 rounded-xl border font-bold text-sm text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>Formato OT</button>
               </div>
             </div>
@@ -434,7 +434,7 @@ export default /* html */ `
               <template v-for="(a, i) in otSel.actividades" :key="'a' + i">
                 <div v-if="a.descripcion && a.descripcion.trim()" :class="['rounded-2xl border-2 p-3 transition', actividadHecha(a) ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200']">
                   <div class="flex items-center gap-3">
-                    <button @click="alternarActividad(otSel, i)" :disabled="!puedeEditar"
+                    <button @click="alternarActividad(otSel, i)" :disabled="!editaTaller"
                       :class="['w-14 h-14 shrink-0 rounded-xl border-4 flex items-center justify-center text-3xl transition', actividadHecha(a) ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-slate-300 text-transparent hover:border-emerald-400']">
                       <i class="fa-solid fa-check"></i>
                     </button>

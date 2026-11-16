@@ -33,6 +33,7 @@ export default /* html */ `
             <option value="areas">Permisos por área</option>
             <option value="terreno">Técnico TERRENO (app del celular)</option>
             <option value="taller">Técnico TALLER (app del celular)</option>
+            <option value="totem">TÓTEM del taller (PC fijo, pantalla completa)</option>
             <option value="supervisor_mec">Supervisor de mecánicos (firma)</option>
             <option value="general">Admin general (todo)</option>
           </select>
@@ -41,6 +42,7 @@ export default /* html */ `
         <datalist id="cfg-cargos"><option v-for="c in CARGOS_SUGERIDOS" :key="c" :value="c"></option></datalist>
         <div v-if="nuevoUsuario.tipo === 'terreno'" class="sm:col-span-4 bg-lime-50 border border-lime-200 rounded-lg p-2 text-[11px] text-lime-900"><i class="fa-solid fa-mobile-screen mr-1"></i><b>TERRENO</b>: entra directo a la app del celular · equipos, horómetros e intervenciones con firma. No ve el resto del sistema.</div>
         <div v-if="nuevoUsuario.tipo === 'taller'" class="sm:col-span-4 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] text-amber-900"><i class="fa-solid fa-warehouse mr-1"></i><b>TALLER</b>: app del celular con equipos, <b>naves del programa de reparación</b> (cartas, inspección, OT) y <b>mantención</b> (pauta, bloqueo, ART). Horómetro solo de equipos en nave.</div>
+        <div v-if="nuevoUsuario.tipo === 'totem'" class="sm:col-span-4 bg-slate-100 border border-slate-300 rounded-lg p-2 text-[11px] text-slate-800"><i class="fa-solid fa-tv mr-1"></i><b>TÓTEM</b>: para el PC/pantalla fija del taller. Solo muestra las <b>naves del Programa de Reparación</b> (ingresar equipos, inspección, actividades) en <b>pantalla completa</b>. Para salir pide la <b>contraseña del tótem</b> (más abajo). No se cierra por inactividad.</div>
         <div v-if="nuevoUsuario.tipo === 'supervisor_mec'" class="sm:col-span-4 bg-lime-50 border border-lime-200 rounded-lg p-2 text-[11px] text-lime-900"><i class="fa-solid fa-signature mr-1"></i>Ve el área <b>Mecánicos</b> del menú para revisar y firmar las intervenciones. Además tiene los niveles por área que elijas abajo.</div>
         <div v-if="nuevoUsuario.tipo === 'areas'" class="sm:col-span-4">
           <label class="block font-bold mb-1">Perfil de acceso (opcional)</label>
@@ -84,7 +86,7 @@ export default /* html */ `
             </td>
             <td class="p-2.5">
               <select v-if="esAdminGeneral" :value="tipoUsuario(u)" @change="cambiarTipoUsuario(u, $event.target.value)"
-                :class="['p-1.5 border rounded font-bold text-[11px]', tipoUsuario(u) === 'general' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : tipoUsuario(u) === 'taller' ? 'bg-amber-50 text-amber-900 border-amber-300' : tipoUsuario(u) === 'terreno' ? 'bg-lime-50 text-lime-900 border-lime-300' : 'bg-white']">
+                :class="['p-1.5 border rounded font-bold text-[11px]', tipoUsuario(u) === 'general' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : tipoUsuario(u) === 'taller' ? 'bg-amber-50 text-amber-900 border-amber-300' : tipoUsuario(u) === 'totem' ? 'bg-slate-800 text-white border-slate-900' : tipoUsuario(u) === 'terreno' ? 'bg-lime-50 text-lime-900 border-lime-300' : 'bg-white']">
                 <option v-for="t in TIPOS_USUARIO" :key="t.key" :value="t.key">{{ t.label }}</option>
               </select>
               <span v-else class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700">{{ (TIPOS_USUARIO.find(t => t.key === tipoUsuario(u)) || {}).label }}</span>
@@ -117,6 +119,25 @@ export default /* html */ `
       </table>
     </div>
     <p v-if="esAdminGeneral" class="text-[11px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>Los cambios de permisos se guardan apenas eliges una opción. El usuario los ve aplicados al volver a iniciar sesión o actualizar la página.</p>
+  </div>
+
+  <!-- TÓTEM DEL TALLER · contraseña (2026-11-16) -->
+  <div v-if="esAdminGeneral" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+      <div>
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-tv text-slate-700"></i> Tótem del taller · contraseña</h3>
+        <p class="text-xs text-slate-500">Los usuarios tipo <b>Tótem taller</b> ven solo las naves en pantalla completa. Esta contraseña permite salir de pantalla completa o cerrar la sesión del tótem. Se guarda cifrada (nadie puede verla, solo cambiarla).</p>
+      </div>
+      <span v-if="infoClaveTotem && infoClaveTotem.definida" class="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded"><i class="fa-solid fa-check mr-1"></i>Definida{{ infoClaveTotem.updated_by ? ' por ' + infoClaveTotem.updated_by : '' }}{{ infoClaveTotem.updated_at ? ' · ' + new Date(infoClaveTotem.updated_at).toLocaleString('es-CL') : '' }}</span>
+      <span v-else-if="infoClaveTotem && !faltaSqlTotem" class="text-xs bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded">Sin contraseña</span>
+    </div>
+    <div v-if="faltaSqlTotem" class="bg-amber-50 border border-amber-300 text-amber-900 rounded-lg p-3 text-xs"><i class="fa-solid fa-database mr-1"></i> Falta ejecutar <b>sql/totem.sql</b> en Supabase (SQL Editor → Run).</div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs items-end">
+      <div><label class="block font-bold mb-1">Nueva contraseña del tótem</label><input type="password" v-model="claveTotem.nueva" autocomplete="new-password" class="w-full p-2 border rounded-lg bg-white" placeholder="Mín. 4 caracteres"></div>
+      <div><label class="block font-bold mb-1">Repetir contraseña</label><input type="password" v-model="claveTotem.repetir" autocomplete="new-password" @keyup.enter="guardarClaveTotemUI" class="w-full p-2 border rounded-lg bg-white"></div>
+      <button @click="guardarClaveTotemUI" class="bg-slate-900 hover:bg-slate-800 text-white font-bold p-2 rounded-lg shadow"><i class="fa-solid fa-key mr-1"></i>{{ infoClaveTotem && infoClaveTotem.definida ? 'Cambiar contraseña' : 'Guardar contraseña' }}</button>
+    </div>
+    <p class="text-[11px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>El navegador siempre deja salir de pantalla completa con <b>Esc</b>: el tótem queda tapado hasta tocar la pantalla y volver. Para bloqueo total abre Chrome en <b>modo quiosco</b> (ver LEEME).</p>
   </div>
 
   <!-- PERFILES DE ACCESO -->

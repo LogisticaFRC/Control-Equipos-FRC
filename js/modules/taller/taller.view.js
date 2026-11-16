@@ -18,7 +18,9 @@ export default {
   name: 'TallerView',
   components: { HallazgosAdmin },
   template,
-  setup() {
+  // totem: PC fijo del taller (usuario tipo "Tótem"): solo las naves, sin pantalla completa manual (2026-11-16)
+  props: { totem: { type: Boolean, default: false } },
+  setup(props) {
     // ---------- Modales ----------
     const naveIngreso = ref(null);          // nave vacía donde se va a ingresar un equipo
     const afiNuevo = ref('');               // "Equipo nuevo (agregar a nave)"
@@ -34,6 +36,10 @@ export default {
     const nuevoProblema = ref('');           // "Enviar nuevo problema para OT"
     const textoProblema = ref({});           // Admin: texto corregido antes de agregarlo a la OT
     const pantallaCompleta = ref(Boolean(document.fullscreenElement));
+
+    /** Ingresar equipos / marcar actividades: editor de Operaciones o mecánico de taller (incluye tótem). */
+    const editaTaller = computed(() => comunes().puedeEditar.value || S.esMecanicoTaller());
+    const esTotem = computed(() => props.totem);
 
     const hayModal = computed(() => Boolean(naveIngreso.value || repTrabajo.value || repSalida.value));
 
@@ -139,7 +145,7 @@ export default {
 
     return {
       quitarOTSel, eliminarOTSel,
-      ...comunes(), ...S,
+      ...comunes(), ...S, editaTaller, esTotem,
       folioSugerido, imprimirOT, ESTILO_ESTADO_OT, ETIQUETA_ESTADO_OT, estadoOT, N_ACTIVIDADES, formatDateForDisplay,
       naveIngreso, afiNuevo, repTrabajo, otSel, nuevaAct, formOT, repSalida, formSalida, afiSinProg, naveDestino, ocupado,
       pantallaCompleta, alternarPantallaCompleta, actualizarTodo, horaActualizacion,

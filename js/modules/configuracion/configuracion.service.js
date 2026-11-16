@@ -143,7 +143,7 @@ export const crearNuevoUsuario = async () => {
   const general = u.tipo === 'general';
   // Mecánico: solo la app móvil · Supervisor de mecánicos: área Mecánicos = admin + sus niveles por área
   const permisos = general ? {}
-    : (u.tipo === 'terreno' || u.tipo === 'taller' || u.tipo === 'mecanico') ? { mecanicos: 'subadmin', mec_modo: u.tipo === 'taller' ? 'taller' : 'terreno' }
+    : (u.tipo === 'terreno' || u.tipo === 'taller' || u.tipo === 'totem' || u.tipo === 'mecanico') ? { mecanicos: 'subadmin', mec_modo: (u.tipo === 'taller' || u.tipo === 'totem') ? u.tipo : 'terreno' }
     : u.tipo === 'supervisor_mec' ? { ...limpiarPermisos(u.permisos), mecanicos: 'admin' }
     : (u.perfilId ? permisosDesdeModulos(perfilPorId(u.perfilId)?.modulos || {}, perfilPorId(u.perfilId)) : limpiarPermisos(u.permisos));
   if (String(u.cargo || '').trim()) permisos.cargo = String(u.cargo).trim();
@@ -171,7 +171,8 @@ export const TIPOS_USUARIO = [
   { key: 'general', label: 'Admin general' },
   { key: 'areas', label: 'Por área' },
   { key: 'terreno', label: 'Terreno (app celular)' },
-  { key: 'taller', label: 'Taller (app celular)' }
+  { key: 'taller', label: 'Taller (app celular)' },
+  { key: 'totem', label: 'Tótem taller (pantalla fija)' }
 ];
 export const tipoUsuario = (u) => (u.rol === 'admin' ? 'general' : (modoTecnicoDe(u) || 'areas'));
 /** Cargos sugeridos (se puede escribir otro). */
@@ -196,9 +197,12 @@ export const cambiarTipoUsuario = async (u, tipo) => {
   }
   if (tipo === 'general' && !confirm(`¿Dar a ${u.usuario} acceso de Admin general (todo el sistema, incluidos usuarios)?`)) return cargarUsuariosDesdeSupabase();
   const cargo = cargoDe(u);
-  if (tipo === 'terreno' || tipo === 'taller') {
+  if (tipo === 'terreno' || tipo === 'taller' || tipo === 'totem') {
     const ya = modoTecnicoDe(u);
-    if (!ya && !confirm(`¿Pasar a ${u.usuario} a técnico de ${tipo.toUpperCase()}?\nEntrará directo a la app del celular y dejará de ver el resto del sistema (se quitan sus permisos por área).`)) return cargarUsuariosDesdeSupabase();
+    const msg = tipo === 'totem'
+      ? `¿Pasar a ${u.usuario} a TÓTEM del taller?\nSolo verá las naves del Programa de Reparación en pantalla completa; para salir pedirá la contraseña del tótem (Configuración → Usuarios).`
+      : `¿Pasar a ${u.usuario} a técnico de ${tipo.toUpperCase()}?\nEntrará directo a la app del celular y dejará de ver el resto del sistema (se quitan sus permisos por área).`;
+    if (!ya && !confirm(msg)) return cargarUsuariosDesdeSupabase();
     const permisos = { mecanicos: 'subadmin', mec_modo: tipo, ...(cargo ? { cargo } : {}) };
     const { error } = await supabaseClient.from(TABLAS.USUARIOS).update({ rol: 'lectura', permisos }).eq('usuario', u.usuario);
     if (error) avisarError('cambiar el tipo de usuario', error);
@@ -348,6 +352,7 @@ export const mapaModulosUsuario = (u) => {
 export const perfilDeUsuario = (u) => { const p = permisosDe(u); return p && p._perfil ? p._perfil : null; };
 export const resumenAcceso = (u) => {
   if (u.rol === 'admin') return 'Todo';
+  if (modoTecnicoDe(u) === 'totem') return 'TÓTEM taller · solo naves, pantalla fija';
   if (modoTecnicoDe(u)) return `App celular · ${modoTecnicoDe(u) === 'taller' ? 'TALLER' : 'TERRENO'}`;
   const m = modulosDe(u);
   if (!m) return 'Por área (ve todo)';

@@ -8,7 +8,7 @@
 // - Si se cierra sesión en una pestaña del navegador, se cierra en todas.
 // - El perfil (rol y permisos) se lee siempre desde la tabla `usuarios`.
 // =====================================================================
-import { usuarioActivo, currentTab } from './store.js';
+import { usuarioActivo, currentTab, esTotemDe } from './store.js';
 import { TABS_VALIDAS, TAB_INICIO } from './menu.js';
 import { supabaseClient } from './supabase.js';
 import { TABLAS } from './tablas.js';
@@ -33,7 +33,7 @@ export const avisoSesion = ref('');
 /** true → se muestra (obligatorio) el cuadro para cambiar la contraseña. */
 export const debeCambiarClave = ref(false);
 
-export const APP_VERSION = '2026-11-16 ot-texto-largo';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
+export const APP_VERSION = '2026-11-16 totem';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
 
 // ---------- Pequeño almacenamiento tolerante a fallos ----------
 const get = (st, k) => { try { return st.getItem(k); } catch (e) { return null; } };
@@ -85,6 +85,8 @@ const registrarActividad = () => {
 
 const revisarInactividad = () => {
   if (!usuarioActivo.value) return;
+  // TÓTEM del taller: pantalla fija, nunca se cierra por inactividad (se mantiene "activa")
+  if (esTotemDe(usuarioActivo.value)) { escribirActividad(Date.now()); return; }
   if (Date.now() - leerActividad() >= INACTIVIDAD_MS) {
     cerrarSesion(AVISO_INACTIVIDAD);
   }

@@ -1,7 +1,7 @@
 // =====================================================================
 // MAIN · Punto de entrada: arma la app, el header/menú y registra los módulos
 // =====================================================================
-import { usuarioActivo, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, cargarDatosDesdeSupabase, puedeVerModulo, cargoDe } from './core/store.js';
+import { usuarioActivo, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, cargarDatosDesdeSupabase, puedeVerModulo, cargoDe, esTotemDe } from './core/store.js';
 
 // Módulos (pantallas)
 import DashboardView from './modules/dashboard/dashboard.view.js';
@@ -28,6 +28,7 @@ import CostosView from './modules/costos/costos.view.js';
 import RecordatoriosView from './modules/recordatorios/recordatorios.view.js';
 import MotoresView from './modules/motores/motores.view.js';
 import MecanicoApp from './modules/mecanicos/app.view.js';
+import TotemView from './modules/taller/totem.view.js';
 import { InstalarApp, AvisoVersion } from './core/instalar-app.js';   // botón Instalar app + aviso de versión nueva
 import MecanicosPanelView from './modules/mecanicos/panel.view.js';
 import { esModoMecanico, esSupervisorMec, vistaAppForzada } from './modules/mecanicos/mecanicos.service.js';
@@ -71,6 +72,8 @@ const template = /* html */ `
   </div>
   <login-view v-else-if="!usuarioActivo"></login-view>
   <!-- MECÁNICO: plataforma móvil propia (modules/mecanicos/app.view.js) -->
+  <!-- TÓTEM del taller: solo las naves, pantalla completa bloqueada con contraseña (modules/taller/totem.view.js) -->
+  <totem-view v-else-if="esTotem" :salir="salir"></totem-view>
   <mecanico-app v-else-if="esModoMecanico" :salir="salir"></mecanico-app>
 
   <template v-else>
@@ -242,6 +245,7 @@ const app = createApp({
     const switchTab = (tab) => { if (!puedeVerModulo(tab)) return; currentTab.value = tab; menuAbierto.value = false; };
     // "Salir" apretado a mano: deja de avisar las tareas en este navegador
     const salir = () => { borrarCacheAvisos(); logout(); };
+    const esTotem = computed(() => esTotemDe(usuarioActivo.value));
     iniciarMotorAvisos();   // Mis Tareas: campana, notificaciones de Windows, sonido
 
     const onKey = (e) => { if (e.key === 'Escape') menuAbierto.value = false; };
@@ -265,7 +269,7 @@ const app = createApp({
 
     return {
       gruposDeArea, cargoDe, usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: areasVisibles, switchTab,
-      menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, salir, headerStyle, esModoMecanico, esSupervisorMec, vistaAppForzada, cerrarVistaApp, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
+      menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, salir, esTotem, headerStyle, esModoMecanico, esSupervisorMec, vistaAppForzada, cerrarVistaApp, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       abrirCambioClave, showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };
   }
@@ -293,6 +297,7 @@ app.component('CostosView', CostosView);
 app.component('RecordatoriosView', RecordatoriosView);
 app.component('MotoresView', MotoresView);
 app.component('MecanicoApp', MecanicoApp);
+app.component('TotemView', TotemView);
 app.component('InstalarApp', InstalarApp);     // botón Instalar app / Descargar APK (login y app mecánicos)
 app.component('AvisoVersion', AvisoVersion);   // aviso de versión nueva después de un Push                   // app móvil de mecánicos
 app.component('MecanicosPanelView', MecanicosPanelView);     // Mecánicos → intervenciones y firmas (supervisor)                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)

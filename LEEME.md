@@ -884,3 +884,14 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Botones en REPARAR (Taller), en la lista de OT y en el editor de OT.
 - Al crear/agregar actividades (desde la inspección, faltantes o a mano) la F. INICIO queda en blanco: la pone el mecánico (al marcar la actividad terminada se completa sola si estaba vacía).
 - (2026-11-16) Texto largo en la OT impresa: `ajusteTexto` en htmlHojaOT achica la letra para que quepa en una línea (mín. 7 px) y, si aún no cabe, lo pasa a 2 líneas con letra más chica. Aplica a todas las celdas con datos (descripción, ejecutante, repuestos, etc.).
+
+## 2026-11-16 · TÓTEM del taller (pantalla fija)
+- Nuevo tipo de usuario **Tótem taller (pantalla fija)** (Configuración → Usuarios → Tipo). Se guarda como `permisos = { mecanicos: 'subadmin', mec_modo: 'totem', cargo }`.
+- Al entrar, ese usuario ve SOLO las **naves del Programa de Reparación** (`taller/totem.view.js` → `<taller-view totem>`): ingresar equipos, REPARAR, inspección del equipo y marcar actividades. Sin menú, sin resumen, sin lista de OT, sin imprimir, sin sacar equipos ni botones de Admin.
+- Pantalla completa: al abrir muestra "Toca la pantalla para iniciar" (el navegador exige un toque). Si alguien sale con **Esc**, la pantalla queda tapada hasta volver a pantalla completa.
+- Botón **Bloqueado** (arriba a la derecha): pide la **contraseña del tótem**. Con la clave correcta: salir de pantalla completa, volver, bloquear o **cerrar sesión**. Se vuelve a bloquear solo a los 5 min.
+- La contraseña la define el Admin general en Configuración → Usuarios → **Tótem del taller · contraseña**. Se guarda cifrada (bcrypt): **ejecutar `sql/totem.sql`** en Supabase (crea `bd_totem_clave` y las funciones `frc_totem_set_clave`, `frc_totem_verificar`, `frc_totem_info`).
+- El tótem no se cierra por inactividad (sesion.js). Bloquea clic derecho, F5/F11/F12, Ctrl+R/P/W… y avisa antes de cerrar la pestaña.
+- Bloqueo total recomendado: abrir Chrome en **modo quiosco** en el PC del taller, ej. acceso directo:
+  `"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk https://logisticafrc.github.io/Control-Equipos-FRC/`
+  (en quiosco no se puede salir con Esc; para cerrarlo: Alt+F4 o el botón Cerrar sesión del tótem).
