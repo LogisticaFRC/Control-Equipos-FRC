@@ -113,12 +113,12 @@ export default {
 
     <template v-for="g in grupos" :key="g.key">
       <div v-if="g.cartas.length" class="lbl pt-2">{{ g.titulo }} ({{ g.cartas.length }})</div>
-      <button v-for="c in g.cartas" :key="c.key" @click="abrir(c)" class="w-full bg-white rounded-2xl shadow-sm overflow-hidden text-left active:scale-[.99] transition flex">
+      <button v-for="c in g.cartas" :key="c.key" @click="abrir(c)" :class="['w-full bg-white rounded-2xl shadow-sm overflow-hidden text-left active:scale-[.99] transition flex', enNave(c) ? 'border-l-8 ' + S.colorNave(c.rep.nave).borde : '']">
         <img :src="S.fotoDe(c.afi)" class="w-24 object-cover bg-slate-200 shrink-0" alt="">
         <div class="p-3 flex-1 min-w-0 space-y-1">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0"><div class="font-black text-[#1f4d3a] leading-tight">AFI {{ c.afi }}</div><div class="text-[11px] text-slate-500 truncate">{{ S.descEquipo(c.afi) }}</div></div>
-            <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', S.ESTILO_ESTADO[estadoCarta(c)]]">{{ etiquetaCarta(c) }}</span>
+            <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', enNave(c) ? S.colorNave(c.rep.nave).chip : S.ESTILO_ESTADO[estadoCarta(c)]]">{{ etiquetaCarta(c) }}</span>
           </div>
           <div class="flex flex-wrap gap-1 text-[10px] font-bold">
             <span v-for="o in (c.rep ? S.otsDeRep(c.rep) : [])" :key="o.id" class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800">OT {{ o.folio }} · {{ S.progresoRep(c.rep).pct }}%</span>

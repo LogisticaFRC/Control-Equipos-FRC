@@ -850,3 +850,7 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 
 ## 2026-11-16 · NAVE 5
 - `NAVES` (programas.service.js) ahora incluye 'NAVE 5' → aparece en el Taller (tótem y app mecánicos), en Asignar equipo del programa de reparación, en la vista por naves / Gantt del programa y en el Excel. Sin SQL (la nave es texto). Total taller: 5 naves × 4 equipos = 20.
+
+## 2026-11-16 · Naves con color y tarjetas chicas
+- `colorNave(nave)` en taller.service.js: NAVE 1 ámbar · NAVE 2 celeste · NAVE 3 violeta · NAVE 4 verde · NAVE 5 rojo (borde + cabecera; también en las cartas de la app de mecánicos).
+- 1 equipo en la nave → tarjeta grande. 2 a 4 equipos → tarjetas chicas en 2 columnas (foto, AFI, OT, avance, REPARAR / listo ✓ / sacar).

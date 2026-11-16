@@ -37,15 +37,16 @@ export default /* html */ `
     <div class="xl:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-5">
       <template v-for="nave in NAVES" :key="nave">
 
-        <!-- Nave OCUPADA (hasta {{ CAPACIDAD_NAVE }} equipos por nave · 2026-11-16) -->
-        <div v-if="repsEnNave(nave).length" class="bg-white rounded-3xl shadow-lg border-2 border-amber-400 overflow-hidden flex flex-col">
-          <div class="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
-            <span class="text-2xl font-black tracking-wide"><i class="fa-solid fa-warehouse text-amber-400 mr-2"></i>{{ nave }}</span>
-            <span class="text-xs font-bold bg-amber-500 text-slate-950 px-3 py-1 rounded-full uppercase">{{ repsEnNave(nave).length }}/{{ CAPACIDAD_NAVE }} equipo{{ repsEnNave(nave).length === 1 ? '' : 's' }}</span>
+        <!-- Nave OCUPADA (hasta {{ CAPACIDAD_NAVE }} equipos · cada nave con su color · 2026-11-16) -->
+        <div v-if="repsEnNave(nave).length" :class="['bg-white rounded-3xl shadow-lg border-4 overflow-hidden flex flex-col', colorNave(nave).borde]">
+          <div :class="['text-white px-5 py-3 flex items-center justify-between', colorNave(nave).cab]">
+            <span class="text-2xl font-black tracking-wide"><i class="fa-solid fa-warehouse mr-2 opacity-80"></i>{{ nave }}</span>
+            <span class="text-xs font-black bg-white/90 text-slate-900 px-3 py-1 rounded-full uppercase">{{ repsEnNave(nave).length }}/{{ CAPACIDAD_NAVE }} equipo{{ repsEnNave(nave).length === 1 ? '' : 's' }}</span>
           </div>
-          <div v-for="rep in repsEnNave(nave)" :key="rep.id" class="flex flex-col border-b-8 border-slate-100 last:border-b-0">
+          <!-- 1 equipo: tarjeta grande -->
+          <template v-if="repsEnNave(nave).length === 1"><div v-for="rep in repsEnNave(nave)" :key="rep.id" class="flex flex-col flex-grow">
             <div class="relative cursor-pointer" @click="abrirReparar(rep)" title="Abrir la OT para reparar">
-              <img :src="fotoDe(rep.afi)" :alt="'AFI ' + rep.afi" :class="['w-full object-cover bg-slate-800', repsEnNave(nave).length > 1 ? 'h-36' : 'h-56']">
+              <img :src="fotoDe(rep.afi)" :alt="'AFI ' + rep.afi" class="w-full h-56 object-cover bg-slate-800">
               <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent px-5 pt-10 pb-3">
                 <p class="text-white text-3xl font-black drop-shadow">AFI {{ rep.afi }}</p>
                 <p class="text-slate-200 text-sm font-semibold truncate">{{ descEquipo(rep.afi) }}</p>
@@ -81,6 +82,37 @@ export default /* html */ `
               <button v-if="puedeEditar" @click="abrirSalida(rep, true)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-black py-3.5 rounded-2xl shadow"><i class="fa-solid fa-circle-check mr-2"></i>EQUIPO LISTO / REPARADO</button>
               <button v-if="isAdmin" @click="sacarError(rep)" class="w-full text-xs font-bold text-slate-500 hover:text-slate-800 border border-dashed border-slate-300 hover:border-slate-500 rounded-xl py-2"><i class="fa-solid fa-rotate-left mr-1"></i>Sacar por error / prueba (Admin)</button>
             </div>
+          </div></template>
+          <!-- 2 a 4 equipos: tarjetas chicas en 2 columnas -->
+          <div v-if="repsEnNave(nave).length > 1" class="grid grid-cols-2 gap-3 p-3 flex-grow content-start">
+            <div v-for="rep in repsEnNave(nave)" :key="rep.id" :class="['rounded-2xl border-2 bg-white overflow-hidden flex flex-col shadow-sm', colorNave(nave).suave]">
+              <div class="relative cursor-pointer" @click="abrirReparar(rep)" title="Abrir REPARAR">
+                <img :src="fotoDe(rep.afi)" :alt="'AFI ' + rep.afi" class="w-full h-24 object-cover bg-slate-800">
+                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent px-2.5 pt-6 pb-1.5">
+                  <p class="text-white text-lg font-black leading-tight drop-shadow">AFI {{ rep.afi }}</p>
+                  <p class="text-slate-200 text-[10px] font-semibold truncate">{{ descEquipo(rep.afi) }}</p>
+                </div>
+              </div>
+              <div class="p-2.5 space-y-2 flex-grow flex flex-col">
+                <div class="flex flex-wrap gap-1 text-[10px] font-bold">
+                  <span v-for="o in otsDeRep(rep)" :key="o.id" class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-mono">OT {{ o.folio }}</span>
+                  <span v-if="!otsDeRep(rep).length" class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">Sin OT</span>
+                  <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600"><i class="fa-regular fa-clock mr-0.5"></i>{{ tiempoEnNave(rep) }}</span>
+                </div>
+                <div>
+                  <div class="flex items-end justify-between"><span class="text-[10px] font-bold uppercase text-slate-500">Avance</span><span :class="['text-xl font-black leading-none', textoAvance(progresoRep(rep).pct)]">{{ progresoRep(rep).pct }}%</span></div>
+                  <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden mt-1"><div :class="['h-2.5 rounded-full transition-all duration-700', colorAvance(progresoRep(rep).pct)]" :style="{ width: progresoRep(rep).pct + '%' }"></div></div>
+                </div>
+                <div v-if="problemasPendientesRep(rep).length" class="text-[10px] bg-violet-100 text-violet-900 rounded-md px-1.5 py-1 font-bold"><i class="fa-solid fa-bell mr-0.5"></i>{{ problemasPendientesRep(rep).length }} falla(s) esperando OT</div>
+                <div v-else-if="!tieneInspeccion(rep) && !otsDeRep(rep).length" class="text-[10px] bg-emerald-50 text-emerald-900 rounded-md px-1.5 py-1 font-bold"><i class="fa-solid fa-clipboard-list mr-0.5"></i>Falta inspección</div>
+                <div class="flex gap-1.5 mt-auto pt-1">
+                  <button @click="abrirReparar(rep)" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black py-2 rounded-xl"><i class="fa-solid fa-screwdriver-wrench mr-1"></i>REPARAR</button>
+                  <button v-if="puedeEditar" @click="abrirSalida(rep, true)" title="Equipo listo / reparado" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-2.5 rounded-xl"><i class="fa-solid fa-circle-check"></i></button>
+                  <button v-if="puedeEditar" @click="abrirSalida(rep)" title="Sacar de la nave" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-2.5 rounded-xl"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+                <button v-if="isAdmin" @click="sacarError(rep)" class="text-[10px] font-bold text-slate-400 hover:text-slate-700"><i class="fa-solid fa-rotate-left mr-0.5"></i>Sacar por error (Admin)</button>
+              </div>
+            </div>
           </div>
           <!-- Cupo libre en la nave -->
           <div v-if="cuposNave(nave) > 0 && puedeEditar && !faltaTablaTaller" class="p-4 border-t-2 border-dashed border-slate-200 bg-slate-50 space-y-2">
@@ -90,8 +122,8 @@ export default /* html */ `
         </div>
 
         <!-- Nave VACÍA -->
-        <div v-else class="rounded-3xl border-4 border-dashed border-slate-300 bg-white/70 min-h-[420px] flex flex-col items-center justify-center p-6 text-center gap-3">
-          <span class="text-3xl font-black text-slate-400"><i class="fa-solid fa-warehouse mr-2"></i>{{ nave }}</span>
+        <div v-else :class="['rounded-3xl border-4 border-dashed bg-white/70 min-h-[420px] flex flex-col items-center justify-center p-6 text-center gap-3', colorNave(nave).vacia]">
+          <span :class="['text-3xl font-black', colorNave(nave).txt]"><i class="fa-solid fa-warehouse mr-2"></i>{{ nave }}</span>
           <span class="text-sm font-bold uppercase text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">Disponible</span>
           <div v-if="recomendadoParaNave(nave)" class="mt-2 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center gap-3 text-left max-w-sm">
             <img :src="fotoDe(recomendadoParaNave(nave).item.afi)" class="w-20 h-14 rounded-lg object-cover bg-slate-200" alt="">

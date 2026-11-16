@@ -103,6 +103,15 @@ export const repsEnNave = (nave) => dbReparaciones.value.filter(r => r.estado ==
   .sort((a, b) => String(a.fecha_ingreso || '').localeCompare(String(b.fecha_ingreso || '')));
 /** Primer equipo de la nave (compatibilidad). */
 export const repEnNave = (nave) => repsEnNave(nave)[0] || null;
+/** Color de cada nave (para distinguirlas en el Taller y en la app). */
+const COLORES_NAVE = {
+  'NAVE 1': { borde: 'border-amber-400', cab: 'bg-amber-500', txt: 'text-amber-600', suave: 'border-amber-200', chip: 'bg-amber-100 text-amber-900 border-amber-300', vacia: 'border-amber-300' },
+  'NAVE 2': { borde: 'border-sky-400', cab: 'bg-sky-600', txt: 'text-sky-600', suave: 'border-sky-200', chip: 'bg-sky-100 text-sky-900 border-sky-300', vacia: 'border-sky-300' },
+  'NAVE 3': { borde: 'border-violet-400', cab: 'bg-violet-600', txt: 'text-violet-600', suave: 'border-violet-200', chip: 'bg-violet-100 text-violet-900 border-violet-300', vacia: 'border-violet-300' },
+  'NAVE 4': { borde: 'border-emerald-400', cab: 'bg-emerald-600', txt: 'text-emerald-600', suave: 'border-emerald-200', chip: 'bg-emerald-100 text-emerald-900 border-emerald-300', vacia: 'border-emerald-300' },
+  'NAVE 5': { borde: 'border-rose-400', cab: 'bg-rose-600', txt: 'text-rose-600', suave: 'border-rose-200', chip: 'bg-rose-100 text-rose-900 border-rose-300', vacia: 'border-rose-300' }
+};
+export const colorNave = (nave) => COLORES_NAVE[String(nave || '').toUpperCase()] || { borde: 'border-slate-400', cab: 'bg-slate-700', txt: 'text-slate-600', suave: 'border-slate-200', chip: 'bg-slate-100 text-slate-800 border-slate-300', vacia: 'border-slate-300' };
 /** Cupos libres que le quedan a la nave. */
 export const cuposNave = (nave) => Math.max(0, CAPACIDAD_NAVE - repsEnNave(nave).length);
 /** Total de equipos dentro de las naves. */
