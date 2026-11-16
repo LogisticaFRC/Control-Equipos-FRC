@@ -1,0 +1,2 @@
+Coloca aqui el APK generado en pwabuilder.com con el nombre FRC-Control.apk
+y haz Commit + Push. En el login aparecera el boton "Descargar APK (Android)".

@@ -279,6 +279,7 @@ export default {
         </button>
         <button v-if="S.equiposApp.value.length > limite" @click="limite += 40" class="w-full py-3 rounded-2xl bg-white font-bold text-emerald-700 shadow-sm">Ver más ({{ S.equiposApp.value.length - limite }})</button>
         <div v-if="!S.equiposApp.value.length" class="text-center text-slate-400 py-10">No hay equipos con esa búsqueda.</div>
+        <instalar-app v-if="!preview"></instalar-app>
       </section>
 
       <section v-show="tab === 'registros'" class="p-4 space-y-3">

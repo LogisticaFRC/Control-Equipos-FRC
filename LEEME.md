@@ -839,3 +839,5 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - `manifest.json` + `sw.js` + `icons/` + metas en index.html → se puede instalar en el celular (Chrome: ⋮ → Instalar app · iPhone/Safari: Compartir → Agregar a inicio).
 - sw.js = "primero la red": con internet siempre carga lo último del Push; sin señal muestra la copia guardada. No toca Supabase ni CDN.
 - APK: con la PWA publicada, pwabuilder.com → pegar la URL → Android → descargar APK (sigue siendo la misma web; no hay que rehacerlo con cada cambio).
+- Botón **Instalar app** (login y app de mecánicos, `js/core/instalar-app.js` → `<instalar-app>`): Android/PC con Chrome o Edge instala con 1 toque; en iPhone muestra cómo hacerlo. Si existe `descargas/FRC-Control.apk` en el repo, aparece "Descargar APK (Android)".
+- **Aviso de versión nueva** (`<aviso-version>`): cada 10 min y al volver a la app compara APP_VERSION de js/core/sesion.js; si hay Push nuevo muestra "Hay una versión nueva · Actualizar".

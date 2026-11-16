@@ -36,6 +36,7 @@ export default /* html */ `
         <i :class="['fa-solid', ingresando ? 'fa-spinner fa-spin' : 'fa-right-to-bracket']"></i> {{ ingresando ? 'Ingresando...' : 'Iniciar Sesión' }}
       </button>
     </form>
+    <instalar-app></instalar-app>
     <div class="text-[11px] text-slate-400 font-medium">Acceso protegido - Sistema Operativo FRC · <span class="text-slate-300">v{{ APP_VERSION }}</span></div>
   </div>
 </div>

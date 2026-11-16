@@ -28,6 +28,7 @@ import CostosView from './modules/costos/costos.view.js';
 import RecordatoriosView from './modules/recordatorios/recordatorios.view.js';
 import MotoresView from './modules/motores/motores.view.js';
 import MecanicoApp from './modules/mecanicos/app.view.js';
+import { InstalarApp, AvisoVersion } from './core/instalar-app.js';   // botón Instalar app + aviso de versión nueva
 import MecanicosPanelView from './modules/mecanicos/panel.view.js';
 import { esModoMecanico, esSupervisorMec, vistaAppForzada } from './modules/mecanicos/mecanicos.service.js';
 import { TareaItem, RecordatoriosCampana, RecordatoriosAvisos } from './modules/recordatorios/avisos.view.js';
@@ -195,6 +196,8 @@ const template = /* html */ `
     <!-- Vista previa de la app de mecánicos (panel MECÁNICOS → "Ver la app como mecánico") -->
     <div v-if="vistaAppForzada" class="fixed inset-0 z-[75] bg-slate-900/80 overflow-y-auto"><mecanico-app preview :salir="cerrarVistaApp"></mecanico-app></div>
   </template>
+  <!-- Aviso "Hay una versión nueva · Actualizar" (core/instalar-app.js) -->
+  <aviso-version></aviso-version>
 `;
 
 const app = createApp({
@@ -288,7 +291,9 @@ app.component('VehiculosView', VehiculosView);
 app.component('CostosView', CostosView);
 app.component('RecordatoriosView', RecordatoriosView);
 app.component('MotoresView', MotoresView);
-app.component('MecanicoApp', MecanicoApp);                   // app móvil de mecánicos
+app.component('MecanicoApp', MecanicoApp);
+app.component('InstalarApp', InstalarApp);     // botón Instalar app / Descargar APK (login y app mecánicos)
+app.component('AvisoVersion', AvisoVersion);   // aviso de versión nueva después de un Push                   // app móvil de mecánicos
 app.component('MecanicosPanelView', MecanicosPanelView);     // Mecánicos → intervenciones y firmas (supervisor)                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
 app.component('TareaItem', TareaItem);
 app.component('RecordatoriosCampana', RecordatoriosCampana); // campana del encabezado
