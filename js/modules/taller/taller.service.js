@@ -13,9 +13,10 @@
 //
 // Actividad TERMINADA = tiene fecha de término (f_term) en la OT (igual que en el formato en papel).
 // =====================================================================
-import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
+import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
-import { usuarioActivo, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPorAfi, soloEditor, soloAdmin } from '../../core/store.js';
+import { usuarioActivo, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPorAfi, soloEditor, soloAdmin, permisosDe, nivelEnArea, isAdmin, isSubadmin } from '../../core/store.js';
+import { hallazgosSinOT } from '../../core/avisos-taller.js';
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, formatDateForDisplay, placeholderImg } from '../../core/utils.js';
 import { NAVES, carpetaDe, obtenerItemsPrograma, obtenerProgObj } from '../programas/programas.service.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
@@ -217,6 +218,24 @@ export const ubicacionRep = (rep) => {
   return ETIQUETA_ESTADO[rep.estado] || rep.estado;
 };
 
+// ---------- Mecánicos de taller (app móvil) ----------
+/** Usuario con área MECÁNICOS (mecánico o supervisor) que NO es editor de Operaciones:
+ *  puede ingresar equipos a la nave, reportar hallazgos y marcar actividades de su OT (sql/taller_hallazgos.sql). */
+export const esMecanicoTaller = (u = usuarioActivo.value) => Boolean(u && u.rol !== 'admin'
+  && ['subadmin', 'admin'].includes(permisosDe(u).mecanicos)
+  && !['subadmin', 'admin'].includes(nivelEnArea('operaciones', u)));
+/** Guarda para acciones del taller que también puede hacer el mecánico. */
+const editorTaller = () => esMecanicoTaller() || soloEditor();
+const SQL_HALLAZGOS = 'Falta ejecutar sql/taller_hallazgos.sql y sql/taller_inspeccion.sql en Supabase (SQL Editor → Run).';
+/** Revisan inspecciones / hallazgos y arman la OT: Admin o Subadmin (Operaciones) y Admin / Subadmin del área Administración. */
+export const puedeGestionarHallazgos = () => isAdmin.value || isSubadmin.value
+  || ['subadmin', 'admin'].includes(nivelEnArea('administracion'));
+const soloGestor = () => {
+  if (puedeGestionarHallazgos()) return true;
+  alert('Acción no permitida: requiere Admin o Subadmin de Operaciones o del área Administración.');
+  return false;
+};
+
 // ---------- Guardar ----------
 const quien = () => { const u = usuarioActivo.value; return (u && (u.nombre || u.usuario)) || ''; };
 const evento = (rep, ev) => [...(rep.historial || []), { fecha: new Date().toISOString(), quien: quien(), ...ev }];
@@ -244,7 +263,11 @@ const fijarDisponibilidad = async (afi, valor) => {
   const eq = equipoDe(afi);
   if (!eq) return;
   try {
-    await sb(supabaseClient.from(TABLA_INVENTARIO).update({ disponibilidad: valor }).eq('id', eq.id));
+    if (esMecanicoTaller()) {
+      // el mecánico no edita el inventario: solo puede dejarlo "En Mantencion" al ingresarlo (función de sql/taller_hallazgos.sql)
+      if (valor !== 'En Mantencion') return;
+      await sb(supabaseClient.rpc('frc_mec_en_mantencion', { p_afi: String(eq.afi) }));
+    } else await sb(supabaseClient.from(TABLA_INVENTARIO).update({ disponibilidad: valor }).eq('id', eq.id));
     eq.disponibilidad = valor;
   } catch (err) { console.warn('[Taller] No se pudo cambiar la disponibilidad:', errMsg(err)); }
 };
@@ -274,7 +297,7 @@ export const agregarSinPrograma = async (afiTexto) => {
  * Ingresa un equipo a una nave. origen = { item } (programa) · { rep } (en espera / faltantes) · { afi } (equipo nuevo, sin programa).
  */
 export const ingresarANave = async (nave, origen) => {
-  if (!soloEditor()) return false;
+  if (!editorTaller()) return false;
   await cargarReparaciones();   // por si otro PC ocupó la nave
   if (repEnNave(nave)) { alert(`La ${nave} ya está ocupada.`); return false; }
   try {
@@ -384,8 +407,8 @@ const guardarActividades = async (ot) => {
   await sb(supabaseClient.from(TABLA_OT).update({ actividades: ot.actividades, updated_at: new Date().toISOString() }).eq('id', ot.id));
 };
 /** Crea una OT enlazada a la reparación (folio manual, tipo CORRECTIVA). */
-export const crearOTParaRep = async (rep, { folio, tipo = 'CORRECTIVA', mecanico = '' } = {}) => {
-  if (!soloAdmin()) return null;   // el mecánico no crea OT: la une con una ya creada
+export const crearOTParaRep = async (rep, { folio, tipo = 'CORRECTIVA', mecanico = '' } = {}, { desdeHallazgos = false } = {}) => {
+  if (desdeHallazgos ? !soloGestor() : !soloAdmin()) return null;   // el mecánico no crea OT: la une con una ya creada
   const n = Number(String(folio ?? '').replace(/\D/g, ''));
   if (!n) { alert('Escribe el N° de FOLIO de la OT.'); return null; }
   const repetida = dbOT.value.find(o => Number(o.folio) === n);
@@ -456,6 +479,7 @@ export const desenlazarOT = async (ot) => {
 
 /** Marca / desmarca una actividad como terminada (fecha y hora de término = ahora). */
 export const alternarActividad = async (ot, i) => {
+  if (esMecanicoTaller()) return alternarActividadMecanico(ot, i);
   if (!soloEditor()) return;
   const a = ot.actividades[i];
   const antes = { ...a };
@@ -564,6 +588,7 @@ export const cargarProblemas = async () => {
     const data = await sb(supabaseClient.from(TABLA_PROBLEMAS).select('*').order('id', { ascending: true }));
     dbProblemas.value = data;
     faltaTablaProblemas.value = false;
+    hallazgosSinOT.value = data.filter(p => p.estado === 'PENDIENTE').length;
   } catch (err) {
     if (/bd_taller_problemas|schema cache|does not exist/i.test(errMsg(err))) faltaTablaProblemas.value = true;
     else console.warn('[Taller] No se pudieron leer los problemas:', errMsg(err));
@@ -598,7 +623,7 @@ export const agregarProblemaAOT = async (prob, ot, texto) => {
   return marcarProblema(prob, 'AGREGADO', `Agregado a la OT ${ot.folio}`, ot.id);
 };
 export const rechazarProblema = async (prob) => {
-  if (!soloAdmin()) return false;
+  if (!soloGestor()) return false;
   const motivo = prompt('Motivo (opcional, lo verá el mecánico):', '');
   if (motivo === null) return false;
   return marcarProblema(prob, 'RECHAZADO', motivo);
@@ -607,6 +632,190 @@ const marcarProblema = async (prob, estado, respuesta, otId = null) => {
   const cambios = { estado, respuesta: respuesta || null, procesado_por: quien(), procesado_at: new Date().toISOString(), ...(otId ? { ot_id: otId } : {}) };
   try { await sb(supabaseClient.from(TABLA_PROBLEMAS).update(cambios).eq('id', prob.id)); Object.assign(prob, cambios); return true; }
   catch (err) { alert('No se pudo actualizar: ' + errMsg(err)); return false; }
+};
+
+// ---------- HALLAZGOS (2026-11-13): el mecánico reporta por ítem → el Admin crea la OT ----------
+// Se guardan en bd_taller_problemas (columnas nuevas en sql/taller_hallazgos.sql).
+//   estado: PENDIENTE (esperando OT) · AGREGADO (está en una OT) · RECHAZADO (descartado)
+export const SISTEMAS_HALLAZGO = ['MOTOR', 'ELÉCTRICO / CONTROL', 'GENERACIÓN', 'HIDRÁULICO', 'REFRIGERACIÓN', 'COMBUSTIBLE', 'ADMISIÓN / ESCAPE', 'TRANSMISIÓN / FRENOS', 'NEUMÁTICO / COMPRESOR', 'CARROCERÍA / ESTRUCTURA', 'OTRO'];
+export const ESTADO_HALLAZGO = {
+  PENDIENTE: { t: 'Esperando OT', c: 'bg-amber-100 text-amber-800 border-amber-300' },
+  AGREGADO: { t: 'En OT', c: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  RECHAZADO: { t: 'Descartado', c: 'bg-slate-100 text-slate-500 border-slate-300' }
+};
+export const hallazgoVacio = () => ({ sistema: '', descripcion: '', foto: null, necesita_repuesto: false, repuesto: '', cantidad: '' });
+/** Texto de la actividad de la OT que sale de un hallazgo. */
+export const textoHallazgo = (h) => [h.sistema ? String(h.sistema).toUpperCase() + ':' : '', String(h.descripcion || '').trim()].filter(Boolean).join(' ');
+/** Folio de la OT donde quedó un hallazgo. */
+export const otDeHallazgo = (h) => (h && h.ot_id != null ? dbOT.value.find(o => String(o.id) === String(h.ot_id)) || null : null);
+/** Hallazgos con repuesto pedido que aún no llega a la fecha / sin fecha (para destacarlos). */
+export const repuestoPendiente = (h) => Boolean(h && h.necesita_repuesto && h.estado !== 'RECHAZADO');
+
+/** El mecánico (o Operaciones) reporta un hallazgo de un equipo del taller. foto = File (opcional). */
+export const reportarHallazgo = async (rep, form) => {
+  if (!editorTaller()) return false;
+  const desc = String(form.descripcion || '').trim();
+  if (!rep) return false;
+  if (!desc) { alert('Describe lo que encontraste malo.'); return false; }
+  if (form.necesita_repuesto && !String(form.repuesto || '').trim()) { alert('Escribe qué repuesto se necesita.'); return false; }
+  let foto_url = null;
+  try {
+    if (form.foto) {
+      const ext = (String(form.foto.name || '').split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      foto_url = await subirArchivoStorage(`taller_hallazgos/${limpiarAfi(rep.afi)}_${Date.now()}.${ext}`, form.foto);
+    }
+  } catch (err) {
+    if (!confirm('No se pudo subir la foto (' + errMsg(err) + ').\n¿Enviar el hallazgo sin foto?')) return false;
+  }
+  const fila = {
+    reparacion_id: rep.id, ot_id: null, afi: rep.afi, nave: rep.nave || null, descripcion: desc,
+    sistema: form.sistema || null, foto_url, necesita_repuesto: Boolean(form.necesita_repuesto),
+    repuesto: form.necesita_repuesto ? String(form.repuesto || '').trim() : null,
+    cantidad: form.necesita_repuesto ? String(form.cantidad || '').trim() || null : null,
+    reportado_por: quien(), estado: 'PENDIENTE'
+  };
+  try {
+    const [nueva] = await sb(supabaseClient.from(TABLA_PROBLEMAS).insert([fila]).select());
+    dbProblemas.value.push(nueva);
+    return true;
+  } catch (err) {
+    const m = errMsg(err);
+    alert((/sistema|foto_url|necesita_repuesto|schema cache|column/i.test(m) ? SQL_HALLAZGOS + '\nSi ya lo ejecutaste, actualiza la página.\n\nDetalle: ' : 'No se pudo enviar el hallazgo: ') + m);
+    return false;
+  }
+};
+
+// ---------- INSPECCIÓN DE EQUIPO (2026-11-16) ----------
+// El mecánico, al entrar el equipo a la nave, enumera TODAS las fallas y repuestos que faltan.
+// Cada ítem = un hallazgo con el mismo inspeccion_id y su N° (item_n). Llega a Operaciones / Administración para armar la OT.
+export const itemInspeccionVacio = () => ({ sistema: '', descripcion: '', necesita_repuesto: false, repuesto: '', cantidad: '', foto: null });
+/** Envía la inspección completa. items = [{ sistema, descripcion, necesita_repuesto, repuesto, cantidad, foto(File) }]. */
+export const enviarInspeccion = async (rep, items, observacion = '') => {
+  if (!editorTaller()) return false;
+  if (!rep) return false;
+  const lista = (items || []).filter(i => String(i.descripcion || '').trim());
+  const obs = String(observacion || '').trim();
+  if (!lista.length && !obs) { alert('Escribe al menos una falla encontrada.'); return false; }
+  const sinRep = lista.findIndex(i => i.necesita_repuesto && !String(i.repuesto || '').trim());
+  if (sinRep >= 0) { alert(`Ítem ${sinRep + 1}: escribe qué repuesto se necesita.`); return false; }
+  const inspeccion_id = `INS-${rep.id}-${Date.now()}`;
+  const yaHay = problemasDeRep(rep).length;
+  const filas = [];
+  for (const [k, it] of lista.entries()) {
+    let foto_url = null;
+    if (it.foto) {
+      try {
+        const ext = (String(it.foto.name || '').split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+        foto_url = await subirArchivoStorage(`taller_hallazgos/${limpiarAfi(rep.afi)}_${Date.now()}_${k + 1}.${ext}`, it.foto);
+      } catch (err) { if (!confirm(`No se pudo subir la foto del ítem ${k + 1} (${errMsg(err)}). ¿Seguir sin esa foto?`)) return false; }
+    }
+    filas.push({
+      reparacion_id: rep.id, ot_id: null, afi: rep.afi, nave: rep.nave || null, inspeccion_id, item_n: k + 1,
+      descripcion: String(it.descripcion).trim(), sistema: it.sistema || null, foto_url,
+      necesita_repuesto: Boolean(it.necesita_repuesto),
+      repuesto: it.necesita_repuesto ? String(it.repuesto || '').trim() : null,
+      cantidad: it.necesita_repuesto ? String(it.cantidad || '').trim() || null : null,
+      reportado_por: quien(), estado: 'PENDIENTE'
+    });
+  }
+  if (obs) filas.push({ reparacion_id: rep.id, ot_id: null, afi: rep.afi, nave: rep.nave || null, inspeccion_id, item_n: filas.length + 1,
+    descripcion: obs, sistema: 'OBSERVACIÓN GENERAL', necesita_repuesto: false, reportado_por: quien(), estado: 'PENDIENTE' });
+  try {
+    const nuevas = await sb(supabaseClient.from(TABLA_PROBLEMAS).insert(filas).select());
+    dbProblemas.value.push(...nuevas);
+    hallazgosSinOT.value = problemasPendientes.value.length;
+    if (!yaHay) {   // primera inspección: queda en la bitácora del equipo
+      try { await actualizarRep(rep, { historial: evento(rep, { tipo: 'INSPECCION', nave: rep.nave, items: filas.length }) }); } catch (_) { /* no detiene */ }
+    }
+    return true;
+  } catch (err) {
+    const m = errMsg(err);
+    alert((/inspeccion_id|item_n|sistema|foto_url|column|schema cache/i.test(m) ? SQL_HALLAZGOS + '\nSi ya los ejecutaste, actualiza la página.\n\nDetalle: ' : 'No se pudo enviar la inspección: ') + m);
+    return false;
+  }
+};
+/** Inspecciones de una reparación: [{ id, fecha, por, items: [hallazgos] }] (la más reciente primero). Los hallazgos sueltos van como "Reporte". */
+export const inspeccionesDeRep = (rep) => {
+  const m = new Map();
+  problemasDeRep(rep).forEach(h => {
+    const k = h.inspeccion_id || 'H' + h.id;
+    if (!m.has(k)) m.set(k, { id: k, esInspeccion: Boolean(h.inspeccion_id), fecha: h.created_at, por: h.reportado_por, items: [] });
+    m.get(k).items.push(h);
+  });
+  return [...m.values()].map(g => ({ ...g, items: g.items.sort((a, b) => (a.item_n || 0) - (b.item_n || 0)) }))
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+};
+/** ¿Ya tiene una inspección? */
+export const tieneInspeccion = (rep) => problemasDeRep(rep).some(h => h.inspeccion_id);
+
+/** Pasa los hallazgos elegidos a una OT: actividades + repuestos pedidos. Devuelve cuántos se agregaron. */
+const volcarHallazgosEnOT = async (ot, lista) => {
+  let n = 0;
+  const pasados = [];
+  for (const h of lista) {
+    const i = ot.actividades.findIndex(a => !String(a.descripcion || '').trim());
+    if (i < 0) { alert(`La OT N° ${ot.folio} se llenó (${N_ACTIVIDADES} actividades). Los hallazgos restantes quedan pendientes.`); break; }
+    Object.assign(ot.actividades[i], { descripcion: textoHallazgo(h), ejecutante: '', f_inicio: hoyISO(), h_inicio: '', f_term: '', h_term: '' });
+    if (h.necesita_repuesto && String(h.repuesto || '').trim()) {
+      while (ot.insumos.length < N_ACEITES) ot.insumos.push(filaInsumoVacia());
+      let k = ot.insumos.findIndex((x, j) => j >= N_ACEITES && !String(x.repuestos || '').trim() && !String(x.aceites || '').trim());
+      if (k < 0) { ot.insumos.push(filaInsumoVacia()); k = ot.insumos.length - 1; }
+      Object.assign(ot.insumos[k], { repuestos: [h.cantidad ? h.cantidad + ' x' : '', h.repuesto].filter(Boolean).join(' '), fecha: '', retira: '' });
+    }
+    pasados.push(h);
+    n++;
+  }
+  if (!n) return 0;
+  await sb(supabaseClient.from(TABLA_OT).update({ actividades: ot.actividades, insumos: ot.insumos, updated_at: new Date().toISOString() }).eq('id', ot.id));
+  for (const h of pasados) await marcarProblema(h, 'AGREGADO', h.nota_admin || `En la OT ${ot.folio}`, ot.id);
+  hallazgosSinOT.value = problemasPendientes.value.length;
+  return n;
+};
+
+/** Admin: crea UNA OT nueva con los hallazgos elegidos (queda enlazada al equipo / reparación). */
+export const crearOTDesdeHallazgos = async (rep, lista, form) => {
+  if (!soloGestor()) return null;
+  if (!lista.length) { alert('Marca al menos un hallazgo.'); return null; }
+  const ot = await crearOTParaRep(rep, form, { desdeHallazgos: true });
+  if (!ot) return null;
+  try { await volcarHallazgosEnOT(ot, lista); }
+  catch (err) { alert(`Se creó la OT N° ${ot.folio}, pero no se pudieron pasar los hallazgos: ` + errMsg(err)); }
+  return ot;
+};
+/** Admin: agrega los hallazgos elegidos a una OT que ya existe. */
+export const agregarHallazgosAOT = async (ot, lista) => {
+  if (!soloGestor()) return 0;
+  if (!ot) { alert('Elige la OT.'); return 0; }
+  if (!lista.length) { alert('Marca al menos un hallazgo.'); return 0; }
+  try { return await volcarHallazgosEnOT(ot, lista); }
+  catch (err) { alert('No se pudieron agregar a la OT: ' + errMsg(err)); return 0; }
+};
+/** Admin: nota y fecha aprox. del repuesto (las ve el mecánico en su carta). */
+export const guardarNotaHallazgo = async (h, nota, fecha) => {
+  if (!soloGestor()) return false;
+  const cambios = { nota_admin: String(nota || '').trim() || null, fecha_aprox_repuesto: fecha || null, nota_at: new Date().toISOString() };
+  try { await sb(supabaseClient.from(TABLA_PROBLEMAS).update(cambios).eq('id', h.id)); Object.assign(h, cambios); return true; }
+  catch (err) {
+    const m = errMsg(err);
+    alert((/nota_admin|fecha_aprox|column|schema cache/i.test(m) ? SQL_HALLAZGOS + '\n\nDetalle: ' : 'No se pudo guardar la nota: ') + m);
+    return false;
+  }
+};
+
+/** El mecánico marca / desmarca una actividad de la OT (función frc_mec_actividad de sql/taller_hallazgos.sql). */
+const alternarActividadMecanico = async (ot, i) => {
+  const a = ot.actividades[i];
+  const antes = { ...a };
+  const hecha = !actividadHecha(a);
+  if (hecha) { a.f_term = hoyISO(); a.h_term = ahoraHHMM(); } else { a.f_term = ''; a.h_term = ''; }
+  try {
+    const act = await sb(supabaseClient.rpc('frc_mec_actividad', { p_ot_id: ot.id, p_idx: i, p_hecha: hecha, p_quien: quien() }));
+    if (act && typeof act === 'object') Object.assign(a, act);
+  } catch (err) {
+    Object.assign(a, antes);
+    const m = errMsg(err);
+    alert(/frc_mec_actividad|function/i.test(m) ? SQL_HALLAZGOS : 'No se pudo guardar: ' + m);
+  }
 };
 
 const lineas = (txt) => String(txt || '').split(/\r?\n/).map(s => s.replace(/^[\s•\-*·]+/, '').trim()).filter(Boolean);

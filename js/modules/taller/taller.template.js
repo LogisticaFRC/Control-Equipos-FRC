@@ -67,9 +67,10 @@ export default /* html */ `
               <div class="w-full h-5 bg-slate-200 rounded-full overflow-hidden mt-1.5 shadow-inner">
                 <div :class="['h-5 rounded-full transition-all duration-700', colorAvance(progresoRep(repEnNave(nave)).pct)]" :style="{ width: progresoRep(repEnNave(nave)).pct + '%' }"></div>
               </div>
-              <p class="text-xs text-slate-500 font-semibold mt-1">{{ progresoRep(repEnNave(nave)).sinOT ? 'Presiona REPARAR para crear la OT' : progresoRep(repEnNave(nave)).done + ' de ' + progresoRep(repEnNave(nave)).total + ' actividades terminadas' }}</p>
+              <p class="text-xs text-slate-500 font-semibold mt-1">{{ progresoRep(repEnNave(nave)).sinOT ? (problemasPendientesRep(repEnNave(nave)).length ? 'Inspección lista: falta armar la OT' : 'Esperando la inspección del mecánico') : progresoRep(repEnNave(nave)).done + ' de ' + progresoRep(repEnNave(nave)).total + ' actividades terminadas' }}</p>
             </div>
-            <div v-if="problemasPendientesRep(repEnNave(nave)).length" class="text-xs bg-violet-100 border border-violet-300 text-violet-900 rounded-lg p-2 font-bold"><i class="fa-solid fa-bell mr-1"></i>{{ problemasPendientesRep(repEnNave(nave)).length }} problema(s) nuevo(s) enviado(s) por el mecánico{{ isAdmin ? ' · revisar en REPARAR' : ' · esperando al Admin' }}</div>
+            <div v-if="problemasPendientesRep(repEnNave(nave)).length" class="text-xs bg-violet-100 border border-violet-300 text-violet-900 rounded-lg p-2 font-bold"><i class="fa-solid fa-bell mr-1"></i>{{ problemasPendientesRep(repEnNave(nave)).length }} falla(s) de la inspección esperando OT{{ puedeGestionarHallazgos() ? ' · revisar en REPARAR' : '' }}</div>
+            <div v-else-if="!tieneInspeccion(repEnNave(nave)) && !otsDeRep(repEnNave(nave)).length" class="text-xs bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-lg p-2 font-bold"><i class="fa-solid fa-clipboard-list mr-1"></i>Falta la INSPECCIÓN del equipo (en REPARAR)</div>
             <div v-if="repEnNave(nave).faltante" class="text-xs bg-rose-50 border border-rose-200 text-rose-800 rounded-lg p-2 whitespace-pre-line"><b><i class="fa-solid fa-triangle-exclamation mr-1"></i>Le faltaba:</b> {{ repEnNave(nave).faltante }}</div>
             <div class="flex gap-3 pt-1 mt-auto">
               <button @click="abrirReparar(repEnNave(nave))" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-lg font-black py-3.5 rounded-2xl shadow"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>REPARAR</button>
@@ -103,15 +104,16 @@ export default /* html */ `
       <!-- Problemas nuevos enviados por los mecánicos (los procesa el Admin) -->
       <div v-if="problemasPendientes.length" class="bg-white rounded-2xl shadow-sm border-2 border-violet-300 overflow-hidden">
         <div class="bg-violet-700 text-white px-4 py-3 font-extrabold text-sm flex items-center justify-between">
-          <span><i class="fa-solid fa-bell mr-1.5"></i> Problemas nuevos para OT</span>
+          <span><i class="fa-solid fa-bell mr-1.5"></i> Inspecciones / fallas para OT</span>
           <span class="bg-white/20 rounded-full px-2 text-xs">{{ problemasPendientes.length }}</span>
         </div>
         <div class="divide-y max-h-[320px] overflow-y-auto">
           <div v-for="p in problemasPendientes" :key="p.id" class="p-3 space-y-1">
-            <p class="text-xs font-black text-slate-800">AFI {{ p.afi }}<span v-if="p.nave" class="ml-1 text-amber-700">· {{ p.nave }}</span></p>
-            <p class="text-sm text-slate-700">{{ p.descripcion }}</p>
-            <p class="text-[11px] text-slate-500">{{ p.reportado_por }} · {{ fechaHora(p.created_at) }}</p>
-            <button v-if="isAdmin && repPorId(p.reparacion_id)" @click="abrirReparar(repPorId(p.reparacion_id))" class="text-xs font-bold text-violet-700 hover:underline"><i class="fa-solid fa-arrow-right mr-1"></i>Revisar y agregar a la OT</button>
+            <p class="text-xs font-black text-slate-800">AFI {{ p.afi }}<span v-if="p.nave" class="ml-1 text-amber-700">· {{ p.nave }}</span><span v-if="p.item_n" class="ml-1 text-slate-400">· ítem {{ p.item_n }}</span></p>
+            <p class="text-sm text-slate-700"><b v-if="p.sistema" class="text-violet-800">{{ p.sistema }} · </b>{{ p.descripcion }}</p>
+            <p v-if="p.necesita_repuesto" class="text-xs font-semibold text-amber-800"><i class="fa-solid fa-gear mr-1"></i>{{ p.cantidad ? p.cantidad + ' x ' : '' }}{{ p.repuesto }}</p>
+            <p class="text-[11px] text-slate-500">{{ p.reportado_por }} · {{ fechaHora(p.created_at) }}<i v-if="p.foto_url" class="fa-solid fa-camera ml-1"></i></p>
+            <button v-if="puedeGestionarHallazgos() && repPorId(p.reparacion_id)" @click="abrirReparar(repPorId(p.reparacion_id))" class="text-xs font-bold text-violet-700 hover:underline"><i class="fa-solid fa-arrow-right mr-1"></i>Revisar y crear / agregar a la OT</button>
           </div>
         </div>
       </div>
@@ -340,6 +342,9 @@ export default /* html */ `
             <button v-if="otSel && puedeEditar" @click="quitarOTSel" class="px-3 py-2 rounded-xl text-xs font-bold border-2 border-rose-200 text-rose-600 hover:bg-rose-50"><i class="fa-solid fa-link-slash mr-1"></i>Quitar OT {{ otSel.folio }} del taller</button>
           </div>
 
+          <!-- ===== HALLAZGOS del mecánico → OT (2026-11-13) ===== -->
+          <hallazgos-admin :rep="repTrabajo" :ot="otSel" @ot-creada="o => otSel = o"></hallazgos-admin>
+
           <!-- ===== Sin OT: unir una OT ya creada ===== -->
           <div v-if="!otSel" class="space-y-4">
             <div class="rounded-2xl border-2 border-rose-200 bg-rose-50/50 p-5 space-y-3">
@@ -353,7 +358,7 @@ export default /* html */ `
                 </div>
               </div>
               <div v-else class="text-sm text-rose-900 bg-white rounded-xl border border-rose-200 p-3">
-                <i class="fa-solid fa-circle-info mr-1"></i>Todavía no hay una OT pendiente para el AFI {{ repTrabajo.afi }} desde el {{ formatDateForDisplay(fechaDesdeOTRep(repTrabajo)) }}. Operaciones la crea en <b>Órdenes de Trabajo</b> y la une a este equipo; apenas lo haga, aparece aquí. <span class="text-rose-700/70">(No se muestran OT antiguas ni ya registradas en el Historial.)</span>
+                <i class="fa-solid fa-circle-info mr-1"></i>Todavía no hay una OT pendiente para el AFI {{ repTrabajo.afi }} desde el {{ formatDateForDisplay(fechaDesdeOTRep(repTrabajo)) }}. El mecánico hace la <b>INSPECCIÓN EQUIPO</b> (arriba) y con esa información se arma la OT; apenas se cree, aparece aquí. <span class="text-rose-700/70">(No se muestran OT antiguas ni ya registradas en el Historial.)</span>
               </div>
             </div>
             <!-- Solo Admin: crear OT desde el taller -->
@@ -408,29 +413,6 @@ export default /* html */ `
               <div v-if="isAdmin" class="rounded-2xl bg-slate-100 p-3 flex flex-wrap gap-2">
                 <input v-model="nuevaAct.descripcion" @keyup.enter="agregarAct" placeholder="Nueva actividad (Admin)" class="flex-1 min-w-[220px] p-3 border-2 rounded-xl text-base font-semibold">
                 <button @click="agregarAct" :disabled="!nuevaAct.descripcion.trim()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 rounded-xl text-base disabled:opacity-50"><i class="fa-solid fa-plus mr-1"></i>Agregar</button>
-              </div>
-            </section>
-
-            <!-- 2. NUEVO PROBLEMA -->
-            <section class="rounded-2xl border-2 border-violet-200 bg-violet-50 p-4 space-y-3">
-              <h4 class="text-sm font-black uppercase text-violet-900"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Enviar nuevo problema para OT</h4>
-              <p v-if="faltaTablaProblemas" class="text-xs text-rose-700 font-semibold">Falta ejecutar sql/taller_firmas_problemas.sql en Supabase.</p>
-              <div v-if="puedeEditar" class="flex flex-wrap gap-2">
-                <textarea v-model="nuevoProblema" rows="2" placeholder="Ej: Fuga de aceite en cilindro de levante, falta cambiar sello" class="flex-1 min-w-[240px] p-3 border-2 border-violet-200 rounded-xl text-base"></textarea>
-                <button @click="enviarProb" :disabled="!nuevoProblema.trim() || ocupado" class="bg-violet-600 hover:bg-violet-700 text-white font-black px-6 rounded-xl text-base disabled:opacity-50"><i class="fa-solid fa-paper-plane mr-1"></i>Enviar</button>
-              </div>
-              <p class="text-[11px] text-violet-800">El Admin lo revisa y, si corresponde, lo agrega como actividad de la OT.</p>
-              <div v-for="p in problemasDeRep(repTrabajo)" :key="p.id" class="bg-white rounded-xl border p-3 space-y-2">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                  <span class="text-sm font-bold text-slate-800">{{ p.descripcion }}</span>
-                  <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', p.estado === 'PENDIENTE' ? 'bg-amber-100 text-amber-800 border-amber-300' : p.estado === 'AGREGADO' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-500 border-slate-300']">{{ p.estado === 'PENDIENTE' ? 'Esperando al Admin' : p.estado === 'AGREGADO' ? 'Agregado a la OT' : 'Rechazado' }}</span>
-                </div>
-                <p class="text-[11px] text-slate-500">{{ p.reportado_por }} · {{ fechaHora(p.created_at) }}<template v-if="p.respuesta"> · <b>{{ p.respuesta }}</b></template></p>
-                <div v-if="isAdmin && p.estado === 'PENDIENTE'" class="flex flex-wrap gap-2">
-                  <input v-model="textoProblema[p.id]" :placeholder="p.descripcion" class="flex-1 min-w-[200px] p-2 border-2 rounded-lg text-sm" title="Texto de la actividad (puedes corregirlo)">
-                  <button @click="agregarProblemaAOT(p, otSel, textoProblema[p.id] || p.descripcion)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-sm"><i class="fa-solid fa-plus mr-1"></i>Agregar a OT {{ otSel.folio }}</button>
-                  <button @click="rechazarProblema(p)" class="border font-bold px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Rechazar</button>
-                </div>
               </div>
             </section>
 

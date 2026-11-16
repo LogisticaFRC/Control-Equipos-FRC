@@ -7,6 +7,7 @@ import * as S from './taller.service.js';
 import { folioSugerido, imprimirOT, irAOT, ESTILO_ESTADO_OT, ETIQUETA_ESTADO_OT, estadoOT, N_ACTIVIDADES } from '../ot/ot.service.js';
 import { cargarDatosDesdeSupabase } from '../../core/store.js';
 import { formatDateForDisplay } from '../../core/utils.js';
+import HallazgosAdmin from './hallazgos-admin.view.js';   // hallazgos del mecánico → OT (2026-11-13)
 
 const { ref, computed, onMounted, onBeforeUnmount } = Vue;
 
@@ -15,6 +16,7 @@ const REFRESCO_MS = 45 * 1000;
 
 export default {
   name: 'TallerView',
+  components: { HallazgosAdmin },
   template,
   setup() {
     // ---------- Modales ----------

@@ -6,6 +6,7 @@
 // salen automáticamente de aquí.
 //   placeholder: true → muestra la pantalla "En construcción" del área.
 // =====================================================================
+import { hallazgosSinOT } from './avisos-taller.js';   // inspecciones del taller esperando OT (2026-11-16)
 import { dbEquipos, dbMovimientos, dbIntervenciones, dbOC, dbLocaciones } from './store.js';
 import { esVehiculo } from '../modules/inventario/inventario.mapper.js';
 
@@ -34,7 +35,7 @@ export const AREAS = [
     modulos: [
       { key: 'dashboard', grupo: 'gestion', label: 'Dashboard', icon: 'fa-chart-line' },
       { key: 'progMantencion', grupo: 'gestion', label: 'Programas Mantención', icon: 'fa-oil-can' },
-      { key: 'progReparacion', grupo: 'gestion', label: 'Programas Reparación', icon: 'fa-warehouse' },   // Taller (naves) + programas/Gantt
+      { key: 'progReparacion', grupo: 'gestion', label: 'Programas Reparación', icon: 'fa-warehouse', alerta: () => hallazgosSinOT.value },   // alerta = fallas de inspección esperando OT   // Taller (naves) + programas/Gantt
       { key: 'progMotores', grupo: 'gestion', label: 'Programa Reparación Motores', icon: 'fa-gear' },     // motores a proveedores externos (modules/motores)
       { key: 'minutas', grupo: 'gestion', label: 'Minutas', icon: 'fa-clipboard-list' },
 

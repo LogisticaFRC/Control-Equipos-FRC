@@ -1,5 +1,5 @@
 // =====================================================================
-// MECÁNICOS · App móvil (lo que ve el mecánico al entrar desde el celular)
+// MECÁNICOS · App móvil  (2026-11-13: pestaña TALLER → cartas del programa de reparación, hallazgos y OT asignada) (lo que ve el mecánico al entrar desde el celular)
 //   Equipos (buscador) → ficha del equipo (horómetro editable, última mantención)
 //   → Intervención MECÁNICA / ELÉCTRICA paso a paso (+ registro de bloqueo) → firmas → enviar
 //   Mis registros: estado de lo enviado (pendiente de firma, en Historial, rechazada para corregir)
@@ -11,6 +11,7 @@ import { listaCausas } from '../historial/historial.service.js';
 import { ACEITES } from '../historial/historial.mapper.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js';
+import TallerMecanico from '../taller/taller-mecanico.view.js';   // pestaña TALLER: cartas del programa de reparación + OT asignada + hallazgos
 
 const { ref, computed, onMounted, watch } = Vue;
 
@@ -19,6 +20,7 @@ const LUGARES = ['TALLER FRC', 'TERRENO', 'FAENA CLIENTE'];
 
 export default {
   name: 'MecanicoApp',
+  components: { TallerMecanico },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
 <div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
@@ -302,11 +304,14 @@ export default {
         <div v-if="!(S.carpetaApp.value === 'SIN_FIRMA' ? S.misSinFirma.value : S.misRealizados.value).length" class="text-center text-slate-400 py-10">{{ S.carpetaApp.value === 'SIN_FIRMA' ? 'No tienes documentos esperando firma.' : 'Aún no hay documentos realizados.' }}</div>
       </section>
 
+      <section v-if="tab === 'taller'"><taller-mecanico></taller-mecanico></section>
+
       <section v-if="tab === 'tareas'" class="p-3"><recordatorios-view></recordatorios-view></section>
 
       <!-- Barra inferior -->
-      <nav class="fixed bottom-0 left-0 right-0 z-30 max-w-xl mx-auto bg-white border-t grid grid-cols-3">
+      <nav class="fixed bottom-0 left-0 right-0 z-30 max-w-xl mx-auto bg-white border-t grid grid-cols-4">
         <button @click="tab = 'equipos'" :class="['py-3 font-bold text-sm', tab === 'equipos' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-truck-monster block text-xl mb-0.5"></i>Equipos</button>
+        <button @click="tab = 'taller'" :class="['py-3 font-bold text-sm', tab === 'taller' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-warehouse block text-xl mb-0.5"></i>Taller</button>
         <button @click="tab = 'registros'; S.cargarMec()" :class="['py-3 font-bold text-sm relative', tab === 'registros' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-folder block text-xl mb-0.5"></i>Mis documentos
           <span v-if="pendientesMios" class="absolute top-2 right-1/4 bg-rose-500 text-white text-[10px] rounded-full px-1.5">{{ pendientesMios }}</span></button>
         <button @click="tab = 'tareas'" :class="['py-3 font-bold text-sm', tab === 'tareas' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-calendar-check block text-xl mb-0.5"></i>Mis tareas</button>

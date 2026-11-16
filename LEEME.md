@@ -797,3 +797,27 @@ La jerarquía ahora es **Empresa → Área → Sector → Locación → Equipos 
 - Historial (general y hoja de vida): nueva hoja **Datos completos** con TODOS los campos (40 columnas: equipo, causa, causa detallada, descripción, interferencia, horarios, 4 mecánicos, ART, bloqueo, folio, OT, OC, costo, filtros, aceites, documento…).
 - Configuración › **Exportar todo**: Excel con logo y formato → Resumen (KPI + índice), Historial (detalle, datos completos, filtros) y una hoja por CADA tabla de Supabase con todas sus columnas (lee la base directo, de a 1000 filas). Archivo nuevo: js/core/exportar-todo.js.
 - Programas: el lápiz ahora edita nombre, subcarpeta y rango de fechas (si cambia el nombre se actualiza en el Historial; avisa equipos fuera del nuevo rango).
+
+## 2026-11-13 · TALLER: hallazgos de los mecánicos → OT (nuevo flujo de reparación)
+**SQL a ejecutar:** `sql/taller_hallazgos.sql` (una vez; requiere taller.sql, taller_firmas_problemas.sql y mecanicos.sql).
+
+Flujo:
+1. Operaciones crea el **Programa de Reparación** (igual que antes).
+2. Los equipos del programa aparecen en la **app de mecánicos → pestaña TALLER** (`js/modules/taller/taller-mecanico.view.js`): solo las cartas de los equipos (en nave / por ingresar / en espera o con faltantes) y la OT asignada a cada uno. Sin Gantt ni OT de otros.
+3. El mecánico abre la carta y lo **ingresa a una nave** (queda "En Mantencion" en el Inventario vía `frc_mec_en_mantencion`).
+4. Ya no se crea la OT de inmediato: el mecánico reporta **hallazgos por ítem** (sistema, descripción, foto opcional, ¿necesita repuesto? → cuál y cantidad). Se guardan en `bd_taller_problemas` (columnas nuevas).
+5. Operaciones (Admin) los ve en **Taller → columna derecha "Hallazgos de mecánicos"** y en **REPARAR** (`hallazgos-admin.view.js`): marca uno o varios → **"Crear OT con los marcados"** (folio, tipo, mecánico) o **"Agregar los marcados a la OT N°…"**. Cada hallazgo queda como actividad ("SISTEMA: descripción") y el repuesto pedido pasa a Repuestos de la OT; la OT queda enlazada al equipo (`bd_ot.reparacion_id`).
+6. Por hallazgo, el Admin escribe una **nota** y la **fecha aprox. del repuesto** → el mecánico la ve en su carta (y en la tarjeta del listado).
+7. El mecánico marca las actividades terminadas desde el celular (`frc_mec_actividad`, sin permiso para editar toda la OT).
+
+Permisos: mecánicos (`permisos.mecanicos` = subadmin/admin) pueden ingresar a nave y reportar hallazgos (RLS de `bd_taller_reparaciones` y `bd_taller_problemas`). Crear OT, notas y descartar = Admin de Operaciones.
+Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR (la reemplaza Hallazgos, que funciona aunque todavía no haya OT).
+
+## 2026-11-16 · TALLER: botón INSPECCIÓN EQUIPO
+**SQL a ejecutar (en orden):** `sql/taller_hallazgos.sql` (si aún no) y `sql/taller_inspeccion.sql`.
+
+- En **REPARAR** (PC) y en la carta del equipo de la **app de mecánicos** hay un botón grande **INSPECCIÓN EQUIPO** (`js/modules/taller/inspeccion-equipo.view.js`). En la app se abre solo apenas el mecánico ingresa el equipo a la nave.
+- El mecánico enumera todas las fallas (Ítem 1, 2, 3…: sistema, falla, ¿falta repuesto? → cuál y cantidad, foto) + observación general, y envía todo de una vez. Cada ítem queda en `bd_taller_problemas` con el mismo `inspeccion_id` y su `item_n`.
+- Llega a **Admin / Subadmin de Operaciones y Admin / Subadmin del área Administración** (`puedeGestionarHallazgos`): aviso rojo en el menú (Programas Reparación), columna "Inspecciones / fallas para OT" del Taller y la tarjeta de la nave ("Falta la INSPECCIÓN" / "Inspección lista: falta armar la OT").
+- En REPARAR se ve agrupado por inspección: **Marcar esta inspección** → **Crear OT con los marcados** (queda enlazada al equipo, con mecánico a cargo) o agregar a una OT existente. Nota + fecha aprox. del repuesto por ítem (la ve el mecánico).
+- `sql/taller_inspeccion.sql`: columnas `inspeccion_id`, `item_n`; el área Administración (subadmin+) puede crear/editar OT y marcar hallazgos.

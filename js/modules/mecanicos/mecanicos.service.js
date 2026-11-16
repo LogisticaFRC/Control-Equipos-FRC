@@ -54,7 +54,7 @@ export const equiposApp = computed(() => {
       || String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true }));
 });
 export const equipoSel = ref(null);
-/** Pestaña de la app: 'equipos' | 'registros' | 'tareas'. */
+/** Pestaña de la app: 'equipos' | 'taller' | 'registros' | 'tareas'. */
 export const tabApp = ref('equipos');
 export const abrirEquipo = (e) => { equipoSel.value = e; horoForm.value = { valor: '', fecha: hoyISO() }; };
 export const cerrarEquipo = () => { equipoSel.value = null; };
