@@ -821,3 +821,8 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Llega a **Admin / Subadmin de Operaciones y Admin / Subadmin del área Administración** (`puedeGestionarHallazgos`): aviso rojo en el menú (Programas Reparación), columna "Inspecciones / fallas para OT" del Taller y la tarjeta de la nave ("Falta la INSPECCIÓN" / "Inspección lista: falta armar la OT").
 - En REPARAR se ve agrupado por inspección: **Marcar esta inspección** → **Crear OT con los marcados** (queda enlazada al equipo, con mecánico a cargo) o agregar a una OT existente. Nota + fecha aprox. del repuesto por ítem (la ve el mecánico).
 - `sql/taller_inspeccion.sql`: columnas `inspeccion_id`, `item_n`; el área Administración (subadmin+) puede crear/editar OT y marcar hallazgos.
+
+## 2026-11-16 · Eliminar OT, inspecciones y fallas (solo Admin)
+- REPARAR: botón **Eliminar OT N° (Admin)** junto a "Quitar OT del taller"; también ícono basurero en la tabla "OT de reparación" y en la pestaña "OT enlazadas". Al borrar la OT, las fallas de la inspección que estaban en ella vuelven a "Esperando OT".
+- Hallazgos: **Eliminar inspección** (todos sus ítems) y basurero por falla. Si una falla ya estaba en una OT, la OT no se borra.
+- `eliminarOTTaller` y `eliminarHallazgos` en taller.service.js (soloAdmin). Sin SQL nuevo (RLS eliminar = Admin de Operaciones).

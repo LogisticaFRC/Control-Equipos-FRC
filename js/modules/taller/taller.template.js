@@ -236,6 +236,7 @@ export default /* html */ `
               <button v-if="repPorId(o.reparacion_id)" @click="abrirReparar(repPorId(o.reparacion_id))" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold"><i class="fa-solid fa-screwdriver-wrench mr-1"></i>Actividades</button>
               <button @click="abrirFormatoOT(o)" class="ml-1 px-2.5 py-1 rounded-lg border text-xs font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>Formato</button>
               <button v-if="puedeEditar" @click="desenlazarOT(o)" title="Quitar del taller (la OT no se borra)" class="ml-1 px-2.5 py-1 rounded-lg border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50"><i class="fa-solid fa-link-slash mr-1"></i>Quitar</button>
+              <button v-if="isAdmin" @click="eliminarOTTaller(o)" title="Eliminar la OT (Admin)" class="ml-1 px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
           <tr v-if="!otsTallerPrograma.length"><td colspan="8" class="p-6 text-center text-slate-400 italic">Este programa aún no tiene OT enlazadas. Se crean con el botón REPARAR de cada nave o se enlazan desde Órdenes de Trabajo.</td></tr>
@@ -340,6 +341,7 @@ export default /* html */ `
               :class="['px-4 py-2 rounded-xl font-black text-sm border-2', otSel && otSel.id === o.id ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-rose-700 border-rose-200 hover:border-rose-400']">OT {{ o.folio }} · {{ progresoOT(o).pct }}%</button>
             <button v-if="otSel && puedeEditar" @click="otSel = null" class="px-3 py-2 rounded-xl text-xs font-bold border-2 border-dashed border-slate-300 text-slate-500 hover:border-slate-400"><i class="fa-solid fa-link mr-1"></i>Unir otra OT</button>
             <button v-if="otSel && puedeEditar" @click="quitarOTSel" class="px-3 py-2 rounded-xl text-xs font-bold border-2 border-rose-200 text-rose-600 hover:bg-rose-50"><i class="fa-solid fa-link-slash mr-1"></i>Quitar OT {{ otSel.folio }} del taller</button>
+            <button v-if="otSel && isAdmin" @click="eliminarOTSel" class="px-3 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white"><i class="fa-solid fa-trash mr-1"></i>Eliminar OT {{ otSel.folio }} (Admin)</button>
           </div>
 
           <!-- ===== HALLAZGOS del mecánico → OT (2026-11-13) ===== -->

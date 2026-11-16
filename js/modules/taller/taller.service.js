@@ -477,6 +477,45 @@ export const desenlazarOT = async (ot) => {
   } catch (err) { avisoError(err, 'quitar el enlace de la OT'); return false; }
 };
 
+/** ELIMINAR inspección completa o fallas sueltas (solo Admin, 2026-11-16 · para pruebas).
+ *  Si alguna ya está en una OT, la OT NO se borra (sus actividades quedan); solo se borra la falla. */
+export const eliminarHallazgos = async (lista, titulo = '') => {
+  if (!soloAdmin() || !lista || !lista.length) return false;
+  const enOT = lista.filter(h => h.estado === 'AGREGADO' && h.ot_id != null);
+  const msg = `¿ELIMINAR ${titulo || (lista.length === 1 ? 'esta falla' : `estas ${lista.length} fallas`)}?\n\n`
+    + lista.slice(0, 8).map(h => `• ${h.item_n ? h.item_n + '. ' : ''}${h.sistema ? h.sistema + ' · ' : ''}${h.descripcion}`).join('\n')
+    + (lista.length > 8 ? `\n… y ${lista.length - 8} más` : '')
+    + (enOT.length ? `\n\nOJO: ${enOT.length} ya está(n) en una OT. La OT no se borra (elimínala aparte si quieres).` : '')
+    + '\n\nEsta acción no se puede deshacer.';
+  if (!confirm(msg)) return false;
+  try {
+    const ids = lista.map(h => h.id);
+    await sb(supabaseClient.from(TABLA_PROBLEMAS).delete().in('id', ids));
+    dbProblemas.value = dbProblemas.value.filter(h => !ids.some(id => String(id) === String(h.id)));
+    hallazgosSinOT.value = problemasPendientes.value.length;
+    return true;
+  } catch (err) { alert('No se pudo eliminar: ' + errMsg(err)); return false; }
+};
+
+/** ELIMINAR OT (solo Admin, 2026-11-16 · para pruebas): borra la OT del taller.
+ *  Los hallazgos / inspección que estaban en ella vuelven a "Esperando OT" (no se pierden). */
+export const eliminarOTTaller = async (ot) => {
+  if (!soloAdmin() || !ot) return false;
+  if (!confirm(`¿ELIMINAR definitivamente la OT N° ${ot.folio} (AFI ${ot.afi})?\n\nSe borra la OT con sus actividades, repuestos y firmas.\nLas fallas de la inspección que estaban en ella vuelven a "Esperando OT".\n\nEsta acción no se puede deshacer.`)) return false;
+  try {
+    const enOT = dbProblemas.value.filter(p => p.ot_id != null && String(p.ot_id) === String(ot.id));
+    if (enOT.length) {
+      await sb(supabaseClient.from(TABLA_PROBLEMAS).update({ estado: 'PENDIENTE', ot_id: null, respuesta: null, procesado_por: null, procesado_at: null }).eq('ot_id', ot.id));
+      enOT.forEach(p => Object.assign(p, { estado: 'PENDIENTE', ot_id: null, respuesta: null }));
+    }
+    try { await sb(supabaseClient.from('bd_ot_enlaces').delete().eq('ot_id', ot.id)); } catch (_) { /* tabla opcional */ }
+    await sb(supabaseClient.from(TABLA_OT).delete().eq('id', ot.id));
+    dbOT.value = dbOT.value.filter(o => String(o.id) !== String(ot.id));
+    hallazgosSinOT.value = problemasPendientes.value.length;
+    return true;
+  } catch (err) { alert('No se pudo eliminar la OT: ' + errMsg(err)); return false; }
+};
+
 /** Marca / desmarca una actividad como terminada (fecha y hora de término = ahora). */
 export const alternarActividad = async (ot, i) => {
   if (esMecanicoTaller()) return alternarActividadMecanico(ot, i);

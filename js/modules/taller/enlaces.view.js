@@ -49,6 +49,7 @@ export default {
               <td class="p-3 text-right whitespace-nowrap">
                 <button @click="irAOT(o.folio)" class="px-2.5 py-1 rounded-lg border text-xs font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>Formato</button>
                 <button v-if="puedeEditar" @click="desenlazarOT(o)" title="Quitar del taller (la OT no se borra)" class="ml-1 px-2.5 py-1 rounded-lg border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50"><i class="fa-solid fa-link-slash mr-1"></i>Quitar</button>
+                <button v-if="isAdmin" @click="eliminarOTTaller(o)" title="Eliminar la OT (Admin)" class="ml-1 px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white"><i class="fa-solid fa-trash"></i></button>
               </td>
             </tr>
             <tr v-if="!otsFiltradas.length"><td colspan="7" class="p-6 text-center text-slate-400 italic">No hay OT enlazadas con este filtro.</td></tr>
@@ -88,7 +89,7 @@ export default {
 
     return {
       isAdmin, puedeEditar, formatDateForDisplay, irAOT, ESTILO_ESTADO_OT, ETIQUETA_ESTADO_OT, estadoOT,
-      repPorId: S.repPorId, ubicacionRep: S.ubicacionRep, ESTILO_ESTADO: S.ESTILO_ESTADO, nombreProg: S.nombreProg, desenlazarOT: S.desenlazarOT,
+      repPorId: S.repPorId, ubicacionRep: S.ubicacionRep, ESTILO_ESTADO: S.ESTILO_ESTADO, nombreProg: S.nombreProg, desenlazarOT: S.desenlazarOT, eliminarOTTaller: S.eliminarOTTaller,
       cargandoTaller: S.cargandoTaller,
       filtroProg, texto, recargar, programaDeOT, programasConOT, otsFiltradas
     };

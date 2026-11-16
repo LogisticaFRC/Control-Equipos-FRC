@@ -7,7 +7,7 @@
 // =====================================================================
 import * as S from './taller.service.js';
 import { folioSugerido } from '../ot/ot.service.js';
-import { puedeEditar } from '../../core/store.js';
+import { puedeEditar, isAdmin } from '../../core/store.js';
 import InspeccionEquipo from './inspeccion-equipo.view.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 
@@ -32,7 +32,10 @@ export default {
   <template v-for="g in S.inspeccionesDeRep(rep)" :key="g.id">
   <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
     <span class="text-xs font-black uppercase text-[#1f4d3a]"><i :class="['fa-solid mr-1', g.esInspeccion ? 'fa-clipboard-list' : 'fa-comment-dots']"></i>{{ g.esInspeccion ? 'Inspección' : 'Reporte' }} · {{ fechaHora(g.fecha) }} · {{ g.por }} · {{ g.items.length }} ítem(s)</span>
-    <button v-if="gestor && g.items.some(h => h.estado === 'PENDIENTE')" @click="marcarGrupo(g)" class="text-xs font-bold text-violet-700 underline">Marcar esta inspección</button>
+    <span class="flex items-center gap-3">
+      <button v-if="gestor && g.items.some(h => h.estado === 'PENDIENTE')" @click="marcarGrupo(g)" class="text-xs font-bold text-violet-700 underline">Marcar esta inspección</button>
+      <button v-if="isAdmin" @click="S.eliminarHallazgos(g.items, (g.esInspeccion ? 'la inspección completa' : 'este reporte') + ' (' + g.items.length + ' ítem(s))')" class="text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg px-2.5 py-1"><i class="fa-solid fa-trash mr-1"></i>Eliminar {{ g.esInspeccion ? 'inspección' : 'reporte' }}</button>
+    </span>
   </div>
   <div v-for="h in g.items" :key="h.id" :class="['bg-white rounded-xl border-2 p-3 space-y-2', marcados[h.id] ? 'border-violet-500' : 'border-transparent']">
     <div class="flex items-start gap-3">
@@ -45,6 +48,7 @@ export default {
         <div v-if="h.necesita_repuesto" class="text-sm text-amber-800 font-semibold"><i class="fa-solid fa-gear mr-1"></i>Pide repuesto: {{ h.cantidad ? h.cantidad + ' x ' : '' }}{{ h.repuesto }}</div>
         <p class="text-[11px] text-slate-500">{{ h.reportado_por }} · {{ fechaHora(h.created_at) }}<template v-if="h.estado === 'RECHAZADO' && h.respuesta"> · <b>{{ h.respuesta }}</b></template></p>
       </div>
+      <button v-if="isAdmin" @click="S.eliminarHallazgos([h])" title="Eliminar esta falla (Admin)" class="shrink-0 text-slate-300 hover:text-rose-600 text-lg px-1"><i class="fa-solid fa-trash"></i></button>
       <a v-if="h.foto_url" :href="h.foto_url" target="_blank" rel="noopener" class="shrink-0"><img :src="h.foto_url" class="w-20 h-16 object-cover rounded-lg border" alt="foto"></a>
     </div>
     <!-- Nota y fecha aprox. del repuesto (la ve el mecánico) -->
@@ -112,6 +116,6 @@ export default {
     };
     const fechaHora = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
 
-    return { S, gestor, puedeInspeccionar, abiertaInsp, marcarGrupo, puedeEditar, lista, pendientes, marcados, nMarcados, notas, cambioNota, guardarNota, marcarTodos, formOT, crearOT, agregarAOT, ocupado, fechaHora, formatDateForDisplay };
+    return { S, isAdmin, gestor, puedeInspeccionar, abiertaInsp, marcarGrupo, puedeEditar, lista, pendientes, marcados, nMarcados, notas, cambioNota, guardarNota, marcarTodos, formOT, crearOT, agregarAOT, ocupado, fechaHora, formatDateForDisplay };
   }
 };
