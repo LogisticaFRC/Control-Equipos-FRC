@@ -71,8 +71,8 @@ export const equiposApp = computed(() => {
       || String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true }));
 });
 export const equipoSel = ref(null);
-/** Pestaña de la app: 'equipos' | 'taller' | 'mantencion' | 'registros' | 'tareas'. */
-export const tabApp = ref('equipos');
+/** Pantalla de la app: 'inicio' (menú en tarjetas) | 'equipos' | 'taller' | 'registros' | 'tareas'. */
+export const tabApp = ref('inicio');   // 'inicio' = menú en tarjetas
 export const abrirEquipo = (e) => { equipoSel.value = e; horoForm.value = { valor: '', fecha: hoyISO() }; };
 export const cerrarEquipo = () => { equipoSel.value = null; };
 export const enTaller = (e) => empresaDe(e) === EMPRESA_TALLER;

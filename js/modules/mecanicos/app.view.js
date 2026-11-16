@@ -12,8 +12,8 @@ import { ACEITES } from '../historial/historial.mapper.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js';
 import TallerMecanico from '../taller/taller-mecanico.view.js';
-import MantencionTaller from './mantencion-taller.view.js';   // pestaña MANTENCIÓN (modo taller)
-import { naveDeAfi, colorNave, recargarTaller } from '../taller/taller.service.js';   // pestaña TALLER: cartas del programa de reparación + OT asignada + hallazgos
+import ActividadesEquipo from './actividades-equipo.view.js';   // TALLER: intervenciones + bloqueo + ART + mantención de un equipo en nave
+import { naveDeAfi, colorNave, recargarTaller, navesLibres, cuposNave, CAPACIDAD_NAVE, ingresarANave, equiposEnNaves, problemasPendientes } from '../taller/taller.service.js';   // pestaña TALLER: cartas del programa de reparación + OT asignada + hallazgos
 
 const { ref, computed, onMounted, watch } = Vue;
 
@@ -22,7 +22,7 @@ const LUGARES = ['TALLER FRC', 'TERRENO', 'FAENA CLIENTE'];
 
 export default {
   name: 'MecanicoApp',
-  components: { TallerMecanico, MantencionTaller },
+  components: { TallerMecanico, ActividadesEquipo },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
 <div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
@@ -30,9 +30,10 @@ export default {
   <header class="sticky top-0 z-30 bg-[#1f4d3a] text-white px-4 py-3 flex items-center gap-3 shadow">
     <button v-if="S.formInt.value" @click="S.cerrarIntervencion()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <button v-else-if="S.equipoSel.value" @click="S.cerrarEquipo()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
+    <button v-else-if="tab !== 'inicio'" @click="tab = 'inicio'" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Menú"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <div v-else class="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center"><img :src="logoSrc" @error="onLogoError" class="max-h-full max-w-full object-contain" referrerpolicy="no-referrer"></div>
     <div class="flex-1 min-w-0">
-      <div class="font-extrabold leading-tight truncate">{{ S.formInt.value ? (S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : 'Hola, ' + nombreCorto }}</div>
+      <div class="font-extrabold leading-tight truncate">{{ S.formInt.value ? (S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
       <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Técnicos FRC' + (S.cargoActual.value ? ' · ' + S.cargoActual.value : '') + ' · ' + (S.esTaller.value ? 'Taller' : 'Terreno') }}</div>
     </div>
  <select v-if="preview && !S.formInt.value" v-model="S.modoPreview.value" class="text-slate-900 text-xs font-bold rounded-lg px-1.5 py-1.5" title="Ver como"><option value="taller">Taller</option><option value="terreno">Terreno</option></select>
@@ -246,8 +247,18 @@ export default {
           <div class="flex gap-2"><input v-model="S.horoForm.value.valor" inputmode="decimal" class="inp flex-1 font-mono text-lg" placeholder="Nuevo horómetro"><input type="date" v-model="S.horoForm.value.fecha" class="inp w-36 px-2"></div>
           <button @click="S.guardarHorometro(eq)" :disabled="S.guardandoHoro.value || !S.horoForm.value.valor" class="mt-2 w-full py-3 rounded-xl bg-[#1f4d3a] text-white font-extrabold disabled:opacity-40"><i :class="['fa-solid mr-1', S.guardandoHoro.value ? 'fa-spinner fa-spin' : 'fa-floppy-disk']"></i>Guardar horómetro</button>
         </div>
-        <!-- Opciones -->
-        <div class="grid grid-cols-1 gap-3">
+        <!-- TALLER: solo equipos en nave tienen actividades; los demás solo se pueden agregar a una nave (no programado) -->
+        <actividades-equipo v-if="S.esTaller.value && naveDeAfi(eq.afi)" :eq="eq"></actividades-equipo>
+        <div v-else-if="S.esTaller.value" class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+          <div class="lbl"><i class="fa-solid fa-warehouse mr-1"></i>Agregar a una nave (equipo no programado)</div>
+          <p class="text-xs text-slate-500">En taller solo se trabaja con equipos que están en una nave. Si este equipo llegó sin estar en el programa, ingrésalo a una nave:</p>
+          <div v-if="navesLibres.length" class="grid grid-cols-2 gap-2">
+            <button v-for="n in navesLibres" :key="n" @click="agregarANave(n)" :disabled="ocupado" :class="['py-3 rounded-xl font-black border-2 bg-white disabled:opacity-50', colorNave(n).borde, colorNave(n).txt]">{{ n }}<span class="block text-[10px] font-bold opacity-80">quedan {{ cuposNave(n) }} de {{ CAPACIDAD_NAVE }}</span></button>
+          </div>
+          <p v-else class="text-sm text-slate-500">Todas las naves están llenas.</p>
+        </div>
+        <!-- TERRENO: opciones de siempre -->
+        <div v-else class="grid grid-cols-1 gap-3">
           <button @click="S.abrirIntervencion('MECANICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-wrench"></i></span><span class="flex-1"><b class="block text-lg">Intervención mecánica</b><span class="text-xs text-slate-500">FRC-RE-OPE-017</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <button @click="S.abrirIntervencion('ELECTRICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-bolt"></i></span><span class="flex-1"><b class="block text-lg">Intervención eléctrica</b><span class="text-xs text-slate-500">IE-FRC</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <div class="bg-white/60 rounded-2xl p-4 flex items-center gap-4 opacity-60"><span class="w-14 h-14 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-oil-can"></i></span><span class="flex-1"><b class="block text-lg">Mantenciones</b><span class="text-xs">Próximamente</span></span></div>
@@ -264,14 +275,26 @@ export default {
       </section>
     </template>
 
-    <!-- ========== INICIO: EQUIPOS / MIS REGISTROS ========== -->
+    <!-- ========== MENÚ EN TARJETAS (2026-11-16) / EQUIPOS / TALLER / DOCUMENTOS / TAREAS ========== -->
     <template v-else>
+      <section v-if="tab === 'inicio'" class="p-4 space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <button v-for="c in tarjetas" :key="c.tab" @click="irA(c.tab)" :class="['relative bg-white rounded-3xl shadow-sm p-4 text-left active:scale-[.98] transition flex flex-col gap-3 min-h-[150px]', c.ancha ? 'col-span-2' : '']">
+            <span :class="['w-14 h-14 rounded-2xl flex items-center justify-center text-2xl', c.color]"><i :class="['fa-solid', c.icon]"></i></span>
+            <span><b class="block text-lg leading-tight text-slate-800">{{ c.titulo }}</b><span class="text-xs text-slate-500">{{ c.sub }}</span></span>
+            <span v-if="c.badge" class="absolute top-3 right-3 bg-rose-500 text-white text-xs font-black rounded-full px-2 py-0.5">{{ c.badge }}</span>
+          </button>
+        </div>
+        <instalar-app v-if="!preview"></instalar-app>
+      </section>
+
       <section v-show="tab === 'equipos'" class="p-4 space-y-3">
+        <p v-if="S.esTaller.value" class="text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-2.5"><i class="fa-solid fa-circle-info mr-1"></i>Las actividades se hacen en los equipos <b>en nave</b> (primero en la lista). Los demás aparecen solo para <b>agregar a una nave</b> un equipo no programado.</p>
         <div class="sticky top-[64px] z-20 -mx-4 px-4 pb-2 bg-slate-100">
           <div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
             <input v-model="S.busquedaEq.value" inputmode="search" placeholder="Buscar AFI, tipo, marca…" class="w-full pl-11 pr-4 py-3.5 rounded-2xl border-0 shadow-sm text-base"></div>
         </div>
-        <button v-for="e in S.equiposApp.value.slice(0, limite)" :key="e.id" @click="S.abrirEquipo(e)" class="w-full bg-white rounded-2xl shadow-sm p-4 text-left active:scale-[.99] transition">
+        <button v-for="e in listaEquipos.slice(0, limite)" :key="e.id" @click="S.abrirEquipo(e)" class="w-full bg-white rounded-2xl shadow-sm p-4 text-left active:scale-[.99] transition">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0"><div class="text-lg font-black text-[#1f4d3a] leading-tight">AFI {{ e.afi }} <span class="text-sm font-bold text-slate-700">{{ e.tipo }}</span></div><div class="text-xs text-slate-500 truncate">{{ e.marca }} {{ e.modelo }} · {{ e.ubicacion || '—' }}</div></div>
             <span v-if="S.esTaller.value && naveDeAfi(e.afi)" :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', colorNave(naveDeAfi(e.afi)).chip]">{{ naveDeAfi(e.afi) }}</span>
@@ -282,9 +305,8 @@ export default {
             <div class="bg-slate-50 rounded-xl px-3 py-2"><div class="text-[10px] font-bold uppercase text-slate-500">Última mantención</div><div class="font-mono font-black">{{ fmtH(e.horometros?.hUltimaMant) }}</div><div class="text-[10px] text-slate-500">{{ formatDateForDisplay(e.horometros?.ultimaMantFecha) }}</div></div>
           </div>
         </button>
-        <button v-if="S.equiposApp.value.length > limite" @click="limite += 40" class="w-full py-3 rounded-2xl bg-white font-bold text-emerald-700 shadow-sm">Ver más ({{ S.equiposApp.value.length - limite }})</button>
+        <button v-if="listaEquipos.length > limite" @click="limite += 40" class="w-full py-3 rounded-2xl bg-white font-bold text-emerald-700 shadow-sm">Ver más ({{ listaEquipos.length - limite }})</button>
         <div v-if="!S.equiposApp.value.length" class="text-center text-slate-400 py-10">No hay equipos con esa búsqueda.</div>
-        <instalar-app v-if="!preview"></instalar-app>
       </section>
 
       <section v-show="tab === 'registros'" class="p-4 space-y-3">
@@ -311,19 +333,9 @@ export default {
       </section>
 
       <section v-if="tab === 'taller' && S.esTaller.value"><taller-mecanico></taller-mecanico></section>
-      <section v-if="tab === 'mantencion' && S.esTaller.value"><mantencion-taller></mantencion-taller></section>
 
       <section v-if="tab === 'tareas'" class="p-3"><recordatorios-view></recordatorios-view></section>
 
-      <!-- Barra inferior -->
-      <nav :class="['fixed bottom-0 left-0 right-0 z-30 max-w-xl mx-auto bg-white border-t grid', S.esTaller.value ? 'grid-cols-5' : 'grid-cols-3']">
-        <button @click="tab = 'equipos'" :class="['py-3 font-bold text-sm', tab === 'equipos' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-truck-monster block text-xl mb-0.5"></i>Equipos</button>
-        <button v-if="S.esTaller.value" @click="tab = 'taller'" :class="['py-3 font-bold text-sm', tab === 'taller' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-warehouse block text-xl mb-0.5"></i>Taller</button>
-        <button v-if="S.esTaller.value" @click="tab = 'mantencion'" :class="['py-3 font-bold text-sm', tab === 'mantencion' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-oil-can block text-xl mb-0.5"></i>Mantención</button>
-        <button @click="tab = 'registros'; S.cargarMec()" :class="['py-3 font-bold text-sm relative', tab === 'registros' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-folder block text-xl mb-0.5"></i>{{ S.esTaller.value ? 'Docs' : 'Mis documentos' }}
-          <span v-if="pendientesMios" class="absolute top-2 right-1/4 bg-rose-500 text-white text-[10px] rounded-full px-1.5">{{ pendientesMios }}</span></button>
-        <button @click="tab = 'tareas'" :class="['py-3 font-bold text-sm', tab === 'tareas' ? 'text-emerald-700' : 'text-slate-400']"><i class="fa-solid fa-calendar-check block text-xl mb-0.5"></i>{{ S.esTaller.value ? 'Tareas' : 'Mis tareas' }}</button>
-      </nav>
     </template>
   </main>
 
@@ -354,9 +366,34 @@ export default {
       dictando.value = campo; rec.start();
     };
     onMounted(() => { S.cargarMec(); if (S.esTaller.value) recargarTaller(); });
-    // TERRENO no tiene Taller ni Mantención: si quedó en esa pestaña, vuelve a Equipos
-    watch(() => S.esTaller.value, (t) => { if (!t && ['taller', 'mantencion'].includes(tab.value)) tab.value = 'equipos'; if (t) recargarTaller(); }, { immediate: true });
-    return { S, naveDeAfi, colorNave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
+    // TERRENO no tiene Taller: si quedó en esa pantalla, vuelve al menú
+    watch(() => S.esTaller.value, (t) => { if (!t && tab.value === 'taller') tab.value = 'inicio'; if (t) recargarTaller(); }, { immediate: true });
+    // Menú en tarjetas
+    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas' };
+    const irA = (t) => { tab.value = t; if (t === 'registros') S.cargarMec(); if (t === 'taller') recargarTaller(); window.scrollTo(0, 0); };
+    const tarjetas = computed(() => S.esTaller.value ? [
+      { tab: 'taller', titulo: 'Taller · Naves', sub: equiposEnNaves.value + ' equipo(s) en naves · inspección, OT, intervenciones', icon: 'fa-warehouse', color: 'bg-amber-100 text-amber-700', ancha: true },
+      { tab: 'equipos', titulo: 'Equipos', sub: 'Agregar a nave un equipo no programado', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700' },
+      { tab: 'registros', titulo: 'Mis documentos', sub: 'Sin firma y realizados', icon: 'fa-folder-open', color: 'bg-sky-100 text-sky-700', badge: pendientesMios.value },
+      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700', ancha: true }
+    ] : [
+      { tab: 'equipos', titulo: 'Equipos', sub: 'Horómetro e intervenciones', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700', ancha: true },
+      { tab: 'registros', titulo: 'Mis documentos', sub: 'Sin firma y realizados', icon: 'fa-folder-open', color: 'bg-sky-100 text-sky-700', badge: pendientesMios.value },
+      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700' }
+    ]);
+    // TALLER: equipos en nave primero
+    const listaEquipos = computed(() => S.esTaller.value
+      ? [...S.equiposApp.value].sort((a, b) => (Boolean(naveDeAfi(b.afi)) - Boolean(naveDeAfi(a.afi))))
+      : S.equiposApp.value);
+    const ocupado = ref(false);
+    const agregarANave = async (nave) => {
+      const e = S.equipoSel.value; if (!e) return;
+      if (!confirm(`¿Ingresar el AFI ${e.afi} a la ${nave} como equipo NO programado?`)) return;
+      ocupado.value = true;
+      try { if (await ingresarANave(nave, { afi: e.afi })) S.avisoApp(`AFI ${e.afi} ingresado a la ${nave} ✔`); }
+      finally { ocupado.value = false; }
+    };
+    return { S, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };

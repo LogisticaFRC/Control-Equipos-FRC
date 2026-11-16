@@ -869,3 +869,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   - Mantención: equipo en nave + tipo (250/500/1000/Intermedia/Otra) + horómetro + documentos tomados del módulo Formatos (pauta/mantención, bloqueo, ART: aparecen solos cuando se suben) + registro de bloqueo en blanco (PDF del sistema).
 - Vista previa del panel Mecánicos: selector Taller / Terreno. Sin SQL.
 - Al salir de la nave como EQUIPO LISTO el equipo queda **Disponible** en el Inventario y REPARADO en el programa (ya existía).
+
+## 2026-11-16 · App técnicos: menú en tarjetas + actividades solo en equipos en nave
+- La app del celular abre con un **menú en tarjetas** (pantalla 'inicio'): TALLER → Taller·Naves, Equipos, Mis documentos, Mis tareas · TERRENO → Equipos, Mis documentos, Mis tareas. Se quitó la barra inferior; la flecha de arriba vuelve al menú.
+- TALLER: las actividades se hacen solo en equipos **en nave** (`mecanicos/actividades-equipo.view.js`): Intervención mecánica, Intervención eléctrica (para rellenar y firmar, igual que terreno), **Agregar bloqueo de equipo** (abre la intervención con el registro FRC-RE-OP-015 activado, en el paso Seguridad), **Agregar ART** y **Agregar mantención** (formatos pendientes de cargar). Aparecen en la carta del equipo (Taller · Naves) y en su ficha.
+- Equipos que no están en nave: solo "Agregar a una nave (equipo no programado)". La lista muestra primero los equipos en nave.
+- Se quitó la pestaña Mantención con formatos (mantencion-taller.view.js ya no se usa).
