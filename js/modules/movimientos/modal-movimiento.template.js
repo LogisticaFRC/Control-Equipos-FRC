@@ -11,8 +11,19 @@ export default /* html */ `
         <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Equipo (AFI)</label>
         <select v-model="formMov.afi" @change="alCambiarAfiMov" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-900">
           <option value="">-- Seleccionar Equipo --</option>
+          <option :value="OTRO_AFI">✏️ OTRO · subarrendado / no está en el sistema (escribir)</option>
           <option v-for="e in dbEquipos" :key="e.id" :value="e.afi">AFI {{ e.afi }} - {{ e.tipo }} {{ e.marca }} {{ e.modelo }}</option>
         </select>
+        <!-- OTRO: AFI escrito a mano (subarrendado). Solo información: NO se agrega al Inventario -->
+        <div v-if="esMovOtro" class="mt-2 p-3 rounded-lg border-2 border-violet-200 bg-violet-50 space-y-2">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <label class="block"><span class="block font-bold text-violet-900 uppercase text-[10px]">AFI / identificación</span>
+              <input type="text" v-model="formMov.afiTexto" placeholder="Ej: SUB-1234" class="w-full p-2.5 border rounded-lg bg-white font-bold uppercase"></label>
+            <label v-if="!formMov.id" class="block sm:col-span-2"><span class="block font-bold text-violet-900 uppercase text-[10px]">Equipo / proveedor (opcional)</span>
+              <input type="text" v-model="formMov.descOtro" placeholder="Ej: Generador 500 KVA · Proveedor X" class="w-full p-2.5 border rounded-lg bg-white"></label>
+          </div>
+          <p class="text-[10px] text-violet-800"><i class="fa-solid fa-circle-info mr-1"></i>Equipo subarrendado: queda <b>solo como información</b> en este movimiento. No se agrega al Inventario ni cambia ningún equipo.</p>
+        </div>
         <!-- Datos del equipo elegido -->
         <div v-if="equipoMov" class="mt-2 grid grid-cols-3 gap-2">
           <div class="bg-white border rounded-lg p-2"><p class="text-[9px] font-bold text-slate-500 uppercase">Tipo equipo</p><p class="font-extrabold text-slate-800">{{ equipoMov.tipo || '-' }}</p></div>
@@ -61,7 +72,7 @@ export default /* html */ `
           </select>
         </div>
       </div>
-      <label v-if="formMov.id" :class="['flex items-start gap-2 p-3 rounded-lg border cursor-pointer', formMov.esUltimo ? 'bg-sky-50 border-sky-200' : 'bg-slate-100 border-slate-200 opacity-70']">
+      <label v-if="formMov.id && !esMovOtro" :class="['flex items-start gap-2 p-3 rounded-lg border cursor-pointer', formMov.esUltimo ? 'bg-sky-50 border-sky-200' : 'bg-slate-100 border-slate-200 opacity-70']">
         <input type="checkbox" v-model="formMov.actualizarEquipo" :disabled="!formMov.esUltimo" class="mt-0.5">
         <span><b>Actualizar también el equipo</b> (ubicación, estado y empresa) con estos datos.
           <span class="block text-[10px] text-slate-500">{{ formMov.esUltimo ? 'Es el último movimiento de este equipo.' : 'Solo disponible en el último movimiento del equipo (este es uno anterior: se corrige solo el registro).' }}</span></span>

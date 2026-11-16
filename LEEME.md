@@ -854,3 +854,8 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 ## 2026-11-16 · Naves con color y tarjetas chicas
 - `colorNave(nave)` en taller.service.js: NAVE 1 ámbar · NAVE 2 celeste · NAVE 3 violeta · NAVE 4 verde · NAVE 5 rojo (borde + cabecera; también en las cartas de la app de mecánicos).
 - 1 equipo en la nave → tarjeta grande. 2 a 4 equipos → tarjetas chicas en 2 columnas (foto, AFI, OT, avance, REPARAR / listo ✓ / sacar).
+
+## 2026-11-16 · Movimientos: AFI "OTRO" (equipos subarrendados)
+- En Registrar Nuevo Movimiento, la lista de AFI tiene **✏️ OTRO · subarrendado / no está en el sistema**: se escribe el AFI a mano (+ equipo/proveedor opcional).
+- Queda SOLO como información en BD_MOVIMIENTOS (tipo = "… · SUBARRENDADO: descripción"). NO se agrega al Inventario ni actualiza ningún equipo. Si el AFI escrito ya existe en el sistema, pide elegirlo de la lista.
+- En la tabla de movimientos el equipo aparece como "Externo / subarrendado (no está en el sistema)". Sin SQL.

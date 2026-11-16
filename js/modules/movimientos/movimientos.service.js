@@ -37,7 +37,10 @@ export const getHistorialMovimientosAFI = (afi) => dbMovimientos.value
 
 // ---------- Registrar movimiento ----------
 // Destino = Empresa → Área → Sector → Locación del módulo ÁREAS (formMov.sel). Origen = dónde está hoy el equipo.
-const MOV_DEFAULT = () => ({ id: null, actualizarEquipo: false, afi: "", fecha: hoyISO(), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "", sel: selDesdeLocacion(null) });
+// AFI "OTRO" (2026-11-16): equipos SUBARRENDADOS / externos. Se escribe el AFI a mano y queda SOLO como información
+// en el movimiento: no se agrega al Inventario ni se actualiza ningún equipo.
+export const OTRO_AFI = '__OTRO__';
+const MOV_DEFAULT = () => ({ id: null, actualizarEquipo: false, afi: "", afiTexto: "", descOtro: "", fecha: hoyISO(), tipo: "Traslado", origen: "", destino: "", empresa_arriendo: "", estado: "Operativo", camion: "", conductor: "", sel: selDesdeLocacion(null) });
 export const showModalMovimiento = ref(false);
 export const formMov = ref(MOV_DEFAULT());
 
@@ -46,7 +49,12 @@ const origenDeEquipo = (eq) => {
   if (!eq) return '';
   return nodo(eq.locacionId) ? textoUbicacion(eq.locacionId) : (eq.ubicacion || '');
 };
+/** ¿El movimiento del formulario es de un equipo externo / subarrendado (AFI escrito a mano)? */
+export const esMovOtro = computed(() => formMov.value.afi === OTRO_AFI);
+/** ¿Este AFI NO está en el Inventario? (movimientos de equipos subarrendados) */
+export const esAfiExterno = (afi) => Boolean(String(afi || '').trim()) && !buscarEquipoPorAfi(afi);
 export const alCambiarAfiMov = () => {
+  if (formMov.value.afi === OTRO_AFI) { if (!formMov.value.id) formMov.value.origen = ''; return; }
   if (formMov.value.id) return;   // al editar no se pisa el origen guardado
   const eq = buscarEquipoPorAfi(formMov.value.afi);
   formMov.value.origen = origenDeEquipo(eq);
@@ -56,7 +64,8 @@ export const equipoMov = computed(() => buscarEquipoPorAfi(formMov.value.afi) ||
 /** "GENERADOR · FG WILSON · P-100" de un AFI (tabla de movimientos). */
 export const descEquipoMov = (afi) => {
   const e = buscarEquipoPorAfi(afi);
-  return e ? [e.tipo, e.marca, e.modelo].filter(Boolean).join(' · ') : '';
+  if (!e) return afi ? 'Externo / subarrendado (no está en el sistema)' : '';
+  return [e.tipo, e.marca, e.modelo].filter(Boolean).join(' · ');
 };
 /** ¿Es el movimiento más reciente de su equipo? (solo ese puede actualizar la ubicación del equipo al editarlo) */
 export const esUltimoMovDelEquipo = (m) => {
@@ -69,7 +78,7 @@ export const abrirEditarMovimiento = (m) => {
   if (!soloAdmin()) return;
   formMov.value = {
     ...MOV_DEFAULT(),
-    id: m.id, afi: m.afi, fecha: formatExcelDate(m.fecha) === '-' ? '' : formatExcelDate(m.fecha), tipo: m.tipo,
+    id: m.id, afi: esAfiExterno(m.afi) ? OTRO_AFI : m.afi, afiTexto: esAfiExterno(m.afi) ? m.afi : '', fecha: formatExcelDate(m.fecha) === '-' ? '' : formatExcelDate(m.fecha), tipo: m.tipo,
     origen: m.origen, destino: m.destino, empresa_arriendo: m.empresa_arriendo, estado: m.estado,
     camion: m.camion, conductor: m.conductor,
     sel: selDesdeLocacion(nodo(m.locacionId) ? m.locacionId : null),
@@ -118,6 +127,25 @@ const actualizarEquipoDesdeMov = async (payload, locId) => {
   return avisoEquipo;
 };
 
+/** AFI a guardar: el elegido de la lista o el escrito a mano (OTRO). Devuelve null si falta o si el escrito ya existe en el sistema. */
+const afiAGuardar = (f) => {
+  if (f.afi !== OTRO_AFI) {
+    if (!String(f.afi || '').trim()) { alert('Elige el equipo (AFI) o "OTRO" para escribirlo.'); return null; }
+    return limpiarAfi(f.afi);
+  }
+  const t = limpiarAfi(f.afiTexto).toUpperCase();
+  if (!t) { alert('Escribe el AFI / identificación del equipo subarrendado.'); return null; }
+  if (buscarEquipoPorAfi(t)) { alert(`El AFI ${t} ya está en el sistema: elígelo de la lista (no en "OTRO").`); return null; }
+  return t;
+};
+/** Tipo de movimiento con la marca de subarrendado (y su descripción) cuando el AFI es OTRO. */
+const tipoAGuardar = (f) => {
+  const base = parseStr(f.tipo);
+  if (f.afi !== OTRO_AFI || /SUBARRENDADO/i.test(base)) return base;
+  const d = String(f.descOtro || '').trim();
+  return `${base}${base ? ' · ' : ''}SUBARRENDADO${d ? ': ' + d.toUpperCase() : ''}`;
+};
+
 /** Guarda los cambios de un movimiento existente (solo Admin). */
 const guardarEdicionMovimiento = async () => {
   const f = formMov.value;
@@ -129,10 +157,12 @@ const guardarEdicionMovimiento = async () => {
     catch (err) { return alert("No se pudo crear la locación de destino: " + errMsg(err)); }
   }
   const ruta = rutaDe(locId);
+  const afiG = afiAGuardar(f);
+  if (!afiG) return;
   const payload = {
-    afi: limpiarAfi(f.afi),
+    afi: afiG,
     fecha: formatIsoDateForSupabase(f.fecha),
-    tipo: parseStr(f.tipo),
+    tipo: tipoAGuardar(f),
     ubicacion_anterior: parseStr(f.origen),
     ubicacion_actual: locId ? textoUbicacion(locId) : parseStr(f.destino),
     empresa_arriendo: locId && ruta.empresa ? ruta.empresa.nombre : parseStr(f.empresa_arriendo),
@@ -149,7 +179,7 @@ const guardarEdicionMovimiento = async () => {
       await sb(supabaseClient.from(TABLA_MOVIMIENTOS).update(payload).eq('id', f.id));
     }
   } catch (err) { return alert("Error al guardar el movimiento: " + errMsg(err)); }
-  const aviso = f.actualizarEquipo ? await actualizarEquipoDesdeMov(payload, locId) : '';
+  const aviso = (f.actualizarEquipo && f.afi !== OTRO_AFI) ? await actualizarEquipoDesdeMov(payload, locId) : '';
   await cargarDatosDesdeSupabase(['movimientos', 'inventario']);
   showModalMovimiento.value = false;
   alert("¡Movimiento actualizado!" + (f.actualizarEquipo ? " También se actualizó el equipo." : "") + aviso);
@@ -160,8 +190,11 @@ export const guardarNuevoMovimiento = async () => {
   if (formMov.value.id) return guardarEdicionMovimiento();
   const f = formMov.value;
   const sel = f.sel;
+  const otro = f.afi === OTRO_AFI;
+  const afiG = afiAGuardar(f);
+  if (!afiG) return;
   if (!selVacia(sel) && !selCompleta(sel)) return alert("Completa el destino: Empresa → Área → Sector → Locación (o elige \"➕ Crear nueva…\" y escribe el nombre).");
-  if (selVacia(sel) && !confirm("No elegiste destino (Empresa → Área → Sector → Locación).\n¿Guardar el movimiento sin destino? La ubicación del equipo no cambiará.")) return;
+  if (selVacia(sel) && !confirm(otro ? "No elegiste destino. ¿Guardar el movimiento del equipo subarrendado sin destino?" : "No elegiste destino (Empresa → Área → Sector → Locación).\n¿Guardar el movimiento sin destino? La ubicación del equipo no cambiará.")) return;
 
   // 1) Crea la empresa / área / locación nueva si corresponde
   let locId = null;
@@ -172,9 +205,9 @@ export const guardarNuevoMovimiento = async () => {
   const ruta = rutaDe(locId);
 
   const payload = {
-    afi: limpiarAfi(f.afi),
+    afi: afiG,
     fecha: formatIsoDateForSupabase(f.fecha),
-    tipo: parseStr(f.tipo),
+    tipo: tipoAGuardar(f),
     ubicacion_anterior: parseStr(f.origen),
     ubicacion_actual: locId ? textoUbicacion(locId) : '',
     empresa_arriendo: ruta.empresa ? ruta.empresa.nombre : '',
@@ -193,12 +226,12 @@ export const guardarNuevoMovimiento = async () => {
     catch (err2) { return alert("Error al registrar el movimiento: " + errMsg(err2)); }
   }
 
-  // Actualiza ubicación y estado del equipo en el inventario
-  const avisoEquipo = await actualizarEquipoDesdeMov(payload, locId);
+  // Actualiza ubicación y estado del equipo en el inventario (NO si es OTRO / subarrendado: queda solo como información)
+  const avisoEquipo = otro ? '' : await actualizarEquipoDesdeMov(payload, locId);
 
   await cargarDatosDesdeSupabase(['movimientos', 'inventario']);
   showModalMovimiento.value = false;
-  alert("¡Movimiento registrado y equipo actualizado con éxito!" + avisoEquipo);
+  alert(otro ? `¡Movimiento registrado! El AFI ${afiG} (subarrendado) queda solo como información: no se agregó al Inventario.` : "¡Movimiento registrado y equipo actualizado con éxito!" + avisoEquipo);
 };
 
 // ---------- Importación desde Excel ----------
