@@ -841,3 +841,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - APK: con la PWA publicada, pwabuilder.com → pegar la URL → Android → descargar APK (sigue siendo la misma web; no hay que rehacerlo con cada cambio).
 - Botón **Instalar app** (login y app de mecánicos, `js/core/instalar-app.js` → `<instalar-app>`): Android/PC con Chrome o Edge instala con 1 toque; en iPhone muestra cómo hacerlo. Si existe `descargas/FRC-Control.apk` en el repo, aparece "Descargar APK (Android)".
 - **Aviso de versión nueva** (`<aviso-version>`): cada 10 min y al volver a la app compara APP_VERSION de js/core/sesion.js; si hay Push nuevo muestra "Hay una versión nueva · Actualizar".
+
+## 2026-11-16 · Hasta 4 equipos por nave
+**SQL:** `sql/taller_naves_4.sql` (quita el índice "1 equipo por nave" y pone un trigger con máximo 4).
+- taller.service.js: `CAPACIDAD_NAVE = 4`, `repsEnNave(nave)`, `cuposNave(nave)`, `equiposEnNaves`; `navesLibres` = naves con cupo.
+- Taller (PC/tótem): cada nave muestra todos sus equipos (cada uno con REPARAR / Sacar / EQUIPO LISTO) y "Ingresar otro equipo (quedan N)". Selectores muestran "NAVE X (quedan N)".
+- App mecánicos: lista todos los equipos de cada nave; al ingresar muestra cupos por nave.

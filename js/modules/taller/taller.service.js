@@ -96,12 +96,23 @@ export const nombreProg = (p) => (p ? (p.nombre_programa || p.mes || 'Programa')
 export const nombreProgId = (id) => nombreProg(obtenerProgObj(id));
 
 // ---------- Consultas ----------
-export const repEnNave = (nave) => dbReparaciones.value.find(r => r.estado === ESTADO_REP.EN_NAVE && r.nave === nave) || null;
+/** Cuántos equipos caben a la vez en una nave (2026-11-16: antes 1). */
+export const CAPACIDAD_NAVE = 4;
+/** Equipos que están dentro de una nave (orden de ingreso). */
+export const repsEnNave = (nave) => dbReparaciones.value.filter(r => r.estado === ESTADO_REP.EN_NAVE && r.nave === nave)
+  .sort((a, b) => String(a.fecha_ingreso || '').localeCompare(String(b.fecha_ingreso || '')));
+/** Primer equipo de la nave (compatibilidad). */
+export const repEnNave = (nave) => repsEnNave(nave)[0] || null;
+/** Cupos libres que le quedan a la nave. */
+export const cuposNave = (nave) => Math.max(0, CAPACIDAD_NAVE - repsEnNave(nave).length);
+/** Total de equipos dentro de las naves. */
+export const equiposEnNaves = computed(() => dbReparaciones.value.filter(r => r.estado === ESTADO_REP.EN_NAVE).length);
 export const repDeItem = (item) => dbReparaciones.value.find(r => r.programa_item_id != null && String(r.programa_item_id) === String(item.id)) || null;
 export const repActivaAfi = (afi) => dbReparaciones.value.find(r => mismoAfi(r.afi, afi) && r.estado !== ESTADO_REP.LISTO) || null;
 export const repPorId = (id) => dbReparaciones.value.find(r => String(r.id) === String(id)) || null;
 export const itemDeRep = (rep) => (rep && rep.programa_item_id != null ? dbProgramasItems.value.find(i => String(i.id) === String(rep.programa_item_id)) : null) || null;
-export const navesLibres = computed(() => NAVES.filter(n => !repEnNave(n)));
+/** Naves con cupo (menos de CAPACIDAD_NAVE equipos). */
+export const navesLibres = computed(() => NAVES.filter(n => cuposNave(n) > 0));
 export const naveDeAfi = (afi) => (dbReparaciones.value.find(r => r.estado === ESTADO_REP.EN_NAVE && mismoAfi(r.afi, afi)) || {}).nave || null;
 
 /** Equipo del inventario, foto y datos para mostrar. */
@@ -244,7 +255,8 @@ const ahoraHHMM = () => { const d = new Date(); return `${String(d.getHours()).p
 const avisoError = (err, accion) => {
   const m = errMsg(err);
   if (/bd_taller_reparaciones|schema cache|does not exist|reparacion_id/i.test(m)) { faltaTablaTaller.value = true; alert(SQL_AVISO); }
-  else if (/duplicate|unique|bd_taller_rep_nave_unica/i.test(m)) alert('Esa nave ya fue ocupada desde otro equipo/PC. Se actualizó la vista.');
+  else if (/bd_taller_rep_nave_unica/i.test(m)) alert('Falta ejecutar el SQL de "hasta 4 equipos por nave" (sql/taller_naves_4.sql). Mientras tanto la base solo deja 1 equipo por nave.');
+  else if (/nave_llena|duplicate|unique/i.test(m)) alert('Esa nave ya está llena (otro PC/celular ingresó un equipo). Se actualizó la vista.');
   else alert(`No se pudo ${accion}: ` + m);
 };
 
@@ -299,7 +311,7 @@ export const agregarSinPrograma = async (afiTexto) => {
 export const ingresarANave = async (nave, origen) => {
   if (!editorTaller()) return false;
   await cargarReparaciones();   // por si otro PC ocupó la nave
-  if (repEnNave(nave)) { alert(`La ${nave} ya está ocupada.`); return false; }
+  if (!cuposNave(nave)) { alert(`La ${nave} ya tiene ${CAPACIDAD_NAVE} equipos (máximo). Saca uno o usa otra nave.`); return false; }
   try {
     // tras recargar, se usa el registro nuevo (no la copia anterior)
     let rep = origen.rep ? repPorId(origen.rep.id) : null;

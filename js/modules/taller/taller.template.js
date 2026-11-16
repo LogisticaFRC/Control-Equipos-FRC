@@ -20,7 +20,7 @@ export default /* html */ `
       </div>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <div class="text-center px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-400/40"><p class="text-[10px] font-bold uppercase text-amber-300">En naves</p><p class="text-2xl font-black">{{ NAVES.length - navesLibres.length }}/{{ NAVES.length }}</p></div>
+      <div class="text-center px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-400/40"><p class="text-[10px] font-bold uppercase text-amber-300">Equipos en naves</p><p class="text-2xl font-black">{{ equiposEnNaves }}/{{ NAVES.length * CAPACIDAD_NAVE }}</p></div>
       <div class="text-center px-4 py-2 rounded-xl bg-slate-700/60 border border-slate-600"><p class="text-[10px] font-bold uppercase text-slate-300">Por ingresar</p><p class="text-2xl font-black">{{ resumenPrograma.PENDIENTE.length }}</p></div>
       <div class="text-center px-4 py-2 rounded-xl bg-rose-500/15 border border-rose-400/40"><p class="text-[10px] font-bold uppercase text-rose-300">Con faltantes</p><p class="text-2xl font-black">{{ repsConFaltantes.length }}</p></div>
       <div class="text-center px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-400/40"><p class="text-[10px] font-bold uppercase text-emerald-300">Listos programa</p><p class="text-2xl font-black">{{ resumenPrograma.LISTO.length }}<span class="text-sm font-bold text-emerald-300"> / {{ totalPrograma }}</span></p></div>
@@ -37,48 +37,55 @@ export default /* html */ `
     <div class="xl:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-5">
       <template v-for="nave in NAVES" :key="nave">
 
-        <!-- Nave OCUPADA -->
-        <div v-if="repEnNave(nave)" class="bg-white rounded-3xl shadow-lg border-2 border-amber-400 overflow-hidden flex flex-col">
+        <!-- Nave OCUPADA (hasta {{ CAPACIDAD_NAVE }} equipos por nave · 2026-11-16) -->
+        <div v-if="repsEnNave(nave).length" class="bg-white rounded-3xl shadow-lg border-2 border-amber-400 overflow-hidden flex flex-col">
           <div class="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
             <span class="text-2xl font-black tracking-wide"><i class="fa-solid fa-warehouse text-amber-400 mr-2"></i>{{ nave }}</span>
-            <span class="text-xs font-bold bg-amber-500 text-slate-950 px-3 py-1 rounded-full uppercase">En reparación</span>
+            <span class="text-xs font-bold bg-amber-500 text-slate-950 px-3 py-1 rounded-full uppercase">{{ repsEnNave(nave).length }}/{{ CAPACIDAD_NAVE }} equipo{{ repsEnNave(nave).length === 1 ? '' : 's' }}</span>
           </div>
-          <div class="relative cursor-pointer" @click="abrirReparar(repEnNave(nave))" title="Abrir la OT para reparar">
-            <img :src="fotoDe(repEnNave(nave).afi)" :alt="'AFI ' + repEnNave(nave).afi" class="w-full h-56 object-cover bg-slate-800">
-            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent px-5 pt-10 pb-3">
-              <p class="text-white text-3xl font-black drop-shadow">AFI {{ repEnNave(nave).afi }}</p>
-              <p class="text-slate-200 text-sm font-semibold truncate">{{ descEquipo(repEnNave(nave).afi) }}</p>
+          <div v-for="rep in repsEnNave(nave)" :key="rep.id" class="flex flex-col border-b-8 border-slate-100 last:border-b-0">
+            <div class="relative cursor-pointer" @click="abrirReparar(rep)" title="Abrir la OT para reparar">
+              <img :src="fotoDe(rep.afi)" :alt="'AFI ' + rep.afi" :class="['w-full object-cover bg-slate-800', repsEnNave(nave).length > 1 ? 'h-36' : 'h-56']">
+              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent px-5 pt-10 pb-3">
+                <p class="text-white text-3xl font-black drop-shadow">AFI {{ rep.afi }}</p>
+                <p class="text-slate-200 text-sm font-semibold truncate">{{ descEquipo(rep.afi) }}</p>
+              </div>
+            </div>
+            <div class="p-5 space-y-3 flex-grow flex flex-col">
+              <div class="flex flex-wrap gap-2 text-xs font-bold">
+                <span v-if="rep.programa_id != null" class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800"><i class="fa-solid fa-calendar-check mr-1"></i>{{ nombreProgId(rep.programa_id) }}</span>
+                <span v-else class="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-800"><i class="fa-solid fa-circle-plus mr-1"></i>Sin programa</span>
+                <span v-for="o in otsDeRep(rep)" :key="o.id" class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 font-mono">OT {{ o.folio }}</span>
+                <span v-if="!otsDeRep(rep).length" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500">Sin OT</span>
+                <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600"><i class="fa-regular fa-clock mr-1"></i>{{ tiempoEnNave(rep) }}</span>
+              </div>
+              <!-- Avance -->
+              <div>
+                <div class="flex items-end justify-between">
+                  <span class="text-xs font-bold uppercase text-slate-500">Avance</span>
+                  <span :class="['text-4xl font-black leading-none', textoAvance(progresoRep(rep).pct)]">{{ progresoRep(rep).pct }}%</span>
+                </div>
+                <div class="w-full h-5 bg-slate-200 rounded-full overflow-hidden mt-1.5 shadow-inner">
+                  <div :class="['h-5 rounded-full transition-all duration-700', colorAvance(progresoRep(rep).pct)]" :style="{ width: progresoRep(rep).pct + '%' }"></div>
+                </div>
+                <p class="text-xs text-slate-500 font-semibold mt-1">{{ progresoRep(rep).sinOT ? (problemasPendientesRep(rep).length ? 'Inspección lista: falta armar la OT' : 'Esperando la inspección del mecánico') : progresoRep(rep).done + ' de ' + progresoRep(rep).total + ' actividades terminadas' }}</p>
+              </div>
+              <div v-if="problemasPendientesRep(rep).length" class="text-xs bg-violet-100 border border-violet-300 text-violet-900 rounded-lg p-2 font-bold"><i class="fa-solid fa-bell mr-1"></i>{{ problemasPendientesRep(rep).length }} falla(s) de la inspección esperando OT{{ puedeGestionarHallazgos() ? ' · revisar en REPARAR' : '' }}</div>
+              <div v-else-if="!tieneInspeccion(rep) && !otsDeRep(rep).length" class="text-xs bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-lg p-2 font-bold"><i class="fa-solid fa-clipboard-list mr-1"></i>Falta la INSPECCIÓN del equipo (en REPARAR)</div>
+              <div v-if="rep.faltante" class="text-xs bg-rose-50 border border-rose-200 text-rose-800 rounded-lg p-2 whitespace-pre-line"><b><i class="fa-solid fa-triangle-exclamation mr-1"></i>Le faltaba:</b> {{ rep.faltante }}</div>
+              <div class="flex gap-3 pt-1 mt-auto">
+                <button @click="abrirReparar(rep)" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-lg font-black py-3.5 rounded-2xl shadow"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>REPARAR</button>
+                <button v-if="puedeEditar" @click="abrirSalida(rep)" class="bg-slate-800 hover:bg-slate-900 text-white text-base font-bold px-5 py-3.5 rounded-2xl shadow"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sacar</button>
+              </div>
+              <!-- El mecánico avisa que el equipo quedó listo: sale de la nave y queda REPARADO en el programa -->
+              <button v-if="puedeEditar" @click="abrirSalida(rep, true)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-black py-3.5 rounded-2xl shadow"><i class="fa-solid fa-circle-check mr-2"></i>EQUIPO LISTO / REPARADO</button>
+              <button v-if="isAdmin" @click="sacarError(rep)" class="w-full text-xs font-bold text-slate-500 hover:text-slate-800 border border-dashed border-slate-300 hover:border-slate-500 rounded-xl py-2"><i class="fa-solid fa-rotate-left mr-1"></i>Sacar por error / prueba (Admin)</button>
             </div>
           </div>
-          <div class="p-5 space-y-3 flex-grow flex flex-col">
-            <div class="flex flex-wrap gap-2 text-xs font-bold">
-              <span v-if="repEnNave(nave).programa_id != null" class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800"><i class="fa-solid fa-calendar-check mr-1"></i>{{ nombreProgId(repEnNave(nave).programa_id) }}</span>
-              <span v-else class="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-800"><i class="fa-solid fa-circle-plus mr-1"></i>Sin programa</span>
-              <span v-for="o in otsDeRep(repEnNave(nave))" :key="o.id" class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 font-mono">OT {{ o.folio }}</span>
-              <span v-if="!otsDeRep(repEnNave(nave)).length" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500">Sin OT</span>
-              <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600"><i class="fa-regular fa-clock mr-1"></i>{{ tiempoEnNave(repEnNave(nave)) }}</span>
-            </div>
-            <!-- Avance -->
-            <div>
-              <div class="flex items-end justify-between">
-                <span class="text-xs font-bold uppercase text-slate-500">Avance</span>
-                <span :class="['text-4xl font-black leading-none', textoAvance(progresoRep(repEnNave(nave)).pct)]">{{ progresoRep(repEnNave(nave)).pct }}%</span>
-              </div>
-              <div class="w-full h-5 bg-slate-200 rounded-full overflow-hidden mt-1.5 shadow-inner">
-                <div :class="['h-5 rounded-full transition-all duration-700', colorAvance(progresoRep(repEnNave(nave)).pct)]" :style="{ width: progresoRep(repEnNave(nave)).pct + '%' }"></div>
-              </div>
-              <p class="text-xs text-slate-500 font-semibold mt-1">{{ progresoRep(repEnNave(nave)).sinOT ? (problemasPendientesRep(repEnNave(nave)).length ? 'Inspección lista: falta armar la OT' : 'Esperando la inspección del mecánico') : progresoRep(repEnNave(nave)).done + ' de ' + progresoRep(repEnNave(nave)).total + ' actividades terminadas' }}</p>
-            </div>
-            <div v-if="problemasPendientesRep(repEnNave(nave)).length" class="text-xs bg-violet-100 border border-violet-300 text-violet-900 rounded-lg p-2 font-bold"><i class="fa-solid fa-bell mr-1"></i>{{ problemasPendientesRep(repEnNave(nave)).length }} falla(s) de la inspección esperando OT{{ puedeGestionarHallazgos() ? ' · revisar en REPARAR' : '' }}</div>
-            <div v-else-if="!tieneInspeccion(repEnNave(nave)) && !otsDeRep(repEnNave(nave)).length" class="text-xs bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-lg p-2 font-bold"><i class="fa-solid fa-clipboard-list mr-1"></i>Falta la INSPECCIÓN del equipo (en REPARAR)</div>
-            <div v-if="repEnNave(nave).faltante" class="text-xs bg-rose-50 border border-rose-200 text-rose-800 rounded-lg p-2 whitespace-pre-line"><b><i class="fa-solid fa-triangle-exclamation mr-1"></i>Le faltaba:</b> {{ repEnNave(nave).faltante }}</div>
-            <div class="flex gap-3 pt-1 mt-auto">
-              <button @click="abrirReparar(repEnNave(nave))" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-lg font-black py-3.5 rounded-2xl shadow"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>REPARAR</button>
-              <button v-if="puedeEditar" @click="abrirSalida(repEnNave(nave))" class="bg-slate-800 hover:bg-slate-900 text-white text-base font-bold px-5 py-3.5 rounded-2xl shadow"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sacar</button>
-            </div>
-            <!-- El mecánico avisa que el equipo quedó listo: sale de la nave y queda REPARADO en el programa -->
-            <button v-if="puedeEditar" @click="abrirSalida(repEnNave(nave), true)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-black py-3.5 rounded-2xl shadow"><i class="fa-solid fa-circle-check mr-2"></i>EQUIPO LISTO / REPARADO</button>
-            <button v-if="isAdmin" @click="sacarError(repEnNave(nave))" class="w-full text-xs font-bold text-slate-500 hover:text-slate-800 border border-dashed border-slate-300 hover:border-slate-500 rounded-xl py-2"><i class="fa-solid fa-rotate-left mr-1"></i>Sacar por error / prueba (Admin)</button>
+          <!-- Cupo libre en la nave -->
+          <div v-if="cuposNave(nave) > 0 && puedeEditar && !faltaTablaTaller" class="p-4 border-t-2 border-dashed border-slate-200 bg-slate-50 space-y-2">
+            <div v-if="recomendadoParaNave(nave)" class="text-xs text-amber-800 font-bold"><i class="fa-solid fa-star mr-1"></i>Recomendado: AFI {{ recomendadoParaNave(nave).item.afi }} · {{ descEquipo(recomendadoParaNave(nave).item.afi) }}</div>
+            <button @click="abrirIngreso(nave)" class="w-full border-2 border-dashed border-emerald-400 text-emerald-700 hover:bg-emerald-50 font-black py-3 rounded-2xl"><i class="fa-solid fa-plus mr-2"></i>Ingresar otro equipo (quedan {{ cuposNave(nave) }})</button>
           </div>
         </div>
 
@@ -139,7 +146,7 @@ export default /* html */ `
               <p class="text-[11px] text-slate-500 truncate">{{ descEquipo(r.afi) }}</p>
               <p class="text-[11px] font-mono text-rose-700"><span v-for="o in otsDeRep(r)" :key="o.id" class="mr-1.5">OT {{ o.folio }}</span><span v-if="!otsDeRep(r).length" class="text-slate-400 font-sans">Sin OT</span></p>
               <div v-if="r.estado !== 'EN_NAVE' && puedeEditar" class="flex gap-1.5 pt-0.5">
-                <select v-model="naveDestino[r.id]" class="flex-1 p-1.5 border rounded-lg text-xs font-bold"><option value="">Ingresar a nave...</option><option v-for="n in navesLibres" :key="n" :value="n">{{ n }}</option></select>
+                <select v-model="naveDestino[r.id]" class="flex-1 p-1.5 border rounded-lg text-xs font-bold"><option value="">Ingresar a nave...</option><option v-for="n in navesLibres" :key="n" :value="n">{{ n }} (quedan {{ cuposNave(n) }})</option></select>
                 <button @click="ingresarDesdeLista(r)" :disabled="!naveDestino[r.id] || ocupado" class="bg-emerald-600 text-white rounded-lg px-2.5 text-xs font-bold disabled:opacity-40"><i class="fa-solid fa-arrow-right-to-bracket"></i></button>
                 <button @click="abrirReparar(r)" class="bg-amber-100 text-amber-900 rounded-lg px-2.5 text-xs font-bold" title="Ver / unir OT"><i class="fa-solid fa-file-signature"></i></button>
                 <button v-if="isAdmin" @click="quitarReparacion(r)" class="text-rose-500 hover:text-rose-700 px-1.5" title="Quitar de la lista"><i class="fa-solid fa-trash"></i></button>
@@ -165,7 +172,7 @@ export default /* html */ `
             <p class="text-xs text-rose-800 bg-rose-50 rounded-lg p-2 whitespace-pre-line">{{ r.faltante }}</p>
             <p v-for="o in otsDeRep(r)" :key="o.id" class="text-[11px] font-semibold text-slate-600"><span class="font-mono text-rose-700">OT {{ o.folio }}</span> · {{ progresoOT(o).done }}/{{ progresoOT(o).total }} actividades · {{ progresoOT(o).total - progresoOT(o).done }} pendientes</p>
             <div v-if="puedeEditar" class="flex gap-1.5">
-              <select v-model="naveDestino[r.id]" class="flex-1 p-1.5 border rounded-lg text-xs font-bold"><option value="">Reingresar a nave...</option><option v-for="n in navesLibres" :key="n" :value="n">{{ n }}</option></select>
+              <select v-model="naveDestino[r.id]" class="flex-1 p-1.5 border rounded-lg text-xs font-bold"><option value="">Reingresar a nave...</option><option v-for="n in navesLibres" :key="n" :value="n">{{ n }} (quedan {{ cuposNave(n) }})</option></select>
               <button @click="ingresarDesdeLista(r)" :disabled="!naveDestino[r.id] || ocupado" class="bg-emerald-600 text-white rounded-lg px-2.5 text-xs font-bold disabled:opacity-40"><i class="fa-solid fa-arrow-right-to-bracket"></i></button>
               <button @click="abrirReparar(r)" class="bg-amber-100 text-amber-900 rounded-lg px-2.5 text-xs font-bold" title="Ver OT"><i class="fa-solid fa-file-signature"></i></button>
             </div>

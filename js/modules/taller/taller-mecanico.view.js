@@ -44,9 +44,9 @@ export default {
       <div v-if="S.navesLibres.value.length" class="grid grid-cols-2 gap-2">
         <button v-for="n in S.navesLibres.value" :key="n" @click="ingresar(n)" :disabled="ocupado"
           :class="['py-3 rounded-xl font-black border-2 disabled:opacity-50', sel.item && S.naveProgramada(sel.item) === n ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300']">
-          <i class="fa-solid fa-warehouse mr-1"></i>{{ n }}<span v-if="sel.item && S.naveProgramada(sel.item) === n" class="block text-[10px] font-bold">programada</span></button>
+          <i class="fa-solid fa-warehouse mr-1"></i>{{ n }}<span class="block text-[10px] font-bold opacity-80">quedan {{ S.cuposNave(n) }} de {{ S.CAPACIDAD_NAVE }}</span><span v-if="sel.item && S.naveProgramada(sel.item) === n" class="block text-[10px] font-bold">programada</span></button>
       </div>
-      <p v-else class="text-sm text-slate-500">Todas las naves están ocupadas.</p>
+      <p v-else class="text-sm text-slate-500">Todas las naves están llenas ({{ S.CAPACIDAD_NAVE }} equipos cada una).</p>
     </div>
 
     <template v-if="sel.rep">
@@ -107,7 +107,7 @@ export default {
   <template v-else>
     <div class="flex items-center justify-between gap-2">
       <div class="min-w-0"><div class="font-black text-[#1f4d3a] truncate"><i class="fa-solid fa-warehouse mr-1 text-amber-500"></i>Taller · {{ S.programaTaller.value ? S.nombreProg(S.programaTaller.value) : 'sin programa' }}</div>
-        <div class="text-[11px] text-slate-500">{{ S.NAVES.length - S.navesLibres.value.length }}/{{ S.NAVES.length }} naves ocupadas</div></div>
+        <div class="text-[11px] text-slate-500">{{ S.equiposEnNaves.value }} equipos en {{ S.NAVES.length }} naves (máx. {{ S.CAPACIDAD_NAVE }} por nave)</div></div>
       <button @click="S.recargarTaller()" class="px-3 py-2 rounded-xl bg-white shadow-sm text-xs font-bold text-slate-600"><i :class="['fa-solid', S.cargandoTaller.value ? 'fa-spinner fa-spin' : 'fa-arrows-rotate']"></i></button>
     </div>
 
@@ -144,7 +144,7 @@ export default {
       const out = [];
       const vistos = new Set();
       const add = (c) => { if (vistos.has(c.key)) return; vistos.add(c.key); out.push(c); };
-      S.NAVES.forEach(n => { const r = S.repEnNave(n); if (r) add({ key: 'r' + r.id, afi: r.afi, rep: r, item: S.itemDeRep(r), grupo: 'NAVE' }); });
+      S.NAVES.forEach(n => S.repsEnNave(n).forEach(r => add({ key: 'r' + r.id, afi: r.afi, rep: r, item: S.itemDeRep(r), grupo: 'NAVE' })));
       S.candidatosPrograma().forEach(c => { const r = S.repDeItem(c.item); add({ key: r ? 'r' + r.id : 'i' + c.item.id, afi: c.item.afi, rep: r, item: c.item, grupo: 'PROGRAMA' }); });
       S.dbReparaciones.value.filter(r => [S.ESTADO_REP.ESPERA, S.ESTADO_REP.FALTANTES].includes(r.estado))
         .forEach(r => add({ key: 'r' + r.id, afi: r.afi, rep: r, item: S.itemDeRep(r), grupo: 'OTROS' }));
@@ -184,7 +184,7 @@ export default {
       ocupado.value = true;
       try {
         const ok = await S.ingresarANave(nave, c.rep ? { rep: c.rep } : { item: c.item });
-        if (ok) { const r = S.repEnNave(nave); if (r) { selKey.value = { key: 'r' + r.id, repId: r.id }; if (!S.tieneInspeccion(r)) inspAbierta.value = true; } }
+        if (ok) { const r = S.repsEnNave(nave).find(x => String(x.afi) === String(c.afi)); if (r) { selKey.value = { key: 'r' + r.id, repId: r.id }; if (!S.tieneInspeccion(r)) inspAbierta.value = true; } }
       } finally { ocupado.value = false; }
     };
     const enviar = async () => {
