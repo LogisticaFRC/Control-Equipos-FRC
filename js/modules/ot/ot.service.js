@@ -385,6 +385,32 @@ export const fijarFirmaEditor = (ot, clave, url) => {
   else ot.firmas = { ...(ot.firmas || {}), [clave]: url || '' };
 };
 
+// ---------- Texto largo en una celda (2026-11-16) ----------
+// Si el texto no cabe: 1) se achica la letra (mín. 7 px) en una línea; 2) si aún no cabe, pasa a 2 líneas
+// con letra más chica (cabe en el alto de la fila). Así no se corta "Cambiar paradas de emergencia y cortacorriente".
+let _ctxMedir = null;
+const anchoTexto = (txt, fontPx, familia) => {
+  try {
+    _ctxMedir = _ctxMedir || document.createElement('canvas').getContext('2d');
+    _ctxMedir.font = `${fontPx}px ${familia}`;
+    return _ctxMedir.measureText(txt).width;
+  } catch (_) { return String(txt).length * fontPx * 0.55; }
+};
+const ajusteTexto = (c, txt) => {
+  const F = FORMATO_OT;
+  const ancho = F.cols.slice(c.c - 1, c.c - 1 + (c.cs || 1)).reduce((a, b) => a + b, 0) - 4;
+  const alto = F.rows.slice(c.r - 1, c.r - 1 + (c.rs || 1)).reduce((a, b) => a + b, 0) - 1;
+  const base = (c.fs || 10) * 4 / 3;
+  const familia = c.ff === 'r' ? 'Georgia, serif' : 'Arial, Helvetica, sans-serif';
+  const w = anchoTexto(txt, base, familia);
+  if (w <= ancho) return '';
+  const una = base * ancho / w;
+  if (una >= 7) return `;font-size:${una.toFixed(1)}px`;
+  // dos líneas: letra que quepa en 2 renglones de ancho y en el alto de la fila
+  const dos = Math.max(6, Math.min(base, base * 2 * ancho * 0.92 / w, alto / 2.1));
+  return `;font-size:${dos.toFixed(1)}px;white-space:normal;line-height:1.02;word-break:break-word`;
+};
+
 /** HTML de la hoja completa con los datos de la OT. */
 export const htmlHojaOT = (ot) => {
   const F = FORMATO_OT;
@@ -395,7 +421,8 @@ export const htmlHojaOT = (ot) => {
     const tds = (porFila[r] || []).map(c => {
       const txt = c.k ? textoCelda(ot, c.k) : (c.t || '');
       const extra = c.k && (c.k.startsWith('tipo:') || c.k.startsWith('pauta:')) ? ';text-align:center;font-weight:700' : '';
-      return `<td${c.rs ? ` rowspan="${c.rs}"` : ''}${c.cs ? ` colspan="${c.cs}"` : ''} style="${css(estiloCelda(c))}${extra}">${htmlEsc(txt)}</td>`;
+      const ajuste = c.k && txt ? ajusteTexto(c, txt) : '';
+      return `<td${c.rs ? ` rowspan="${c.rs}"` : ''}${c.cs ? ` colspan="${c.cs}"` : ''} style="${css(estiloCelda(c))}${extra}${ajuste}">${htmlEsc(txt)}</td>`;
     }).join('');
     return `<tr style="height:${h}px">${tds}</tr>`;
   }).join('');

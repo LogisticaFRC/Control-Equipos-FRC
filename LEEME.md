@@ -883,3 +883,4 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   - En ambas se quita el título del sistema de la descripción (MOTOR:, CARROCERÍA / ESTRUCTURA:, OTRO:…) y los insumos se imprimen desde la fila 1 (sin huecos). Solo afecta la impresión (el Excel y los datos quedan igual).
 - Botones en REPARAR (Taller), en la lista de OT y en el editor de OT.
 - Al crear/agregar actividades (desde la inspección, faltantes o a mano) la F. INICIO queda en blanco: la pone el mecánico (al marcar la actividad terminada se completa sola si estaba vacía).
+- (2026-11-16) Texto largo en la OT impresa: `ajusteTexto` en htmlHojaOT achica la letra para que quepa en una línea (mín. 7 px) y, si aún no cabe, lo pasa a 2 líneas con letra más chica. Aplica a todas las celdas con datos (descripción, ejecutante, repuestos, etc.).
