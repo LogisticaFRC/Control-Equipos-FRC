@@ -114,6 +114,8 @@ export default {
     const onFs = () => { enPantallaCompleta.value = Boolean(document.fullscreenElement); };
     const entrarPantallaCompleta = async () => {
       try { await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch (_) { /* sin soporte o sin gesto */ }
+      // Chrome/Edge: con el teclado "tomado" Esc ya no sale al tocarlo; hay que MANTENERLO 2 s (Keyboard Lock API)
+      try { if (navigator.keyboard && navigator.keyboard.lock) await navigator.keyboard.lock(); } catch (_) { /* no soportado */ }
       onFs();
       pedirPantallaEncendida();
     };
@@ -157,6 +159,7 @@ export default {
     };
     const salirPantallaCompleta = async () => {
       modalClave.value = false;
+      try { navigator.keyboard && navigator.keyboard.unlock && navigator.keyboard.unlock(); } catch (_) { /* */ }
       try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (_) { /* */ }
     };
     const volverPantallaCompleta = () => { modalClave.value = false; entrarPantallaCompleta(); };
@@ -164,6 +167,7 @@ export default {
       if (!desbloqueado.value) return;
       if (!confirm('¿Cerrar la sesión del tótem?')) return;
       quitarBloqueos();
+      try { navigator.keyboard && navigator.keyboard.unlock && navigator.keyboard.unlock(); } catch (_) { /* */ }
       try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (_) { /* */ }
       props.salir();
     };
