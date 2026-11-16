@@ -833,3 +833,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   - `equivalentesDe(codigo)` / `resumenFiltro(codigo)` → equivalentes en otras marcas.
 - Todavía NO está conectado a pantallas: se usará cuando los mecánicos registren mantenciones en la app (al escribir el filtro → marca + equivalencias).
 - Libro en Excel: Claude outputs/LIBRO EQUIVALENCIAS FILTROS FRC.xlsx (libro, índice por código, alertas de la lista FRC, cómo reconocer la marca).
+
+## 2026-11-16 · App instalable (PWA)
+- Sitio publicado en GitHub Pages con https: https://logisticafrc.github.io/Control-Equipos-FRC/
+- `manifest.json` + `sw.js` + `icons/` + metas en index.html → se puede instalar en el celular (Chrome: ⋮ → Instalar app · iPhone/Safari: Compartir → Agregar a inicio).
+- sw.js = "primero la red": con internet siempre carga lo último del Push; sin señal muestra la copia guardada. No toca Supabase ni CDN.
+- APK: con la PWA publicada, pwabuilder.com → pegar la URL → Android → descargar APK (sigue siendo la misma web; no hay que rehacerlo con cada cambio).
