@@ -427,10 +427,49 @@ const zoomImpresion = () => {
   return Math.round(z * 1000) / 1000;
 };
 
-export const imprimirOT = (ot) => {
+// ---------- Impresión (2026-11-16): dos versiones ----------
+//   'formato'    → OT creada, para entregar al mecánico: solo las actividades y repuestos pedidos;
+//                  ejecutante, fechas, horas, aceites y firmas EN BLANCO (se llenan a mano o en la app).
+//   'respondida' → OT con todo lo que respondió el mecánico (ejecutante, fechas, horas, insumos, firmas).
+// En ambas: sin el "título" del sistema en la descripción (MOTOR:, CARROCERÍA / ESTRUCTURA:, OTRO:…)
+// y los insumos se ordenan desde la fila 1 (sin filas vacías al medio).
+const SISTEMAS_TITULO = ['MOTOR', 'ELÉCTRICO / CONTROL', 'GENERACIÓN', 'HIDRÁULICO', 'REFRIGERACIÓN', 'COMBUSTIBLE', 'ADMISIÓN / ESCAPE', 'TRANSMISIÓN / FRENOS', 'NEUMÁTICO / COMPRESOR', 'CARROCERÍA / ESTRUCTURA', 'OTRO', 'OBSERVACIÓN GENERAL'];
+const RE_TITULO = new RegExp('^\\s*(' + SISTEMAS_TITULO.map(t => t.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')).join('|') + ')\\s*:\\s*', 'i');
+/** Descripción sin el título del sistema (solo para imprimir). */
+export const sinTituloSistema = (txt) => String(txt || '').replace(RE_TITULO, '');
+/** Copia de la OT preparada para imprimir. */
+export const otParaImprimir = (ot, modo = 'respondida') => {
+  const o = JSON.parse(JSON.stringify(ot));
+  const formato = modo === 'formato';
+  o.actividades = (o.actividades || []).map(a => ({
+    ...a, descripcion: sinTituloSistema(a.descripcion),
+    ...(formato ? { ejecutante: '', f_inicio: '', f_term: '', h_inicio: '', h_term: '' } : {})
+  }));
+  const ins = o.insumos || [];
+  const aceites = ins.filter(x => x && String(x.aceites || '').trim());
+  const repuestos = ins.filter(x => x && String(x.repuestos || '').trim());
+  const n = Math.max(N_INSUMOS, aceites.length, repuestos.length);
+  o.insumos = Array.from({ length: n }, (_, i) => {
+    const a = aceites[i], r = repuestos[i];
+    return {
+      aceites: formato ? '' : (a ? a.aceites : ''),
+      repuestos: r ? r.repuestos : '',
+      fecha: formato ? '' : ((r && r.fecha) || (a && a.fecha) || ''),
+      retira: formato ? '' : ((r && r.retira) || (a && a.retira) || '')
+    };
+  });
+  if (formato) {
+    o.firmas = {};
+    o.personal = (o.personal || []).map(p => ({ ...p, firma: '' }));
+  }
+  return o;
+};
+
+export const imprimirOT = (otOriginal, modo = 'respondida') => {
+  const ot = otParaImprimir(otOriginal, modo);
   const w = window.open('', '_blank');
   if (!w) return alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>OT ${ot.folio || ''} - ${htmlEsc(ot.afi || '')}</title>
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>OT ${ot.folio || ''} - ${htmlEsc(ot.afi || '')}${modo === 'formato' ? ' (formato)' : ' (respondida)'}</title>
 <style>
   @page { size: letter portrait; margin: 0.25in; }
   html, body { margin: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

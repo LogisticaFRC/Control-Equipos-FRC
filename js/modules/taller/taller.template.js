@@ -422,7 +422,8 @@ export default /* html */ `
                 <p class="text-xs text-slate-500 font-semibold">Todo se guarda solo al escribir. Toca el cuadro grande para marcar una actividad terminada.</p>
               </div>
               <div class="flex gap-2">
-                <button @click="imprimirOT(otSel)" class="px-3 py-2 rounded-xl border font-bold text-sm text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-print mr-1"></i>Imprimir</button>
+                <button @click="imprimirOT(otSel, 'formato')" title="OT para entregar al mecánico: actividades y repuestos, el resto en blanco" class="px-3 py-2 rounded-xl border font-bold text-sm text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-print mr-1"></i>Imprimir OT (formato)</button>
+                <button @click="imprimirOT(otSel, 'respondida')" title="OT con todo lo que respondió el mecánico" class="px-3 py-2 rounded-xl border font-bold text-sm text-emerald-700 hover:bg-emerald-50"><i class="fa-solid fa-print mr-1"></i>Imprimir OT respondida</button>
                 <button v-if="isAdmin" @click="abrirFormatoOT(otSel)" class="px-3 py-2 rounded-xl border font-bold text-sm text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-file-lines mr-1"></i>Formato OT</button>
               </div>
             </div>

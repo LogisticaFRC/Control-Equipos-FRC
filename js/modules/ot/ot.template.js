@@ -54,7 +54,8 @@ export default /* html */ `
                 <span v-if="!documentosDeOT(o.folio).length" class="text-slate-300">—</span>
               </td>
               <td class="p-2.5 text-center whitespace-nowrap" @click.stop>
-                <button @click="imprimirOT(o)" title="Imprimir" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200"><i class="fa-solid fa-print"></i></button>
+                <button @click="imprimirOT(o, 'formato')" title="Imprimir OT formato (para entregar, en blanco)" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200"><i class="fa-solid fa-print"></i></button>
+                <button @click="imprimirOT(o, 'respondida')" title="Imprimir OT respondida (con lo que hizo el mecánico)" class="ml-1 px-2 py-1 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800"><i class="fa-solid fa-print"></i><i class="fa-solid fa-check text-[9px] ml-0.5"></i></button>
                 <button @click="exportarOTExcel(o)" title="Exportar Excel" class="ml-1 px-2 py-1 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800"><i class="fa-solid fa-file-excel"></i></button>
                 <button v-if="isAdmin" @click="eliminarOT(o)" title="Eliminar" class="ml-1 px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-700"><i class="fa-solid fa-trash"></i></button>
               </td>
@@ -77,7 +78,8 @@ export default /* html */ `
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <button v-if="puedeEditar" @click="guardarYAvisar" :disabled="guardandoOT" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg shadow disabled:opacity-60"><i :class="['fa-solid mr-1', guardandoOT ? 'fa-spinner fa-spin' : 'fa-floppy-disk']"></i> Guardar</button>
-        <button @click="imprimirOT(otActual)" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-print mr-1"></i> Imprimir</button>
+        <button @click="imprimirOT(otActual, 'formato')" title="Para entregar al mecánico: actividades y repuestos; ejecutante, fechas, horas y firmas en blanco" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-print mr-1"></i> Imprimir OT (formato)</button>
+        <button @click="imprimirOT(otActual, 'respondida')" title="Con todo lo que respondió el mecánico" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-print mr-1"></i> Imprimir OT respondida</button>
         <button @click="exportarOTExcel(otActual)" :disabled="exportandoOT" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-3 py-2 rounded-lg border border-emerald-300 disabled:opacity-60"><i :class="['fa-solid mr-1', exportandoOT ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Excel</button>
         <button v-if="puedeEditar && estadoOT(otActual) === 'PENDIENTE'" @click="registrarEnHistorial(otActual)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-2 rounded-lg shadow"><i class="fa-solid fa-clipboard-check mr-1"></i> Registrar en Historial</button>
         <button v-if="otActual.id && otActual.estado !== 'ANULADA' && (otActual.estado === 'CERRADA' ? isAdmin : puedeEditar)" @click="alternarCierreOT(otActual)" :class="['px-3 py-2 rounded-lg font-bold border', otActual.estado === 'CERRADA' ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100' : 'bg-slate-700 text-white border-slate-700 hover:bg-slate-800']"><i :class="['fa-solid mr-1', otActual.estado === 'CERRADA' ? 'fa-lock-open' : 'fa-lock']"></i>{{ otActual.estado === 'CERRADA' ? 'Reabrir OT' : 'Cerrar OT' }}</button>

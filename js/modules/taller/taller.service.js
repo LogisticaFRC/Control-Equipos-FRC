@@ -442,7 +442,7 @@ export const crearOTParaRep = async (rep, { folio, tipo = 'CORRECTIVA', mecanico
     hrs_actual: eq && eq.horometroActual ? String(Math.round(eq.horometroActual * 10) / 10) : ''
   });
   // Lo que le faltaba (si volvió a la nave) entra como actividades
-  lineas(rep.faltante).slice(0, N_ACTIVIDADES).forEach((t, i) => { ot.actividades[i].descripcion = t; ot.actividades[i].f_inicio = hoyISO(); });
+  lineas(rep.faltante).slice(0, N_ACTIVIDADES).forEach((t, i) => { ot.actividades[i].descripcion = t; });
   try {
     const [fila] = await sb(supabaseClient.from(TABLA_OT).insert([{ ...payloadOT(ot), creado_por: quien() + ' (taller)' }]).select());
     const nueva = mapOT(fila);
@@ -555,7 +555,7 @@ export const agregarActividad = async (ot, descripcion, ejecutante = '') => {
   if (!t) return false;
   const i = ot.actividades.findIndex(a => !String(a.descripcion || '').trim());
   if (i < 0) { alert(`La OT N° ${ot.folio} ya tiene las ${N_ACTIVIDADES} actividades del formato. Crea otra OT para seguir.`); return false; }
-  Object.assign(ot.actividades[i], { descripcion: t, ejecutante: String(ejecutante || '').trim(), f_inicio: hoyISO(), h_inicio: ahoraHHMM(), f_term: '', h_term: '' });
+  Object.assign(ot.actividades[i], { descripcion: t, ejecutante: String(ejecutante || '').trim(), f_inicio: '', h_inicio: '', f_term: '', h_term: '' });   // fechas en blanco: las pone el mecánico
   try { await guardarActividades(ot); return true; }
   catch (err) { Object.assign(ot.actividades[i], { descripcion: '', ejecutante: '', f_inicio: '', h_inicio: '' }); alert('No se pudo agregar: ' + errMsg(err)); return false; }
 };
@@ -815,7 +815,7 @@ const volcarHallazgosEnOT = async (ot, lista) => {
   for (const h of lista) {
     const i = ot.actividades.findIndex(a => !String(a.descripcion || '').trim());
     if (i < 0) { alert(`La OT N° ${ot.folio} se llenó (${N_ACTIVIDADES} actividades). Los hallazgos restantes quedan pendientes.`); break; }
-    Object.assign(ot.actividades[i], { descripcion: textoHallazgo(h), ejecutante: '', f_inicio: hoyISO(), h_inicio: '', f_term: '', h_term: '' });
+    Object.assign(ot.actividades[i], { descripcion: textoHallazgo(h), ejecutante: '', f_inicio: '', h_inicio: '', f_term: '', h_term: '' });   // fechas en blanco: las pone el mecánico
     if (h.necesita_repuesto && String(h.repuesto || '').trim()) {
       while (ot.insumos.length < N_ACEITES) ot.insumos.push(filaInsumoVacia());
       let k = ot.insumos.findIndex((x, j) => j >= N_ACEITES && !String(x.repuestos || '').trim() && !String(x.aceites || '').trim());
@@ -889,7 +889,7 @@ const agregarFaltantesAOT = async (rep, txt) => {
     if (yaEstan.has(t.toUpperCase())) continue;
     const i = ot.actividades.findIndex(a => !String(a.descripcion || '').trim());
     if (i < 0) break;
-    Object.assign(ot.actividades[i], { descripcion: t, f_inicio: hoyISO(), f_term: '', h_term: '' });
+    Object.assign(ot.actividades[i], { descripcion: t, f_inicio: '', f_term: '', h_term: '' });
     cambio = true;
   }
   if (cambio) { try { await guardarActividades(ot); } catch (err) { alert('Se guardó lo que falta, pero no se pudo agregar a la OT: ' + errMsg(err)); } }

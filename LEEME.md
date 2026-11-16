@@ -875,3 +875,11 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - TALLER: las actividades se hacen solo en equipos **en nave** (`mecanicos/actividades-equipo.view.js`): Intervención mecánica, Intervención eléctrica (para rellenar y firmar, igual que terreno), **Agregar bloqueo de equipo** (abre la intervención con el registro FRC-RE-OP-015 activado, en el paso Seguridad), **Agregar ART** y **Agregar mantención** (formatos pendientes de cargar). Aparecen en la carta del equipo (Taller · Naves) y en su ficha.
 - Equipos que no están en nave: solo "Agregar a una nave (equipo no programado)". La lista muestra primero los equipos en nave.
 - Se quitó la pestaña Mantención con formatos (mantencion-taller.view.js ya no se usa).
+
+## 2026-11-16 · OT: dos impresiones
+- `imprimirOT(ot, modo)` + `otParaImprimir` (ot.service.js):
+  - **Imprimir OT (formato)**: para entregar al mecánico. Solo actividades y repuestos pedidos; ejecutante, fechas, horas, aceites, fecha/retira y firmas en blanco.
+  - **Imprimir OT respondida**: con todo lo que respondió el mecánico.
+  - En ambas se quita el título del sistema de la descripción (MOTOR:, CARROCERÍA / ESTRUCTURA:, OTRO:…) y los insumos se imprimen desde la fila 1 (sin huecos). Solo afecta la impresión (el Excel y los datos quedan igual).
+- Botones en REPARAR (Taller), en la lista de OT y en el editor de OT.
+- Al crear/agregar actividades (desde la inspección, faltantes o a mano) la F. INICIO queda en blanco: la pone el mecánico (al marcar la actividad terminada se completa sola si estaba vacía).
