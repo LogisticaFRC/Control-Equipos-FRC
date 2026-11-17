@@ -31,6 +31,7 @@ import MecanicoApp from './modules/mecanicos/app.view.js';
 import TotemView from './modules/taller/totem.view.js';
 import { InstalarApp, AvisoVersion } from './core/instalar-app.js';   // botón Instalar app + aviso de versión nueva
 import MecanicosPanelView from './modules/mecanicos/panel.view.js';
+import { ChoferesPanelView } from './modules/mecanicos/chofer-checklist.view.js';   // Personal Técnico → Choferes (2026-11-17)
 import { esModoMecanico, esSupervisorMec, vistaAppForzada } from './modules/mecanicos/mecanicos.service.js';
 import { TareaItem, RecordatoriosCampana, RecordatoriosAvisos } from './modules/recordatorios/avisos.view.js';
 import { iniciarMotorAvisos, borrarCacheAvisos } from './modules/recordatorios/recordatorios.service.js';
@@ -169,6 +170,7 @@ const template = /* html */ `
       <reparacion-view v-if="currentTab === 'progReparacion'"></reparacion-view>
       <motores-view v-if="currentTab === 'progMotores'"></motores-view>
       <mecanicos-panel-view v-if="currentTab === 'mecPanel' && esSupervisorMec"></mecanicos-panel-view>
+      <choferes-panel-view v-if="currentTab === 'choferPanel' && esSupervisorMec" :puede-eliminar="isAdmin"></choferes-panel-view>
       <minutas-view v-if="currentTab === 'minutas'"></minutas-view>
       <ot-view v-if="currentTab === 'ot'"></ot-view>
       <oc-view v-if="currentTab === 'oc'"></oc-view>
@@ -240,7 +242,7 @@ const app = createApp({
       .map(a => ({ ...a, modulos: a.modulos.filter(m => puedeVerModulo(m.key)) }))
       .filter(a => a.modulos.length));
     // Si entra a un módulo que no puede ver (link, F5 o le quitaron el acceso) → Inicio
-    watch([currentTab, usuarioActivo], ([t, u]) => { if (u && (!puedeVerModulo(t) || (t === 'mecPanel' && !esSupervisorMec.value))) currentTab.value = 'inicio'; }, { immediate: true });
+    watch([currentTab, usuarioActivo], ([t, u]) => { if (u && (!puedeVerModulo(t) || (['mecPanel', 'choferPanel'].includes(t) && !esSupervisorMec.value))) currentTab.value = 'inicio'; }, { immediate: true });
     const cerrarVistaApp = () => { vistaAppForzada.value = false; };
     const switchTab = (tab) => { if (!puedeVerModulo(tab)) return; currentTab.value = tab; menuAbierto.value = false; };
     // "Salir" apretado a mano: deja de avisar las tareas en este navegador
@@ -300,7 +302,8 @@ app.component('MecanicoApp', MecanicoApp);
 app.component('TotemView', TotemView);
 app.component('InstalarApp', InstalarApp);     // botón Instalar app / Descargar APK (login y app mecánicos)
 app.component('AvisoVersion', AvisoVersion);   // aviso de versión nueva después de un Push                   // app móvil de mecánicos
-app.component('MecanicosPanelView', MecanicosPanelView);     // Mecánicos → intervenciones y firmas (supervisor)                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
+app.component('MecanicosPanelView', MecanicosPanelView);
+app.component('ChoferesPanelView', ChoferesPanelView);     // Mecánicos → intervenciones y firmas (supervisor)                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
 app.component('TareaItem', TareaItem);
 app.component('RecordatoriosCampana', RecordatoriosCampana); // campana del encabezado
 app.component('RecordatoriosAvisos', RecordatoriosAvisos);   // avisos + resumen al entrar + Nueva tarea         // Operaciones → Costos de Mantención

@@ -123,7 +123,7 @@ export const ChoferChecklist = {
 /** Lista "Mis check list" (chofer) o todos (Operaciones: prop todos). */
 export const ChecklistLista = {
   name: 'ChecklistLista',
-  props: { todos: Boolean, puedeEliminar: Boolean },
+  props: { todos: Boolean, puedeEliminar: Boolean, filtro: { type: String, default: '' } },
   template: /* html */ `
 <div class="space-y-2">
   <div v-if="todos && C.faltaSqlChofer.value" class="bg-amber-50 border border-amber-300 text-amber-900 rounded-lg p-3 text-xs">Falta ejecutar <b>sql/chofer.sql</b> en Supabase.</div>
@@ -139,9 +139,38 @@ export const ChecklistLista = {
   <p v-if="!lista.length" class="text-center text-slate-400 py-8 text-sm">{{ todos ? 'Aún no hay check list de choferes.' : 'Aún no envías check list.' }}</p>
 </div>`,
   setup(props) {
-    const lista = Vue.computed(() => (props.todos ? C.todosChecklist.value : C.misChecklist.value));
+    const lista = Vue.computed(() => {
+      const l = props.todos ? C.todosChecklist.value : C.misChecklist.value;
+      const q = String(props.filtro || '').trim().toUpperCase();
+      return q ? l.filter(r => [r.patente, r.chofer, r.usuario, ...(r.actividades || []).map(a => a.afi + ' ' + a.hasta)].join(' ').toUpperCase().includes(q)) : l;
+    });
     const malos = (r) => Object.values(r.checklist || {}).filter(v => v === 'M').length;
     Vue.onMounted(() => (props.todos ? C.cargarTodosChecklist() : C.cargarMisChecklist()));
     return { C, lista, malos, formatDateForDisplay };
+  }
+};
+
+/** PERSONAL TÉCNICO → Choferes (sistema, supervisores / Admin): todos los check list / report de choferes. */
+export const ChoferesPanelView = {
+  name: 'ChoferesPanelView',
+  components: { ChecklistLista },
+  props: { puedeEliminar: Boolean },
+  template: /* html */ `
+<section class="space-y-4">
+  <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-truck text-sky-600"></i> CHOFERES · Check list / Report Camión Pluma (FRC-RE-OPE-018)</h2>
+      <p class="text-xs text-slate-500 mt-1">Lo que envían los choferes desde el celular. Sus traslados quedan también en <b>Movimientos</b> (camión + chofer). Descarga cada documento en Excel igual al formato.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <input v-model="busca" placeholder="Buscar patente, chofer, AFI…" class="p-2 border rounded-lg text-xs w-56">
+      <button @click="C.cargarTodosChecklist" class="px-3 py-2 rounded-lg border text-xs font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-rotate mr-1"></i>Actualizar</button>
+    </div>
+  </div>
+  <div class="text-xs"><checklist-lista todos :puede-eliminar="puedeEliminar" :filtro="busca"></checklist-lista></div>
+</section>`,
+  setup() {
+    const busca = Vue.ref('');
+    return { C, busca };
   }
 };

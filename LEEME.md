@@ -929,3 +929,6 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   - Documento: rellena la plantilla original **plantillas/CHECKLIST_CAMION_PLUMA.xlsx** (hoja del Excel FRC-RE-OPE-018; las celdas de Bueno/Malo/N/A tienen estilo con X negra centrada) → Excel igual al formato. Se descarga al enviar y desde "Últimos enviados".
   - Operaciones: Movimientos → "Check list / Report de choferes" (lista, Excel, eliminar Admin).
 - Archivos: mecanicos/chofer.service.js, mecanicos/chofer-checklist.view.js.
+
+## 2026-11-17 · Menú: área "Personal Técnico"
+- El área **Mecánicos** del menú ahora se llama **Personal Técnico** (clave interna sigue 'mecanicos', mismos permisos) con dos submódulos: **Mecánicos** (mecPanel: intervenciones y firmas) y **Choferes** (choferPanel: todos los check list / report de camión pluma, buscador, Excel, eliminar Admin) → `ChoferesPanelView` en mecanicos/chofer-checklist.view.js.

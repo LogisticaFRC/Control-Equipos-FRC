@@ -78,8 +78,12 @@ export const AREAS = [
   {
     // MECÁNICOS: solo lo ven el Admin general y los supervisores (área mecanicos = admin).
     // Los mecánicos (mecanicos = subadmin) no ven este menú: entran directo a la app móvil (modules/mecanicos).
-    key: 'mecanicos', label: 'Mecánicos', icon: 'fa-user-gear', color: 'text-lime-300', soloSupervisor: true,
-    modulos: [{ key: 'mecPanel', label: 'Intervenciones y firmas', icon: 'fa-file-signature' }]
+    // 2026-11-17: el área se llama PERSONAL TÉCNICO (submódulos Mecánicos y Choferes); la clave sigue siendo 'mecanicos'.
+    key: 'mecanicos', label: 'Personal Técnico', icon: 'fa-user-gear', color: 'text-lime-300', soloSupervisor: true,
+    modulos: [
+      { key: 'mecPanel', label: 'Mecánicos', icon: 'fa-screwdriver-wrench' },        // intervenciones y firmas
+      { key: 'choferPanel', label: 'Choferes', icon: 'fa-truck' }                     // check list / report camión pluma
+    ]
   },
   {
     key: 'general', label: 'General', icon: 'fa-layer-group', color: 'text-slate-300',
