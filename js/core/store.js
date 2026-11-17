@@ -44,11 +44,11 @@ export const permisosDe = (u) => {
 };
 /** Cargo del usuario (ej. "Mecánico", "Eléctrico") · se guarda en usuarios.permisos.cargo (2026-11-16). */
 export const cargoDe = (u) => String((permisosDe(u) || {}).cargo || '').trim();
-/** Técnico: 'taller' | 'terreno' (app del celular) | 'totem' (PC fijo del taller) | '' · permisos.mecanicos = 'subadmin' + permisos.mec_modo. */
+/** Técnico: 'taller' | 'terreno' | 'chofer' (app del celular) | 'totem' (PC fijo del taller) | '' · permisos.mecanicos = 'subadmin' + permisos.mec_modo. */
 export const modoTecnicoDe = (u) => {
   const p = permisosDe(u) || {};
   if (!u || u.rol === 'admin' || p.mecanicos !== 'subadmin') return '';
-  return p.mec_modo === 'taller' ? 'taller' : (p.mec_modo === 'totem' ? 'totem' : 'terreno');
+  return ['taller', 'totem', 'chofer'].includes(p.mec_modo) ? p.mec_modo : 'terreno';
 };
 /** Usuario TÓTEM: solo ve las naves del Programa de Reparación, en pantalla completa bloqueada (2026-11-16). */
 export const esTotemDe = (u) => modoTecnicoDe(u) === 'totem';

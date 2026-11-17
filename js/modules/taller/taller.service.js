@@ -242,7 +242,7 @@ export const ubicacionRep = (rep) => {
 /** Usuario con área MECÁNICOS (mecánico o supervisor) que NO es editor de Operaciones:
  *  puede ingresar equipos a la nave, reportar hallazgos y marcar actividades de su OT (sql/taller_hallazgos.sql). */
 export const esMecanicoTaller = (u = usuarioActivo.value) => Boolean(u && u.rol !== 'admin'
-  && ['subadmin', 'admin'].includes(permisosDe(u).mecanicos)
+  && ['subadmin', 'admin'].includes(permisosDe(u).mecanicos) && permisosDe(u).mec_modo !== 'chofer'
   && !['subadmin', 'admin'].includes(nivelEnArea('operaciones', u)));
 /** Guarda para acciones del taller que también puede hacer el mecánico. */
 const editorTaller = () => esMecanicoTaller() || soloEditor();

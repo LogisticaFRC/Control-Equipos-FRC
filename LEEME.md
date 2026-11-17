@@ -919,3 +919,13 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 ## 2026-11-17 · Perfil del equipo: pestaña "OT asignadas"
 - Nueva pestaña **OT asignadas** (`inventario/ots-equipo.view.js`) en el Perfil del equipo: total / abiertas / realizadas-cerradas / anuladas y tabla con folio, fecha, tipo, actividades, avance (terminadas/total), estado, taller (nave) y botones **Abrir** (va al módulo OT) e **Imprimir**. Abiertas primero.
 - La pestaña muestra un número naranjo con las OT abiertas del equipo.
+
+## 2026-11-17 · Taller: intervenciones solo en equipos en nave · Perfil CHOFER
+- TALLER: `abrirIntervencion` (mecanicos.service.js) bloquea intervenciones si el equipo no está en una nave (además de la pantalla). En taller la lista de equipos sirve para ingresarlos a una nave; dentro de la nave se hacen intervenciones, bloqueo, documentos, etc.
+- Nuevo tipo de usuario **Chofer (app celular)**: `permisos = { mecanicos: 'subadmin', mec_modo: 'chofer', cargo }` (Configuración → Usuarios → Tipo, o al crear).
+  - Menú: **Check list / Report**, **Equipos** (solo consulta: sin horómetro, OT ni intervenciones) y Mis tareas.
+  - Check list / Report Camión Pluma (FRC-RE-OPE-018) en 4 pasos: Camión (patente, marca, modelo, fecha, venc. revisión técnica y permiso, km/hrs inicio-término-próx. mant., hrs pluma) · Check list (Bueno/Malo/N/A, "Todo bueno" por grupo) · Report (hasta 5 traslados: tipo, AFI, equipo, desde, hasta, horas, C/U) · Observaciones y Enviar. Guarda borrador.
+  - Al enviar (RPC `frc_chofer_guardar`, **sql/chofer.sql**): queda en `bd_checklist_chofer`, cada traslado con AFI se registra en **Movimientos** (camión = patente, conductor = chofer; no cambia la ubicación del equipo en el inventario) y el km de término actualiza el kilometraje del camión si es mayor.
+  - Documento: rellena la plantilla original **plantillas/CHECKLIST_CAMION_PLUMA.xlsx** (hoja del Excel FRC-RE-OPE-018; las celdas de Bueno/Malo/N/A tienen estilo con X negra centrada) → Excel igual al formato. Se descarga al enviar y desde "Últimos enviados".
+  - Operaciones: Movimientos → "Check list / Report de choferes" (lista, Excel, eliminar Admin).
+- Archivos: mecanicos/chofer.service.js, mecanicos/chofer-checklist.view.js.

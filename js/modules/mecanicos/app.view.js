@@ -12,7 +12,9 @@ import { ACEITES } from '../historial/historial.mapper.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js';
 import TallerMecanico from '../taller/taller-mecanico.view.js';
-import ActividadesEquipo from './actividades-equipo.view.js';   // TALLER: intervenciones + bloqueo + ART + mantención de un equipo en nave
+import ActividadesEquipo from './actividades-equipo.view.js';
+import * as CH from './chofer.service.js';   // CHOFER: check list / report camión pluma (2026-11-17)
+import { ChoferChecklist, ChecklistLista } from './chofer-checklist.view.js';   // TALLER: intervenciones + bloqueo + ART + mantención de un equipo en nave
 import { naveDeAfi, colorNave, recargarTaller, navesLibres, cuposNave, CAPACIDAD_NAVE, ingresarANave, equiposEnNaves, problemasPendientes } from '../taller/taller.service.js';   // pestaña TALLER: cartas del programa de reparación + OT asignada + hallazgos
 
 const { ref, computed, onMounted, watch } = Vue;
@@ -22,22 +24,23 @@ const LUGARES = ['TALLER FRC', 'TERRENO', 'FAENA CLIENTE'];
 
 export default {
   name: 'MecanicoApp',
-  components: { TallerMecanico, ActividadesEquipo },
+  components: { TallerMecanico, ActividadesEquipo, ChoferChecklist, ChecklistLista },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
 <div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
   <!-- Barra superior -->
   <header class="sticky top-0 z-30 bg-[#1f4d3a] text-white px-4 py-3 flex items-center gap-3 shadow">
-    <button v-if="S.formInt.value" @click="S.cerrarIntervencion()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
+    <button v-if="CH.formCheck.value" @click="CH.cerrarChecklist()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
+    <button v-else-if="S.formInt.value" @click="S.cerrarIntervencion()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <button v-else-if="S.equipoSel.value" @click="S.cerrarEquipo()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <button v-else-if="tab !== 'inicio'" @click="tab = 'inicio'" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Menú"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <div v-else class="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center"><img :src="logoSrc" @error="onLogoError" class="max-h-full max-w-full object-contain" referrerpolicy="no-referrer"></div>
     <div class="flex-1 min-w-0">
-      <div class="font-extrabold leading-tight truncate">{{ S.formInt.value ? (S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
-      <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Técnicos FRC' + (S.cargoActual.value ? ' · ' + S.cargoActual.value : '') + ' · ' + (S.esTaller.value ? 'Taller' : 'Terreno') }}</div>
+      <div class="font-extrabold leading-tight truncate">{{ CH.formCheck.value ? 'Check list camión · ' + (CH.formCheck.value.patente || 'nuevo') : S.formInt.value ? (S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
+      <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Técnicos FRC' + (S.cargoActual.value ? ' · ' + S.cargoActual.value : '') + ' · ' + (S.esChofer.value ? 'Chofer' : S.esTaller.value ? 'Taller' : 'Terreno') }}</div>
     </div>
- <select v-if="preview && !S.formInt.value" v-model="S.modoPreview.value" class="text-slate-900 text-xs font-bold rounded-lg px-1.5 py-1.5" title="Ver como"><option value="taller">Taller</option><option value="terreno">Terreno</option></select>
-    <button v-if="salir && !S.formInt.value" @click="salir" class="px-3 py-2 rounded-xl bg-rose-600 text-xs font-bold"><i class="fa-solid fa-right-from-bracket mr-1"></i>{{ preview ? 'Cerrar' : 'Salir' }}</button>
+ <select v-if="preview && !S.formInt.value" v-model="S.modoPreview.value" class="text-slate-900 text-xs font-bold rounded-lg px-1.5 py-1.5" title="Ver como"><option value="taller">Taller</option><option value="terreno">Terreno</option><option value="chofer">Chofer</option></select>
+    <button v-if="salir && !S.formInt.value && !CH.formCheck.value" @click="salir" class="px-3 py-2 rounded-xl bg-rose-600 text-xs font-bold"><i class="fa-solid fa-right-from-bracket mr-1"></i>{{ preview ? 'Cerrar' : 'Salir' }}</button>
   </header>
 
   <div v-if="S.faltaSQLMec.value" class="m-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-3 text-sm">Falta ejecutar <b>sql/mecanicos.sql</b> en Supabase.</div>
@@ -224,6 +227,9 @@ export default {
       </div>
     </template>
 
+    <!-- ========== CHOFER: CHECK LIST / REPORT (2026-11-17) ========== -->
+    <template v-else-if="CH.formCheck.value"><chofer-checklist></chofer-checklist></template>
+
     <!-- ========== FICHA DEL EQUIPO ========== -->
     <template v-else-if="S.equipoSel.value">
       <section class="p-4 space-y-3">
@@ -240,6 +246,9 @@ export default {
             <div class="p-4"><div class="lbl">Última mantención</div><div class="text-2xl font-black font-mono text-slate-800">{{ fmtH(eq.horometros?.hUltimaMant) }}</div><div class="text-xs text-slate-500">{{ formatDateForDisplay(eq.horometros?.ultimaMantFecha) }}</div></div>
           </div>
         </div>
+        <!-- CHOFER: solo consulta (sin horómetro ni intervenciones) -->
+        <div v-if="S.esChofer.value" class="bg-sky-50 border border-sky-200 rounded-2xl p-4 text-sm text-sky-900"><i class="fa-solid fa-eye mr-1"></i>Perfil <b>Chofer</b>: solo consulta. Los traslados de este equipo se registran en el <b>Check list / Report</b> del camión.</div>
+        <template v-else>
         <!-- Actualizar horómetro (TALLER: solo equipos que están en una nave) -->
         <div v-if="S.esTaller.value && !naveDeAfi(eq.afi)" class="bg-slate-50 border rounded-2xl p-4 text-sm text-slate-500"><i class="fa-solid fa-lock mr-1"></i>En taller el horómetro solo se actualiza en equipos que están dentro de una <b>nave</b>.</div>
         <div v-else class="bg-white rounded-2xl shadow-sm p-4">
@@ -263,6 +272,7 @@ export default {
           <button @click="S.abrirIntervencion('ELECTRICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-bolt"></i></span><span class="flex-1"><b class="block text-lg">Intervención eléctrica</b><span class="text-xs text-slate-500">IE-FRC</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <div class="bg-white/60 rounded-2xl p-4 flex items-center gap-4 opacity-60"><span class="w-14 h-14 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-oil-can"></i></span><span class="flex-1"><b class="block text-lg">Mantenciones</b><span class="text-xs">Próximamente</span></span></div>
         </div>
+        </template>
         <!-- Últimos registros -->
         <div class="bg-white rounded-2xl shadow-sm p-4">
           <div class="lbl mb-2">Últimos registros del equipo</div>
@@ -336,6 +346,16 @@ export default {
 
       <section v-if="tab === 'tareas'" class="p-3"><recordatorios-view></recordatorios-view></section>
 
+      <!-- CHOFER (2026-11-17) -->
+      <section v-if="tab === 'checklist' && S.esChofer.value" class="p-4 space-y-3">
+        <button @click="CH.nuevoChecklist()" data-chofer="nuevo" class="w-full bg-sky-600 text-white rounded-3xl shadow p-5 text-left flex items-center gap-4 active:scale-[.99]">
+          <span class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-2xl"><i class="fa-solid fa-clipboard-check"></i></span>
+          <span><b class="block text-lg">Nuevo check list / report</b><span class="text-xs text-sky-100">Camión pluma · FRC-RE-OPE-018 · datos, check list y traslados</span></span>
+        </button>
+        <div class="lbl pt-2">Últimos enviados</div>
+        <checklist-lista></checklist-lista>
+      </section>
+
     </template>
   </main>
 
@@ -369,9 +389,13 @@ export default {
     // TERRENO no tiene Taller: si quedó en esa pantalla, vuelve al menú
     watch(() => S.esTaller.value, (t) => { if (!t && tab.value === 'taller') tab.value = 'inicio'; if (t) recargarTaller(); }, { immediate: true });
     // Menú en tarjetas
-    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas' };
+    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas', checklist: 'Check list / Report' };
     const irA = (t) => { tab.value = t; if (t === 'registros') S.cargarMec(); if (t === 'taller') recargarTaller(); window.scrollTo(0, 0); };
-    const tarjetas = computed(() => S.esTaller.value ? [
+    const tarjetas = computed(() => S.esChofer.value ? [
+      { tab: 'checklist', titulo: 'Check list / Report', sub: 'Camión pluma: datos, check list y traslados (movimientos)', icon: 'fa-clipboard-check', color: 'bg-sky-100 text-sky-700', ancha: true },
+      { tab: 'equipos', titulo: 'Equipos', sub: 'Consulta', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700' },
+      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700' }
+    ] : S.esTaller.value ? [
       { tab: 'taller', titulo: 'Taller · Naves', sub: equiposEnNaves.value + ' equipo(s) en naves · inspección, OT, intervenciones', icon: 'fa-warehouse', color: 'bg-amber-100 text-amber-700', ancha: true },
       { tab: 'equipos', titulo: 'Equipos', sub: 'Agregar a nave un equipo no programado', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700' },
       { tab: 'registros', titulo: 'Mis documentos', sub: 'Sin firma y realizados', icon: 'fa-folder-open', color: 'bg-sky-100 text-sky-700', badge: pendientesMios.value },
@@ -393,7 +417,7 @@ export default {
       try { if (await ingresarANave(nave, { afi: e.afi })) S.avisoApp(`AFI ${e.afi} ingresado a la ${nave} ✔`); }
       finally { ocupado.value = false; }
     };
-    return { S, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
+    return { S, CH, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };

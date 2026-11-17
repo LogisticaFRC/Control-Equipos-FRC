@@ -20,6 +20,7 @@ import { esVehiculo, empresaDe, EMPRESA_TALLER } from '../inventario/inventario.
 import { logoDataURL } from '../../core/excel.js';
 import { listaCausas } from '../historial/historial.service.js';
 import { ACEITES } from '../historial/historial.mapper.js';
+import { naveDeAfi } from '../taller/taller.service.js';   // TALLER: solo equipos en nave (2026-11-17)
 import { hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 
 const { ref, computed } = Vue;
@@ -54,6 +55,8 @@ export const modoApp = computed(() => {
   return modoTecnicoDe(usuarioActivo.value) || 'terreno';
 });
 export const esTaller = computed(() => modoApp.value === 'taller');
+/** CHOFER (2026-11-17): ve equipos (solo consulta) y registra el check list / report del camión (movimientos). */
+export const esChofer = computed(() => modoApp.value === 'chofer');
 /** Cargo del usuario conectado (se muestra arriba). */
 export const cargoActual = computed(() => cargoDe(usuarioActivo.value));
 /** AFI elegido para la mantención (desde una carta del taller o la lista). */
@@ -177,6 +180,9 @@ export const nuevaIntervencion = (tipo, e) => ({
 export const formInt = ref(null);       // intervención en edición (app)
 export const pasoInt = ref(1);
 export const abrirIntervencion = (tipo, e) => {
+  // TALLER: intervenciones solo en equipos que están en una nave · CHOFER: nunca (2026-11-17)
+  if (esChofer.value) { alert('El perfil Chofer no hace intervenciones: registra el check list / report del camión.'); return; }
+  if (esTaller.value && !naveDeAfi(e.afi)) { alert(`El AFI ${e.afi} no está en una nave. En taller primero se ingresa el equipo a una nave.`); return; }
   let b = null; try { b = JSON.parse(localStorage.getItem(BORRADOR()) || 'null'); } catch (x) { b = null; }
   if (b && b.afi === String(e.afi) && b.tipo === tipo && confirm('Tienes un borrador sin enviar de este equipo. ¿Seguir con ese borrador?')) formInt.value = b;
   else formInt.value = nuevaIntervencion(tipo, e);

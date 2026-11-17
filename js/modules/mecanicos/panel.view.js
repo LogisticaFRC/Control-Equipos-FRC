@@ -136,7 +136,7 @@ export default {
       { e: 'EN_HISTORIAL', t: 'En Historial', n: S.conteoPanel.value.EN_HISTORIAL, c: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
       { e: '', t: 'Todas', n: S.dbMec.value.length, c: 'bg-white text-slate-700 border-slate-200' }
     ]);
-    const mecanicos = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'subadmin').map(u => u.usuario));
+    const mecanicos = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'subadmin' && !['chofer', 'totem'].includes(permisosDe(u).mec_modo)).map(u => u.usuario));
     const supervisores = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'admin').map(u => u.usuario));
     onMounted(() => S.cargarMec());
     return { S, r, editando, escala, altoHoja, kpis, mecanicos, supervisores, logoSrc, formatDateForDisplay, CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, listaCausas };

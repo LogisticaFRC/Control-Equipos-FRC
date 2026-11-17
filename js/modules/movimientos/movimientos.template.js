@@ -1,6 +1,11 @@
 // Plantilla HTML del componente 'movimientos' (extraída del index original)
 export default /* html */ `
 <section class="space-y-4">
+  <!-- CHECK LIST / REPORT DE CHOFERES (2026-11-17) -->
+  <details class="bg-white rounded-xl shadow-sm border border-sky-200 overflow-hidden" @toggle="e => e.target.open && cargarTodosChecklist()">
+    <summary class="px-5 py-3 cursor-pointer font-bold text-sm text-sky-900 bg-sky-50 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Check list / Report de choferes (camión pluma · FRC-RE-OPE-018) <span class="text-[11px] font-semibold text-sky-700">· sus traslados quedan en esta tabla con el camión y el chofer</span></summary>
+    <div class="p-4 text-xs"><checklist-lista todos :puede-eliminar="isAdmin"></checklist-lista></div>
+  </details>
   <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
     <div class="flex flex-wrap justify-between items-center gap-3">
       <div class="flex items-center gap-3">

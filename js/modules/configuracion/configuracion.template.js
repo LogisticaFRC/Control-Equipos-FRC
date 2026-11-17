@@ -34,6 +34,7 @@ export default /* html */ `
             <option value="terreno">Técnico TERRENO (app del celular)</option>
             <option value="taller">Técnico TALLER (app del celular)</option>
             <option value="totem">TÓTEM del taller (PC fijo, pantalla completa)</option>
+            <option value="chofer">CHOFER (app del celular: check list y traslados)</option>
             <option value="supervisor_mec">Supervisor de mecánicos (firma)</option>
             <option value="general">Admin general (todo)</option>
           </select>
@@ -42,6 +43,7 @@ export default /* html */ `
         <datalist id="cfg-cargos"><option v-for="c in CARGOS_SUGERIDOS" :key="c" :value="c"></option></datalist>
         <div v-if="nuevoUsuario.tipo === 'terreno'" class="sm:col-span-4 bg-lime-50 border border-lime-200 rounded-lg p-2 text-[11px] text-lime-900"><i class="fa-solid fa-mobile-screen mr-1"></i><b>TERRENO</b>: entra directo a la app del celular · equipos, horómetros e intervenciones con firma. No ve el resto del sistema.</div>
         <div v-if="nuevoUsuario.tipo === 'taller'" class="sm:col-span-4 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] text-amber-900"><i class="fa-solid fa-warehouse mr-1"></i><b>TALLER</b>: app del celular con equipos, <b>naves del programa de reparación</b> (cartas, inspección, OT) y <b>mantención</b> (pauta, bloqueo, ART). Horómetro solo de equipos en nave.</div>
+        <div v-if="nuevoUsuario.tipo === 'chofer'" class="sm:col-span-4 bg-sky-50 border border-sky-200 rounded-lg p-2 text-[11px] text-sky-900"><i class="fa-solid fa-truck mr-1"></i><b>CHOFER</b>: app del celular. Ve los equipos (solo consulta, sin OT ni intervenciones) y llena el <b>Check list / Report del camión</b> (FRC-RE-OPE-018): datos del camión, km/horas, check list y los traslados que hizo (quedan como movimientos). Genera el Excel igual al formato.</div>
         <div v-if="nuevoUsuario.tipo === 'totem'" class="sm:col-span-4 bg-slate-100 border border-slate-300 rounded-lg p-2 text-[11px] text-slate-800"><i class="fa-solid fa-tv mr-1"></i><b>TÓTEM</b>: para el PC/pantalla fija del taller. Solo muestra las <b>naves del Programa de Reparación</b> (ingresar equipos, inspección, actividades) en <b>pantalla completa</b>. Para salir pide la <b>contraseña del tótem</b> (más abajo). No se cierra por inactividad.</div>
         <div v-if="nuevoUsuario.tipo === 'supervisor_mec'" class="sm:col-span-4 bg-lime-50 border border-lime-200 rounded-lg p-2 text-[11px] text-lime-900"><i class="fa-solid fa-signature mr-1"></i>Ve el área <b>Mecánicos</b> del menú para revisar y firmar las intervenciones. Además tiene los niveles por área que elijas abajo.</div>
         <div v-if="nuevoUsuario.tipo === 'areas'" class="sm:col-span-4">
@@ -86,7 +88,7 @@ export default /* html */ `
             </td>
             <td class="p-2.5">
               <select v-if="esAdminGeneral" :value="tipoUsuario(u)" @change="cambiarTipoUsuario(u, $event.target.value)"
-                :class="['p-1.5 border rounded font-bold text-[11px]', tipoUsuario(u) === 'general' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : tipoUsuario(u) === 'taller' ? 'bg-amber-50 text-amber-900 border-amber-300' : tipoUsuario(u) === 'totem' ? 'bg-slate-800 text-white border-slate-900' : tipoUsuario(u) === 'terreno' ? 'bg-lime-50 text-lime-900 border-lime-300' : 'bg-white']">
+                :class="['p-1.5 border rounded font-bold text-[11px]', tipoUsuario(u) === 'general' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : tipoUsuario(u) === 'taller' ? 'bg-amber-50 text-amber-900 border-amber-300' : tipoUsuario(u) === 'totem' ? 'bg-slate-800 text-white border-slate-900' : tipoUsuario(u) === 'chofer' ? 'bg-sky-50 text-sky-900 border-sky-300' : tipoUsuario(u) === 'terreno' ? 'bg-lime-50 text-lime-900 border-lime-300' : 'bg-white']">
                 <option v-for="t in TIPOS_USUARIO" :key="t.key" :value="t.key">{{ t.label }}</option>
               </select>
               <span v-else class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700">{{ (TIPOS_USUARIO.find(t => t.key === tipoUsuario(u)) || {}).label }}</span>
