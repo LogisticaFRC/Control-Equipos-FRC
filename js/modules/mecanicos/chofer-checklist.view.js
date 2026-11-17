@@ -1,134 +1,303 @@
 // =====================================================================
 // CHOFER · Formulario Check list / Report Camión Pluma (app del celular) · 2026-11-17
-// 4 pasos: Camión · Check list · Report (traslados) · Enviar. Ver chofer.service.js.
+// 4 pasos: Camión · Check list · Traslados (hoja para añadir cada uno) · Firma y enviar. Ver chofer.service.js.
 // =====================================================================
 import * as C from './chofer.service.js';
-import { dbEquipos } from '../../core/store.js';
-import { formatDateForDisplay } from '../../core/utils.js';
+import { dbEquipos, usuarioActivo, buscarEquipoPorAfi } from '../../core/store.js';
+import { formatDateForDisplay, mismoAfi } from '../../core/utils.js';
+import { esVehiculo } from '../inventario/inventario.mapper.js';
 
-const { watch } = Vue;
+const { watch, ref, computed } = Vue;
 
 export const ChoferChecklist = {
   name: 'ChoferChecklist',
   template: /* html */ `
 <div v-if="f" class="pb-28">
-  <div class="px-4 pt-3">
-    <div class="flex gap-1.5">
-      <button v-for="(p, i) in C.PASOS_CHECK" :key="i" @click="C.pasoCheck.value = i + 1" :class="['flex-1 h-2 rounded-full', i + 1 <= C.pasoCheck.value ? 'bg-sky-600' : 'bg-slate-300']" :aria-label="p"></button>
+  <!-- Pasos -->
+  <div class="px-4 pt-3 sticky top-[64px] z-20 bg-slate-100 pb-2">
+    <div class="grid grid-cols-4 gap-1.5">
+      <button v-for="(p, i) in C.PASOS_CHECK" :key="i" @click="C.pasoCheck.value = i + 1" class="text-left">
+        <span :class="['block h-1.5 rounded-full', i + 1 <= C.pasoCheck.value ? 'bg-sky-600' : 'bg-slate-300']"></span>
+        <span :class="['block text-[10px] font-bold mt-1 leading-tight', i + 1 === C.pasoCheck.value ? 'text-sky-700' : 'text-slate-400']">{{ i + 1 }}. {{ p }}</span>
+      </button>
     </div>
-    <p class="text-xs font-bold text-slate-500 mt-1">Paso {{ C.pasoCheck.value }} de 4 · {{ C.PASOS_CHECK[C.pasoCheck.value - 1] }}</p>
   </div>
 
-  <!-- 1 · CAMIÓN -->
+  <!-- ===== 1 · CAMIÓN ===== -->
   <section v-show="C.pasoCheck.value === 1" class="p-4 space-y-3">
+    <!-- Camión elegido -->
+    <div v-if="camionSel" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-3">
+      <span class="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-xl"><i class="fa-solid fa-truck"></i></span>
+      <div class="flex-1 min-w-0"><p class="text-xl font-black text-slate-800 font-mono">{{ f.patente }}</p><p class="text-xs text-slate-500 truncate">{{ f.marca }} {{ f.modelo }}</p></div>
+      <button @click="cambiarCamion" class="px-3 py-2 rounded-xl border font-bold text-xs text-slate-600">Cambiar</button>
+    </div>
+    <!-- Elegir camión -->
+    <div v-else class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+      <p class="lbl">¿Qué camión usas hoy?</p>
+      <input v-model="buscaCamion" placeholder="Buscar patente…" class="inp uppercase font-mono" data-chofer="buscar-camion">
+      <button v-for="c in camionesFiltrados" :key="c.id" @click="elegirCamion(c)" :data-camion="c.afi"
+        class="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-slate-100 active:bg-sky-50 text-left">
+        <i class="fa-solid fa-truck text-sky-600"></i>
+        <span class="flex-1"><b class="font-mono">{{ c.afi }}</b> <span class="text-xs text-slate-500">{{ c.tipo }} {{ c.marca }} {{ c.modelo }}</span></span>
+        <i class="fa-solid fa-chevron-right text-slate-300"></i>
+      </button>
+      <p v-if="!camionesFiltrados.length" class="text-xs text-slate-400 italic">No hay camiones con esa patente en el inventario.</p>
+    </div>
+
+    <label class="block bg-white rounded-2xl shadow-sm p-4"><span class="lbl">Fecha</span><input type="date" v-model="f.fecha" class="inp"></label>
+
+    <!-- Documentos del camión: solo si hay información en Vehículos -->
+    <div v-if="f.venc_revision || f.venc_permiso" class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+      <p class="lbl"><i class="fa-solid fa-file-shield mr-1"></i>Documentos del camión</p>
+      <div v-for="d in docs" :key="d.k" class="flex items-center justify-between gap-2">
+        <span class="text-sm font-semibold text-slate-700">{{ d.l }}<span class="block text-xs text-slate-400 font-mono">vence {{ formatDateForDisplay(d.v) }}</span></span>
+        <span :class="['text-[11px] font-black rounded-full px-2.5 py-1', C.estadoVenc(d.v, f.fecha).clase]" :data-chofer="'estado_' + d.k">{{ C.estadoVenc(d.v, f.fecha).texto }}</span>
+      </div>
+    </div>
+
+    <!-- Kilometraje y horas -->
     <div class="bg-white rounded-2xl shadow-sm p-4 space-y-3">
-      <label class="block"><span class="lbl">Patente del camión</span>
-        <input v-model="f.patente" list="dl-chofer-camiones" @change="C.alElegirCamion(f)" class="inp font-mono font-black uppercase text-lg" placeholder="Ej: LYXV-16" data-chofer="patente"></label>
-      <datalist id="dl-chofer-camiones"><option v-for="c in C.camiones.value" :key="c.id" :value="c.afi">{{ c.tipo }} {{ c.marca }} {{ c.modelo }}</option></datalist>
-      <div class="grid grid-cols-2 gap-2">
-        <label class="block"><span class="lbl">Marca</span><input v-model="f.marca" class="inp"></label>
-        <label class="block"><span class="lbl">Modelo</span><input v-model="f.modelo" class="inp"></label>
+      <p class="lbl"><i class="fa-solid fa-gauge-high mr-1"></i>Camión</p>
+      <div class="grid grid-cols-[4.5rem_1fr_1fr] gap-2 items-center text-center">
+        <span></span><span class="text-[10px] font-bold text-slate-400">INICIO</span><span class="text-[10px] font-bold text-slate-400">TÉRMINO</span>
+        <span class="text-xs font-black text-slate-600 text-left">Km</span>
+        <input v-model="f.km_ini" inputmode="numeric" class="inp px-2 font-mono text-center" data-chofer="km_ini">
+        <input v-model="f.km_fin" inputmode="numeric" class="inp px-2 font-mono text-center" data-chofer="km_fin">
+        <span class="text-xs font-black text-slate-600 text-left">Horas</span>
+        <input v-model="f.cam_hrs_ini" inputmode="decimal" class="inp px-2 font-mono text-center">
+        <input v-model="f.cam_hrs_fin" inputmode="decimal" class="inp px-2 font-mono text-center">
       </div>
-      <label class="block"><span class="lbl">Fecha</span><input type="date" v-model="f.fecha" class="inp"></label>
       <div class="grid grid-cols-2 gap-2">
-        <label class="block"><span class="lbl">Venc. revisión técnica</span><input type="date" v-model="f.venc_revision" class="inp px-2"></label>
-        <label class="block"><span class="lbl">Venc. permiso circulación</span><input type="date" v-model="f.venc_permiso" class="inp px-2"></label>
+        <label class="block"><span class="text-[10px] font-bold text-slate-400">PRÓX. MANT. (KM)</span><input v-model="f.km_prox" inputmode="numeric" class="inp px-2 font-mono"></label>
+        <label class="block"><span class="text-[10px] font-bold text-slate-400">PRÓX. MANT. (HRS)</span><input v-model="f.cam_hrs_prox" inputmode="decimal" class="inp px-2 font-mono"></label>
       </div>
+      <p class="lbl pt-1"><i class="fa-solid fa-trowel mr-1"></i>Pluma</p>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="block"><span class="text-[10px] font-bold text-slate-400">HRS INICIO</span><input v-model="f.pluma_hrs_ini" inputmode="decimal" class="inp px-2 font-mono"></label>
+        <label class="block"><span class="text-[10px] font-bold text-slate-400">HRS TÉRMINO</span><input v-model="f.pluma_hrs_fin" inputmode="decimal" class="inp px-2 font-mono"></label>
+      </div>
+      <label class="block"><span class="text-[10px] font-bold text-slate-400">FECHA PRÓX. MANTENCIÓN PLUMA</span><input type="date" v-model="f.pluma_prox_fecha" class="inp" data-chofer="pluma_prox"></label>
+    </div>
+  </section>
+
+  <!-- ===== 2 · CHECK LIST ===== -->
+  <section v-show="C.pasoCheck.value === 2" class="p-4 space-y-3">
+    <div class="bg-white rounded-2xl shadow-sm p-3 flex items-center justify-between gap-2">
+      <span class="text-sm font-bold text-slate-700">{{ C.ITEMS_CHECK.length - C.faltantesCheck.value.length }} / {{ C.ITEMS_CHECK.length }} revisados</span>
+      <span v-if="C.malosCheck.value.length" class="text-xs font-black text-rose-600">{{ C.malosCheck.value.length }} malo(s)</span>
+    </div>
+    <div v-for="g in C.GRUPOS_CHECK" :key="g" class="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <button @click="grupoAbierto = grupoAbierto === g ? '' : g" class="w-full px-4 py-3 bg-sky-700 text-white font-black flex items-center justify-between">
+        <span>{{ g }} <span class="text-xs font-bold text-sky-200">{{ hechosGrupo(g) }}/{{ itemsGrupo(g).length }}</span></span>
+        <span class="flex items-center gap-2">
+          <span @click.stop="C.marcarTodoBueno(g)" class="text-[11px] font-bold bg-white/20 rounded-lg px-2 py-1">Todo bueno</span>
+          <i :class="['fa-solid', grupoAbierto === g ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+        </span>
+      </button>
+      <div v-show="grupoAbierto === g || hechosGrupo(g) < itemsGrupo(g).length">
+        <div v-for="it in itemsGrupo(g)" :key="it.k" class="px-3 py-2 border-b last:border-0 flex items-center gap-2">
+          <span class="flex-1 text-sm font-semibold text-slate-700 leading-tight">{{ it.texto }}</span>
+          <button v-for="o in C.OPCIONES_CHECK" :key="o.v" @click="f.checklist[it.k] = f.checklist[it.k] === o.v ? '' : o.v" :data-check="it.k + '-' + o.v"
+            :class="['w-12 py-2.5 rounded-lg border-2 text-[11px] font-black', f.checklist[it.k] === o.v ? o.c : 'bg-white text-slate-400 border-slate-200']">{{ o.l }}</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3 · TRASLADOS ===== -->
+  <section v-show="C.pasoCheck.value === 3" class="p-4 space-y-3">
+    <div v-for="a in f.actividades" :key="a.uid" @click="editar(a)" class="bg-white rounded-2xl shadow-sm p-4 active:bg-sky-50" :data-traslado="a.afi">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <p class="font-black text-slate-800"><span class="font-mono text-sky-800">{{ a.afi || '—' }}</span> <span class="text-sm font-bold text-slate-600">{{ a.equipo }}</span></p>
+          <p class="text-xs text-slate-500">{{ a.desde || '—' }} <i class="fa-solid fa-arrow-right mx-1"></i> <b class="text-emerald-700">{{ a.hasta || '—' }}</b></p>
+          <p class="text-[11px] text-slate-400 mt-0.5">{{ a.traslado }}<span v-if="a.h_ini"> · {{ a.h_ini }}–{{ a.h_fin || '…' }}</span><span v-if="nFotos(a)"> · <i class="fa-solid fa-camera"></i> {{ nFotos(a) }}</span></p>
+        </div>
+        <span v-if="a.subarrendado" class="text-[10px] font-black bg-amber-100 text-amber-800 rounded-full px-2 py-0.5 whitespace-nowrap">SUBARRENDADO</span>
+      </div>
+    </div>
+    <button v-if="f.actividades.length < C.N_ACTIVIDADES_CHOFER" @click="nuevaAct" data-chofer="nuevo-traslado"
+      class="w-full py-5 rounded-2xl border-2 border-dashed border-sky-400 text-sky-700 font-black text-lg bg-white/60 active:bg-sky-50">
+      <i class="fa-solid fa-plus mr-1"></i> Añadir traslado
+    </button>
+    <p v-else class="text-xs text-center text-slate-500">Máximo {{ C.N_ACTIVIDADES_CHOFER }} traslados por check list (filas del formato).</p>
+    <p v-if="!f.actividades.length" class="text-xs text-center text-slate-400">Si hoy no trasladaste equipos, sigue al paso 4.</p>
+  </section>
+
+  <!-- ===== 4 · FIRMA Y ENVIAR ===== -->
+  <section v-show="C.pasoCheck.value === 4" class="p-4 space-y-3">
+    <label class="block bg-white rounded-2xl shadow-sm p-4"><span class="lbl">Observaciones</span><textarea v-model="f.observaciones" rows="3" class="inp" placeholder="Fallas, novedades del camión o de los traslados…"></textarea></label>
+    <div class="bg-white rounded-2xl shadow-sm p-4 text-sm space-y-1.5">
+      <p><b>Camión:</b> {{ f.patente || '—' }} · {{ formatDateForDisplay(f.fecha) }}</p>
+      <p><b>Km:</b> {{ f.km_ini || '—' }} → {{ f.km_fin || '—' }}</p>
+      <p><b>Check list:</b> {{ C.ITEMS_CHECK.length - C.faltantesCheck.value.length }}/{{ C.ITEMS_CHECK.length }}<span v-if="C.malosCheck.value.length" class="text-rose-700 font-bold"> · MALO: {{ C.malosCheck.value.map(i => i.texto).join(', ') }}</span></p>
+      <p><b>Traslados:</b> {{ f.actividades.length }}</p>
+      <p v-if="C.vencidosDe(f).length" class="text-rose-700 font-black"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Documento vencido: {{ C.vencidosDe(f).join(' y ') }}</p>
     </div>
     <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
-      <div class="lbl"><i class="fa-solid fa-truck mr-1"></i>Camión</div>
-      <div class="grid grid-cols-3 gap-2 text-center">
-        <span class="text-[10px] font-bold text-slate-400 col-span-3 grid grid-cols-3"><span>Inicio</span><span>Término</span><span>Próx. mant.</span></span>
-        <input v-model="f.km_ini" inputmode="numeric" class="inp px-2 font-mono" placeholder="Km" data-chofer="km_ini">
-        <input v-model="f.km_fin" inputmode="numeric" class="inp px-2 font-mono" placeholder="Km" data-chofer="km_fin">
-        <input v-model="f.km_prox" inputmode="numeric" class="inp px-2 font-mono" placeholder="Km">
-        <input v-model="f.cam_hrs_ini" inputmode="decimal" class="inp px-2 font-mono" placeholder="Hrs">
-        <input v-model="f.cam_hrs_fin" inputmode="decimal" class="inp px-2 font-mono" placeholder="Hrs">
-        <input v-model="f.cam_hrs_prox" inputmode="decimal" class="inp px-2 font-mono" placeholder="Hrs">
-      </div>
-      <div class="lbl pt-2"><i class="fa-solid fa-trowel mr-1"></i>Pluma (horas)</div>
-      <div class="grid grid-cols-3 gap-2">
-        <input v-model="f.pluma_hrs_ini" inputmode="decimal" class="inp px-2 font-mono" placeholder="Inicio">
-        <input v-model="f.pluma_hrs_fin" inputmode="decimal" class="inp px-2 font-mono" placeholder="Término">
-        <input v-model="f.pluma_hrs_prox" inputmode="decimal" class="inp px-2 font-mono" placeholder="Próx. mant.">
-      </div>
-    </div>
-  </section>
-
-  <!-- 2 · CHECK LIST -->
-  <section v-show="C.pasoCheck.value === 2" class="p-4 space-y-3">
-    <p v-if="C.faltantesCheck.value.length" class="text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-2.5">Faltan <b>{{ C.faltantesCheck.value.length }}</b> ítem(s) por marcar.</p>
-    <div v-for="g in C.GRUPOS_CHECK" :key="g" class="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <div class="px-4 py-2.5 bg-sky-700 text-white font-black flex items-center justify-between">
-        <span>{{ g }}</span>
-        <button @click="C.marcarTodoBueno(g)" class="text-[11px] font-bold bg-white/20 rounded-lg px-2 py-1">Todo bueno</button>
-      </div>
-      <div v-for="it in C.ITEMS_CHECK.filter(x => x.grupo === g)" :key="it.k" class="px-3 py-2 border-b last:border-0 flex items-center gap-2">
-        <span class="flex-1 text-sm font-semibold text-slate-700 leading-tight">{{ it.texto }}</span>
-        <button v-for="o in C.OPCIONES_CHECK" :key="o.v" @click="f.checklist[it.k] = f.checklist[it.k] === o.v ? '' : o.v" :data-check="it.k + '-' + o.v"
-          :class="['w-12 py-2 rounded-lg border-2 text-[11px] font-black', f.checklist[it.k] === o.v ? o.c : 'bg-white text-slate-400 border-slate-200']">{{ o.l }}</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- 3 · REPORT (traslados) -->
-  <section v-show="C.pasoCheck.value === 3" class="p-4 space-y-3">
-    <p class="text-xs bg-sky-50 border border-sky-200 text-sky-900 rounded-xl p-2.5"><i class="fa-solid fa-circle-info mr-1"></i>Cada actividad con <b>AFI</b> queda registrada como <b>movimiento</b> (desde → hasta) con tu camión.</p>
-    <div v-for="(a, k) in f.actividades" :key="k" class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
-      <div class="flex items-center justify-between"><b class="text-sky-800">Actividad {{ k + 1 }}</b>
-        <select v-model="a.traslado" class="text-xs font-bold border rounded-lg px-2 py-1.5"><option value="">Traslado…</option><option v-for="t in C.TIPOS_TRASLADO" :key="t">{{ t }}</option></select></div>
-      <div class="grid grid-cols-3 gap-2">
-        <input v-model="a.afi" @change="C.alCambiarAfiAct(a)" list="dl-chofer-afi" class="inp px-2 font-mono font-black uppercase" placeholder="AFI" :data-chofer="'afi' + k">
-        <input v-model="a.equipo" class="inp px-2 col-span-2" placeholder="Equipo (ej. Generador)">
-      </div>
-      <input v-model="a.desde" class="inp px-2" placeholder="Desde" :data-chofer="'desde' + k">
-      <div>
-        <input v-model="a.hasta" list="dl-chofer-destinos" class="inp px-2" placeholder="Hasta (elige la ubicación de la lista)" :data-chofer="'hasta' + k">
-        <p v-if="a.afi && a.hasta" :class="['text-[10px] font-bold mt-0.5', C.locDeTexto(a.hasta) ? 'text-emerald-700' : 'text-amber-700']">
-          {{ C.locDeTexto(a.hasta) ? '✓ Ubicación del sistema: el equipo quedará en ' + C.locDeTexto(a.hasta).texto + (C.locDeTexto(a.hasta).empresa ? ' (' + C.locDeTexto(a.hasta).empresa + ')' : '') : 'Texto libre: se guarda tal cual (Operaciones puede ajustarlo en Movimientos)' }}</p>
-      </div>
-      <div class="grid grid-cols-3 gap-2">
-        <label class="block"><span class="text-[10px] font-bold text-slate-400">Hora inicio</span><input type="time" v-model="a.h_ini" class="inp px-1"></label>
-        <label class="block"><span class="text-[10px] font-bold text-slate-400">Hora término</span><input type="time" v-model="a.h_fin" class="inp px-1"></label>
-        <label class="block"><span class="text-[10px] font-bold text-slate-400">C/U</span><input v-model="a.cu" class="inp px-2"></label>
-      </div>
-      <!-- Fotos del equipo (2026-11-17) -->
-      <div class="flex flex-wrap items-center gap-2 pt-1">
-        <img v-for="(u, i) in (a.fotos || [])" :key="'s' + i" :src="u" @click="C.quitarFotoSubida(a, i)" title="Toca para quitar" class="w-16 h-16 object-cover rounded-xl border">
-        <img v-for="(p, i) in (C.fotosPend.value[k] || [])" :key="'p' + i" :src="p.url" @click="C.quitarFotoPend(k, i)" title="Toca para quitar" class="w-16 h-16 object-cover rounded-xl border-2 border-dashed border-sky-400">
-        <label class="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 flex flex-col items-center justify-center text-[10px] font-bold cursor-pointer">
-          <i class="fa-solid fa-camera text-lg"></i>Fotos
-          <input type="file" accept="image/*" capture="environment" multiple class="hidden" @change="e => C.agregarFotos(k, e)" :data-chofer="'fotos' + k">
-        </label>
-      </div>
-    </div>
-    <datalist id="dl-chofer-destinos"><option v-for="d in C.destinosLoc.value" :key="d.id" :value="d.texto">{{ d.empresa }}</option></datalist>
-    <datalist id="dl-chofer-afi"><option v-for="e in dbEquipos" :key="e.id" :value="e.afi">{{ e.tipo }} {{ e.marca }} {{ e.modelo }}</option></datalist>
-  </section>
-
-  <!-- 4 · ENVIAR -->
-  <section v-show="C.pasoCheck.value === 4" class="p-4 space-y-3">
-    <label class="block bg-white rounded-2xl shadow-sm p-4"><span class="lbl">Observaciones</span><textarea v-model="f.observaciones" rows="4" class="inp" placeholder="Fallas, novedades del camión o del traslado…"></textarea></label>
-    <div class="bg-white rounded-2xl shadow-sm p-4 text-sm space-y-1">
-      <p><b>Camión:</b> {{ f.patente || '—' }} {{ f.marca }} {{ f.modelo }} · {{ formatDateForDisplay(f.fecha) }}</p>
-      <p><b>Km:</b> {{ f.km_ini || '—' }} → {{ f.km_fin || '—' }}</p>
-      <p><b>Check list:</b> {{ C.ITEMS_CHECK.length - C.faltantesCheck.value.length }}/{{ C.ITEMS_CHECK.length }} marcados<span v-if="C.malosCheck.value.length" class="text-rose-700 font-bold"> · {{ C.malosCheck.value.length }} MALO: {{ C.malosCheck.value.map(i => i.texto).join(', ') }}</span></p>
-      <p><b>Traslados:</b> {{ C.actividadesLlenas(f).length }} · <b>Fotos:</b> {{ f.actividades.reduce((s, a) => s + (a.fotos || []).length, 0) + Object.values(C.fotosPend.value).reduce((s, l) => s + l.length, 0) }}</p>
+      <p class="lbl"><i class="fa-solid fa-signature mr-1"></i>Firma del chofer · {{ nombre }}</p>
+      <firma-pad :firma="f.firma" :titulo="'Firma chofer · ' + nombre" @guardar="v => f.firma = v"></firma-pad>
     </div>
   </section>
 
   <!-- Navegación -->
-  <div class="fixed bottom-0 inset-x-0 max-w-xl mx-auto p-3 bg-white/95 border-t flex gap-2 z-30">
-    <button v-if="C.pasoCheck.value > 1" @click="C.pasoCheck.value--" class="flex-1 py-3.5 rounded-2xl border-2 bg-white font-extrabold text-slate-600">Atrás</button>
-    <button v-if="C.pasoCheck.value < 4" @click="C.pasoCheck.value++" class="flex-[2] py-3.5 rounded-2xl bg-sky-600 text-white font-extrabold text-lg" data-chofer="siguiente">Siguiente</button>
+  <div class="fixed bottom-0 inset-x-0 max-w-xl mx-auto p-3 bg-white border-t flex gap-2 z-30">
+    <button v-if="C.pasoCheck.value > 1" @click="C.pasoCheck.value--; arriba()" class="flex-1 py-3.5 rounded-2xl border-2 bg-white font-extrabold text-slate-600">Atrás</button>
+    <button v-if="C.pasoCheck.value < 4" @click="siguiente" class="flex-[2] py-3.5 rounded-2xl bg-sky-600 text-white font-extrabold text-lg" data-chofer="siguiente">Siguiente</button>
     <button v-else @click="C.enviarChecklist" :disabled="C.enviandoCheck.value" class="flex-[2] py-3.5 rounded-2xl bg-emerald-600 text-white font-extrabold text-lg disabled:opacity-60" data-chofer="enviar">
-      <i :class="['fa-solid mr-1', C.enviandoCheck.value ? 'fa-spinner fa-spin' : 'fa-paper-plane']"></i>Enviar</button>
+      <i :class="['fa-solid mr-1', C.enviandoCheck.value ? 'fa-spinner fa-spin' : 'fa-paper-plane']"></i>{{ C.enviandoCheck.value ? 'Enviando…' : 'Enviar' }}</button>
   </div>
+
+  <!-- ===== HOJA: AÑADIR / EDITAR TRASLADO ===== -->
+  <teleport to="body">
+    <div v-if="act" class="fixed inset-0 z-[80] bg-slate-950/60 flex items-end justify-center" @click.self="act = null">
+      <div class="bg-slate-100 w-full max-w-xl rounded-t-3xl max-h-[94vh] overflow-y-auto pb-24">
+        <div class="sticky top-0 bg-sky-700 text-white px-4 py-3 flex items-center justify-between rounded-t-3xl z-10">
+          <b class="text-lg">{{ editando ? 'Editar traslado' : 'Nuevo traslado' }}</b>
+          <button @click="act = null" class="w-9 h-9 rounded-xl bg-white/15"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-4 space-y-3">
+          <!-- Equipo -->
+          <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+            <p class="lbl">1. Equipo</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button @click="act.subarrendado = false" :class="['py-2.5 rounded-xl border-2 font-black text-sm', !act.subarrendado ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-500']">Equipo FRC</button>
+              <button @click="act.subarrendado = true; act.afi = ''; act.equipo = ''" data-chofer="subarrendado" :class="['py-2.5 rounded-xl border-2 font-black text-sm', act.subarrendado ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-500']">Subarrendado</button>
+            </div>
+            <template v-if="!act.subarrendado">
+              <div v-if="act.afi && equipoAct" class="flex items-center gap-3 p-3 rounded-xl bg-sky-50 border-2 border-sky-200">
+                <div class="flex-1 min-w-0"><p class="font-black font-mono text-sky-800">AFI {{ act.afi }}</p><p class="text-xs text-slate-600 truncate">{{ equipoAct.tipo }} {{ equipoAct.marca }} {{ equipoAct.modelo }} · {{ equipoAct.ubicacion || 'sin ubicación' }}</p></div>
+                <button @click="act.afi = ''; act.equipo = ''" class="px-3 py-1.5 rounded-lg border bg-white text-xs font-bold">Cambiar</button>
+              </div>
+              <template v-else>
+                <input v-model="buscaEq" placeholder="Buscar AFI, tipo, marca…" class="inp" data-chofer="buscar-afi">
+                <div class="max-h-64 overflow-y-auto space-y-1.5">
+                  <button v-for="e in equiposFiltrados" :key="e.id" @click="elegirEquipo(e)" :data-afi="e.afi" class="w-full text-left p-2.5 rounded-xl border active:bg-sky-50 flex items-center gap-2">
+                    <b class="font-mono text-sky-800 w-14 shrink-0">{{ e.afi }}</b>
+                    <span class="min-w-0"><span class="block text-sm font-semibold text-slate-700 truncate">{{ e.tipo }} {{ e.marca }} {{ e.modelo }}</span><span class="block text-[11px] text-slate-400 truncate">{{ e.ubicacion || '—' }}</span></span>
+                  </button>
+                  <p v-if="!equiposFiltrados.length" class="text-xs text-slate-400 italic">Sin resultados. Si no es de FRC, marca "Subarrendado".</p>
+                </div>
+              </template>
+            </template>
+            <div v-else class="grid grid-cols-3 gap-2">
+              <input v-model="act.afi" class="inp px-2 font-mono uppercase" placeholder="AFI / ID" data-chofer="afi-sub">
+              <input v-model="act.equipo" class="inp px-2 col-span-2" placeholder="Equipo (ej. Generador 100 kVA)">
+              <p class="col-span-3 text-[11px] text-amber-700">Queda en Movimientos como información; no se agrega al inventario.</p>
+            </div>
+          </div>
+          <!-- Tipo -->
+          <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+            <p class="lbl">2. Tipo</p>
+            <div class="grid grid-cols-4 gap-1.5">
+              <button v-for="t in C.TIPOS_TRASLADO" :key="t" @click="act.traslado = t" :class="['py-2.5 rounded-xl border-2 text-[11px] font-black', act.traslado === t ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-500']">{{ t }}</button>
+            </div>
+          </div>
+          <!-- Desde / Hasta -->
+          <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+            <p class="lbl">3. Desde → Hasta</p>
+            <input v-model="act.desde" class="inp" placeholder="Desde" data-chofer="desde">
+            <input v-model="act.hasta" class="inp" placeholder="Hasta: escribe para buscar la ubicación" data-chofer="hasta">
+            <p v-if="locAct" class="text-[11px] font-bold text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>Ubicación del sistema{{ locAct.empresa ? ' · ' + locAct.empresa : '' }}: el equipo quedará aquí.</p>
+            <div v-else-if="act.hasta && destinosFiltrados.length" class="max-h-48 overflow-y-auto space-y-1">
+              <button v-for="d in destinosFiltrados" :key="d.id" @click="act.hasta = d.texto" class="w-full text-left p-2 rounded-lg border text-sm active:bg-emerald-50"><i class="fa-solid fa-location-dot text-emerald-600 mr-1"></i>{{ d.texto }} <span class="text-[10px] text-slate-400">{{ d.empresa }}</span></button>
+            </div>
+            <p v-else-if="act.hasta" class="text-[11px] text-amber-700">Texto libre: se guarda tal cual.</p>
+          </div>
+          <!-- Horas -->
+          <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+            <p class="lbl">4. Horario (opcional)</p>
+            <div class="grid grid-cols-2 gap-2">
+              <div><span class="text-[10px] font-bold text-slate-400">INICIO</span><div class="flex gap-1"><input type="time" v-model="act.h_ini" class="inp px-1 flex-1"><button @click="act.h_ini = ahora()" class="px-2 rounded-lg bg-slate-100 text-[10px] font-black">AHORA</button></div></div>
+              <div><span class="text-[10px] font-bold text-slate-400">TÉRMINO</span><div class="flex gap-1"><input type="time" v-model="act.h_fin" class="inp px-1 flex-1"><button @click="act.h_fin = ahora()" class="px-2 rounded-lg bg-slate-100 text-[10px] font-black">AHORA</button></div></div>
+            </div>
+            <label class="block"><span class="text-[10px] font-bold text-slate-400">C/U</span><input v-model="act.cu" class="inp px-2"></label>
+          </div>
+          <!-- Fotos -->
+          <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+            <p class="lbl">5. Fotos del equipo (opcional)</p>
+            <div class="flex flex-wrap gap-2">
+              <img v-for="(u, i) in act.fotos" :key="'s' + i" :src="u" @click="act.fotos.splice(i, 1)" title="Toca para quitar" class="w-20 h-20 object-cover rounded-xl border">
+              <img v-for="(p, i) in (C.fotosPend.value[act.uid] || [])" :key="'p' + i" :src="p.url" @click="C.quitarFotoPend(act.uid, i)" title="Toca para quitar" class="w-20 h-20 object-cover rounded-xl border-2 border-dashed border-sky-400">
+              <label class="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 flex flex-col items-center justify-center text-[11px] font-bold">
+                <i class="fa-solid fa-camera text-xl"></i>Agregar
+                <input type="file" accept="image/*" capture="environment" multiple class="hidden" @change="e => C.agregarFotos(act.uid, e)" data-chofer="fotos">
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="fixed bottom-0 inset-x-0 max-w-xl mx-auto p-3 bg-white border-t flex gap-2 z-[81]">
+          <button v-if="editando" @click="eliminarAct" class="px-4 py-3.5 rounded-2xl border-2 border-rose-200 text-rose-600 font-black"><i class="fa-solid fa-trash"></i></button>
+          <button @click="act = null" class="flex-1 py-3.5 rounded-2xl border-2 bg-white font-extrabold text-slate-600">Cancelar</button>
+          <button @click="guardarAct" class="flex-[2] py-3.5 rounded-2xl bg-sky-600 text-white font-extrabold text-lg" data-chofer="guardar-traslado">Guardar traslado</button>
+        </div>
+      </div>
+    </div>
+  </teleport>
 </div>`,
   setup() {
     const f = C.formCheck;
     watch(() => C.formCheck.value, () => C.guardarBorradorCheck(), { deep: true });
-    return { C, f, dbEquipos, formatDateForDisplay };
+    const nombre = computed(() => String(usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || ''));
+    const arriba = () => window.scrollTo(0, 0);
+    // Paso 1 · camión
+    const buscaCamion = ref('');
+    const camionSel = computed(() => Boolean(f.value?.patente && C.camiones.value.some(c => mismoAfi(c.afi, f.value.patente))));
+    const camionesFiltrados = computed(() => {
+      const q = buscaCamion.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      return C.camiones.value.filter(c => !q || String(c.afi).toUpperCase().replace(/[^A-Z0-9]/g, '').includes(q)).slice(0, 30);
+    });
+    const elegirCamion = (c) => { f.value.patente = c.afi; f.value.km_ini = ''; C.alElegirCamion(f.value); };
+    const cambiarCamion = () => { f.value.patente = ''; f.value.venc_revision = ''; f.value.venc_permiso = ''; buscaCamion.value = ''; };
+    const docs = computed(() => [
+      { k: 'rt', l: 'Revisión técnica', v: f.value.venc_revision },
+      { k: 'pc', l: 'Permiso de circulación', v: f.value.venc_permiso }
+    ].filter(d => d.v));
+    // Paso 2 · check list
+    const grupoAbierto = ref('');
+    const itemsGrupo = (g) => C.ITEMS_CHECK.filter(i => i.grupo === g);
+    const hechosGrupo = (g) => itemsGrupo(g).filter(i => f.value.checklist[i.k]).length;
+    const siguiente = () => {
+      if (C.pasoCheck.value === 1 && !f.value.patente) return alert('Elige el camión.');
+      C.pasoCheck.value++; arriba();
+    };
+    // Paso 3 · traslados (hoja)
+    const act = ref(null);
+    const editando = ref(false);
+    const buscaEq = ref('');
+    const nFotos = (a) => (a.fotos || []).length + (C.fotosPend.value[a.uid] || []).length;
+    const nuevaAct = () => { act.value = C.actVacia(); editando.value = false; buscaEq.value = ''; };
+    const editar = (a) => { act.value = JSON.parse(JSON.stringify(a)); editando.value = true; buscaEq.value = ''; };
+    const equipoAct = computed(() => (act.value && !act.value.subarrendado ? buscarEquipoPorAfi(act.value.afi) : null));
+    const equiposFiltrados = computed(() => {
+      const q = buscaEq.value.trim().toUpperCase();
+      return dbEquipos.value.filter(e => !esVehiculo(e))
+        .filter(e => !q || [e.afi, e.tipo, e.marca, e.modelo, e.ubicacion].join(' ').toUpperCase().includes(q))
+        .sort((a, b) => String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true })).slice(0, 40);
+    });
+    const elegirEquipo = (e) => {
+      act.value.afi = String(e.afi); act.value.equipo = [e.tipo, e.marca].filter(Boolean).join(' ');
+      if (!act.value.desde && e.ubicacion) act.value.desde = e.ubicacion;
+    };
+    const locAct = computed(() => (act.value ? C.locDeTexto(act.value.hasta) : null));
+    const destinosFiltrados = computed(() => {
+      const q = String(act.value?.hasta || '').trim().toUpperCase();
+      if (q.length < 2) return [];
+      return C.destinosLoc.value.filter(d => (d.texto + ' ' + d.empresa).toUpperCase().includes(q)).slice(0, 15);
+    });
+    const ahora = () => new Date().toTimeString().slice(0, 5);
+    const guardarAct = () => {
+      const a = act.value;
+      if (!String(a.afi || '').trim()) return alert(a.subarrendado ? 'Escribe el AFI / ID del equipo subarrendado.' : 'Elige el equipo de la lista.');
+      if (!String(a.hasta || '').trim()) return alert('Indica hacia dónde lo llevaste (Hasta).');
+      a.afi = String(a.afi).trim().toUpperCase();
+      C.guardarActividad(a); act.value = null;
+    };
+    const eliminarAct = () => { if (confirm('¿Quitar este traslado?')) { C.quitarActividad(act.value); act.value = null; } };
+    return { C, f, nombre, arriba, buscaCamion, camionSel, camionesFiltrados, elegirCamion, cambiarCamion, docs,
+      grupoAbierto, itemsGrupo, hechosGrupo, siguiente,
+      act, editando, buscaEq, nFotos, nuevaAct, editar, equipoAct, equiposFiltrados, elegirEquipo, locAct, destinosFiltrados, ahora, guardarAct, eliminarAct,
+      formatDateForDisplay };
   }
 };
 
@@ -143,7 +312,7 @@ export const ChecklistLista = {
     <span class="w-11 h-11 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-truck"></i></span>
     <div class="flex-1 min-w-0">
       <p class="font-black text-slate-800">{{ r.patente }} <span class="text-xs font-bold text-slate-500">{{ formatDateForDisplay(r.fecha) }}</span></p>
-      <p class="text-xs text-slate-500 truncate"><span v-if="todos" class="font-bold text-slate-700">{{ r.chofer || r.usuario }} · </span>Km {{ r.km_ini || '—' }} → {{ r.km_fin || '—' }} · {{ (r.actividades || []).length }} traslado(s)<span v-if="fotos(r).length"> · {{ fotos(r).length }} foto(s)</span><span v-if="malos(r)" class="text-rose-600 font-bold"> · {{ malos(r) }} malo(s)</span></p>
+      <p class="text-xs text-slate-500 truncate"><span v-if="todos" class="font-bold text-slate-700">{{ r.chofer || r.usuario }} · </span>Km {{ r.km_ini || '—' }} → {{ r.km_fin || '—' }} · {{ (r.actividades || []).length }} traslado(s)<span v-if="fotos(r).length"> · {{ fotos(r).length }} foto(s)</span><span v-if="malos(r)" class="text-rose-600 font-bold"> · {{ malos(r) }} malo(s)</span><span v-if="C.vencidosDe(r).length" class="text-rose-600 font-bold"> · Vencido: {{ C.vencidosDe(r).join(', ') }}</span></p>
     </div>
     <div v-if="fotos(r).length" class="hidden sm:flex gap-1">
       <a v-for="(u, i) in fotos(r).slice(0, 4)" :key="i" :href="u" target="_blank" rel="noopener"><img :src="u" class="w-10 h-10 object-cover rounded-lg border"></a>

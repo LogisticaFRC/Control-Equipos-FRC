@@ -348,11 +348,14 @@ export default {
 
       <!-- CHOFER (2026-11-17) -->
       <section v-if="tab === 'checklist' && S.esChofer.value" class="p-4 space-y-3">
-        <button @click="CH.nuevoChecklist()" data-chofer="nuevo" class="w-full bg-sky-600 text-white rounded-3xl shadow p-5 text-left flex items-center gap-4 active:scale-[.99]">
-          <span class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-2xl"><i class="fa-solid fa-clipboard-check"></i></span>
-          <span><b class="block text-lg">Nuevo check list / report</b><span class="text-xs text-sky-100">Camión pluma · FRC-RE-OPE-018 · datos, check list y traslados</span></span>
+        <div class="lbl">¿Qué vehículo manejas?</div>
+        <button v-for="fm in CH.FORMATOS_CHOFER" :key="fm.key" @click="fm.activo && CH.nuevoChecklist(fm.key)" :disabled="!fm.activo" :data-chofer="fm.activo ? 'nuevo' : null"
+          :class="['w-full rounded-3xl shadow p-5 text-left flex items-center gap-4', fm.activo ? 'bg-sky-600 text-white active:scale-[.99]' : 'bg-white/70 text-slate-400']">
+          <span :class="['w-14 h-14 rounded-2xl flex items-center justify-center text-2xl', fm.activo ? 'bg-white/20' : 'bg-slate-200']"><i :class="['fa-solid', fm.icon]"></i></span>
+          <span><b class="block text-lg">{{ fm.titulo }}</b><span :class="['text-xs', fm.activo ? 'text-sky-100' : '']">{{ fm.activo ? 'Check list / report · ' + fm.codigo : 'Formato pendiente de cargar' }}</span></span>
         </button>
-        <div class="lbl pt-2">Últimos enviados</div>
+      </section>
+      <section v-if="tab === 'docschofer' && S.esChofer.value" class="p-4 space-y-3">
         <checklist-lista></checklist-lista>
       </section>
 
@@ -389,12 +392,13 @@ export default {
     // TERRENO no tiene Taller: si quedó en esa pantalla, vuelve al menú
     watch(() => S.esTaller.value, (t) => { if (!t && tab.value === 'taller') tab.value = 'inicio'; if (t) recargarTaller(); }, { immediate: true });
     // Menú en tarjetas
-    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas', checklist: 'Check list / Report' };
+    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas', checklist: 'Check list / Report', docschofer: 'Mis documentos' };
     const irA = (t) => { tab.value = t; if (t === 'registros') S.cargarMec(); if (t === 'taller') recargarTaller(); window.scrollTo(0, 0); };
     const tarjetas = computed(() => S.esChofer.value ? [
-      { tab: 'checklist', titulo: 'Check list / Report', sub: 'Camión pluma: datos, check list y traslados (movimientos)', icon: 'fa-clipboard-check', color: 'bg-sky-100 text-sky-700', ancha: true },
+      { tab: 'checklist', titulo: 'Check list / Report', sub: 'Datos del camión, check list, traslados y firma', icon: 'fa-clipboard-check', color: 'bg-sky-100 text-sky-700', ancha: true },
+      { tab: 'docschofer', titulo: 'Mis documentos', sub: 'Check list enviados (Excel)', icon: 'fa-folder-open', color: 'bg-amber-100 text-amber-700' },
       { tab: 'equipos', titulo: 'Equipos', sub: 'Consulta', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700' },
-      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700' }
+      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700', ancha: true }
     ] : S.esTaller.value ? [
       { tab: 'taller', titulo: 'Taller · Naves', sub: equiposEnNaves.value + ' equipo(s) en naves · inspección, OT, intervenciones', icon: 'fa-warehouse', color: 'bg-amber-100 text-amber-700', ancha: true },
       { tab: 'equipos', titulo: 'Equipos', sub: 'Agregar a nave un equipo no programado', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700' },

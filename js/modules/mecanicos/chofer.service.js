@@ -61,25 +61,56 @@ export const OPCIONES_CHECK = [
   { v: 'NA', l: 'N/A', c: 'bg-slate-500 text-white border-slate-500' }
 ];
 export const TIPOS_TRASLADO = ['ENTREGA', 'RETIRO', 'TRASLADO', 'OTRO'];
+/** Formatos de report de chofer. Se agregan más (ej. camioneta) cuando lleguen sus plantillas. */
+export const FORMATOS_CHOFER = [
+  { key: 'CAMION_PLUMA', titulo: 'Camión pluma', codigo: 'FRC-RE-OPE-018', icon: 'fa-truck-ramp-box', activo: true, plantilla: 'plantillas/CHECKLIST_CAMION_PLUMA.xlsx' },
+  { key: 'CAMIONETA', titulo: 'Camioneta', codigo: 'Formato pendiente', icon: 'fa-truck-pickup', activo: false }
+];
+export const formatoDe = (r) => FORMATOS_CHOFER.find(x => x.key === (r?.formato || 'CAMION_PLUMA')) || FORMATOS_CHOFER[0];
 export const N_ACTIVIDADES_CHOFER = 5;
 
-const actVacia = () => ({ traslado: '', equipo: '', afi: '', cu: '', desde: '', hasta: '', h_ini: '', h_fin: '', fotos: [] });
-export const checklistVacio = () => ({
+let uidN = 0;
+export const actVacia = () => ({ uid: Date.now() + '_' + (++uidN), traslado: 'TRASLADO', subarrendado: false, equipo: '', afi: '', cu: '', desde: '', hasta: '', h_ini: '', h_fin: '', fotos: [] });
+export const checklistVacio = (formato = 'CAMION_PLUMA') => ({
+  formato, firma: '',
   patente: '', marca: '', modelo: '', fecha: hoyISO(), venc_revision: '', venc_permiso: '',
   cam_hrs_ini: '', cam_hrs_fin: '', cam_hrs_prox: '', km_ini: '', km_fin: '', km_prox: '',
-  pluma_hrs_ini: '', pluma_hrs_fin: '', pluma_hrs_prox: '',
-  checklist: {}, actividades: Array.from({ length: N_ACTIVIDADES_CHOFER }, actVacia), observaciones: ''
+  pluma_hrs_ini: '', pluma_hrs_fin: '', pluma_prox_fecha: '',   // Pluma: próxima mantención = FECHA
+  checklist: {}, actividades: [], observaciones: ''
 });
 
 // ---------- Camiones (vehículos del inventario = patente) ----------
 export const camiones = computed(() => dbEquipos.value.filter(esVehiculo)
   .sort((a, b) => String(a.afi).localeCompare(String(b.afi))));
-export const alElegirCamion = (f) => {
+export const docsCargados = ref(false);
+export const alElegirCamion = async (f) => {
+  docsCargados.value = false;
   const c = camiones.value.find(x => mismoAfi(x.afi, f.patente));
-  if (!c) return;
+  if (!c) { f.venc_revision = ''; f.venc_permiso = ''; return; }
   f.marca = c.marca || f.marca; f.modelo = c.modelo || f.modelo;
   if (!f.km_ini && Number(c.horometroActual) > 0) f.km_ini = String(Math.round(c.horometroActual));
+  // Vencimientos del camión (módulo Vehículos → documentos): si están cargados, se completan solos
+  try {
+    const data = await sb(supabaseClient.from('bd_vehiculos_documentos').select('clave, fecha_vencimiento')
+      .eq('patente', String(c.afi).toUpperCase()).in('clave', ['REVISION_TECNICA', 'PERMISO_CIRCULACION']));
+    const ultimo = (k) => (data || []).filter(d => String(d.clave).toUpperCase() === k && d.fecha_vencimiento)
+      .map(d => String(d.fecha_vencimiento).slice(0, 10)).sort().pop() || '';
+    f.venc_revision = ultimo('REVISION_TECNICA');
+    f.venc_permiso = ultimo('PERMISO_CIRCULACION');
+  } catch (_) { f.venc_revision = ''; f.venc_permiso = ''; }   // sin información: no se muestra
+  docsCargados.value = true;
 };
+/** Estado de un vencimiento respecto a la fecha del check list: null (sin dato) | { vencido, texto, clase } */
+export const estadoVenc = (venc, ref = hoyISO()) => {
+  if (!venc) return null;
+  const dias = Math.round((new Date(venc + 'T00:00:00') - new Date((ref || hoyISO()) + 'T00:00:00')) / 86400000);
+  if (dias < 0) return { vencido: true, texto: `VENCIDO hace ${-dias} día${dias === -1 ? '' : 's'}`, clase: 'bg-rose-600 text-white' };
+  if (dias === 0) return { vencido: false, texto: 'Vence HOY', clase: 'bg-amber-500 text-slate-900' };
+  if (dias <= 30) return { vencido: false, texto: `Vence en ${dias} día${dias === 1 ? '' : 's'}`, clase: 'bg-amber-100 text-amber-900' };
+  return { vencido: false, texto: 'Vigente', clase: 'bg-emerald-100 text-emerald-800' };
+};
+export const vencidosDe = (r) => [['Revisión técnica', r.venc_revision], ['Permiso de circulación', r.venc_permiso]]
+  .filter(([, v]) => estadoVenc(v, r.fecha)?.vencido).map(([n]) => n);
 /** Al escribir el AFI de una actividad: completa el equipo desde el inventario. */
 export const alCambiarAfiAct = (a) => {
   const e = buscarEquipoPorAfi(a.afi);
@@ -98,7 +129,7 @@ export const locDeTexto = (t) => destinosLoc.value.find(x => norm(x.texto) === n
 
 // ---------- Fotos de los equipos (se suben al enviar) ----------
 // Archivos elegidos por actividad (no van al borrador: solo se guardan las URL ya subidas).
-export const fotosPend = ref({});   // índice de actividad → [{ file, url (vista previa) }]
+export const fotosPend = ref({});   // uid de la actividad → [{ file, url (vista previa) }]
 const comprimir = (file, max = 1600, calidad = 0.8) => new Promise((ok) => {
   if (!/^image\//.test(file.type)) return ok(file);
   const img = new Image(); const u = URL.createObjectURL(file);
@@ -121,7 +152,7 @@ export const quitarFotoPend = (k, i) => { const l = [...(fotosPend.value[k] || [
 export const quitarFotoSubida = (a, i) => { a.fotos.splice(i, 1); };
 const subirFotosPend = async (f) => {
   for (const [k, lista] of Object.entries(fotosPend.value)) {
-    const a = f.actividades[k]; if (!a || !lista.length) continue;
+    const a = f.actividades.find(x => x.uid === k); if (!a || !lista.length) continue;
     a.fotos = a.fotos || [];
     while (lista.length) {
       const blob = await comprimir(lista[0].file);
@@ -137,11 +168,12 @@ const subirFotosPend = async (f) => {
 const BORRADOR = () => 'frc_checklist_chofer_' + (usuarioActivo.value?.usuario || '');
 export const formCheck = ref(null);
 export const pasoCheck = ref(1);
-export const PASOS_CHECK = ['Camión', 'Check list', 'Report', 'Enviar'];
-export const nuevoChecklist = () => {
+export const PASOS_CHECK = ['Camión', 'Check list', 'Traslados', 'Firma y enviar'];
+export const nuevoChecklist = (formato = 'CAMION_PLUMA') => {
   let b = null; try { b = JSON.parse(localStorage.getItem(BORRADOR()) || 'null'); } catch (_) { b = null; }
-  formCheck.value = (b && confirm('Tienes un check list sin enviar. ¿Seguir con ese borrador?')) ? { ...checklistVacio(), ...b } : checklistVacio();
-  formCheck.value.actividades.forEach(a => { if (!Array.isArray(a.fotos)) a.fotos = []; });
+  formCheck.value = (b && confirm('Tienes un check list sin enviar. ¿Seguir con ese borrador?')) ? { ...checklistVacio(formato), ...b } : checklistVacio(formato);
+  // borradores antiguos (5 filas fijas): se dejan solo las actividades con datos
+  formCheck.value.actividades = actividadesLlenas(formCheck.value).map(a => ({ ...actVacia(), ...a, fotos: Array.isArray(a.fotos) ? a.fotos : [] }));
   fotosPend.value = {};
   pasoCheck.value = 1;
 };
@@ -151,6 +183,17 @@ export const marcarTodoBueno = (grupo) => { ITEMS_CHECK.filter(i => i.grupo === 
 export const faltantesCheck = computed(() => formCheck.value ? ITEMS_CHECK.filter(i => !formCheck.value.checklist[i.k]) : []);
 export const malosCheck = computed(() => formCheck.value ? ITEMS_CHECK.filter(i => formCheck.value.checklist[i.k] === 'M') : []);
 export const actividadesLlenas = (f) => (f?.actividades || []).filter(a => String(a.afi || a.equipo || a.desde || a.hasta || '').trim());
+/** Guarda una actividad editada en la hoja (nueva o existente). */
+export const guardarActividad = (a) => {
+  const l = formCheck.value.actividades;
+  const i = l.findIndex(x => x.uid === a.uid);
+  if (i >= 0) l.splice(i, 1, a); else if (l.length < N_ACTIVIDADES_CHOFER) l.push(a);
+};
+export const quitarActividad = (a) => {
+  const l = formCheck.value.actividades; const i = l.findIndex(x => x.uid === a.uid);
+  if (i >= 0) l.splice(i, 1);
+  const p = { ...fotosPend.value }; delete p[a.uid]; fotosPend.value = p;
+};
 
 // ---------- Guardar ----------
 export const enviandoCheck = ref(false);
@@ -161,6 +204,8 @@ export const enviarChecklist = async () => {
   if (!String(f.patente || '').trim()) { pasoCheck.value = 1; alert('Elige la patente del camión.'); return false; }
   if (!f.fecha) { pasoCheck.value = 1; alert('Falta la fecha.'); return false; }
   if (num(f.km_ini) && num(f.km_fin) && num(f.km_fin) < num(f.km_ini)) { pasoCheck.value = 1; alert('El km de término es menor que el de inicio.'); return false; }
+  if (!f.firma) { pasoCheck.value = 4; alert('Falta tu firma (paso 4).'); return false; }
+  if (vencidosDe(f).length && !confirm(`ATENCIÓN: documento vencido a la fecha del check list → ${vencidosDe(f).join(' y ')}.\nQueda marcado como VENCIDO en el documento.\n¿Enviar igual?`)) { pasoCheck.value = 1; return false; }
   if (faltantesCheck.value.length && !confirm(`Faltan ${faltantesCheck.value.length} ítem(s) del check list sin marcar. ¿Enviar igual?`)) { pasoCheck.value = 2; return false; }
   const u = usuarioActivo.value || {};
   enviandoCheck.value = true;
@@ -173,7 +218,7 @@ export const enviarChecklist = async () => {
   datos.actividades = actividadesLlenas(f).map(a => {
     const e = buscarEquipoPorAfi(a.afi);
     const loc = locDeTexto(a.hasta);
-    return { ...a, afi: String(a.afi || '').trim().toUpperCase(), tipo_equipo: e ? e.tipo : '',
+    return { ...a, afi: String(a.afi || '').trim().toUpperCase(), tipo_equipo: a.subarrendado ? '' : (e ? e.tipo : ''),
       hasta: loc ? loc.texto : a.hasta, locacion_id: loc ? loc.id : null, empresa: loc ? loc.empresa : '' };
   });
   try {
@@ -231,6 +276,28 @@ const escribirCelda = (xml, ref, valor) => {
   return xml.replace(re, nueva);
 };
 const fF = (d) => (d ? formatDateForDisplay(d) : '');
+/** Crea la celda si la fila existe vacía (la plantilla no trae B63). */
+const asegurarCelda = (xml, ref) => {
+  if (new RegExp(`<c r="${ref}"[\\s/>]`).test(xml)) return xml;
+  const fila = ref.replace(/^[A-Z]+/, '');
+  const re = new RegExp(`<row r="${fila}"([^>]*?)(/>|>\\s*</row>)`);
+  return xml.replace(re, `<row r="${fila}"$1><c r="${ref}"/></row>`);
+};
+/** Pone la firma (PNG) como imagen en la hoja, sobre "Nombre y firma chofer" (filas 59-62, columnas B-F). */
+const agregarFirmaExcel = async (zip, dataUrl) => {
+  const relsRuta = 'xl/drawings/_rels/drawing1.xml.rels', drawRuta = 'xl/drawings/drawing1.xml';
+  if (!zip.file(relsRuta) || !zip.file(drawRuta)) return;
+  zip.file('xl/media/firma_chofer.png', dataUrl.split(',')[1], { base64: true });
+  let rels = await zip.file(relsRuta).async('string');
+  rels = rels.replace('</Relationships>', '<Relationship Id="rIdFirma" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="/xl/media/firma_chofer.png"/></Relationships>');
+  zip.file(relsRuta, rels);
+  let d = await zip.file(drawRuta).async('string');
+  const pic = '<twoCellAnchor editAs="oneCell"><from><col>1</col><colOff>0</colOff><row>58</row><rowOff>0</rowOff></from><to><col>6</col><colOff>0</colOff><row>62</row><rowOff>0</rowOff></to>'
+    + '<pic><nvPicPr><cNvPr id="90" name="Firma chofer"/><cNvPicPr><a:picLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></cNvPicPr></nvPicPr>'
+    + '<blipFill><a:blip xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdFirma"/><a:stretch xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:fillRect/></a:stretch></blipFill>'
+    + '<spPr><a:prstGeom xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" prst="rect"><a:avLst/></a:prstGeom></spPr></pic><clientData/></twoCellAnchor>';
+  zip.file(drawRuta, d.replace('</wsDr>', pic + '</wsDr>'));
+};
 /** Corta las observaciones en hasta 4 líneas del formato. */
 const lineasObs = (t, ancho = 95) => {
   const out = [];
@@ -246,10 +313,11 @@ const lineasObs = (t, ancho = 95) => {
 export const celdasChecklist = (r) => {
   const c = {
     C5: r.patente, G5: r.marca, O5: r.modelo, Q5: fF(r.fecha),
-    A10: fF(r.venc_revision), A13: fF(r.venc_permiso),
+    A10: fF(r.venc_revision) + (estadoVenc(r.venc_revision, r.fecha)?.vencido ? ' VENCIDA' : ''),
+    A13: fF(r.venc_permiso) + (estadoVenc(r.venc_permiso, r.fecha)?.vencido ? ' VENCIDO' : ''),
     F9: r.cam_hrs_ini, F11: r.cam_hrs_fin, F13: r.cam_hrs_prox,
     M9: r.km_ini, M11: r.km_fin, M13: r.km_prox,
-    P9: r.pluma_hrs_ini, P11: r.pluma_hrs_fin, P13: r.pluma_hrs_prox
+    P9: r.pluma_hrs_ini, P11: r.pluma_hrs_fin, P13: r.pluma_prox_fecha ? fF(r.pluma_prox_fecha) : (r.pluma_hrs_prox || '')
   };
   ITEMS_CHECK.forEach(i => {
     const v = (r.checklist || {})[i.k];
@@ -258,8 +326,9 @@ export const celdasChecklist = (r) => {
   });
   (r.actividades || []).slice(0, N_ACTIVIDADES_CHOFER).forEach((a, k) => {
     const f = 48 + k;
-    Object.assign(c, { ['C' + f]: a.traslado, ['D' + f]: a.equipo || a.tipo_equipo || '', ['F' + f]: a.afi, ['G' + f]: a.cu, ['I' + f]: a.desde, ['N' + f]: a.hasta, ['P' + f]: a.h_ini, ['R' + f]: a.h_fin });
+    Object.assign(c, { ['C' + f]: a.traslado, ['D' + f]: (a.equipo || a.tipo_equipo || '') + (a.subarrendado ? ' (SUBARR.)' : ''), ['F' + f]: a.afi, ['G' + f]: a.cu, ['I' + f]: a.desde, ['N' + f]: a.hasta, ['P' + f]: a.h_ini, ['R' + f]: a.h_fin });
   });
+  c.B63 = 'Nombre y firma chofer: ' + String(r.chofer || r.usuario || '').toUpperCase();
   const obs = lineasObs(r.observaciones);
   [55, 56, 57, 58].forEach((f, k) => { c['B' + f] = obs[k] !== undefined ? obs[k] : '_'.repeat(95); });
   return c;
@@ -272,8 +341,10 @@ export const descargarChecklistExcel = async (r) => {
     const zip = await JSZip.loadAsync(await resp.arrayBuffer());
     const ruta = 'xl/worksheets/sheet1.xml';
     let xml = await zip.file(ruta).async('string');
+    xml = asegurarCelda(xml, 'B63');
     Object.entries(celdasChecklist(r)).forEach(([ref, v]) => { xml = escribirCelda(xml, ref, v ?? ''); });
     zip.file(ruta, xml);
+    if (String(r.firma || '').startsWith('data:image/png;base64,')) await agregarFirmaExcel(zip, r.firma);
     const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

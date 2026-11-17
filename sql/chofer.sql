@@ -4,7 +4,8 @@
 --   · bd_checklist_chofer: cada check list enviado (datos completos en jsonb)
 --   · frc_chofer_guardar(p_datos): guarda el check list, registra cada traslado con AFI
 --     en BD_MOVIMIENTOS (camión + chofer + fotos), deja el equipo en la nueva ubicación del
---     Inventario (ubicación / locación / empresa, igual que Movimientos) y actualiza el km del camión.
+--     Inventario (ubicación / locación / empresa, igual que Movimientos) y actualiza el km del camión
+--     si la fecha es igual o más reciente que la del último km (y lo anota en bd_vehiculos_km).
 -- Se puede volver a ejecutar sin problema (2026-11-17: ubicación del equipo + fotos).
 -- El chofer es un usuario con permisos { mecanicos: 'subadmin', mec_modo: 'chofer' }.
 -- =====================================================================
@@ -71,7 +72,8 @@ begin
     v_mov := jsonb_build_object(
       'afi', upper(trim(a->>'afi')),
       'fecha', coalesce(v_fecha, current_date)::text,
-      'tipo', trim(both ' ·' from concat_ws(' · ', nullif(a->>'tipo_equipo', ''), nullif(a->>'traslado', ''), 'CHOFER')),
+      'tipo', trim(both ' ·' from concat_ws(' · ', nullif(a->>'tipo_equipo', ''), nullif(a->>'traslado', ''),
+                case when coalesce((a->>'subarrendado')::boolean, false) then 'SUBARRENDADO' || coalesce(': ' || nullif(upper(a->>'equipo'), ''), '') end, 'CHOFER')),
       'ubicacion_anterior', coalesce(a->>'desde', ''),
       'ubicacion_actual', coalesce(a->>'hasta', ''),
       'empresa_arriendo', upper(coalesce(a->>'empresa', '')),
@@ -84,7 +86,8 @@ begin
       using v_mov;
 
     -- 2) Ubicación del equipo en el Inventario (si existe y se indicó destino)
-    if coalesce(trim(a->>'hasta'), '') <> '' then
+    -- (subarrendado = solo información: no está en el inventario)
+    if coalesce(trim(a->>'hasta'), '') <> '' and not coalesce((a->>'subarrendado')::boolean, false) then
       v_inv := jsonb_build_object('ubicacion', a->>'hasta');
       if nullif(a->>'locacion_id', '') is not null then v_inv := v_inv || jsonb_build_object('locacion_id', a->>'locacion_id'); end if;
       if coalesce(a->>'empresa', '') <> '' then v_inv := v_inv || jsonb_build_object('empresa_arriendo', upper(a->>'empresa')); end if;
@@ -98,14 +101,22 @@ begin
     end if;
   end loop;
 
-  -- Kilometraje del camión (BD_INVENTARIO.horometroactual = km para patentes): solo si sube
+  -- Kilometraje del camión (BD_INVENTARIO.horometroactual = km para patentes), con la misma regla que
+  -- Vehículos → "Registrar km": pasa a ser el km actual solo si la fecha del check list es IGUAL o MÁS
+  -- RECIENTE que la del último km registrado (un check list atrasado no pisa uno más nuevo).
+  -- Se usa el km de término (si no hay, el de inicio). La lectura queda además en la bitácora bd_vehiculos_km.
   begin
-    v_km := nullif(regexp_replace(coalesce(p_datos->>'km_fin', ''), '[^0-9]', '', 'g'), '')::numeric;
+    v_km := nullif(regexp_replace(coalesce(nullif(p_datos->>'km_fin', ''), p_datos->>'km_ini', ''), '[^0-9]', '', 'g'), '')::numeric;
   exception when others then v_km := null; end;
   if v_km is not null and v_km > 0 then
     update public."BD_INVENTARIO"
        set horometroactual = v_km, fecha_horometro_manual = coalesce(v_fecha, current_date)
-     where upper(trim(afi::text)) = v_patente and coalesce(horometroactual, 0) < v_km;
+     where upper(trim(afi::text)) = v_patente
+       and (fecha_horometro_manual is null or coalesce(v_fecha, current_date) >= fecha_horometro_manual::date);
+    if to_regclass('public.bd_vehiculos_km') is not null then
+      execute 'insert into public.bd_vehiculos_km (patente, fecha, km, tipo, observacion, creado_por) values ($1, $2, $3, $4, $5, $6)'
+        using v_patente, coalesce(v_fecha, current_date), v_km, 'LECTURA', 'Check list chofer N° ' || v_id, v_usuario;
+    end if;
   end if;
 
   return v_id;
