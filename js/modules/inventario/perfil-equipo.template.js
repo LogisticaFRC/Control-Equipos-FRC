@@ -36,11 +36,15 @@ export default /* html */ `
       <button v-for="t in TABS_PERFIL" :key="t.k" @click="perfilTab = t.k"
         :class="['px-3 py-2 text-xs font-bold rounded-t-lg border border-b-0 -mb-px whitespace-nowrap transition', perfilTab === t.k ? 'bg-white text-blue-700 border-slate-300' : 'text-slate-500 border-transparent hover:text-slate-800']">
         <i :class="['fa-solid mr-1', t.i]"></i>{{ t.l }}
+        <span v-if="t.k === 'ots' && otsAbiertasDelEquipo(perfilEquipo.afi)" class="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[9px]" title="OT abiertas">{{ otsAbiertasDelEquipo(perfilEquipo.afi) }}</span>
         <span v-if="t.k === 'fallas' && fallasEquipo.res?.repetidas" class="ml-1 px-1.5 rounded-full bg-rose-500 text-white text-[9px]">{{ fallasEquipo.res.repetidas }}</span>
       </button>
     </div>
 
     <div class="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1 min-h-0 bg-slate-100 text-xs">
+
+      <!-- ===== OT ASIGNADAS (2026-11-17) ===== -->
+      <ots-equipo v-if="perfilTab === 'ots' && perfilEquipo.afi" :afi="perfilEquipo.afi"></ots-equipo>
 
       <!-- ===== RESUMEN ===== -->
       <div v-show="perfilTab === 'resumen'" class="space-y-5">

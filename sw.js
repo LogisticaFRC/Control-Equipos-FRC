@@ -4,7 +4,7 @@
 // solo si no hay señal usa la copia guardada de las pantallas (los datos siempre vienen de Supabase).
 // Las librerías (CDN) y Supabase no se tocan.
 // =====================================================================
-const CACHE = 'frc-control-v1';
+const CACHE = 'frc-control-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => {
@@ -21,7 +21,7 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;   // CDN, Supabase, imágenes externas: normal
   e.respondWith((async () => {
     try {
-      const res = await fetch(req, { cache: 'no-cache' });
+      const res = await fetch(req, { cache: 'no-store' });   // siempre del servidor (nunca del caché del navegador)
       if (res && res.ok) { const c = await caches.open(CACHE); c.put(req, res.clone()); }
       return res;
     } catch (err) {

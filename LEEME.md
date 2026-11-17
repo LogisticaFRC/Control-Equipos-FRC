@@ -910,3 +910,12 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 
 ## 2026-11-17 · OT de vehículos: KM en vez de HRS
 - Si el ID del equipo es una **patente** (`esPatente`, ej. LYXV-16), la OT muestra **KM ACTUAL** y **KM PROX. MANT** en vez de HRS ACTUAL / HRS PROX. MANT: en el editor, en las dos impresiones y en el Excel exportado. Equipos con AFI siguen con HRS. (`otEsVehiculo`, `etiquetaOT` en ot.service.js). Los datos se guardan en las mismas columnas (hrs_actual / hrs_prox).
+
+## 2026-11-17 · Botón "Actualizar" (versión nueva) más seguro
+- Antes, "Actualizar" solo recargaba y a veces el navegador / GitHub entregaban los archivos viejos guardados (caché de hasta 10 min) → seguía la versión anterior y volvía el aviso.
+- Ahora `actualizarAhora` (instalar-app.js): borra el caché de la app, confirma que el servidor ya entrega la versión nueva (si GitHub aún está publicando, avisa y reintenta solo cada 30 s), vuelve a bajar todos los archivos propios sin caché y recién ahí recarga. Muestra "Actualizando…".
+- sw.js: caché 'frc-control-v2' y pide siempre al servidor con `cache: 'no-store'`.
+
+## 2026-11-17 · Perfil del equipo: pestaña "OT asignadas"
+- Nueva pestaña **OT asignadas** (`inventario/ots-equipo.view.js`) en el Perfil del equipo: total / abiertas / realizadas-cerradas / anuladas y tabla con folio, fecha, tipo, actividades, avance (terminadas/total), estado, taller (nave) y botones **Abrir** (va al módulo OT) e **Imprimir**. Abiertas primero.
+- La pestaña muestra un número naranjo con las OT abiertas del equipo.

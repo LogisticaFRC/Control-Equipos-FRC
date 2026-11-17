@@ -55,7 +55,36 @@ const revisarVersion = async () => {
     if (m && m[1] !== APP_VERSION) versionNueva.value = m[1];
   } catch (_) { /* sin internet: se revisa después */ }
 };
-export const actualizarAhora = () => { window.location.reload(); };
+/** Archivos propios ya cargados (js / css / html): se descargan de nuevo saltándose el caché antes de recargar. */
+const archivosPropios = () => {
+  const urls = new Set(['./', 'index.html', 'js/main.js', 'js/core/sesion.js']);
+  (performance.getEntriesByType('resource') || []).forEach(e => {
+    try { const u = new URL(e.name); if (u.origin === location.origin && /\.(js|css|html|json)$/i.test(u.pathname)) urls.add(u.pathname + u.search); } catch (_) { /* */ }
+  });
+  return [...urls];
+};
+export const actualizando = ref(false);
+export const avisoActualizar = ref('');
+/** Actualizar: (1) borra el caché de la app, (2) baja de nuevo cada archivo sin usar el caché del navegador,
+ *  (3) confirma que el servidor ya entrega la versión nueva y (4) recarga. Si GitHub aún no termina de publicar,
+ *  avisa y reintenta solo (antes, "Actualizar" a veces recargaba la versión vieja guardada). */
+export const actualizarAhora = async () => {
+  if (actualizando.value) return;
+  actualizando.value = true; avisoActualizar.value = '';
+  try {
+    if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
+    const t = await (await fetch('js/core/sesion.js', { cache: 'reload' })).text();
+    const m = t.match(/APP_VERSION\s*=\s*'([^']+)'/);
+    if (m && m[1] === APP_VERSION) {
+      avisoActualizar.value = 'La versión nueva todavía se está publicando. Reintento en 30 s…';
+      setTimeout(() => { actualizando.value = false; actualizarAhora(); }, 30000);
+      return;
+    }
+    await Promise.all(archivosPropios().map(u => fetch(u, { cache: 'reload' }).catch(() => null)));
+    try { const reg = await navigator.serviceWorker?.getRegistration(); if (reg) await reg.update(); } catch (_) { /* */ }
+  } catch (_) { /* sin internet: se recarga igual */ }
+  window.location.reload();
+};
 
 export const AvisoVersion = {
   name: 'AvisoVersion',
@@ -63,13 +92,14 @@ export const AvisoVersion = {
   <div v-if="versionNueva" class="fixed bottom-20 inset-x-3 mx-auto w-fit z-[90] bg-slate-900 text-white rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3 text-sm">
     <i class="fa-solid fa-rotate text-amber-400"></i>
     <span class="font-semibold">Hay una versión nueva del sistema</span>
-    <button @click="actualizarAhora" class="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-extrabold">Actualizar</button>
+    <span v-if="avisoActualizar" class="text-xs text-amber-200">{{ avisoActualizar }}</span>
+    <button @click="actualizarAhora" :disabled="actualizando" class="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-extrabold disabled:opacity-70"><i v-if="actualizando" class="fa-solid fa-spinner fa-spin mr-1"></i>{{ actualizando ? 'Actualizando…' : 'Actualizar' }}</button>
   </div>`,
   setup() {
     let t = null;
     const alVolver = () => { if (!document.hidden) revisarVersion(); };
     onMounted(() => { revisarVersion(); t = setInterval(revisarVersion, 10 * 60 * 1000); document.addEventListener('visibilitychange', alVolver); });
     onBeforeUnmount(() => { clearInterval(t); document.removeEventListener('visibilitychange', alVolver); });
-    return { versionNueva, actualizarAhora };
+    return { versionNueva, actualizarAhora, actualizando, avisoActualizar };
   }
 };

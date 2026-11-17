@@ -20,6 +20,7 @@ export const perfilEquipo = ref({});
 export const perfilTab = ref('resumen');
 export const TABS_PERFIL = [
   { k: 'resumen', l: 'Resumen', i: 'fa-gauge-high' },
+  { k: 'ots', l: 'OT asignadas', i: 'fa-file-signature' },
   { k: 'historial', l: 'Historial', i: 'fa-wrench' },
   { k: 'fallas', l: 'Fallas', i: 'fa-magnifying-glass-chart' },
   { k: 'datos', l: 'Datos y ubicación', i: 'fa-truck-monster' },
