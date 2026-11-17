@@ -18,6 +18,8 @@ import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supa
 import { usuarioActivo, dbEquipos, buscarEquipoPorAfi, cargarDatosDesdeSupabase } from '../../core/store.js';
 import { hoyISO, formatDateForDisplay, mismoAfi } from '../../core/utils.js';
 import { esVehiculo } from '../inventario/inventario.mapper.js';
+import { abrirPdfChecklist } from './chofer.pdf.js';   // PDF guardado en Supabase y abierto al enviar
+import { avisoApp } from './mecanicos.service.js';
 import { dbLocaciones } from '../../core/store.js';
 import { TIPOS, textoUbicacion, rutaDe } from '../areas/areas.service.js';
 
@@ -73,6 +75,7 @@ let uidN = 0;
 export const actVacia = () => ({ uid: Date.now() + '_' + (++uidN), traslado: 'TRASLADO', subarrendado: false, equipo: '', afi: '', cu: '', desde: '', hasta: '', h_ini: '', h_fin: '', fotos: [] });
 export const checklistVacio = (formato = 'CAMION_PLUMA') => ({
   formato, firma: '',
+  sup_modo: 'DESPUES', sup_nombre: '', sup_firma: '',   // supervisor: firma ahora (en el celular) o después (Personal Técnico → Choferes)
   patente: '', marca: '', modelo: '', fecha: hoyISO(), venc_revision: '', venc_permiso: '',
   cam_hrs_ini: '', cam_hrs_fin: '', cam_hrs_prox: '', km_ini: '', km_fin: '', km_prox: '',
   pluma_hrs_ini: '', pluma_hrs_fin: '', pluma_prox_fecha: '',   // Pluma: próxima mantención = FECHA
@@ -218,12 +221,17 @@ export const enviarChecklist = async () => {
   if (!f.fecha) { pasoCheck.value = 1; alert('Falta la fecha.'); return false; }
   if (num(f.km_ini) && num(f.km_fin) && num(f.km_fin) < num(f.km_ini)) { pasoCheck.value = 1; alert('El km de término es menor que el de inicio.'); return false; }
   if (!f.firma) { pasoCheck.value = 4; alert('Falta tu firma (paso 4).'); return false; }
-  if (vencidosDe(f).length && !confirm(`ATENCIÓN: documento vencido a la fecha del check list → ${vencidosDe(f).join(' y ')}.\nQueda marcado como VENCIDO en el documento.\n¿Enviar igual?`)) { pasoCheck.value = 1; return false; }
+  if (f.sup_modo === 'AHORA' && (!String(f.sup_nombre || '').trim() || !f.sup_firma)) { pasoCheck.value = 4; alert('Falta el nombre y la firma del supervisor (o elige "Firma después").'); return false; }
+  if (f.sup_modo !== 'AHORA') { f.sup_nombre = ''; f.sup_firma = ''; }
+  // Pestaña para mostrar el PDF al terminar (se abre ahora, si no el navegador la bloquea)
+  let ventanaPdf = null; try { ventanaPdf = window.open('', '_blank'); } catch (_) { ventanaPdf = null; }
+  const cerrarVentana = () => { try { ventanaPdf && ventanaPdf.close(); } catch (_) { /* */ } };
+  if (vencidosDe(f).length && !confirm(`ATENCIÓN: documento vencido a la fecha del check list → ${vencidosDe(f).join(' y ')}.\n¿Enviar igual?`)) { pasoCheck.value = 1; return false; }
   if (faltantesCheck.value.length && !confirm(`Faltan ${faltantesCheck.value.length} ítem(s) del check list sin marcar. ¿Enviar igual?`)) { pasoCheck.value = 2; return false; }
   const u = usuarioActivo.value || {};
   enviandoCheck.value = true;
   try { await subirFotosPend(f); }
-  catch (err) { enviandoCheck.value = false; guardarBorradorCheck(); alert('No se pudieron subir las fotos: ' + errMsg(err) + '\nRevisa la señal e intenta de nuevo.'); return false; }
+  catch (err) { cerrarVentana(); enviandoCheck.value = false; guardarBorradorCheck(); alert('No se pudieron subir las fotos: ' + errMsg(err) + '\nRevisa la señal e intenta de nuevo.'); return false; }
   guardarBorradorCheck();
   const datos = JSON.parse(JSON.stringify(f));
   datos.patente = String(f.patente).trim().toUpperCase();
@@ -243,9 +251,11 @@ export const enviarChecklist = async () => {
     await Promise.all([cargarMisChecklist(), cargarDatosDesdeSupabase(['movimientos', 'inventario']).catch(() => {})]);
     const reg = misChecklist.value.find(r => String(r.id) === String(data)) || { id: data, ...datos, datos };
     const nMov = datos.actividades.filter(a => a.afi).length;
-    if (confirm('¡Check list enviado!' + (nMov ? ` Se registraron ${nMov} traslado(s) en Movimientos y se actualizó la ubicación de los equipos.` : '') + '\n¿Descargar el documento (Excel FRC-RE-OPE-018)?')) await descargarChecklistExcel(reg);
+    avisoApp('Check list enviado ✔' + (nMov ? ` · ${nMov} traslado(s) en Movimientos` : ''));
+    await abrirPdfChecklist(reg, ventanaPdf);   // PDF: se guarda en Supabase y se abre para verlo
     return true;
   } catch (err) {
+    cerrarVentana();
     alert(/frc_chofer_guardar|bd_checklist_chofer|function|schema cache/i.test(errMsg(err)) ? SQL_CHOFER : 'No se pudo enviar: ' + errMsg(err));
     return false;
   } finally { enviandoCheck.value = false; }
@@ -270,6 +280,32 @@ export const cargarTodosChecklist = async () => {
     todosChecklist.value = (data || []).map(mapReg); faltaSqlChofer.value = false;
   } catch (err) { todosChecklist.value = []; faltaSqlChofer.value = /bd_checklist_chofer|does not exist|schema cache/i.test(errMsg(err)); }
 };
+/** Movimientos → PDF del check list del chofer que registró ese traslado. */
+export const checklistDeMovimiento = async (m) => {
+  try {
+    let q = supabaseClient.from(TABLA_CHECKLIST).select('*');
+    q = m.checklistId ? q.eq('id', m.checklistId) : q.eq('patente', String(m.camion || '').toUpperCase()).eq('fecha', normalizarISO(m.fecha));
+    const data = await sb(q);
+    const regs = (data || []).map(mapReg);
+    return regs.find(r => (r.actividades || []).some(a => mismoAfi(a.afi, m.afi))) || regs[0] || null;
+  } catch (_) { return null; }
+};
+const normalizarISO = (f) => { const s = String(f || ''); const m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/); return m ? `${m[3]}-${m[2]}-${m[1]}` : s.slice(0, 10); };
+/** ¿El movimiento viene de un check list de chofer? */
+export const esMovDeChofer = (m) => Boolean(m && (m.checklistId || /CHOFER/i.test(m.tipo || '')));
+
+/** Pendiente de firma del supervisor. */
+export const pendienteSupervisor = (r) => !r.sup_firma;
+/** Supervisor firma después (Personal Técnico → Choferes) · RPC frc_chofer_firmar_supervisor. */
+export const firmarSupervisor = async (r, nombre, firma) => {
+  if (!String(nombre || '').trim() || !firma) { alert('Escribe el nombre y firma.'); return false; }
+  try {
+    const { error } = await supabaseClient.rpc('frc_chofer_firmar_supervisor', { p_id: r.id, p_nombre: String(nombre).trim().toUpperCase(), p_firma: firma });
+    if (error) throw error;
+    await cargarTodosChecklist();
+    return true;
+  } catch (err) { alert(/frc_chofer_firmar_supervisor|function|schema cache/i.test(errMsg(err)) ? SQL_CHOFER : 'No se pudo firmar: ' + errMsg(err)); return false; }
+};
 export const eliminarChecklist = async (r) => {
   if (!confirm(`¿Eliminar el check list del ${formatDateForDisplay(r.fecha)} (${r.patente})?\nLos movimientos que generó NO se borran (elimínalos en Movimientos si corresponde).`)) return;
   try { await sb(supabaseClient.from(TABLA_CHECKLIST).delete().eq('id', r.id)); await cargarTodosChecklist(); }
@@ -291,29 +327,39 @@ const escribirCelda = (xml, ref, valor) => {
 };
 const fF = (d) => (d ? formatDateForDisplay(d) : '');
 /** Crea la celda si la fila existe vacía (la plantilla no trae B63). */
+const colNum = (ref) => ref.replace(/\d+/g, '').split('').reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
 const asegurarCelda = (xml, ref) => {
   if (new RegExp(`<c r="${ref}"[\\s/>]`).test(xml)) return xml;
   const fila = ref.replace(/^[A-Z]+/, '');
-  const re = new RegExp(`<row r="${fila}"([^>]*?)(/>|>\\s*</row>)`);
-  return xml.replace(re, `<row r="${fila}"$1><c r="${ref}"/></row>`);
+  const m = xml.match(new RegExp(`<row r="${fila}"([^>]*?)(/>|>([\\s\\S]*?)</row>)`));
+  if (!m) return xml;
+  const celdas = m[3] || '';
+  const nueva = `<c r="${ref}"/>`;
+  // insertar en orden de columna
+  let pos = celdas.length;
+  const re = /<c r="([A-Z]+)\d+"/g; let x;
+  while ((x = re.exec(celdas))) { if (colNum(x[1]) > colNum(ref)) { pos = x.index; break; } }
+  const cont = celdas.slice(0, pos) + nueva + celdas.slice(pos);
+  return xml.replace(m[0], `<row r="${fila}"${m[1]}>${cont}</row>`);
 };
-/** Pone la firma (PNG) como imagen en la hoja, sobre "Nombre y firma chofer" (filas 59-62, columnas B-F). */
-const agregarFirmaExcel = async (zip, dataUrl) => {
+/** Pone una firma (PNG) como imagen en la hoja (filas 59-62). col1/col2 = columnas (0 = A). */
+const agregarFirmaExcel = async (zip, dataUrl, clave, col1, col2) => {
   const relsRuta = 'xl/drawings/_rels/drawing1.xml.rels', drawRuta = 'xl/drawings/drawing1.xml';
   if (!zip.file(relsRuta) || !zip.file(drawRuta)) return;
-  zip.file('xl/media/firma_chofer.png', dataUrl.split(',')[1], { base64: true });
+  zip.file(`xl/media/firma_${clave}.png`, dataUrl.split(',')[1], { base64: true });
   let rels = await zip.file(relsRuta).async('string');
-  rels = rels.replace('</Relationships>', '<Relationship Id="rIdFirma" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="/xl/media/firma_chofer.png"/></Relationships>');
+  rels = rels.replace('</Relationships>', `<Relationship Id="rIdFirma_${clave}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="/xl/media/firma_${clave}.png"/></Relationships>`);
   zip.file(relsRuta, rels);
-  let d = await zip.file(drawRuta).async('string');
-  const pic = '<twoCellAnchor editAs="oneCell"><from><col>1</col><colOff>0</colOff><row>58</row><rowOff>0</rowOff></from><to><col>6</col><colOff>0</colOff><row>62</row><rowOff>0</rowOff></to>'
-    + '<pic><nvPicPr><cNvPr id="90" name="Firma chofer"/><cNvPicPr><a:picLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></cNvPicPr></nvPicPr>'
-    + '<blipFill><a:blip xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdFirma"/><a:stretch xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:fillRect/></a:stretch></blipFill>'
+  const d = await zip.file(drawRuta).async('string');
+  const id = clave === 'chofer' ? 90 : 91;
+  const pic = `<twoCellAnchor editAs="oneCell"><from><col>${col1}</col><colOff>0</colOff><row>58</row><rowOff>0</rowOff></from><to><col>${col2}</col><colOff>0</colOff><row>62</row><rowOff>0</rowOff></to>`
+    + `<pic><nvPicPr><cNvPr id="${id}" name="Firma ${clave}"/><cNvPicPr><a:picLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></cNvPicPr></nvPicPr>`
+    + `<blipFill><a:blip xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdFirma_${clave}"/><a:stretch xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:fillRect/></a:stretch></blipFill>`
     + '<spPr><a:prstGeom xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" prst="rect"><a:avLst/></a:prstGeom></spPr></pic><clientData/></twoCellAnchor>';
   zip.file(drawRuta, d.replace('</wsDr>', pic + '</wsDr>'));
 };
 /** Corta las observaciones en hasta 4 líneas del formato. */
-const lineasObs = (t, ancho = 95) => {
+const lineasObs = (t, ancho = 64) => {
   const out = [];
   String(t || '').split('\n').forEach(par => {
     let resto = par.trim();
@@ -327,8 +373,7 @@ const lineasObs = (t, ancho = 95) => {
 export const celdasChecklist = (r) => {
   const c = {
     C5: r.patente, G5: r.marca, O5: r.modelo, Q5: fF(r.fecha),
-    A10: fF(r.venc_revision) + (estadoVenc(r.venc_revision, r.fecha)?.vencido ? ' VENCIDA' : ''),
-    A13: fF(r.venc_permiso) + (estadoVenc(r.venc_permiso, r.fecha)?.vencido ? ' VENCIDO' : ''),
+    A10: fF(r.venc_revision), A13: fF(r.venc_permiso),   // en el documento solo la fecha (lo de vencido se ve en el sistema)
     F9: r.cam_hrs_ini, F11: r.cam_hrs_fin, F13: r.cam_hrs_prox,
     M9: r.km_ini, M11: r.km_fin, M13: r.km_prox,
     P9: r.pluma_hrs_ini, P11: r.pluma_hrs_fin, P13: r.pluma_prox_fecha ? fF(r.pluma_prox_fecha) : (r.pluma_hrs_prox || '')
@@ -340,9 +385,12 @@ export const celdasChecklist = (r) => {
   });
   (r.actividades || []).slice(0, N_ACTIVIDADES_CHOFER).forEach((a, k) => {
     const f = 48 + k;
-    Object.assign(c, { ['C' + f]: a.traslado, ['D' + f]: (a.equipo || a.tipo_equipo || '') + (a.subarrendado ? ' (SUBARR.)' : ''), ['F' + f]: a.afi, ['G' + f]: a.cu, ['I' + f]: a.desde, ['N' + f]: a.hasta, ['P' + f]: a.h_ini, ['R' + f]: a.h_fin });
+    // En la hoja va el nombre del lugar (última parte de la ruta: … / PLG → PLG), como se usa en terreno
+    const corto = (t) => String(t || '').split(' / ').pop().trim();
+    Object.assign(c, { ['C' + f]: a.traslado, ['D' + f]: (a.equipo || a.tipo_equipo || '') + (a.subarrendado ? ' (SUBARR.)' : ''), ['F' + f]: a.afi, ['G' + f]: a.cu, ['I' + f]: corto(a.desde), ['N' + f]: corto(a.hasta), ['P' + f]: a.h_ini, ['R' + f]: a.h_fin });
   });
-  c.B63 = 'Nombre y firma chofer: ' + String(r.chofer || r.usuario || '').toUpperCase();
+  c.B63 = 'Firma chofer'; c.B64 = String(r.chofer || r.usuario || '').toUpperCase();
+  c.P63 = 'Firma supervisor'; c.P64 = r.sup_firma ? String(r.sup_nombre || '').toUpperCase() : '(pendiente)';
   const obs = lineasObs(r.observaciones);
   [55, 56, 57, 58].forEach((f, k) => { c['B' + f] = obs[k] !== undefined ? obs[k] : '_'.repeat(95); });
   return c;
@@ -355,10 +403,11 @@ export const descargarChecklistExcel = async (r) => {
     const zip = await JSZip.loadAsync(await resp.arrayBuffer());
     const ruta = 'xl/worksheets/sheet1.xml';
     let xml = await zip.file(ruta).async('string');
-    xml = asegurarCelda(xml, 'B63');
+    ['B63', 'P63', 'B64', 'P64'].forEach(ref => { xml = asegurarCelda(xml, ref); });
     Object.entries(celdasChecklist(r)).forEach(([ref, v]) => { xml = escribirCelda(xml, ref, v ?? ''); });
     zip.file(ruta, xml);
-    if (String(r.firma || '').startsWith('data:image/png;base64,')) await agregarFirmaExcel(zip, r.firma);
+    if (String(r.firma || '').startsWith('data:image/png;base64,')) await agregarFirmaExcel(zip, r.firma, 'chofer', 1, 6);
+    if (String(r.sup_firma || '').startsWith('data:image/png;base64,')) await agregarFirmaExcel(zip, r.sup_firma, 'supervisor', 15, 21);
     const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

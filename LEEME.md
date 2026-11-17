@@ -953,3 +953,11 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Si el chofer escribe **otro lugar**, al enviar queda en `bd_lugares_nuevos` y aparece una **alerta en Áreas y Locaciones** (contador en el menú + recuadro arriba del módulo): se crea la locación y se **Asigna** (corrige el movimiento y deja el equipo en esa locación si sigue ahí) o se **Descarta**. Archivos: areas/lugares-nuevos.js, areas/lugares-nuevos.view.js; contador en core/avisos-taller.js (lugaresNuevos).
 - Volver a ejecutar sql/chofer.sql (tabla bd_lugares_nuevos + función).
 - (2026-11-17) **Desde** usa el mismo selector de lugar que **Hasta** (componente `LugarSelect` en chofer-checklist.view.js): lista ordenada al tocar, filtro al escribir y "otro lugar". Solo Hasta genera el aviso de lugar nuevo en Áreas.
+
+## 2026-11-17 · Chofer: firma del supervisor + PDF guardado en Supabase
+- Paso 4: **Firma del supervisor** → "Firma ahora" (nombre + firma en el celular) o "Firma después" (queda **Pendiente firma supervisor**; se firma en Personal Técnico → Choferes con el botón **Firmar**, RPC `frc_chofer_firmar_supervisor`).
+- **PDF**: `mecanicos/chofer.pdf.js` dibuja con jsPDF la hoja FRC-RE-OPE-018 (1 página carta, con firmas). Al **enviar** se genera, se **guarda en Supabase** (storage `choferes/pdf/…`, URL en datos.pdf_url vía RPC `frc_chofer_pdf`) y **se abre para verlo** (no se descarga). Se rehace si cambia (ej. firma del supervisor después). Botón **PDF** en Mis documentos (chofer), Personal Técnico → Choferes y en **Movimientos** (ícono PDF en los traslados de chofer; `BD_MOVIMIENTOS.checklist_id`). El Excel sigue disponible.
+- En los documentos (PDF y Excel) Revisión técnica / Permiso van **solo con la fecha**; lo de "vencido" se ve en el sistema.
+- Excel: "Firma chofer / nombre" en B63-B64 y "Firma supervisor / nombre" en P63-P64 con las firmas como imagen; Desde/Hasta con el nombre corto del lugar; área de impresión A1:V64.
+- Imágenes para el PDF: plantillas/img/logo-frc-formato.png y camion-pluma.jpg.
+- Volver a ejecutar sql/chofer.sql (checklist_id en movimientos, frc_chofer_firmar_supervisor, frc_chofer_pdf).

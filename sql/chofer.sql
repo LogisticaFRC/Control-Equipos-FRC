@@ -44,6 +44,8 @@ create policy frc_modificar on public.bd_lugares_nuevos for update to authentica
 
 -- Fotos del equipo en cada movimiento (2026-11-17)
 alter table public."BD_MOVIMIENTOS" add column if not exists fotos jsonb;
+-- Check list del chofer que generó el movimiento (para ver su PDF desde Movimientos)
+alter table public."BD_MOVIMIENTOS" add column if not exists checklist_id bigint;
 
 create index if not exists bd_checklist_chofer_usuario on public.bd_checklist_chofer (usuario, id desc);
 
@@ -87,7 +89,7 @@ begin
     from information_schema.columns
    where table_schema = 'public' and table_name = 'BD_MOVIMIENTOS'
      and column_name = any (array['afi','fecha','tipo','ubicacion_anterior','ubicacion_actual','empresa_arriendo','estado',
-                                  'camion_encargado','conductor_encargado','locacion_id','fotos']);
+                                  'camion_encargado','conductor_encargado','locacion_id','fotos','checklist_id']);
 
   for a in select * from jsonb_array_elements(coalesce(p_datos->'actividades', '[]'::jsonb)) loop
     if coalesce(trim(a->>'afi'), '') = '' then continue; end if;
@@ -105,7 +107,8 @@ begin
       'camion_encargado', v_patente,
       'conductor_encargado', upper(v_chofer),
       'locacion_id', nullif(a->>'locacion_id', ''),
-      'fotos', coalesce(a->'fotos', '[]'::jsonb));
+      'fotos', coalesce(a->'fotos', '[]'::jsonb),
+      'checklist_id', v_id);
     execute format('insert into public."BD_MOVIMIENTOS" (%1$s) select %1$s from jsonb_populate_record(null::public."BD_MOVIMIENTOS", $1)', v_cols)
       using v_mov;
 
@@ -156,4 +159,43 @@ end $$;
 revoke all on function public.frc_chofer_guardar(jsonb) from public, anon;
 grant execute on function public.frc_chofer_guardar(jsonb) to authenticated;
 
+notify pgrst, 'reload schema';
+
+-- Firma del supervisor después (Personal Técnico → Choferes) · 2026-11-17
+create or replace function public.frc_chofer_firmar_supervisor(p_id bigint, p_nombre text, p_firma text)
+returns void language plpgsql security definer
+set search_path = public as $$
+begin
+  if not (public.frc_puede(array['mecanicos'], 'admin') or public.frc_puede(array['operaciones'], 'subadmin')) then
+    raise exception 'Sin permiso: firma el supervisor (Personal Técnico) u Operaciones.';
+  end if;
+  if coalesce(trim(p_nombre), '') = '' or coalesce(p_firma, '') = '' then raise exception 'Falta nombre o firma.'; end if;
+  update public.bd_checklist_chofer
+     set datos = datos || jsonb_build_object('sup_modo', 'DESPUES', 'sup_nombre', upper(trim(p_nombre)), 'sup_firma', p_firma, 'sup_fecha', now()::text)
+   where id = p_id;
+  if not found then raise exception 'No existe el check list %', p_id; end if;
+end $$;
+revoke all on function public.frc_chofer_firmar_supervisor(bigint, text, text) from public, anon;
+grant execute on function public.frc_chofer_firmar_supervisor(bigint, text, text) to authenticated;
+notify pgrst, 'reload schema';
+
+-- PDF del check list guardado en Supabase (storage choferes/pdf/…): guarda la URL en datos · 2026-11-17
+-- Lo puede guardar el mismo chofer, el supervisor (Personal Técnico) u Operaciones.
+create or replace function public.frc_chofer_pdf(p_id bigint, p_url text, p_version text default '')
+returns void language plpgsql security definer
+set search_path = public as $$
+declare v_dueno text; v_yo text;
+begin
+  select usuario into v_dueno from public.bd_checklist_chofer where id = p_id;
+  if v_dueno is null then raise exception 'No existe el check list %', p_id; end if;
+  select usuario into v_yo from public.usuarios where auth_id = auth.uid();
+  if not (v_yo = v_dueno or public.frc_puede(array['mecanicos'], 'admin') or public.frc_puede(array['operaciones'], 'subadmin')) then
+    raise exception 'Sin permiso para guardar el PDF.';
+  end if;
+  update public.bd_checklist_chofer
+     set datos = datos || jsonb_build_object('pdf_url', p_url, 'pdf_version', coalesce(p_version, ''))
+   where id = p_id;
+end $$;
+revoke all on function public.frc_chofer_pdf(bigint, text, text) from public, anon;
+grant execute on function public.frc_chofer_pdf(bigint, text, text) to authenticated;
 notify pgrst, 'reload schema';

@@ -3,6 +3,7 @@
 // 4 pasos: Camión · Check list · Traslados (hoja para añadir cada uno) · Firma y enviar. Ver chofer.service.js.
 // =====================================================================
 import * as C from './chofer.service.js';
+import { abrirPdfChecklist, generarPdfBlob, guardarPdf } from './chofer.pdf.js';
 import { dbEquipos, usuarioActivo, buscarEquipoPorAfi } from '../../core/store.js';
 import { formatDateForDisplay, mismoAfi } from '../../core/utils.js';
 import { esVehiculo } from '../inventario/inventario.mapper.js';
@@ -184,6 +185,18 @@ export const ChoferChecklist = {
       <p class="lbl"><i class="fa-solid fa-signature mr-1"></i>Firma del chofer · {{ nombre }}</p>
       <firma-pad :firma="f.firma" :titulo="'Firma chofer · ' + nombre" @guardar="v => f.firma = v"></firma-pad>
     </div>
+    <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+      <p class="lbl"><i class="fa-solid fa-user-tie mr-1"></i>Firma del supervisor</p>
+      <div class="grid grid-cols-2 gap-2">
+        <button @click="f.sup_modo = 'AHORA'" data-chofer="sup-ahora" :class="['py-2.5 rounded-xl border-2 font-black text-sm', f.sup_modo === 'AHORA' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-500']">Firma ahora</button>
+        <button @click="f.sup_modo = 'DESPUES'" :class="['py-2.5 rounded-xl border-2 font-black text-sm', f.sup_modo !== 'AHORA' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-500']">Firma después</button>
+      </div>
+      <template v-if="f.sup_modo === 'AHORA'">
+        <input v-model="f.sup_nombre" class="inp uppercase" placeholder="Nombre del supervisor" data-chofer="sup-nombre">
+        <firma-pad :firma="f.sup_firma" :titulo="'Firma supervisor · ' + (f.sup_nombre || '')" @guardar="v => f.sup_firma = v"></firma-pad>
+      </template>
+      <p v-else class="text-[11px] text-slate-500">Queda <b>pendiente de firma del supervisor</b>: lo firma en el sistema (Personal Técnico → Choferes).</p>
+    </div>
   </section>
 
   <!-- Navegación -->
@@ -340,7 +353,7 @@ export const ChoferChecklist = {
 /** Lista "Mis check list" (chofer) o todos (Operaciones: prop todos). */
 export const ChecklistLista = {
   name: 'ChecklistLista',
-  props: { todos: Boolean, puedeEliminar: Boolean, filtro: { type: String, default: '' } },
+  props: { todos: Boolean, puedeEliminar: Boolean, puedeFirmar: Boolean, filtro: { type: String, default: '' } },
   template: /* html */ `
 <div class="space-y-2">
   <div v-if="todos && C.faltaSqlChofer.value" class="bg-amber-50 border border-amber-300 text-amber-900 rounded-lg p-3 text-xs">Falta ejecutar <b>sql/chofer.sql</b> en Supabase.</div>
@@ -348,15 +361,34 @@ export const ChecklistLista = {
     <span class="w-11 h-11 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-truck"></i></span>
     <div class="flex-1 min-w-0">
       <p class="font-black text-slate-800">{{ r.patente }} <span class="text-xs font-bold text-slate-500">{{ formatDateForDisplay(r.fecha) }}</span></p>
+      <p v-if="C.pendienteSupervisor(r)" class="text-[10px] font-black text-amber-700"><i class="fa-solid fa-signature mr-0.5"></i>Pendiente firma supervisor</p>
+      <p v-else class="text-[10px] font-bold text-emerald-700"><i class="fa-solid fa-check mr-0.5"></i>Firmado por {{ r.sup_nombre }}</p>
       <p class="text-xs text-slate-500 truncate"><span v-if="todos" class="font-bold text-slate-700">{{ r.chofer || r.usuario }} · </span>Km {{ r.km_ini || '—' }} → {{ r.km_fin || '—' }} · {{ (r.actividades || []).length }} traslado(s)<span v-if="fotos(r).length"> · {{ fotos(r).length }} foto(s)</span><span v-if="malos(r)" class="text-rose-600 font-bold"> · {{ malos(r) }} malo(s)</span><span v-if="C.vencidosDe(r).length" class="text-rose-600 font-bold"> · Vencido: {{ C.vencidosDe(r).join(', ') }}</span></p>
     </div>
     <div v-if="fotos(r).length" class="hidden sm:flex gap-1">
       <a v-for="(u, i) in fotos(r).slice(0, 4)" :key="i" :href="u" target="_blank" rel="noopener"><img :src="u" class="w-10 h-10 object-cover rounded-lg border"></a>
       <span v-if="fotos(r).length > 4" class="text-[10px] font-bold text-slate-500 self-center">+{{ fotos(r).length - 4 }}</span>
     </div>
+    <button v-if="puedeFirmar && C.pendienteSupervisor(r)" @click="abrirFirma(r)" class="px-3 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs" data-chofer="firmar-sup"><i class="fa-solid fa-signature mr-1"></i>Firmar</button>
+    <button @click="abrirPdfChecklist(r)" class="px-3 py-2 rounded-xl border font-bold text-xs text-rose-700" title="Ver / imprimir PDF" data-chofer="pdf"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</button>
     <button @click="C.descargarChecklistExcel(r)" class="px-3 py-2 rounded-xl border font-bold text-xs text-emerald-700" title="Descargar documento"><i class="fa-solid fa-file-excel mr-1"></i>Excel</button>
     <button v-if="todos && puedeEliminar" @click="C.eliminarChecklist(r)" class="px-2 py-2 rounded-xl text-slate-300 hover:text-rose-600" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
   </div>
+  <!-- Firma del supervisor (después) -->
+  <teleport to="body">
+    <div v-if="firmando" class="fixed inset-0 z-[80] bg-slate-950/60 flex items-center justify-center p-4" @click.self="firmando = null">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5 space-y-3 text-sm">
+        <h3 class="font-black text-slate-800"><i class="fa-solid fa-signature mr-1 text-amber-500"></i>Firma supervisor · {{ firmando.patente }} · {{ formatDateForDisplay(firmando.fecha) }}</h3>
+        <p class="text-xs text-slate-500">Chofer: {{ firmando.chofer || firmando.usuario }}</p>
+        <input v-model="supNombre" class="w-full p-2.5 border-2 rounded-xl uppercase" placeholder="Nombre del supervisor">
+        <firma-pad :firma="supFirma" :titulo="'Firma supervisor · ' + supNombre" @guardar="v => supFirma = v"></firma-pad>
+        <div class="flex gap-2 justify-end">
+          <button @click="firmando = null" class="px-4 py-2 rounded-xl border font-bold">Cancelar</button>
+          <button @click="guardarFirma" :disabled="!supNombre || !supFirma" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-black disabled:opacity-40">Guardar firma</button>
+        </div>
+      </div>
+    </div>
+  </teleport>
   <p v-if="!lista.length" class="text-center text-slate-400 py-8 text-sm">{{ todos ? 'Aún no hay check list de choferes.' : 'Aún no envías check list.' }}</p>
 </div>`,
   setup(props) {
@@ -367,8 +399,18 @@ export const ChecklistLista = {
     });
     const malos = (r) => Object.values(r.checklist || {}).filter(v => v === 'M').length;
     const fotos = (r) => (r.actividades || []).flatMap(a => a.fotos || []);
+    const firmando = Vue.ref(null), supNombre = Vue.ref(''), supFirma = Vue.ref('');
+    const abrirFirma = (r) => { firmando.value = r; supNombre.value = String(usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || '').toUpperCase(); supFirma.value = ''; };
+    const guardarFirma = async () => {
+      const id = firmando.value.id;
+      if (!(await C.firmarSupervisor(firmando.value, supNombre.value, supFirma.value))) return;
+      firmando.value = null;
+      // El PDF guardado se rehace con la firma del supervisor (en segundo plano)
+      const r = C.todosChecklist.value.find(x => x.id === id);
+      if (r) generarPdfBlob(r).then(b => guardarPdf(r, b)).catch(e => console.warn('[Chofer] PDF con firma supervisor:', e));
+    };
     Vue.onMounted(() => (props.todos ? C.cargarTodosChecklist() : C.cargarMisChecklist()));
-    return { C, lista, malos, fotos, formatDateForDisplay };
+    return { C, lista, malos, fotos, formatDateForDisplay, abrirPdfChecklist, firmando, supNombre, supFirma, abrirFirma, guardarFirma };
   }
 };
 
@@ -389,7 +431,7 @@ export const ChoferesPanelView = {
       <button @click="C.cargarTodosChecklist" class="px-3 py-2 rounded-lg border text-xs font-bold text-slate-600 hover:bg-slate-50"><i class="fa-solid fa-rotate mr-1"></i>Actualizar</button>
     </div>
   </div>
-  <div class="text-xs"><checklist-lista todos :puede-eliminar="puedeEliminar" :filtro="busca"></checklist-lista></div>
+  <div class="text-xs"><checklist-lista todos puede-firmar :puede-eliminar="puedeEliminar" :filtro="busca"></checklist-lista></div>
 </section>`,
   setup() {
     const busca = Vue.ref('');
