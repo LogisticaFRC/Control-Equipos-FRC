@@ -901,3 +901,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 ## 2026-11-16 · Movimientos: eliminar
 - Botón **Eliminar** (papelero) en cada fila (columna ACCIONES, solo Admin de Operaciones) y dentro del modal Editar. `eliminarMovimiento(m)` en movimientos.service.js.
 - Si era el **último movimiento** de un equipo del sistema, pregunta si se devuelve el equipo a la ubicación/estado del movimiento anterior (o queda como está). Subarrendados (OTRO) solo se borran.
+
+## 2026-11-17 · Minutas: volver a subir el Excel exportado
+- "Importar (Word / Excel)" ahora reconoce el Excel que entrega **Exportar Minuta** y **Exportar Todas** (hoja con logo, resumen y DETALLE DE TAREAS). Lee desde el encabezado N° | ÁREA | RESPONSABLE | TAREA / COMPROMISO | … | SITUACIÓN; la sección sale de las filas "SECCIÓN · N tareas · % cumplido"; fecha = "FECHA DE REUNIÓN"; nombre = subtítulo.
+- "Exportar Todas": cada hoja de minuta se importa como una minuta (se ignoran Resumen, Dashboard e Histórico).
+- Si ya existe una minuta con esa fecha, por defecto **la ACTUALIZA** (reemplaza sus tareas por las del archivo: estados, fechas, responsables, tareas nuevas o quitadas). Se puede elegir "Crear otra minuta". Admin: cualquier minuta · Editor: solo la actual.
+- Funciones nuevas en minutas.service.js: esCabeceraSistema, leerHojaSistema, minutaConFecha, puedeActualizarMinuta; leerExcel devuelve una lista.

@@ -681,15 +681,56 @@ const leerWord = async (file) => {
   return { tareas, fecha, titulo, sinTabla: !tablas.length };
 };
 
-/** Excel / CSV: hoja "Minuta" (o la primera); también lee los Excel exportados por el sistema. */
+// ---------- Excel EXPORTADO por el sistema ("Exportar Minuta" / "Exportar Todas") · 2026-11-17 ----------
+// Hoja con logo, resumen y la tabla "DETALLE DE TAREAS": N° | ÁREA | RESPONSABLE | TAREA / COMPROMISO |
+// FECHA COMPROMISO | FECHA ESTIMADA | ESTADO | FECHA REALIZADO | SITUACIÓN (celdas unidas).
+// Se lee desde ese encabezado (lo de arriba es resumen) y las filas de sección vienen como
+// "SECCIÓN   ·   3 tareas   ·   50% cumplido" → se deja solo el nombre de la sección.
+const esCabeceraSistema = (fila) => {
+  const ks = fila.map(c => normK(c));
+  return ks.includes('tareacompromiso') && ks.includes('situacion');
+};
+const leerHojaSistema = (matriz, nombreHoja) => {
+  const iCab = matriz.findIndex(esCabeceraSistema);
+  const limpia = matriz.slice(iCab).map(f => {
+    const llenas = f.filter(c => String(c).trim() !== '');
+    if (llenas.length === 1) {
+      const m = String(llenas[0]).match(/^(.*?)\s+·\s+\d+\s+tareas?\b/i);
+      if (m) return f.map(c => (String(c).trim() === String(llenas[0]).trim() ? m[1].trim() : c));
+    }
+    return f;
+  });
+  // Fecha: celda bajo "FECHA DE REUNIÓN"
+  let fecha = null;
+  for (let r = 0; r < iCab && !fecha; r++) {
+    const c = matriz[r].findIndex(x => normK(x) === 'fechadereunion');
+    if (c >= 0) fecha = parseFechaTexto((matriz[r + 1] || [])[c]);
+  }
+  // Nombre: subtítulo del encabezado (fila 2) = nombre de la minuta
+  const titulo = String(((matriz[1] || []).find(x => String(x).trim()) || '')).trim()
+    || (/^minuta$/i.test(nombreHoja) ? '' : nombreHoja);
+  return { tareas: tareasDeMatriz(limpia), fecha: fecha || fechaEnTexto(matriz.slice(0, iCab).map(f => f.filter(Boolean).join(' ')).join('\n')), titulo, sistema: true, hoja: nombreHoja };
+};
+
+/** Excel / CSV → lista de minutas leídas.
+ *  · Excel exportado por el sistema: cada hoja de minuta (con la tabla DETALLE DE TAREAS) es una minuta
+ *    (el de "Exportar Todas" trae varias; se ignoran Resumen, Dashboard e Histórico).
+ *  · Otro Excel / plantilla: hoja "Minuta" (o la primera). */
 const leerExcel = async (file) => {
   const wb = XLSX.read(new Uint8Array(await leerBuffer(file)), { type: 'array', cellDates: true });
-  const hoja = wb.Sheets[wb.SheetNames.find(n => /minuta/i.test(n)) || wb.SheetNames[0]];
-  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: '', raw: false, dateNF: 'dd-mm-yyyy' });
+  const matrizDe = (n) => XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: false, dateNF: 'dd-mm-yyyy' });
+  const delSistema = wb.SheetNames.map(n => ({ n, m: matrizDe(n) })).filter(x => x.m.some(esCabeceraSistema));
+  if (delSistema.length) return delSistema.map(x => leerHojaSistema(x.m, x.n));
+  const matriz = matrizDe(wb.SheetNames.find(n => /minuta/i.test(n)) || wb.SheetNames[0]);
   const iCab = matriz.findIndex(f => f.some(c => clasificarColumna(c) === 'tarea'));
   const textoArriba = matriz.slice(0, Math.max(iCab, 0)).map(f => f.filter(Boolean).join(' ')).join('\n');
-  return { tareas: tareasDeMatriz(matriz), fecha: fechaEnTexto(textoArriba), titulo: '' };
+  return [{ tareas: tareasDeMatriz(matriz), fecha: fechaEnTexto(textoArriba), titulo: '' }];
 };
+
+/** Minuta ya guardada con esa fecha (la más reciente si hay varias). */
+export const minutaConFecha = (f) => [...dbMinutas.value].reverse().find(m => m.fecha === f) || null;
+/** ¿Se puede actualizar esa minuta? Admin: cualquiera · Editor: solo la ACTUAL (la más reciente). */
+export const puedeActualizarMinuta = (m) => Boolean(m && (isAdmin.value || (puedeEditar.value && ultimaMinuta.value && ultimaMinuta.value.id === m.id)));
 
 // ---------- Estado del asistente de importación ----------
 export const showModalImportar = ref(false);
@@ -704,20 +745,26 @@ export const elegirArchivosImportar = async (e) => {
   showModalImportar.value = true;
   for (const file of files) {
     const ext = file.name.split('.').pop().toLowerCase();
-    const reg = { archivo: file.name, tareas: [], fecha: '', origenFecha: '', nombre: '', error: '', verDetalle: false };
+    const nuevoReg = (archivo) => ({ archivo, tareas: [], fecha: '', origenFecha: '', nombre: '', error: '', verDetalle: false, sistema: false, actualizar: false });
     try {
       if (ext === 'doc') throw new Error('Formato .doc antiguo: ábrelo en Word y guárdalo como .docx.');
-      const r = ext === 'docx' ? await leerWord(file) : await leerExcel(file);
-      reg.tareas = r.tareas;
-      const deNombre = parseFechaTexto(file.name.replace(/\.[a-z]+$/i, '').replace(/[_]/g, ' '));
-      reg.fecha = r.fecha || deNombre || hoyISO();
-      reg.origenFecha = r.fecha ? 'documento' : deNombre ? 'nombre del archivo' : 'no encontrada (se usa hoy, revísala)';
-      reg.nombre = nombreSugerido(reg.fecha);
-      if (!reg.tareas.length) reg.error = r.sinTabla
-        ? 'El documento no tiene tablas. Las tareas deben estar en una tabla con una columna "Tareas".'
-        : 'No se encontró una tabla con columna "Tareas" (o "Tarea", "Actividad", "Compromiso", "Descripción").';
-    } catch (err) { reg.error = err.message || String(err); }
-    importacion.value.archivos.push(reg);
+      const lista = ext === 'docx' ? [await leerWord(file)] : await leerExcel(file);
+      lista.forEach(r => {
+        const reg = nuevoReg(lista.length > 1 ? `${file.name} · ${r.hoja}` : file.name);
+        reg.tareas = r.tareas;
+        reg.sistema = Boolean(r.sistema);
+        const deNombre = parseFechaTexto(file.name.replace(/\.[a-z]+$/i, '').replace(/[_]/g, ' '));
+        reg.fecha = r.fecha || deNombre || hoyISO();
+        reg.origenFecha = r.fecha ? 'documento' : deNombre ? 'nombre del archivo' : 'no encontrada (se usa hoy, revísala)';
+        reg.nombre = (r.sistema && r.titulo) ? String(r.titulo).toUpperCase() : nombreSugerido(reg.fecha);
+        // Excel del sistema de una minuta que ya existe → por defecto ACTUALIZA esa minuta (no crea otra)
+        reg.actualizar = Boolean(r.sistema && puedeActualizarMinuta(minutaConFecha(reg.fecha)));
+        if (!reg.tareas.length) reg.error = r.sinTabla
+          ? 'El documento no tiene tablas. Las tareas deben estar en una tabla con una columna "Tareas".'
+          : 'No se encontró una tabla con columna "Tareas" (o "Tarea", "Actividad", "Compromiso", "Descripción").';
+        importacion.value.archivos.push(reg);
+      });
+    } catch (err) { const reg = nuevoReg(file.name); reg.error = err.message || String(err); importacion.value.archivos.push(reg); }
   }
   importacion.value.archivos.sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
   importacion.value.leyendo = false;
@@ -730,7 +777,7 @@ export const cambiarFechaImport = (reg) => {
 export const archivosValidos = computed(() => importacion.value.archivos.filter(a => !a.error && a.tareas.length));
 /** Fecha más reciente que quedará como ACTUAL después de importar. */
 export const actualTrasImportar = computed(() => {
-  const fechas = [...dbMinutas.value.map(m => m.fecha), ...(importacion.value.destino === 'nueva' ? archivosValidos.value.map(a => a.fecha) : [])].filter(Boolean).sort();
+  const fechas = [...dbMinutas.value.map(m => m.fecha), ...(importacion.value.destino === 'nueva' ? archivosValidos.value.map(a => a.fecha) : [])].filter(Boolean).sort();   // (actualizar no cambia fechas)
   return fechas[fechas.length - 1] || '';
 });
 export const fechaYaExiste = (f) => dbMinutas.value.some(m => m.fecha === f);
@@ -769,6 +816,17 @@ export const confirmarImportacion = async () => {
     let ultimaCreada = null;
     if (imp.destino === 'nueva') {
       for (const a of validos) {
+        // Actualizar una minuta existente (Excel exportado por el sistema, editado y vuelto a subir)
+        const existente = a.actualizar ? minutaConFecha(a.fecha) : null;
+        if (existente) {
+          if (!puedeActualizarMinuta(existente)) throw new Error(`No puedes modificar la minuta "${existente.nombre}" (solo el Admin modifica minutas anteriores).`);
+          await sb(supabaseClient.from(TABLA_MINUTAS_ITEMS).delete().eq('minuta_id', existente.id));
+          dbMinutasItems.value = dbMinutasItems.value.filter(i => i.minuta_id !== existente.id);
+          const filas = await sb(supabaseClient.from(TABLA_MINUTAS_ITEMS).insert(prepararItems(a.tareas, existente.id, 0, a.fecha)).select());
+          dbMinutasItems.value.push(...filas.map(mapItem));
+          ultimaCreada = existente.id;
+          continue;
+        }
         const [nueva] = await sb(supabaseClient.from(TABLA_MINUTAS).insert([{ nombre: String(a.nombre || nombreSugerido(a.fecha)).trim().toUpperCase(), fecha: a.fecha, creado_por: usuarioActivo.value?.nombre || '' }]).select());
         dbMinutas.value = [...dbMinutas.value, mapMinuta(nueva)].sort(cmpMinuta);
         const filas = await sb(supabaseClient.from(TABLA_MINUTAS_ITEMS).insert(prepararItems(a.tareas, nueva.id, 0, a.fecha)).select());
@@ -796,7 +854,10 @@ export const confirmarImportacion = async () => {
     const total = validos.reduce((s, a) => s + a.tareas.length, 0);
     const aviso = imp.destino === 'nueva' && sel && ultimaMinuta.value && sel.id !== ultimaMinuta.value.id
       ? `\n\nOjo: la minuta importada es más antigua que "${ultimaMinuta.value.nombre}", así que quedó como histórico. La ACTUAL es siempre la de fecha más reciente.` : '';
-    alert(`Importación lista: ${total} tarea(s) en ${imp.destino === 'nueva' ? validos.length + ' minuta(s) nueva(s)' : 'la minuta seleccionada'}.${aviso}`);
+    const nAct = imp.destino === 'nueva' ? validos.filter(a => a.actualizar && minutaConFecha(a.fecha)).length : 0;
+    const dondeTxt = imp.destino !== 'nueva' ? 'la minuta seleccionada'
+      : [validos.length - nAct ? (validos.length - nAct) + ' minuta(s) nueva(s)' : '', nAct ? nAct + ' minuta(s) actualizada(s)' : ''].filter(Boolean).join(' y ');
+    alert(`Importación lista: ${total} tarea(s) en ${dondeTxt}.${aviso}`);
   } catch (err) { avisoError(err); }
   finally { imp.guardando = false; }
 };

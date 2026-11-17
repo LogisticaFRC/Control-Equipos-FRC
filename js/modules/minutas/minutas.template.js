@@ -450,8 +450,17 @@ export default /* html */ `
                 </label>
                 <label class="space-y-1 md:col-span-2"><span class="font-bold text-slate-600">Nombre</span>
                   <input v-model="a.nombre" type="text" class="w-full p-2 border rounded-lg uppercase font-bold">
-                  <span v-if="fechaYaExiste(a.fecha)" class="block text-[10px] text-amber-700 font-bold"><i class="fa-solid fa-circle-info"></i> Ya hay una minuta con esta fecha; se creará otra igual.</span>
+                  <span v-if="fechaYaExiste(a.fecha) && !a.actualizar" class="block text-[10px] text-amber-700 font-bold"><i class="fa-solid fa-circle-info"></i> Ya hay una minuta con esta fecha; se creará otra igual.</span>
                 </label>
+              </div>
+              <div v-if="importacion.destino === 'nueva' && fechaYaExiste(a.fecha)" :class="['rounded-lg border p-2 flex flex-wrap items-center gap-3', a.actualizar ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200']">
+                <span v-if="a.sistema" class="text-[10px] font-black uppercase bg-emerald-600 text-white rounded px-1.5 py-0.5">Excel del sistema</span>
+                <label class="flex items-center gap-2 cursor-pointer font-bold" :class="puedeActualizarMinuta(minutaConFecha(a.fecha)) ? 'text-emerald-800' : 'text-slate-400'">
+                  <input type="radio" :value="true" v-model="a.actualizar" :disabled="!puedeActualizarMinuta(minutaConFecha(a.fecha))" class="accent-emerald-600">
+                  Actualizar la minuta existente "{{ minutaConFecha(a.fecha).nombre }}" (reemplaza sus tareas por las del archivo)
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer font-bold text-slate-600"><input type="radio" :value="false" v-model="a.actualizar" class="accent-teal-600"> Crear otra minuta</label>
+                <span v-if="!puedeActualizarMinuta(minutaConFecha(a.fecha))" class="text-[10px] text-slate-500">Solo el Admin actualiza minutas anteriores a la actual.</span>
               </div>
               <button @click="a.verDetalle = !a.verDetalle" class="text-sky-700 font-bold underline">{{ a.verDetalle ? 'Ocultar' : 'Ver' }} tareas leídas</button>
               <div v-if="a.verDetalle" class="max-h-56 overflow-auto border rounded-lg bg-white">
