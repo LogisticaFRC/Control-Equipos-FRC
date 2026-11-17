@@ -14,7 +14,9 @@ import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js'
 import TallerMecanico from '../taller/taller-mecanico.view.js';
 import ActividadesEquipo from './actividades-equipo.view.js';
 import * as CH from './chofer.service.js';   // CHOFER: check list / report camión pluma (2026-11-17)
-import { ChoferChecklist, ChecklistLista } from './chofer-checklist.view.js';   // TALLER: intervenciones + bloqueo + ART + mantención de un equipo en nave
+import { ChoferChecklist, ChecklistLista } from './chofer-checklist.view.js';
+import { CrtgPrograma, CrtgPedido, CrtgUbicacion } from './crtg.view.js';   // TERRENO CRTG (2026-11-17)
+import { LOGO_CRTG } from './crtg.service.js';   // TALLER: intervenciones + bloqueo + ART + mantención de un equipo en nave
 import { naveDeAfi, colorNave, recargarTaller, navesLibres, cuposNave, CAPACIDAD_NAVE, ingresarANave, equiposEnNaves, problemasPendientes } from '../taller/taller.service.js';   // pestaña TALLER: cartas del programa de reparación + OT asignada + hallazgos
 
 const { ref, computed, onMounted, watch } = Vue;
@@ -24,7 +26,7 @@ const LUGARES = ['TALLER FRC', 'TERRENO', 'FAENA CLIENTE'];
 
 export default {
   name: 'MecanicoApp',
-  components: { TallerMecanico, ActividadesEquipo, ChoferChecklist, ChecklistLista },
+  components: { TallerMecanico, ActividadesEquipo, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
 <div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
@@ -37,9 +39,10 @@ export default {
     <div v-else class="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center"><img :src="logoSrc" @error="onLogoError" class="max-h-full max-w-full object-contain" referrerpolicy="no-referrer"></div>
     <div class="flex-1 min-w-0">
       <div class="font-extrabold leading-tight truncate">{{ CH.formCheck.value ? 'Check list camión · ' + (CH.formCheck.value.patente || 'nuevo') : S.formInt.value ? (S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
-      <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Técnicos FRC' + (S.cargoActual.value ? ' · ' + S.cargoActual.value : '') + ' · ' + (S.esChofer.value ? 'Chofer' : S.esTaller.value ? 'Taller' : 'Terreno') }}</div>
+      <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Técnicos FRC' + (S.cargoActual.value ? ' · ' + S.cargoActual.value : '') + ' · ' + (S.esChofer.value ? 'Chofer' : S.esCrtg.value ? 'Terreno CRTG' : S.esTaller.value ? 'Taller' : 'Terreno') }}</div>
     </div>
- <select v-if="preview && !S.formInt.value" v-model="S.modoPreview.value" class="text-slate-900 text-xs font-bold rounded-lg px-1.5 py-1.5" title="Ver como"><option value="taller">Taller</option><option value="terreno">Terreno</option><option value="chofer">Chofer</option></select>
+    <img v-if="S.esCrtg.value" :src="LOGO_CRTG" alt="CRTG" title="CRTG" class="h-8 w-8 object-contain bg-white rounded-lg p-0.5 shrink-0">
+ <select v-if="preview && !S.formInt.value" v-model="S.modoPreview.value" class="text-slate-900 text-xs font-bold rounded-lg px-1.5 py-1.5" title="Ver como"><option value="taller">Taller</option><option value="terreno">Terreno</option><option value="chofer">Chofer</option><option value="crtg">CRTG</option></select>
     <button v-if="salir && !S.formInt.value && !CH.formCheck.value" @click="salir" class="px-3 py-2 rounded-xl bg-rose-600 text-xs font-bold"><i class="fa-solid fa-right-from-bracket mr-1"></i>{{ preview ? 'Cerrar' : 'Salir' }}</button>
   </header>
 
@@ -256,6 +259,9 @@ export default {
           <div class="flex gap-2"><input v-model="S.horoForm.value.valor" inputmode="decimal" class="inp flex-1 font-mono text-lg" placeholder="Nuevo horómetro"><input type="date" v-model="S.horoForm.value.fecha" class="inp w-36 px-2"></div>
           <button @click="S.guardarHorometro(eq)" :disabled="S.guardandoHoro.value || !S.horoForm.value.valor" class="mt-2 w-full py-3 rounded-xl bg-[#1f4d3a] text-white font-extrabold disabled:opacity-40"><i :class="['fa-solid mr-1', S.guardandoHoro.value ? 'fa-spinner fa-spin' : 'fa-floppy-disk']"></i>Guardar horómetro</button>
         </div>
+        <!-- CRTG: cambiar la ubicación del equipo (queda como movimiento) -->
+        <crtg-ubicacion v-if="S.esCrtg.value" :eq="eq"></crtg-ubicacion>
+        <button v-if="S.esCrtg.value" @click="tab = 'repuestos'; S.cerrarEquipo()" class="w-full bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left"><span class="w-14 h-14 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-cart-plus"></i></span><span class="flex-1"><b class="block text-lg">Pedir repuestos</b><span class="text-xs text-slate-500">Para este u otro equipo, con fotos</span></span></button>
         <!-- TALLER: solo equipos en nave tienen actividades; los demás solo se pueden agregar a una nave (no programado) -->
         <actividades-equipo v-if="S.esTaller.value && naveDeAfi(eq.afi)" :eq="eq"></actividades-equipo>
         <div v-else-if="S.esTaller.value" class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
@@ -346,6 +352,10 @@ export default {
 
       <section v-if="tab === 'tareas'" class="p-3"><recordatorios-view></recordatorios-view></section>
 
+      <!-- TERRENO CRTG (2026-11-17) -->
+      <crtg-programa v-if="tab === 'progcrtg' && S.esCrtg.value"></crtg-programa>
+      <crtg-pedido v-if="tab === 'repuestos' && S.esCrtg.value"></crtg-pedido>
+
       <!-- CHOFER (2026-11-17) -->
       <section v-if="tab === 'checklist' && S.esChofer.value" class="p-4 space-y-3">
         <div class="lbl">¿Qué vehículo manejas?</div>
@@ -392,9 +402,15 @@ export default {
     // TERRENO no tiene Taller: si quedó en esa pantalla, vuelve al menú
     watch(() => S.esTaller.value, (t) => { if (!t && tab.value === 'taller') tab.value = 'inicio'; if (t) recargarTaller(); }, { immediate: true });
     // Menú en tarjetas
-    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas', checklist: 'Check list / Report', docschofer: 'Mis documentos' };
+    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas', checklist: 'Check list / Report', progcrtg: 'Programa CRTG', repuestos: 'Pedir repuestos', docschofer: 'Mis documentos' };
     const irA = (t) => { tab.value = t; if (t === 'registros') S.cargarMec(); if (t === 'taller') recargarTaller(); window.scrollTo(0, 0); };
-    const tarjetas = computed(() => S.esChofer.value ? [
+    const tarjetas = computed(() => S.esCrtg.value ? [
+      { tab: 'equipos', titulo: 'Equipos CRTG', sub: S.equiposApp.value.length + ' equipos · horómetro, ubicación e intervenciones', icon: 'fa-truck-monster', color: 'bg-blue-100 text-blue-700', ancha: true },
+      { tab: 'progcrtg', titulo: 'Programa mantención', sub: 'CRTG · marcar realizado / no realizado', icon: 'fa-calendar-check', color: 'bg-emerald-100 text-emerald-700' },
+      { tab: 'repuestos', titulo: 'Pedir repuestos', sub: 'Equipo, descripción y fotos', icon: 'fa-cart-plus', color: 'bg-orange-100 text-orange-700' },
+      { tab: 'registros', titulo: 'Mis documentos', sub: 'Sin firma y realizados', icon: 'fa-folder-open', color: 'bg-sky-100 text-sky-700', badge: pendientesMios.value },
+      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-list-check', color: 'bg-violet-100 text-violet-700' }
+    ] : S.esChofer.value ? [
       { tab: 'checklist', titulo: 'Check list / Report', sub: 'Datos del camión, check list, traslados y firma', icon: 'fa-clipboard-check', color: 'bg-sky-100 text-sky-700', ancha: true },
       { tab: 'docschofer', titulo: 'Mis documentos', sub: 'Check list enviados (Excel)', icon: 'fa-folder-open', color: 'bg-amber-100 text-amber-700' },
       { tab: 'equipos', titulo: 'Equipos', sub: 'Consulta', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700' },
@@ -421,7 +437,7 @@ export default {
       try { if (await ingresarANave(nave, { afi: e.afi })) S.avisoApp(`AFI ${e.afi} ingresado a la ${nave} ✔`); }
       finally { ocupado.value = false; }
     };
-    return { S, CH, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
+    return { S, CH, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };

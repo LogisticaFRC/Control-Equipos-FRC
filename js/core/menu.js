@@ -6,7 +6,7 @@
 // salen automáticamente de aquí.
 //   placeholder: true → muestra la pantalla "En construcción" del área.
 // =====================================================================
-import { hallazgosSinOT, lugaresNuevos } from './avisos-taller.js';   // + lugares nuevos de choferes → alerta en Áreas (2026-11-17)   // inspecciones del taller esperando OT (2026-11-16)
+import { hallazgosSinOT, lugaresNuevos, pedidosPendientes } from './avisos-taller.js';   // + lugares nuevos de choferes → alerta en Áreas (2026-11-17)   // inspecciones del taller esperando OT (2026-11-16)
 import { dbEquipos, dbMovimientos, dbIntervenciones, dbOC, dbLocaciones } from './store.js';
 import { esVehiculo } from '../modules/inventario/inventario.mapper.js';
 
@@ -50,6 +50,7 @@ export const AREAS = [
       { key: 'costosMant', grupo: 'mantenimiento', label: 'Costos de Mantención', icon: 'fa-sack-dollar' },   // valor 250/500/1000 por modelo + proyección (modules/costos)
       { key: 'aceites', grupo: 'mantenimiento', label: 'Control Aceites', icon: 'fa-oil-can' },
 
+      { key: 'pedidaRepuestos', grupo: 'abastecimiento', label: 'Pedida de repuestos', icon: 'fa-cart-flatbed', alerta: () => pedidosPendientes.value },   // taller + CRTG (modules/repuestos) · 2026-11-17
       { key: 'oc', grupo: 'abastecimiento', label: 'OC', icon: 'fa-file-invoice-dollar', count: () => dbOC.value.length },
       { key: 'filtros', grupo: 'abastecimiento', label: 'Filtros', icon: 'fa-filter' },
       { key: 'bodega', grupo: 'abastecimiento', label: 'Bodega Filtros', icon: 'fa-warehouse' }
@@ -99,7 +100,7 @@ export const GRUPOS = {
   gestion: { label: 'Gestión operacional', icon: 'fa-table-cells-large' },
   equipos: { label: 'Equipos', icon: 'fa-truck' },
   mantenimiento: { label: 'Mantenimiento', icon: 'fa-screwdriver-wrench' },
-  abastecimiento: { label: 'Abastecimiento y bodega', icon: 'fa-box' }
+  abastecimiento: { label: 'Repuestos y compras', icon: 'fa-box' }   // 2026-11-17 (antes 'Abastecimiento y bodega'; más adelante: Bodega repuestos)
 };
 
 /** Módulos de un área agrupados por subtítulo: [{ key, label, icon, modulos }] (sin subtítulo → key null). */

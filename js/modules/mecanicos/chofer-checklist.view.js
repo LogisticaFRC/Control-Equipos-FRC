@@ -13,7 +13,7 @@ const { watch, ref, computed } = Vue;
 
 /** Campo de lugar (Desde / Hasta): al tocarlo muestra las locaciones en orden (empresa · área) y al escribir filtra.
  *  Si no está en la lista se puede usar como "otro lugar" (en Hasta avisa que llega a Operaciones). */
-const LugarSelect = {
+export const LugarSelect = {
   name: 'LugarSelect',
   props: { modelValue: { type: String, default: '' }, etiqueta: String, campo: String, avisar: Boolean },
   emits: ['update:modelValue'],

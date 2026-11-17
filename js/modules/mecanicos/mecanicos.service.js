@@ -57,6 +57,9 @@ export const modoApp = computed(() => {
 export const esTaller = computed(() => modoApp.value === 'taller');
 /** CHOFER (2026-11-17): ve equipos (solo consulta) y registra el check list / report del camión (movimientos). */
 export const esChofer = computed(() => modoApp.value === 'chofer');
+/** TERRENO CRTG (2026-11-17): solo equipos que están en CRTG + programa de mantención CRTG + pedir repuestos. */
+export const esCrtg = computed(() => modoApp.value === 'crtg');
+export const esEquipoCrtg = (e) => /CRTG/i.test(empresaDe(e) || '') || /CRTG/i.test(String(e?.ubicacion || ''));
 /** Cargo del usuario conectado (se muestra arriba). */
 export const cargoActual = computed(() => cargoDe(usuarioActivo.value));
 /** AFI elegido para la mantención (desde una carta del taller o la lista). */
@@ -69,6 +72,7 @@ export const equiposApp = computed(() => {
   const q = up(busquedaEq.value).replace(/\s+/g, ' ');
   return dbEquipos.value
     .filter(e => !esVehiculo(e) && String(e.disponibilidad || '').toUpperCase() !== 'VENTA')
+    .filter(e => !esCrtg.value || esEquipoCrtg(e))   // CRTG: solo sus equipos
     .filter(e => !q || up([e.afi, e.tipo, e.marca, e.modelo, e.ubicacion, empresaDe(e)].join(' ')).includes(q))
     .sort((a, b) => ((empresaDe(b) === EMPRESA_TALLER) - (empresaDe(a) === EMPRESA_TALLER))
       || String(a.afi).localeCompare(String(b.afi), undefined, { numeric: true }));

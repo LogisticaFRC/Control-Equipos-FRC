@@ -7,3 +7,5 @@ const { ref } = Vue;
 export const hallazgosSinOT = ref(0);
 /** Lugares nuevos escritos por choferes, pendientes de revisar en Áreas y Locaciones (2026-11-17). */
 export const lugaresNuevos = ref([]);
+/** Pedidos de repuestos pendientes (Repuestos y compras → Pedida de repuestos) (2026-11-17). */
+export const pedidosPendientes = ref(0);

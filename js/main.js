@@ -11,6 +11,8 @@ import ReparacionView from './modules/taller/reparacion.view.js';
 import TallerView from './modules/taller/taller.view.js';
 import { cargarProblemas } from './modules/taller/taller.service.js';
 import { cargarLugaresNuevos } from './modules/areas/lugares-nuevos.js';
+import PedidaRepuestosView from './modules/repuestos/pedida.view.js';   // Repuestos y compras → Pedida de repuestos
+import { cargarPedidos } from './modules/repuestos/pedida.service.js';
 import FirmaPad from './core/firma-pad.js';
 import MovimientosView from './modules/movimientos/movimientos.view.js';
 import HistorialView from './modules/historial/historial.view.js';
@@ -151,7 +153,7 @@ const template = /* html */ `
               <i :class="['fa-solid w-4 text-center text-xs', m.icon]"></i>
               <span class="flex-1">{{ m.label }}</span>
               <span v-if="m.count" class="text-[10px] font-bold bg-slate-800 text-slate-400 rounded-full px-2 py-0.5">{{ m.count() }}</span>
-              <span v-if="m.alerta && m.alerta()" class="text-[10px] font-black bg-rose-500 text-white rounded-full px-2 py-0.5" :title="m.key === 'areas' ? 'Lugares nuevos escritos por choferes' : 'Fallas de inspección esperando OT'"><i class="fa-solid fa-bell mr-0.5"></i>{{ m.alerta() }}</span>
+              <span v-if="m.alerta && m.alerta()" class="text-[10px] font-black bg-rose-500 text-white rounded-full px-2 py-0.5" :title="m.key === 'areas' ? 'Lugares nuevos escritos por choferes' : m.key === 'pedidaRepuestos' ? 'Pedidos de repuestos pendientes' : 'Fallas de inspección esperando OT'"><i class="fa-solid fa-bell mr-0.5"></i>{{ m.alerta() }}</span>
               <span v-if="m.placeholder" class="text-[9px] font-bold uppercase text-amber-400/80">Pronto</span>
             </button>
             </template>
@@ -174,6 +176,7 @@ const template = /* html */ `
       <choferes-panel-view v-if="currentTab === 'choferPanel' && esSupervisorMec" :puede-eliminar="isAdmin"></choferes-panel-view>
       <minutas-view v-if="currentTab === 'minutas'"></minutas-view>
       <ot-view v-if="currentTab === 'ot'"></ot-view>
+      <pedida-repuestos-view v-if="currentTab === 'pedidaRepuestos'"></pedida-repuestos-view>
       <oc-view v-if="currentTab === 'oc'"></oc-view>
       <epp-view v-if="currentTab === 'epp'"></epp-view>
       <areas-view v-if="currentTab === 'areas'"></areas-view>
@@ -264,6 +267,8 @@ const app = createApp({
         if (puedeVerModulo('progReparacion')) cargarProblemas();
         // Áreas: lugares nuevos escritos por choferes
         if (puedeVerModulo('areas')) cargarLugaresNuevos();
+        // Repuestos y compras: pedidos pendientes (taller + CRTG)
+        if (puedeVerModulo('pedidaRepuestos')) cargarPedidos();
       }
     });
 
@@ -306,7 +311,8 @@ app.component('TotemView', TotemView);
 app.component('InstalarApp', InstalarApp);     // botón Instalar app / Descargar APK (login y app mecánicos)
 app.component('AvisoVersion', AvisoVersion);   // aviso de versión nueva después de un Push                   // app móvil de mecánicos
 app.component('MecanicosPanelView', MecanicosPanelView);
-app.component('ChoferesPanelView', ChoferesPanelView);     // Mecánicos → intervenciones y firmas (supervisor)                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
+app.component('ChoferesPanelView', ChoferesPanelView);
+app.component('PedidaRepuestosView', PedidaRepuestosView);     // Mecánicos → intervenciones y firmas (supervisor)                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
 app.component('TareaItem', TareaItem);
 app.component('RecordatoriosCampana', RecordatoriosCampana); // campana del encabezado
 app.component('RecordatoriosAvisos', RecordatoriosAvisos);   // avisos + resumen al entrar + Nueva tarea         // Operaciones → Costos de Mantención

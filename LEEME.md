@@ -961,3 +961,11 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Excel: "Firma chofer / nombre" en B63-B64 y "Firma supervisor / nombre" en P63-P64 con las firmas como imagen; Desde/Hasta con el nombre corto del lugar; área de impresión A1:V64.
 - Imágenes para el PDF: plantillas/img/logo-frc-formato.png y camion-pluma.jpg.
 - Volver a ejecutar sql/chofer.sql (checklist_id en movimientos, frc_chofer_firmar_supervisor, frc_chofer_pdf).
+
+## 2026-11-17 · TERRENO CRTG + Repuestos y compras (Pedida de repuestos)
+- Nuevo tipo de usuario **Terreno CRTG (app celular)**: `permisos = { mecanicos: 'subadmin', mec_modo: 'crtg', cargo }`. Logo CRTG chico (icons/logo-crtg.png) junto al de FRC en la app.
+  - **Equipos CRTG**: solo los equipos con empresa / ubicación CRTG (`esEquipoCrtg`). Horómetro, **cambiar ubicación** (lista de locaciones; queda como movimiento "CAMBIO UBICACIÓN · CRTG", RPC `frc_crtg_ubicacion`) e intervenciones como terreno.
+  - **Programa mantención CRTG**: programas de mantención con "CRTG" en el nombre/subcarpeta (el vigente primero). Resumen (realizados / pendientes / no realizados) y por equipo **Realizado / No realizado** (+ motivo) → columnas `crtg_estado/obs/por/fecha` de bd_programas_items (RPC `frc_crtg_programa`). Es un apoyo: en Programas Mantención aparece una etiqueta CRTG "Hecho / No hecho"; el REALIZADO oficial lo sigue marcando Operaciones.
+  - **Pedir repuestos**: equipo, fecha, descripción y hasta 5 fotos → `bd_pedidos_repuestos`; ve el estado, la fecha aprox. y la nota.
+- Área Operaciones: el grupo **"Abastecimiento y bodega" ahora es "Repuestos y compras"** con el submódulo nuevo **Pedida de repuestos** (`modules/repuestos/`): junta lo pedido en el **taller** (hallazgos/inspecciones con repuesto, `bd_taller_problemas.repuesto_estado`) y por **CRTG**; filtros, estado Pendiente/Pedido/Recibido/Rechazado, llega aprox. y nota. Contador de pendientes en el menú. (Más adelante: Bodega repuestos.)
+- Ejecutar **sql/crtg.sql**.

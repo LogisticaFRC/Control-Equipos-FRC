@@ -48,7 +48,7 @@ export const cargoDe = (u) => String((permisosDe(u) || {}).cargo || '').trim();
 export const modoTecnicoDe = (u) => {
   const p = permisosDe(u) || {};
   if (!u || u.rol === 'admin' || p.mecanicos !== 'subadmin') return '';
-  return ['taller', 'totem', 'chofer'].includes(p.mec_modo) ? p.mec_modo : 'terreno';
+  return ['taller', 'totem', 'chofer', 'crtg'].includes(p.mec_modo) ? p.mec_modo : 'terreno';
 };
 /** Usuario TÓTEM: solo ve las naves del Programa de Reparación, en pantalla completa bloqueada (2026-11-16). */
 export const esTotemDe = (u) => modoTecnicoDe(u) === 'totem';

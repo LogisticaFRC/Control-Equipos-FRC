@@ -310,6 +310,10 @@ export default /* html */ `
                     <span :class="['text-[10px] font-bold px-2 py-0.5 rounded', item.realizado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800']">
                       {{ item.realizado ? 'REALIZADO' : 'PENDIENTE' }}
                     </span>
+                    <!-- Reporte del técnico CRTG desde la app (2026-11-17) -->
+                    <span v-if="item.crtg_estado" :title="'Reportado por ' + (item.crtg_por || 'CRTG') + (item.crtg_obs ? ' · ' + item.crtg_obs : '')"
+                      :class="['inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded border', item.crtg_estado === 'REALIZADO' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-rose-50 text-rose-700 border-rose-200']">
+                      <img src="icons/logo-crtg.png" class="h-3">{{ item.crtg_estado === 'REALIZADO' ? 'Hecho' : 'No hecho' }}</span>
                   </div>
                 </td>
                 <td v-if="isAdmin" class="p-2.5 text-center">
