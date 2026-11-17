@@ -18,6 +18,30 @@ create table if not exists public.bd_checklist_chofer (
   patente     text,
   datos       jsonb not null default '{}'::jsonb
 );
+-- Lugares nuevos escritos por choferes ("Otro lugar"): alerta en Áreas y Locaciones (2026-11-17)
+create table if not exists public.bd_lugares_nuevos (
+  id            bigserial primary key,
+  created_at    timestamptz not null default now(),
+  lugar         text not null,
+  afi           text,
+  subarrendado  boolean not null default false,
+  fecha         date,
+  patente       text,
+  chofer        text,
+  checklist_id  bigint,
+  estado        text not null default 'PENDIENTE',   -- PENDIENTE | ASIGNADO | DESCARTADO
+  locacion_id   bigint,
+  revisado_por  text,
+  revisado_at   timestamptz
+);
+alter table public.bd_lugares_nuevos enable row level security;
+drop policy if exists frc_ver on public.bd_lugares_nuevos;
+create policy frc_ver on public.bd_lugares_nuevos for select to authenticated using ((select public.frc_es_miembro()));
+drop policy if exists frc_modificar on public.bd_lugares_nuevos;
+create policy frc_modificar on public.bd_lugares_nuevos for update to authenticated
+  using ((select public.frc_puede(array['operaciones'], 'subadmin'))) with check ((select public.frc_puede(array['operaciones'], 'subadmin')));
+-- Insertar: solo con frc_chofer_guardar.
+
 -- Fotos del equipo en cada movimiento (2026-11-17)
 alter table public."BD_MOVIMIENTOS" add column if not exists fotos jsonb;
 
@@ -84,6 +108,13 @@ begin
       'fotos', coalesce(a->'fotos', '[]'::jsonb));
     execute format('insert into public."BD_MOVIMIENTOS" (%1$s) select %1$s from jsonb_populate_record(null::public."BD_MOVIMIENTOS", $1)', v_cols)
       using v_mov;
+
+    -- Lugar escrito a mano ("Otro lugar") → aviso en Áreas y Locaciones
+    if coalesce((a->>'lugar_nuevo')::boolean, false) and coalesce(trim(a->>'hasta'), '') <> '' then
+      insert into public.bd_lugares_nuevos (lugar, afi, subarrendado, fecha, patente, chofer, checklist_id)
+      values (upper(trim(a->>'hasta')), upper(trim(a->>'afi')), coalesce((a->>'subarrendado')::boolean, false),
+              coalesce(v_fecha, current_date), v_patente, upper(v_chofer), v_id);
+    end if;
 
     -- 2) Ubicación del equipo en el Inventario (si existe y se indicó destino)
     -- (subarrendado = solo información: no está en el inventario)

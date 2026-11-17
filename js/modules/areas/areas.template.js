@@ -1,6 +1,8 @@
 // Plantilla HTML del módulo ÁREAS (Empresa → Área → Sector → Locación → Equipos)
 export default /* html */ `
 <section class="space-y-4">
+  <!-- Lugares nuevos escritos por choferes (2026-11-17) -->
+  <lugares-nuevos></lugares-nuevos>
   <!-- Encabezado + resumen -->
   <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
     <div class="flex flex-wrap justify-between items-center gap-3">

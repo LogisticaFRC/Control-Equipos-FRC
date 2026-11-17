@@ -121,10 +121,23 @@ export const alCambiarAfiAct = (a) => {
 // ---------- Destino: locaciones del módulo Áreas (así el equipo queda en la misma ubicación que usa Movimientos) ----------
 /** [{ id, texto: 'ÁREA / SECTOR / LOCACIÓN', empresa }] */
 export const destinosLoc = computed(() => dbLocaciones.value.filter(n => n.tipo === TIPOS.LOCACION)
-  .map(n => ({ id: n.id, texto: textoUbicacion(n.id), empresa: rutaDe(n.id).empresa?.nombre || '' }))
-  .filter(x => x.texto).sort((a, b) => a.texto.localeCompare(b.texto)));
+  .map(n => { const r = rutaDe(n.id); return { id: n.id, texto: textoUbicacion(n.id), nombre: n.nombre, area: r.area?.nombre || '', sector: r.sector?.nombre || '', empresa: r.empresa?.nombre || '' }; })
+  .filter(x => x.texto)
+  .sort((a, b) => a.empresa.localeCompare(b.empresa) || a.area.localeCompare(b.area) || a.nombre.localeCompare(b.nombre)));
+/** Lista desplegable "Hasta": grupos por empresa · área (orden por área y locación); cada opción con la ruta completa terminada en la locación. */
+export const gruposDestino = computed(() => {
+  const mapa = new Map();
+  destinosLoc.value.forEach(d => {
+    const g = [d.empresa, d.area].filter(Boolean).join(' · ') || 'SIN ÁREA';
+    if (!mapa.has(g)) mapa.set(g, []);
+    mapa.get(g).push({ value: d.texto, label: d.texto });
+  });
+  return [...mapa.entries()].map(([label, opciones]) => ({ label, opciones }));
+});
+/** Valores de la lista: lo que no esté aquí es un "Otro lugar" (genera alerta en Áreas y Locaciones). */
+export const valoresDestino = computed(() => new Set(gruposDestino.value.flatMap(g => g.opciones.map(o => o.value))));
 const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
-/** Locación que calza con lo escrito en "Hasta" (texto exacto de la lista). */
+/** Locación que calza con lo elegido en "Hasta" (texto exacto de la lista). */
 export const locDeTexto = (t) => destinosLoc.value.find(x => norm(x.texto) === norm(t)) || null;
 
 // ---------- Fotos de los equipos (se suben al enviar) ----------
@@ -219,7 +232,8 @@ export const enviarChecklist = async () => {
     const e = buscarEquipoPorAfi(a.afi);
     const loc = locDeTexto(a.hasta);
     return { ...a, afi: String(a.afi || '').trim().toUpperCase(), tipo_equipo: a.subarrendado ? '' : (e ? e.tipo : ''),
-      hasta: loc ? loc.texto : a.hasta, locacion_id: loc ? loc.id : null, empresa: loc ? loc.empresa : '' };
+      hasta: loc ? loc.texto : String(a.hasta || '').trim().toUpperCase(), locacion_id: loc ? loc.id : null, empresa: loc ? loc.empresa : '',
+      lugar_nuevo: !loc && !valoresDestino.value.has(a.hasta) && Boolean(String(a.hasta || '').trim()) };
   });
   try {
     const { data, error } = await supabaseClient.rpc('frc_chofer_guardar', { p_datos: datos });

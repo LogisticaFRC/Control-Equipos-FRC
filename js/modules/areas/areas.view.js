@@ -6,6 +6,7 @@ import { comunes } from '../../core/comunes.js';
 import { dbLocaciones, dbEquipos } from '../../core/store.js';
 import { abrirPerfilEquipo } from '../inventario/perfil.service.js';
 import * as S from './areas.service.js';
+import LugaresNuevos from './lugares-nuevos.view.js';   // alerta de lugares escritos por choferes (2026-11-17)
 
 const { computed, watch, ref, nextTick, onBeforeUnmount } = Vue;
 
@@ -13,6 +14,7 @@ const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 
 export default {
   name: 'AreasView',
+  components: { LugaresNuevos },
   template,
   setup() {
     // Equipos que se listan según la carpeta abierta
