@@ -451,6 +451,7 @@ export default /* html */ `
                     <label class="text-[10px] font-bold uppercase text-slate-500">H. inicio<input type="time" v-model="a.h_inicio" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
                     <label class="text-[10px] font-bold uppercase text-slate-500">H. término<input type="time" v-model="a.h_term" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
                   </div>
+                  <detalle-actividad :ot="otSel" :idx="i" :puede="editaTaller && !['CERRADA', 'ANULADA'].includes(otSel.estado)" class="md:pl-[68px]"></detalle-actividad>
                 </div>
               </template>
               <p v-if="!progresoOT(otSel).total" class="text-sm text-slate-400 italic p-2">La OT no tiene actividades todavía.</p>

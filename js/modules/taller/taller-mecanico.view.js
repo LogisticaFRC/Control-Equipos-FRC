@@ -11,6 +11,7 @@
 // =====================================================================
 import * as S from './taller.service.js';
 import InspeccionEquipo from './inspeccion-equipo.view.js';
+import HallazgoEditar, { DetalleActividad } from './hallazgo-editar.view.js';
 import ActividadesEquipo from '../mecanicos/actividades-equipo.view.js';
 import { formatDateForDisplay, hoyISO } from '../../core/utils.js';
 
@@ -21,7 +22,7 @@ const selKey = ref(null);
 
 export default {
   name: 'TallerMecanico',
-  components: { InspeccionEquipo, ActividadesEquipo },
+  components: { InspeccionEquipo, ActividadesEquipo, HallazgoEditar, DetalleActividad },
   template: /* html */ `
 <div class="p-4 space-y-3">
   <div v-if="S.faltaTablaTaller.value" class="bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-3 text-sm">Falta ejecutar <b>sql/taller.sql</b> en Supabase.</div>
@@ -67,6 +68,7 @@ export default {
             <span class="flex-1 min-w-0"><span :class="['block font-bold leading-snug', S.actividadHecha(a) ? 'text-emerald-800' : 'text-slate-800']">{{ a.descripcion }}</span>
               <span v-if="S.actividadHecha(a)" class="text-[10px] text-emerald-700">Terminada {{ formatDateForDisplay(a.f_term) }} {{ a.h_term }}{{ a.ejecutante ? ' · ' + a.ejecutante : '' }}</span></span>
           </button>
+          <detalle-actividad v-if="a.descripcion && a.descripcion.trim()" :ot="ot" :idx="i" :puede="abierta(ot)" class="pl-2"></detalle-actividad>
         </template>
         <p v-if="!prog(ot).total" class="text-sm text-slate-400 italic">La OT todavía no tiene actividades.</p>
         <div v-if="S.filasRepuestos(ot).length" class="text-xs bg-slate-50 rounded-lg p-2"><b>Repuestos:</b> {{ S.filasRepuestos(ot).map(r => r.x.repuestos).join(' · ') }}</div>
@@ -98,6 +100,8 @@ export default {
             <div class="text-sm"><span v-if="h.item_n" class="text-slate-400 mr-1">{{ h.item_n }}.</span><b v-if="h.sistema" class="text-violet-800">{{ h.sistema }} · </b>{{ h.descripcion }}</div>
             <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', (S.ESTADO_HALLAZGO[h.estado] || {}).c]">{{ (S.ESTADO_HALLAZGO[h.estado] || {}).t || h.estado }}{{ S.otDeHallazgo(h) ? ' N° ' + S.otDeHallazgo(h).folio : '' }}</span>
           </div>
+          <button v-if="S.puedeEditarHallazgo(h) && editandoH !== h.id" @click="editandoH = h.id" class="text-xs font-bold text-sky-700" data-editar-h><i class="fa-solid fa-pen mr-1"></i>Editar</button>
+          <hallazgo-editar v-if="editandoH === h.id" :h="h" @cerrar="editandoH = null"></hallazgo-editar>
           <div v-if="h.necesita_repuesto" class="text-xs text-amber-800"><i class="fa-solid fa-gear mr-1"></i>Repuesto: <b>{{ h.cantidad ? h.cantidad + ' x ' : '' }}{{ h.repuesto }}</b></div>
           <div v-if="h.fecha_aprox_repuesto" class="text-xs font-bold text-sky-800 bg-sky-50 rounded-lg px-2 py-1"><i class="fa-regular fa-calendar mr-1"></i>Repuesto llega aprox.: {{ formatDateForDisplay(h.fecha_aprox_repuesto) }}</div>
           <div v-if="h.nota_admin" class="text-xs bg-slate-100 rounded-lg px-2 py-1"><b>Nota de Operaciones:</b> {{ h.nota_admin }}</div>
@@ -143,6 +147,7 @@ export default {
 </div>`,
   setup() {
     const form = ref(S.hallazgoVacio());
+    const editandoH = ref(null);   // hallazgo en edición (2026-11-17)
     const ocupado = ref(false);
     const inspAbierta = ref(false);
 
@@ -210,6 +215,6 @@ export default {
     });
     onBeforeUnmount(() => clearInterval(timer));
 
-    return { S, inspAbierta, sel, grupos, abrir, cerrar, form, ocupado, enNave, estadoCarta, etiquetaCarta, pendientes, conFecha, prog, abierta, ingresar, enviar, marcar, fechaHora, formatDateForDisplay, hoyISO };
+    return { S, editandoH, inspAbierta, sel, grupos, abrir, cerrar, form, ocupado, enNave, estadoCarta, etiquetaCarta, pendientes, conFecha, prog, abierta, ingresar, enviar, marcar, fechaHora, formatDateForDisplay, hoyISO };
   }
 };

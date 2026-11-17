@@ -809,13 +809,13 @@ export const inspeccionesDeRep = (rep) => {
 export const tieneInspeccion = (rep) => problemasDeRep(rep).some(h => h.inspeccion_id);
 
 /** Pasa los hallazgos elegidos a una OT: actividades + repuestos pedidos. Devuelve cuántos se agregaron. */
-const volcarHallazgosEnOT = async (ot, lista) => {
+const volcarHallazgosEnOT = async (ot, lista, textosOT = {}) => {   // textosOT: { [id hallazgo]: texto de la tarea en la OT } (editable al pasarlo)
   let n = 0;
   const pasados = [];
   for (const h of lista) {
     const i = ot.actividades.findIndex(a => !String(a.descripcion || '').trim());
     if (i < 0) { alert(`La OT N° ${ot.folio} se llenó (${N_ACTIVIDADES} actividades). Los hallazgos restantes quedan pendientes.`); break; }
-    Object.assign(ot.actividades[i], { descripcion: textoHallazgo(h), ejecutante: '', f_inicio: '', h_inicio: '', f_term: '', h_term: '' });   // fechas en blanco: las pone el mecánico
+    Object.assign(ot.actividades[i], { descripcion: String(textosOT[h.id] || '').trim() || textoHallazgo(h), ejecutante: '', f_inicio: '', h_inicio: '', f_term: '', h_term: '' });   // fechas en blanco: las pone el mecánico
     if (h.necesita_repuesto && String(h.repuesto || '').trim()) {
       while (ot.insumos.length < N_ACEITES) ot.insumos.push(filaInsumoVacia());
       let k = ot.insumos.findIndex((x, j) => j >= N_ACEITES && !String(x.repuestos || '').trim() && !String(x.aceites || '').trim());
@@ -833,21 +833,21 @@ const volcarHallazgosEnOT = async (ot, lista) => {
 };
 
 /** Admin: crea UNA OT nueva con los hallazgos elegidos (queda enlazada al equipo / reparación). */
-export const crearOTDesdeHallazgos = async (rep, lista, form) => {
+export const crearOTDesdeHallazgos = async (rep, lista, form, textosOT = {}) => {
   if (!soloGestor()) return null;
   if (!lista.length) { alert('Marca al menos un hallazgo.'); return null; }
   const ot = await crearOTParaRep(rep, form, { desdeHallazgos: true });
   if (!ot) return null;
-  try { await volcarHallazgosEnOT(ot, lista); }
+  try { await volcarHallazgosEnOT(ot, lista, textosOT); }
   catch (err) { alert(`Se creó la OT N° ${ot.folio}, pero no se pudieron pasar los hallazgos: ` + errMsg(err)); }
   return ot;
 };
 /** Admin: agrega los hallazgos elegidos a una OT que ya existe. */
-export const agregarHallazgosAOT = async (ot, lista) => {
+export const agregarHallazgosAOT = async (ot, lista, textosOT = {}) => {
   if (!soloGestor()) return 0;
   if (!ot) { alert('Elige la OT.'); return 0; }
   if (!lista.length) { alert('Marca al menos un hallazgo.'); return 0; }
-  try { return await volcarHallazgosEnOT(ot, lista); }
+  try { return await volcarHallazgosEnOT(ot, lista, textosOT); }
   catch (err) { alert('No se pudieron agregar a la OT: ' + errMsg(err)); return 0; }
 };
 /** Admin: nota y fecha aprox. del repuesto (las ve el mecánico en su carta). */
@@ -858,6 +858,39 @@ export const guardarNotaHallazgo = async (h, nota, fecha) => {
   catch (err) {
     const m = errMsg(err);
     alert((/nota_admin|fecha_aprox|column|schema cache/i.test(m) ? SQL_HALLAZGOS + '\n\nDetalle: ' : 'No se pudo guardar la nota: ') + m);
+    return false;
+  }
+};
+
+/** EDITAR HALLAZGO (2026-11-17): mecánicos y Admin corrigen el texto mientras espera OT (función frc_hallazgo_editar de sql/taller_editar.sql). */
+const SQL_EDITAR = 'Falta ejecutar sql/taller_editar.sql en Supabase (SQL Editor → Run).';
+export const puedeEditarHallazgo = (h) => Boolean(h && h.estado === 'PENDIENTE' && (puedeGestionarHallazgos() || esMecanicoTaller()));
+export const editarHallazgo = async (h, f) => {
+  const desc = String(f.descripcion || '').trim();
+  if (!desc) { alert('La descripción no puede quedar vacía.'); return false; }
+  if (f.necesita_repuesto && !String(f.repuesto || '').trim()) { alert('Escribe qué repuesto se necesita.'); return false; }
+  const args = { p_id: h.id, p_sistema: f.sistema || null, p_descripcion: desc, p_necesita_repuesto: Boolean(f.necesita_repuesto),
+    p_repuesto: f.necesita_repuesto ? String(f.repuesto || '').trim() : null, p_cantidad: f.necesita_repuesto ? String(f.cantidad || '').trim() || null : null, p_quien: quien() };
+  try {
+    const fila = await sb(supabaseClient.rpc('frc_hallazgo_editar', args));
+    Object.assign(h, fila && typeof fila === 'object' ? fila : { sistema: args.p_sistema, descripcion: desc, necesita_repuesto: args.p_necesita_repuesto, repuesto: args.p_repuesto, cantidad: args.p_cantidad });
+    return true;
+  } catch (err) {
+    const m = errMsg(err);
+    alert(/frc_hallazgo_editar|function|schema cache/i.test(m) ? SQL_EDITAR : 'No se pudo guardar: ' + m);
+    return false;
+  }
+};
+/** DETALLE DEL TRABAJO (2026-11-17): el mecánico describe lo que hizo en cada actividad de la OT. Queda solo en el sistema (no se imprime). */
+export const guardarDetalleActividad = async (ot, i, texto) => {
+  const a = ot.actividades[i];
+  try {
+    const act = await sb(supabaseClient.rpc('frc_mec_actividad_detalle', { p_ot_id: ot.id, p_idx: i, p_detalle: String(texto || '').trim(), p_quien: quien() }));
+    Object.assign(a, act && typeof act === 'object' ? act : { detalle_mec: String(texto || '').trim(), detalle_por: String(quien()).toUpperCase(), detalle_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) });
+    return true;
+  } catch (err) {
+    const m = errMsg(err);
+    alert(/frc_mec_actividad_detalle|function|schema cache/i.test(m) ? SQL_EDITAR : 'No se pudo guardar el detalle: ' + m);
     return false;
   }
 };

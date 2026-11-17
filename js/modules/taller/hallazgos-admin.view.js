@@ -9,6 +9,7 @@ import * as S from './taller.service.js';
 import { folioSugerido } from '../ot/ot.service.js';
 import { puedeEditar, isAdmin } from '../../core/store.js';
 import InspeccionEquipo from './inspeccion-equipo.view.js';
+import HallazgoEditar from './hallazgo-editar.view.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 
 const { ref, computed, watch } = Vue;
@@ -16,7 +17,7 @@ const { ref, computed, watch } = Vue;
 export default {
   name: 'HallazgosAdmin',
   props: { rep: { type: Object, required: true }, ot: { type: Object, default: null } },
-  components: { InspeccionEquipo },
+  components: { InspeccionEquipo, HallazgoEditar },
   emits: ['ot-creada'],
   template: /* html */ `
 <section class="rounded-2xl border-2 border-violet-200 bg-violet-50 p-4 space-y-3">
@@ -46,11 +47,17 @@ export default {
           <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', (S.ESTADO_HALLAZGO[h.estado] || {}).c]">{{ (S.ESTADO_HALLAZGO[h.estado] || {}).t || h.estado }}{{ S.otDeHallazgo(h) ? ' N° ' + S.otDeHallazgo(h).folio : '' }}</span>
         </div>
         <div v-if="h.necesita_repuesto" class="text-sm text-amber-800 font-semibold"><i class="fa-solid fa-gear mr-1"></i>Pide repuesto: {{ h.cantidad ? h.cantidad + ' x ' : '' }}{{ h.repuesto }}</div>
-        <p class="text-[11px] text-slate-500">{{ h.reportado_por }} · {{ fechaHora(h.created_at) }}<template v-if="h.estado === 'RECHAZADO' && h.respuesta"> · <b>{{ h.respuesta }}</b></template></p>
+        <p v-if="h.descripcion_original && h.descripcion_original !== h.descripcion" class="text-[11px] text-slate-400 italic">Original: {{ h.descripcion_original }}</p>
+        <p class="text-[11px] text-slate-500">{{ h.reportado_por }} · {{ fechaHora(h.created_at) }}<template v-if="h.editado_por"> · editado por {{ h.editado_por }}</template><template v-if="h.estado === 'RECHAZADO' && h.respuesta"> · <b>{{ h.respuesta }}</b></template></p>
       </div>
+      <button v-if="S.puedeEditarHallazgo(h) && editando !== h.id" @click="editando = h.id" title="Editar el texto" class="shrink-0 text-xs font-bold text-sky-700 border border-sky-200 hover:bg-sky-50 rounded-lg px-2 py-1" data-editar-h><i class="fa-solid fa-pen mr-1"></i>Editar</button>
       <button v-if="isAdmin" @click="S.eliminarHallazgos([h])" title="Eliminar esta falla (Admin)" class="shrink-0 text-slate-300 hover:text-rose-600 text-lg px-1"><i class="fa-solid fa-trash"></i></button>
       <a v-if="h.foto_url" :href="h.foto_url" target="_blank" rel="noopener" class="shrink-0"><img :src="h.foto_url" class="w-20 h-16 object-cover rounded-lg border" alt="foto"></a>
     </div>
+    <hallazgo-editar v-if="editando === h.id" :h="h" @cerrar="editando = null"></hallazgo-editar>
+    <!-- Marcado para la OT: texto de la tarea (se puede cambiar, ej. "comprar 2 patas" → "colocar 2 patas") -->
+    <label v-if="gestor && h.estado === 'PENDIENTE' && marcados[h.id]" class="block md:pl-9 text-[10px] font-bold uppercase text-violet-700">Tarea en la OT (puedes cambiar el texto)
+      <input v-model="textosOT[h.id]" class="mt-0.5 w-full p-2 border-2 border-violet-300 rounded-lg text-sm font-bold normal-case bg-violet-50" data-tarea-ot></label>
     <!-- Nota y fecha aprox. del repuesto (la ve el mecánico) -->
     <div v-if="gestor && h.estado !== 'RECHAZADO'" class="flex flex-wrap items-end gap-2 md:pl-9">
       <label class="flex-1 min-w-[200px] text-[10px] font-bold uppercase text-slate-500">Nota para el mecánico<input v-model="notas[h.id].nota" class="mt-0.5 w-full p-2 border-2 rounded-lg text-sm normal-case font-semibold" placeholder="Ej: repuesto pedido a proveedor"></label>
@@ -84,6 +91,8 @@ export default {
 </section>`,
   setup(props, { emit }) {
     const marcados = ref({});
+    const textosOT = ref({});   // { id hallazgo: texto de la tarea en la OT }
+    const editando = ref(null);
     const notas = ref({});
     const ocupado = ref(false);
     const abiertaInsp = ref(false);
@@ -101,21 +110,27 @@ export default {
     const guardarNota = (h) => S.guardarNotaHallazgo(h, notas.value[h.id].nota, notas.value[h.id].fecha);
     const marcarTodos = (v) => { pendientes.value.forEach(h => { marcados.value[h.id] = v; }); };
     const elegidos = () => pendientes.value.filter(h => marcados.value[h.id]);
+    // al marcar un hallazgo se propone el texto de la tarea (editable)
+    watch(marcados, (m) => Object.keys(m).forEach(id => {
+      if (m[id] && textosOT.value[id] == null) { const h = lista.value.find(x => String(x.id) === String(id)); if (h) textosOT.value[id] = S.textoHallazgo(h); }
+    }), { deep: true });
+    // si se edita el hallazgo, se actualiza el texto propuesto
+    watch(editando, (v, antes) => { if (antes != null && v == null && marcados.value[antes]) { const h = lista.value.find(x => String(x.id) === String(antes)); if (h) textosOT.value[antes] = S.textoHallazgo(h); } });
 
     const crearOT = async () => {
       ocupado.value = true;
       try {
-        const ot = await S.crearOTDesdeHallazgos(props.rep, elegidos(), formOT.value);
-        if (ot) { marcados.value = {}; formOT.value = { folio: String(folioSugerido.value || ''), tipo: 'CORRECTIVA', mecanico: '' }; emit('ot-creada', ot); }
+        const ot = await S.crearOTDesdeHallazgos(props.rep, elegidos(), formOT.value, textosOT.value);
+        if (ot) { marcados.value = {}; textosOT.value = {}; formOT.value = { folio: String(folioSugerido.value || ''), tipo: 'CORRECTIVA', mecanico: '' }; emit('ot-creada', ot); }
       } finally { ocupado.value = false; }
     };
     const agregarAOT = async () => {
       ocupado.value = true;
-      try { if (await S.agregarHallazgosAOT(props.ot, elegidos())) marcados.value = {}; }
+      try { if (await S.agregarHallazgosAOT(props.ot, elegidos(), textosOT.value)) { marcados.value = {}; textosOT.value = {}; } }
       finally { ocupado.value = false; }
     };
     const fechaHora = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
 
-    return { S, isAdmin, gestor, puedeInspeccionar, abiertaInsp, marcarGrupo, puedeEditar, lista, pendientes, marcados, nMarcados, notas, cambioNota, guardarNota, marcarTodos, formOT, crearOT, agregarAOT, ocupado, fechaHora, formatDateForDisplay };
+    return { S, textosOT, editando, isAdmin, gestor, puedeInspeccionar, abiertaInsp, marcarGrupo, puedeEditar, lista, pendientes, marcados, nMarcados, notas, cambioNota, guardarNota, marcarTodos, formOT, crearOT, agregarAOT, ocupado, fechaHora, formatDateForDisplay };
   }
 };
