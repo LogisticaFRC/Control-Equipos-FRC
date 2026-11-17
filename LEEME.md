@@ -907,3 +907,6 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - "Exportar Todas": cada hoja de minuta se importa como una minuta (se ignoran Resumen, Dashboard e Histórico).
 - Si ya existe una minuta con esa fecha, por defecto **la ACTUALIZA** (reemplaza sus tareas por las del archivo: estados, fechas, responsables, tareas nuevas o quitadas). Se puede elegir "Crear otra minuta". Admin: cualquier minuta · Editor: solo la actual.
 - Funciones nuevas en minutas.service.js: esCabeceraSistema, leerHojaSistema, minutaConFecha, puedeActualizarMinuta; leerExcel devuelve una lista.
+
+## 2026-11-17 · OT de vehículos: KM en vez de HRS
+- Si el ID del equipo es una **patente** (`esPatente`, ej. LYXV-16), la OT muestra **KM ACTUAL** y **KM PROX. MANT** en vez de HRS ACTUAL / HRS PROX. MANT: en el editor, en las dos impresiones y en el Excel exportado. Equipos con AFI siguen con HRS. (`otEsVehiculo`, `etiquetaOT` en ot.service.js). Los datos se guardan en las mismas columnas (hrs_actual / hrs_prox).

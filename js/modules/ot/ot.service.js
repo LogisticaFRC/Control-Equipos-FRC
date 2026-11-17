@@ -10,11 +10,19 @@ import { TABLAS } from '../../core/tablas.js';
 import { usuarioActivo, currentTab, dbIntervenciones, dbProgramasCalendarios, buscarEquipoPorAfi, soloAdmin, soloEditor, isAdmin } from '../../core/store.js';
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, formatDateForDisplay } from '../../core/utils.js';
 import { FORMATO_OT } from './ot.formato.js';
+import { esPatente } from '../inventario/inventario.mapper.js';
 import { abrirFormularioNuevaMantencion, formMant } from '../historial/historial.service.js';
 
 const { ref, computed } = Vue;
 
 export const TABLA_OT = TABLAS.OT;
+/** Vehículo (ID = patente): la OT usa KILOMETRAJE en vez de horómetro (2026-11-17). */
+export const otEsVehiculo = (ot) => esPatente(ot && ot.afi);
+/** Texto fijo de una celda del formato: "HRS ACTUAL" / "HRS PROX. MANT" → "KM ACTUAL" / "KM PROX. MANT" si es vehículo. */
+export const etiquetaOT = (ot, c) => {
+  const t = (c && c.t) || '';
+  return otEsVehiculo(ot) && /^HRS\b/.test(t) ? t.replace(/^HRS\b/, 'KM') : t;
+};
 export const N_ACTIVIDADES = 20, N_INSUMOS = 10, N_PERSONAL = 4;
 /** Filas de insumos del formato usadas para ACEITES (las demás son repuestos; se pueden agregar más filas que las 10 del papel). */
 export const N_ACEITES = 4;
@@ -331,6 +339,8 @@ export const exportarOTExcel = async (ot) => {
     const ruta = 'xl/worksheets/sheet1.xml';
     let xml = await zip.file(ruta).async('string');
     FORMATO_OT.celdas.filter(c => c.k).forEach(c => { xml = escribirCelda(xml, COLS[c.c] + c.r, textoCelda(ot, c.k)); });
+    // Vehículo: los títulos HRS ACTUAL / HRS PROX. MANT pasan a KM
+    if (otEsVehiculo(ot)) FORMATO_OT.celdas.filter(c => !c.k && /^HRS\b/.test(c.t || '')).forEach(c => { xml = escribirCelda(xml, COLS[c.c] + c.r, etiquetaOT(ot, c)); });
     zip.file(ruta, xml);
     const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const a = document.createElement('a');
@@ -419,7 +429,7 @@ export const htmlHojaOT = (ot) => {
   const filasHtml = F.rows.map((h, i) => {
     const r = i + 1;
     const tds = (porFila[r] || []).map(c => {
-      const txt = c.k ? textoCelda(ot, c.k) : (c.t || '');
+      const txt = c.k ? textoCelda(ot, c.k) : etiquetaOT(ot, c);
       const extra = c.k && (c.k.startsWith('tipo:') || c.k.startsWith('pauta:')) ? ';text-align:center;font-weight:700' : '';
       const ajuste = c.k && txt ? ajusteTexto(c, txt) : '';
       return `<td${c.rs ? ` rowspan="${c.rs}"` : ''}${c.cs ? ` colspan="${c.cs}"` : ''} style="${css(estiloCelda(c))}${extra}${ajuste}">${htmlEsc(txt)}</td>`;

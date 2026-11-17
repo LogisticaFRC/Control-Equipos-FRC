@@ -140,7 +140,7 @@ export default /* html */ `
           <tbody>
             <tr v-for="(fila, i) in filasFormato" :key="i" :style="{ height: F.rows[i] * E + 'px' }">
               <td v-for="c in fila" :key="c.c" :rowspan="c.rs || 1" :colspan="c.cs || 1" :style="estiloCelda(c, E)" :class="c.k ? 'ot-campo' : ''">
-                <template v-if="!c.k">{{ c.t }}</template>
+                <template v-if="!c.k">{{ etiquetaOT(otActual, c) }}</template>
                 <button v-else-if="c.k.startsWith('tipo:')" type="button" :disabled="!puedeEditar" @click="alternarTipo(c.k.slice(5))" class="ot-marca">{{ textoCelda(otActual, c.k) }}</button>
                 <button v-else-if="c.k.startsWith('pauta:')" type="button" :disabled="!puedeEditar" @click="alternarPauta(c.k.slice(6))" class="ot-marca">{{ textoCelda(otActual, c.k) }}</button>
                 <input v-else-if="c.k === 'folio'" type="text" inputmode="numeric" v-model="otActual.folio" :placeholder="'ej. ' + folioSugerido" :disabled="!puedeEditar" class="ot-in font-extrabold text-rose-700 text-center">
