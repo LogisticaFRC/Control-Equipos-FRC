@@ -68,6 +68,7 @@ export const cambiarUbicacionCrtg = async (e, texto, loc) => {
 
 // ---------- Pedir repuestos ----------
 export const MAX_FOTOS_PEDIDO = 5;
+export const afiPedido = ref('');   // AFI del equipo desde cuya ficha se abrió "Pedir repuestos"
 const comprimir = (file, max = 1600, calidad = 0.8) => new Promise((ok) => {
   if (!/^image\//.test(file.type)) return ok(file);
   const img = new Image(); const u = URL.createObjectURL(file);

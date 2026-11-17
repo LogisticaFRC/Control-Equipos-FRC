@@ -8,7 +8,7 @@ import { LugarSelect } from './chofer-checklist.view.js';
 import { buscarEquipoPorAfi } from '../../core/store.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 
-const { ref, computed, onMounted } = Vue;
+const { ref, computed, onMounted, watch } = Vue;
 
 /** Programa de mantención CRTG (resumido): el técnico marca Realizado / No realizado. */
 export const CrtgPrograma = {
@@ -81,6 +81,10 @@ export const CrtgPedido = {
         <option value="" disabled>Elige el equipo…</option>
         <option v-for="e in S.equiposApp.value" :key="e.id" :value="e.afi">AFI {{ e.afi }} · {{ e.tipo }} {{ e.marca }} {{ e.modelo }}</option>
       </select></label>
+    <div v-if="selEq" class="flex items-center gap-3 bg-slate-50 rounded-xl p-2" data-crtg="eqsel">
+      <span class="w-14 h-14 rounded-lg bg-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center"><img v-if="selEq.foto" :src="selEq.foto" alt="" class="w-full h-full object-cover"><i v-else class="fa-solid fa-truck-monster text-slate-400"></i></span>
+      <div class="min-w-0 text-sm"><b class="text-[#1f4d3a]">AFI {{ selEq.afi }}</b> {{ selEq.tipo }}<div class="text-xs text-slate-500 truncate">{{ selEq.marca }} {{ selEq.modelo }} · {{ selEq.ubicacion || '—' }}</div></div>
+    </div>
     <label class="block"><span class="text-[10px] font-bold text-slate-400">FECHA</span><input type="date" v-model="f.fecha" class="inp"></label>
     <label class="block"><span class="text-[10px] font-bold text-slate-400">¿QUÉ REPUESTO NECESITAS?</span>
       <textarea v-model="f.descripcion" rows="3" class="inp" placeholder="Ej: filtro de aire, 2 correas del alternador…" data-crtg="desc"></textarea></label>
@@ -111,7 +115,9 @@ export const CrtgPedido = {
   <p v-if="!K.misPedidos.value.length" class="text-center text-slate-400 py-6 text-sm">Aún no pides repuestos.</p>
 </section>`,
   setup() {
-    const f = ref(K.pedidoVacio(S.equipoSel.value?.afi || ''));
+    const f = ref(K.pedidoVacio(K.afiPedido.value || S.equipoSel.value?.afi || '')); K.afiPedido.value = '';
+    watch(K.afiPedido, (a) => { if (a) { f.value.afi = a; K.afiPedido.value = ''; } });
+    const selEq = computed(() => f.value.afi ? buscarEquipoPorAfi(f.value.afi) : null);
     const agregarFotos = (e) => {
       const files = [...(e.target.files || [])]; e.target.value = '';
       files.slice(0, K.MAX_FOTOS_PEDIDO - f.value.fotos.length).forEach(file => f.value.fotos.push({ file, url: URL.createObjectURL(file) }));
@@ -119,7 +125,7 @@ export const CrtgPedido = {
     };
     const enviar = async () => { if (await K.enviarPedido(f.value)) { S.avisoApp('Pedido enviado ✔'); f.value = K.pedidoVacio(); } };
     onMounted(K.cargarMisPedidos);
-    return { K, S, f, agregarFotos, enviar, formatDateForDisplay };
+    return { K, S, f, selEq, agregarFotos, enviar, formatDateForDisplay };
   }
 };
 

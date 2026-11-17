@@ -16,7 +16,8 @@ import ActividadesEquipo from './actividades-equipo.view.js';
 import * as CH from './chofer.service.js';   // CHOFER: check list / report camión pluma (2026-11-17)
 import { ChoferChecklist, ChecklistLista } from './chofer-checklist.view.js';
 import { CrtgPrograma, CrtgPedido, CrtgUbicacion } from './crtg.view.js';   // TERRENO CRTG (2026-11-17)
-import { LOGO_CRTG } from './crtg.service.js';   // TALLER: intervenciones + bloqueo + ART + mantención de un equipo en nave
+import { LOGO_CRTG } from './crtg.service.js';
+import * as K from './crtg.service.js';   // TALLER: intervenciones + bloqueo + ART + mantención de un equipo en nave
 import { naveDeAfi, colorNave, recargarTaller, navesLibres, cuposNave, CAPACIDAD_NAVE, ingresarANave, equiposEnNaves, problemasPendientes } from '../taller/taller.service.js';   // pestaña TALLER: cartas del programa de reparación + OT asignada + hallazgos
 
 const { ref, computed, onMounted, watch } = Vue;
@@ -239,7 +240,8 @@ export default {
         <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div class="p-4">
             <div class="flex items-start justify-between gap-2">
-              <div><div class="text-2xl font-black text-[#1f4d3a]">AFI {{ eq.afi }}</div><div class="font-bold text-slate-700">{{ eq.tipo }}</div><div class="text-sm text-slate-500">{{ eq.marca }} {{ eq.modelo }}</div></div>
+              <img v-if="eq.foto" :src="eq.foto" alt="" class="w-20 h-20 rounded-xl object-cover flex-shrink-0 border" data-foto-ficha>
+              <div class="flex-1 min-w-0"><div class="text-2xl font-black text-[#1f4d3a]">AFI {{ eq.afi }}</div><div class="font-bold text-slate-700">{{ eq.tipo }}</div><div class="text-sm text-slate-500">{{ eq.marca }} {{ eq.modelo }}</div></div>
               <span :class="['text-[11px] font-bold px-2 py-1 rounded-full', S.enTaller(eq) ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800']">{{ eq.disponibilidad }}</span>
             </div>
             <div class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>{{ eq.ubicacion || '—' }}</div>
@@ -261,7 +263,7 @@ export default {
         </div>
         <!-- CRTG: cambiar la ubicación del equipo (queda como movimiento) -->
         <crtg-ubicacion v-if="S.esCrtg.value" :eq="eq"></crtg-ubicacion>
-        <button v-if="S.esCrtg.value" @click="tab = 'repuestos'; S.cerrarEquipo()" class="w-full bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left"><span class="w-14 h-14 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-cart-plus"></i></span><span class="flex-1"><b class="block text-lg">Pedir repuestos</b><span class="text-xs text-slate-500">Para este u otro equipo, con fotos</span></span></button>
+        <button v-if="S.esCrtg.value" @click="K.afiPedido.value = eq.afi; tab = 'repuestos'; S.cerrarEquipo()" class="w-full bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left"><span class="w-14 h-14 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-cart-plus"></i></span><span class="flex-1"><b class="block text-lg">Pedir repuestos</b><span class="text-xs text-slate-500">Para este u otro equipo, con fotos</span></span></button>
         <!-- TALLER: solo equipos en nave tienen actividades; los demás solo se pueden agregar a una nave (no programado) -->
         <actividades-equipo v-if="S.esTaller.value && naveDeAfi(eq.afi)" :eq="eq"></actividades-equipo>
         <div v-else-if="S.esTaller.value" class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
@@ -312,7 +314,8 @@ export default {
         </div>
         <button v-for="e in listaEquipos.slice(0, limite)" :key="e.id" @click="S.abrirEquipo(e)" class="w-full bg-white rounded-2xl shadow-sm p-4 text-left active:scale-[.99] transition">
           <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0"><div class="text-lg font-black text-[#1f4d3a] leading-tight">AFI {{ e.afi }} <span class="text-sm font-bold text-slate-700">{{ e.tipo }}</span></div><div class="text-xs text-slate-500 truncate">{{ e.marca }} {{ e.modelo }} · {{ e.ubicacion || '—' }}</div></div>
+            <span class="w-14 h-14 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center" data-foto-eq><img v-if="e.foto" :src="e.foto" loading="lazy" alt="" class="w-full h-full object-cover"><i v-else class="fa-solid fa-truck-monster text-slate-300 text-xl"></i></span>
+            <div class="min-w-0 flex-1"><div class="text-lg font-black text-[#1f4d3a] leading-tight">AFI {{ e.afi }} <span class="text-sm font-bold text-slate-700">{{ e.tipo }}</span></div><div class="text-xs text-slate-500 truncate">{{ e.marca }} {{ e.modelo }} · {{ e.ubicacion || '—' }}</div></div>
             <span v-if="S.esTaller.value && naveDeAfi(e.afi)" :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', colorNave(naveDeAfi(e.afi)).chip]">{{ naveDeAfi(e.afi) }}</span>
             <span v-else-if="S.enTaller(e)" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 whitespace-nowrap">En taller</span>
           </div>
@@ -437,7 +440,7 @@ export default {
       try { if (await ingresarANave(nave, { afi: e.afi })) S.avisoApp(`AFI ${e.afi} ingresado a la ${nave} ✔`); }
       finally { ocupado.value = false; }
     };
-    return { S, CH, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
+    return { S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };
