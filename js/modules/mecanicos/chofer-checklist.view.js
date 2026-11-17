@@ -9,8 +9,54 @@ import { esVehiculo } from '../inventario/inventario.mapper.js';
 
 const { watch, ref, computed } = Vue;
 
+
+/** Campo de lugar (Desde / Hasta): al tocarlo muestra las locaciones en orden (empresa · área) y al escribir filtra.
+ *  Si no está en la lista se puede usar como "otro lugar" (en Hasta avisa que llega a Operaciones). */
+const LugarSelect = {
+  name: 'LugarSelect',
+  props: { modelValue: { type: String, default: '' }, etiqueta: String, campo: String, avisar: Boolean },
+  emits: ['update:modelValue'],
+  template: /* html */ `
+<div>
+  <span class="text-[10px] font-bold text-slate-400">{{ etiqueta }}</span>
+  <div class="relative">
+    <input :value="modelValue" @input="e => { $emit('update:modelValue', e.target.value); abierta = true; }" @focus="abierta = true"
+      class="inp pr-10" placeholder="Toca o escribe para buscar" :data-chofer="campo" autocomplete="off">
+    <button v-if="modelValue" @click="$emit('update:modelValue', ''); abierta = true" class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div v-if="abierta" class="mt-1 border-2 border-sky-200 rounded-xl bg-white max-h-72 overflow-y-auto">
+    <template v-for="g in grupos" :key="g.label">
+      <p class="sticky top-0 bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-500 uppercase">{{ g.label }}</p>
+      <button v-for="o in g.opciones" :key="o.value" @click="elegir(o.value)" :data-lugar="campo + ':' + o.value"
+        :class="['w-full text-left px-3 py-2.5 border-b last:border-0 text-sm', modelValue === o.value ? 'bg-emerald-50 font-black text-emerald-800' : 'active:bg-sky-50']">
+        <i class="fa-solid fa-location-dot text-emerald-600 mr-1"></i>{{ o.label }}</button>
+    </template>
+    <p v-if="!grupos.length" class="px-3 py-2 text-xs text-slate-400 italic">No está en la lista.</p>
+    <button v-if="modelValue && !loc" @click="elegir(String(modelValue).trim().toUpperCase())" class="w-full text-left px-3 py-2.5 text-sm font-bold text-amber-700 bg-amber-50" :data-chofer="'usar-otro-' + campo">
+      <i class="fa-solid fa-pen mr-1"></i>Usar "{{ String(modelValue).toUpperCase() }}" como otro lugar</button>
+  </div>
+  <p v-if="loc && !abierta" class="text-[11px] font-bold text-emerald-700 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>{{ loc.empresa || 'Ubicación del sistema' }}</p>
+  <p v-else-if="avisar && modelValue && !loc && !abierta" class="text-[11px] text-amber-700 mt-0.5"><i class="fa-solid fa-bell mr-1"></i>Lugar nuevo: le llegará un aviso a Operaciones para agregarlo a las locaciones.</p>
+</div>`,
+  setup(props, { emit }) {
+    const abierta = ref(false);
+    const sinTilde = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    const loc = computed(() => C.locDeTexto(props.modelValue));
+    const grupos = computed(() => {
+      const q = sinTilde(props.modelValue).trim();
+      if (!q || loc.value) return C.gruposDestino.value;
+      return C.gruposDestino.value
+        .map(g => ({ label: g.label, opciones: g.opciones.filter(o => sinTilde(g.label + ' ' + o.label).includes(q)) }))
+        .filter(g => g.opciones.length);
+    });
+    const elegir = (v) => { emit('update:modelValue', v); abierta.value = false; };
+    return { abierta, loc, grupos, elegir };
+  }
+};
+
 export const ChoferChecklist = {
   name: 'ChoferChecklist',
+  components: { LugarSelect },
   template: /* html */ `
 <div v-if="f" class="pb-28">
   <!-- Pasos -->
@@ -196,27 +242,8 @@ export const ChoferChecklist = {
           <!-- Desde / Hasta -->
           <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
             <p class="lbl">3. Desde → Hasta</p>
-            <input v-model="act.desde" class="inp" placeholder="Desde" data-chofer="desde">
-            <!-- HASTA: escribir filtra; al tocar el campo aparece la lista completa en orden (por empresa · área) -->
-            <div class="relative">
-              <span class="text-[10px] font-bold text-slate-400">HASTA</span>
-              <div class="relative">
-                <input v-model="act.hasta" @focus="listaHasta = true" @input="listaHasta = true" class="inp pr-10 uppercase" placeholder="Toca o escribe para buscar" data-chofer="hasta" autocomplete="off">
-                <button v-if="act.hasta" @click="act.hasta = ''; listaHasta = true" class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
-              </div>
-              <div v-if="listaHasta" class="mt-1 border-2 border-sky-200 rounded-xl bg-white max-h-72 overflow-y-auto">
-                <template v-for="g in gruposFiltrados" :key="g.label">
-                  <p class="sticky top-0 bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-500 uppercase">{{ g.label }}</p>
-                  <button v-for="o in g.opciones" :key="o.value" @click="act.hasta = o.value; listaHasta = false" :data-lugar="o.value"
-                    :class="['w-full text-left px-3 py-2.5 border-b last:border-0 text-sm', act.hasta === o.value ? 'bg-emerald-50 font-black text-emerald-800' : 'active:bg-sky-50']">
-                    <i class="fa-solid fa-location-dot text-emerald-600 mr-1"></i>{{ o.label }}</button>
-                </template>
-                <p v-if="!gruposFiltrados.length" class="px-3 py-2 text-xs text-slate-400 italic">No está en la lista.</p>
-                <button v-if="act.hasta && !locAct" @click="listaHasta = false" class="w-full text-left px-3 py-2.5 text-sm font-bold text-amber-700 bg-amber-50" data-chofer="usar-otro"><i class="fa-solid fa-pen mr-1"></i>Usar "{{ act.hasta.toUpperCase() }}" como otro lugar</button>
-              </div>
-            </div>
-            <p v-if="act.hasta && !locAct && !listaHasta" class="text-[11px] text-amber-700"><i class="fa-solid fa-bell mr-1"></i>Lugar nuevo: le llegará un aviso a Operaciones para agregarlo a las locaciones.</p>
-            <p v-if="locAct" class="text-[11px] font-bold text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>{{ locAct.texto }}{{ locAct.empresa ? ' · ' + locAct.empresa : '' }}</p>
+            <lugar-select v-model="act.desde" etiqueta="DESDE" campo="desde"></lugar-select>
+            <lugar-select v-model="act.hasta" etiqueta="HASTA" campo="hasta" avisar></lugar-select>
           </div>
           <!-- Horas -->
           <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
@@ -294,17 +321,6 @@ export const ChoferChecklist = {
       if (!act.value.desde && e.ubicacion) act.value.desde = e.ubicacion;
     };
     const locAct = computed(() => (act.value ? C.locDeTexto(act.value.hasta) : null));
-    // "Hasta": lista en orden (empresa · área); al escribir se filtra por cualquier parte del nombre
-    const listaHasta = ref(false);
-    const sinTilde = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
-    const gruposFiltrados = computed(() => {
-      const q = sinTilde(act.value?.hasta).trim();
-      if (!q || C.locDeTexto(act.value?.hasta)) return C.gruposDestino.value;
-      return C.gruposDestino.value
-        .map(g => ({ label: g.label, opciones: g.opciones.filter(o => sinTilde(g.label + ' ' + o.label).includes(q)) }))
-        .filter(g => g.opciones.length);
-    });
-    watch(act, () => { listaHasta.value = false; });
     const ahora = () => new Date().toTimeString().slice(0, 5);
     const guardarAct = () => {
       const a = act.value;
@@ -316,7 +332,7 @@ export const ChoferChecklist = {
     const eliminarAct = () => { if (confirm('¿Quitar este traslado?')) { C.quitarActividad(act.value); act.value = null; } };
     return { C, f, nombre, arriba, buscaCamion, camionSel, camionesFiltrados, elegirCamion, cambiarCamion, docs,
       grupoAbierto, itemsGrupo, hechosGrupo, siguiente,
-      act, editando, buscaEq, nFotos, nuevaAct, editar, equipoAct, equiposFiltrados, elegirEquipo, locAct, listaHasta, gruposFiltrados, ahora, guardarAct, eliminarAct,
+      act, editando, buscaEq, nFotos, nuevaAct, editar, equipoAct, equiposFiltrados, elegirEquipo, locAct, ahora, guardarAct, eliminarAct,
       formatDateForDisplay };
   }
 };
