@@ -81,16 +81,28 @@ export const ChoferChecklist = {
         <input v-model="a.afi" @change="C.alCambiarAfiAct(a)" list="dl-chofer-afi" class="inp px-2 font-mono font-black uppercase" placeholder="AFI" :data-chofer="'afi' + k">
         <input v-model="a.equipo" class="inp px-2 col-span-2" placeholder="Equipo (ej. Generador)">
       </div>
-      <div class="grid grid-cols-2 gap-2">
-        <input v-model="a.desde" class="inp px-2" placeholder="Desde" :data-chofer="'desde' + k">
-        <input v-model="a.hasta" class="inp px-2" placeholder="Hasta" :data-chofer="'hasta' + k">
+      <input v-model="a.desde" class="inp px-2" placeholder="Desde" :data-chofer="'desde' + k">
+      <div>
+        <input v-model="a.hasta" list="dl-chofer-destinos" class="inp px-2" placeholder="Hasta (elige la ubicación de la lista)" :data-chofer="'hasta' + k">
+        <p v-if="a.afi && a.hasta" :class="['text-[10px] font-bold mt-0.5', C.locDeTexto(a.hasta) ? 'text-emerald-700' : 'text-amber-700']">
+          {{ C.locDeTexto(a.hasta) ? '✓ Ubicación del sistema: el equipo quedará en ' + C.locDeTexto(a.hasta).texto + (C.locDeTexto(a.hasta).empresa ? ' (' + C.locDeTexto(a.hasta).empresa + ')' : '') : 'Texto libre: se guarda tal cual (Operaciones puede ajustarlo en Movimientos)' }}</p>
       </div>
       <div class="grid grid-cols-3 gap-2">
         <label class="block"><span class="text-[10px] font-bold text-slate-400">Hora inicio</span><input type="time" v-model="a.h_ini" class="inp px-1"></label>
         <label class="block"><span class="text-[10px] font-bold text-slate-400">Hora término</span><input type="time" v-model="a.h_fin" class="inp px-1"></label>
         <label class="block"><span class="text-[10px] font-bold text-slate-400">C/U</span><input v-model="a.cu" class="inp px-2"></label>
       </div>
+      <!-- Fotos del equipo (2026-11-17) -->
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <img v-for="(u, i) in (a.fotos || [])" :key="'s' + i" :src="u" @click="C.quitarFotoSubida(a, i)" title="Toca para quitar" class="w-16 h-16 object-cover rounded-xl border">
+        <img v-for="(p, i) in (C.fotosPend.value[k] || [])" :key="'p' + i" :src="p.url" @click="C.quitarFotoPend(k, i)" title="Toca para quitar" class="w-16 h-16 object-cover rounded-xl border-2 border-dashed border-sky-400">
+        <label class="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 flex flex-col items-center justify-center text-[10px] font-bold cursor-pointer">
+          <i class="fa-solid fa-camera text-lg"></i>Fotos
+          <input type="file" accept="image/*" capture="environment" multiple class="hidden" @change="e => C.agregarFotos(k, e)" :data-chofer="'fotos' + k">
+        </label>
+      </div>
     </div>
+    <datalist id="dl-chofer-destinos"><option v-for="d in C.destinosLoc.value" :key="d.id" :value="d.texto">{{ d.empresa }}</option></datalist>
     <datalist id="dl-chofer-afi"><option v-for="e in dbEquipos" :key="e.id" :value="e.afi">{{ e.tipo }} {{ e.marca }} {{ e.modelo }}</option></datalist>
   </section>
 
@@ -101,7 +113,7 @@ export const ChoferChecklist = {
       <p><b>Camión:</b> {{ f.patente || '—' }} {{ f.marca }} {{ f.modelo }} · {{ formatDateForDisplay(f.fecha) }}</p>
       <p><b>Km:</b> {{ f.km_ini || '—' }} → {{ f.km_fin || '—' }}</p>
       <p><b>Check list:</b> {{ C.ITEMS_CHECK.length - C.faltantesCheck.value.length }}/{{ C.ITEMS_CHECK.length }} marcados<span v-if="C.malosCheck.value.length" class="text-rose-700 font-bold"> · {{ C.malosCheck.value.length }} MALO: {{ C.malosCheck.value.map(i => i.texto).join(', ') }}</span></p>
-      <p><b>Traslados:</b> {{ C.actividadesLlenas(f).length }}</p>
+      <p><b>Traslados:</b> {{ C.actividadesLlenas(f).length }} · <b>Fotos:</b> {{ f.actividades.reduce((s, a) => s + (a.fotos || []).length, 0) + Object.values(C.fotosPend.value).reduce((s, l) => s + l.length, 0) }}</p>
     </div>
   </section>
 
@@ -131,7 +143,11 @@ export const ChecklistLista = {
     <span class="w-11 h-11 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-truck"></i></span>
     <div class="flex-1 min-w-0">
       <p class="font-black text-slate-800">{{ r.patente }} <span class="text-xs font-bold text-slate-500">{{ formatDateForDisplay(r.fecha) }}</span></p>
-      <p class="text-xs text-slate-500 truncate"><span v-if="todos" class="font-bold text-slate-700">{{ r.chofer || r.usuario }} · </span>Km {{ r.km_ini || '—' }} → {{ r.km_fin || '—' }} · {{ (r.actividades || []).length }} traslado(s)<span v-if="malos(r)" class="text-rose-600 font-bold"> · {{ malos(r) }} malo(s)</span></p>
+      <p class="text-xs text-slate-500 truncate"><span v-if="todos" class="font-bold text-slate-700">{{ r.chofer || r.usuario }} · </span>Km {{ r.km_ini || '—' }} → {{ r.km_fin || '—' }} · {{ (r.actividades || []).length }} traslado(s)<span v-if="fotos(r).length"> · {{ fotos(r).length }} foto(s)</span><span v-if="malos(r)" class="text-rose-600 font-bold"> · {{ malos(r) }} malo(s)</span></p>
+    </div>
+    <div v-if="fotos(r).length" class="hidden sm:flex gap-1">
+      <a v-for="(u, i) in fotos(r).slice(0, 4)" :key="i" :href="u" target="_blank" rel="noopener"><img :src="u" class="w-10 h-10 object-cover rounded-lg border"></a>
+      <span v-if="fotos(r).length > 4" class="text-[10px] font-bold text-slate-500 self-center">+{{ fotos(r).length - 4 }}</span>
     </div>
     <button @click="C.descargarChecklistExcel(r)" class="px-3 py-2 rounded-xl border font-bold text-xs text-emerald-700" title="Descargar documento"><i class="fa-solid fa-file-excel mr-1"></i>Excel</button>
     <button v-if="todos && puedeEliminar" @click="C.eliminarChecklist(r)" class="px-2 py-2 rounded-xl text-slate-300 hover:text-rose-600" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
@@ -145,8 +161,9 @@ export const ChecklistLista = {
       return q ? l.filter(r => [r.patente, r.chofer, r.usuario, ...(r.actividades || []).map(a => a.afi + ' ' + a.hasta)].join(' ').toUpperCase().includes(q)) : l;
     });
     const malos = (r) => Object.values(r.checklist || {}).filter(v => v === 'M').length;
+    const fotos = (r) => (r.actividades || []).flatMap(a => a.fotos || []);
     Vue.onMounted(() => (props.todos ? C.cargarTodosChecklist() : C.cargarMisChecklist()));
-    return { C, lista, malos, formatDateForDisplay };
+    return { C, lista, malos, fotos, formatDateForDisplay };
   }
 };
 

@@ -17,5 +17,6 @@ export const mapMovimiento = (item) => ({
   estado: String(item.estado || ''),
   camion: String(item.camion_encargado || ''),
   conductor: String(item.conductor_encargado || ''),
-  locacionId: item.locacion_id ?? null
+  locacionId: item.locacion_id ?? null,
+  fotos: Array.isArray(item.fotos) ? item.fotos : []   // fotos del equipo (check list de chofer · 2026-11-17)
 });

@@ -61,7 +61,8 @@ export default /* html */ `
         <tbody class="divide-y bg-white">
           <tr v-for="m in filteredMovimientos" :key="m.id" class="hover:bg-slate-50">
             <td class="p-2.5 font-mono font-bold text-slate-800 bg-amber-50/30">{{ formatDateForDisplay(m.fecha) }}</td>
-            <td class="p-2.5 font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(m.afi)">{{ m.afi }}</td>
+            <td class="p-2.5 font-bold text-amber-700 whitespace-nowrap"><span class="cursor-pointer hover:underline" @click="verDetallePorAfiString(m.afi)">{{ m.afi }}</span>
+              <a v-for="(u, i) in m.fotos" :key="i" :href="u" target="_blank" rel="noopener" :title="'Foto ' + (i + 1)" class="ml-1 text-sky-600 hover:text-sky-800"><i class="fa-solid fa-camera"></i></a></td>
             <td class="p-2.5 text-slate-600">{{ descEquipoMov(m.afi) || '-' }}</td>
             <td class="p-2.5 font-semibold">{{ m.tipo }}</td>
             <td class="p-2.5 text-slate-600">{{ m.origen || '-' }}</td>

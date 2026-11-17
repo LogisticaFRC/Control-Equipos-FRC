@@ -932,3 +932,8 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 
 ## 2026-11-17 · Menú: área "Personal Técnico"
 - El área **Mecánicos** del menú ahora se llama **Personal Técnico** (clave interna sigue 'mecanicos', mismos permisos) con dos submódulos: **Mecánicos** (mecPanel: intervenciones y firmas) y **Choferes** (choferPanel: todos los check list / report de camión pluma, buscador, Excel, eliminar Admin) → `ChoferesPanelView` en mecanicos/chofer-checklist.view.js.
+
+## 2026-11-17 · Chofer: traslados actualizan el equipo + fotos
+- "Hasta" ofrece la lista de **locaciones del módulo Áreas** (ÁREA / SECTOR / LOCACIÓN). Si se elige una, el traslado queda igual que "Registrar nuevo movimiento": movimiento con locación y empresa, y el **equipo cambia de ubicación en el Inventario** (ubicación, locación, empresa). Con texto libre se guarda el texto como ubicación.
+- **Fotos del equipo** en cada traslado (cámara del celular, hasta 6, se comprimen a 1600 px y se suben al enviar a `choferes/`). Se ven en Personal Técnico → Choferes y en Movimientos (ícono de cámara junto al AFI). Columna nueva `BD_MOVIMIENTOS.fotos` (jsonb).
+- **Volver a ejecutar sql/chofer.sql** (agrega la columna fotos y la nueva versión de frc_chofer_guardar). Probado en Postgres local.

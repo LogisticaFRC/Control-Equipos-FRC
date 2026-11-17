@@ -14,10 +14,12 @@
 // El documento se genera rellenando la plantilla original plantillas/CHECKLIST_CAMION_PLUMA.xlsx
 // (queda igual al formato).
 // =====================================================================
-import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
+import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
 import { usuarioActivo, dbEquipos, buscarEquipoPorAfi, cargarDatosDesdeSupabase } from '../../core/store.js';
 import { hoyISO, formatDateForDisplay, mismoAfi } from '../../core/utils.js';
 import { esVehiculo } from '../inventario/inventario.mapper.js';
+import { dbLocaciones } from '../../core/store.js';
+import { TIPOS, textoUbicacion, rutaDe } from '../areas/areas.service.js';
 
 const { ref, computed } = Vue;
 
@@ -61,7 +63,7 @@ export const OPCIONES_CHECK = [
 export const TIPOS_TRASLADO = ['ENTREGA', 'RETIRO', 'TRASLADO', 'OTRO'];
 export const N_ACTIVIDADES_CHOFER = 5;
 
-const actVacia = () => ({ traslado: '', equipo: '', afi: '', cu: '', desde: '', hasta: '', h_ini: '', h_fin: '' });
+const actVacia = () => ({ traslado: '', equipo: '', afi: '', cu: '', desde: '', hasta: '', h_ini: '', h_fin: '', fotos: [] });
 export const checklistVacio = () => ({
   patente: '', marca: '', modelo: '', fecha: hoyISO(), venc_revision: '', venc_permiso: '',
   cam_hrs_ini: '', cam_hrs_fin: '', cam_hrs_prox: '', km_ini: '', km_fin: '', km_prox: '',
@@ -85,6 +87,52 @@ export const alCambiarAfiAct = (a) => {
   if (e && !a.desde && e.ubicacion) a.desde = e.ubicacion;
 };
 
+// ---------- Destino: locaciones del módulo Áreas (así el equipo queda en la misma ubicación que usa Movimientos) ----------
+/** [{ id, texto: 'ÁREA / SECTOR / LOCACIÓN', empresa }] */
+export const destinosLoc = computed(() => dbLocaciones.value.filter(n => n.tipo === TIPOS.LOCACION)
+  .map(n => ({ id: n.id, texto: textoUbicacion(n.id), empresa: rutaDe(n.id).empresa?.nombre || '' }))
+  .filter(x => x.texto).sort((a, b) => a.texto.localeCompare(b.texto)));
+const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+/** Locación que calza con lo escrito en "Hasta" (texto exacto de la lista). */
+export const locDeTexto = (t) => destinosLoc.value.find(x => norm(x.texto) === norm(t)) || null;
+
+// ---------- Fotos de los equipos (se suben al enviar) ----------
+// Archivos elegidos por actividad (no van al borrador: solo se guardan las URL ya subidas).
+export const fotosPend = ref({});   // índice de actividad → [{ file, url (vista previa) }]
+const comprimir = (file, max = 1600, calidad = 0.8) => new Promise((ok) => {
+  if (!/^image\//.test(file.type)) return ok(file);
+  const img = new Image(); const u = URL.createObjectURL(file);
+  img.onload = () => {
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(b => { URL.revokeObjectURL(u); ok(b || file); }, 'image/jpeg', calidad);
+  };
+  img.onerror = () => { URL.revokeObjectURL(u); ok(file); };
+  img.src = u;
+});
+export const agregarFotos = (k, e) => {
+  const files = [...(e.target.files || [])]; e.target.value = '';
+  const l = fotosPend.value[k] || [];
+  files.forEach(file => l.push({ file, url: URL.createObjectURL(file) }));
+  fotosPend.value = { ...fotosPend.value, [k]: l.slice(0, 6) };
+};
+export const quitarFotoPend = (k, i) => { const l = [...(fotosPend.value[k] || [])]; l.splice(i, 1); fotosPend.value = { ...fotosPend.value, [k]: l }; };
+export const quitarFotoSubida = (a, i) => { a.fotos.splice(i, 1); };
+const subirFotosPend = async (f) => {
+  for (const [k, lista] of Object.entries(fotosPend.value)) {
+    const a = f.actividades[k]; if (!a || !lista.length) continue;
+    a.fotos = a.fotos || [];
+    while (lista.length) {
+      const blob = await comprimir(lista[0].file);
+      const nombre = `choferes/${String(f.patente || 'CAMION').replace(/[^A-Z0-9-]/gi, '')}_${f.fecha}_${String(a.afi || 'EQ').replace(/[^A-Z0-9-]/gi, '')}_${Date.now()}_${a.fotos.length + 1}.jpg`;
+      a.fotos.push(await subirArchivoStorage(nombre, blob));
+      lista.shift();   // si se corta la señal, lo ya subido no se vuelve a subir
+    }
+  }
+  fotosPend.value = {};
+};
+
 // ---------- Borrador (si se corta la señal no se pierde) ----------
 const BORRADOR = () => 'frc_checklist_chofer_' + (usuarioActivo.value?.usuario || '');
 export const formCheck = ref(null);
@@ -93,6 +141,8 @@ export const PASOS_CHECK = ['Camión', 'Check list', 'Report', 'Enviar'];
 export const nuevoChecklist = () => {
   let b = null; try { b = JSON.parse(localStorage.getItem(BORRADOR()) || 'null'); } catch (_) { b = null; }
   formCheck.value = (b && confirm('Tienes un check list sin enviar. ¿Seguir con ese borrador?')) ? { ...checklistVacio(), ...b } : checklistVacio();
+  formCheck.value.actividades.forEach(a => { if (!Array.isArray(a.fotos)) a.fotos = []; });
+  fotosPend.value = {};
   pasoCheck.value = 1;
 };
 export const guardarBorradorCheck = () => { try { if (formCheck.value) localStorage.setItem(BORRADOR(), JSON.stringify(formCheck.value)); } catch (_) { /* lleno */ } };
@@ -113,14 +163,19 @@ export const enviarChecklist = async () => {
   if (num(f.km_ini) && num(f.km_fin) && num(f.km_fin) < num(f.km_ini)) { pasoCheck.value = 1; alert('El km de término es menor que el de inicio.'); return false; }
   if (faltantesCheck.value.length && !confirm(`Faltan ${faltantesCheck.value.length} ítem(s) del check list sin marcar. ¿Enviar igual?`)) { pasoCheck.value = 2; return false; }
   const u = usuarioActivo.value || {};
+  enviandoCheck.value = true;
+  try { await subirFotosPend(f); }
+  catch (err) { enviandoCheck.value = false; guardarBorradorCheck(); alert('No se pudieron subir las fotos: ' + errMsg(err) + '\nRevisa la señal e intenta de nuevo.'); return false; }
+  guardarBorradorCheck();
   const datos = JSON.parse(JSON.stringify(f));
   datos.patente = String(f.patente).trim().toUpperCase();
   datos.chofer = u.nombre || u.usuario || '';
   datos.actividades = actividadesLlenas(f).map(a => {
     const e = buscarEquipoPorAfi(a.afi);
-    return { ...a, afi: String(a.afi || '').trim().toUpperCase(), tipo_equipo: e ? e.tipo : '' };
+    const loc = locDeTexto(a.hasta);
+    return { ...a, afi: String(a.afi || '').trim().toUpperCase(), tipo_equipo: e ? e.tipo : '',
+      hasta: loc ? loc.texto : a.hasta, locacion_id: loc ? loc.id : null, empresa: loc ? loc.empresa : '' };
   });
-  enviandoCheck.value = true;
   try {
     const { data, error } = await supabaseClient.rpc('frc_chofer_guardar', { p_datos: datos });
     if (error) throw error;
@@ -128,7 +183,8 @@ export const enviarChecklist = async () => {
     formCheck.value = null;
     await Promise.all([cargarMisChecklist(), cargarDatosDesdeSupabase(['movimientos', 'inventario']).catch(() => {})]);
     const reg = misChecklist.value.find(r => String(r.id) === String(data)) || { id: data, ...datos, datos };
-    if (confirm('¡Check list enviado!' + (datos.actividades.filter(a => a.afi).length ? ` Se registraron ${datos.actividades.filter(a => a.afi).length} traslado(s) en Movimientos.` : '') + '\n¿Descargar el documento (Excel FRC-RE-OPE-018)?')) await descargarChecklistExcel(reg);
+    const nMov = datos.actividades.filter(a => a.afi).length;
+    if (confirm('¡Check list enviado!' + (nMov ? ` Se registraron ${nMov} traslado(s) en Movimientos y se actualizó la ubicación de los equipos.` : '') + '\n¿Descargar el documento (Excel FRC-RE-OPE-018)?')) await descargarChecklistExcel(reg);
     return true;
   } catch (err) {
     alert(/frc_chofer_guardar|bd_checklist_chofer|function|schema cache/i.test(errMsg(err)) ? SQL_CHOFER : 'No se pudo enviar: ' + errMsg(err));

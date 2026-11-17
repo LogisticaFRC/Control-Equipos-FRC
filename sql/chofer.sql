@@ -3,7 +3,9 @@
 -- Ejecutar UNA vez en Supabase → SQL Editor → Run.
 --   · bd_checklist_chofer: cada check list enviado (datos completos en jsonb)
 --   · frc_chofer_guardar(p_datos): guarda el check list, registra cada traslado con AFI
---     en BD_MOVIMIENTOS (camión + chofer) y actualiza el km del camión si es mayor.
+--     en BD_MOVIMIENTOS (camión + chofer + fotos), deja el equipo en la nueva ubicación del
+--     Inventario (ubicación / locación / empresa, igual que Movimientos) y actualiza el km del camión.
+-- Se puede volver a ejecutar sin problema (2026-11-17: ubicación del equipo + fotos).
 -- El chofer es un usuario con permisos { mecanicos: 'subadmin', mec_modo: 'chofer' }.
 -- =====================================================================
 
@@ -15,6 +17,9 @@ create table if not exists public.bd_checklist_chofer (
   patente     text,
   datos       jsonb not null default '{}'::jsonb
 );
+-- Fotos del equipo en cada movimiento (2026-11-17)
+alter table public."BD_MOVIMIENTOS" add column if not exists fotos jsonb;
+
 create index if not exists bd_checklist_chofer_usuario on public.bd_checklist_chofer (usuario, id desc);
 
 alter table public.bd_checklist_chofer enable row level security;
@@ -36,6 +41,10 @@ declare
   v_patente text := upper(trim(coalesce(p_datos->>'patente', '')));
   v_chofer text := coalesce(nullif(p_datos->>'chofer', ''), '');
   v_km numeric;
+  v_cols text;
+  v_mov jsonb;
+  v_inv jsonb;
+  v_set text;
   a jsonb;
 begin
   if not public.frc_puede(array['mecanicos', 'operaciones'], 'subadmin') then
@@ -48,21 +57,44 @@ begin
   values (v_usuario, coalesce(v_fecha, current_date), v_patente, p_datos)
   returning id into v_id;
 
-  -- Traslados → BD_MOVIMIENTOS (solo informativo: no cambia la ubicación del equipo en el inventario)
+  -- Columnas de BD_MOVIMIENTOS que existen (locacion_id viene de sql/areas.sql; fotos se agrega arriba)
+  select string_agg(quote_ident(column_name), ', ') into v_cols
+    from information_schema.columns
+   where table_schema = 'public' and table_name = 'BD_MOVIMIENTOS'
+     and column_name = any (array['afi','fecha','tipo','ubicacion_anterior','ubicacion_actual','empresa_arriendo','estado',
+                                  'camion_encargado','conductor_encargado','locacion_id','fotos']);
+
   for a in select * from jsonb_array_elements(coalesce(p_datos->'actividades', '[]'::jsonb)) loop
-    if coalesce(trim(a->>'afi'), '') <> '' then
-      insert into public."BD_MOVIMIENTOS" (afi, fecha, tipo, ubicacion_anterior, ubicacion_actual, estado, camion_encargado, conductor_encargado)
-      select r.afi, r.fecha, r.tipo, r.ubicacion_anterior, r.ubicacion_actual, r.estado, r.camion_encargado, r.conductor_encargado
-      from jsonb_populate_record(null::public."BD_MOVIMIENTOS", jsonb_build_object(
-        'afi', upper(trim(a->>'afi')),
-        'fecha', coalesce(v_fecha, current_date)::text,
-        'tipo', trim(both ' ·' from concat_ws(' · ', nullif(a->>'tipo_equipo', ''), nullif(a->>'traslado', ''), 'CHOFER')),
-        'ubicacion_anterior', coalesce(a->>'desde', ''),
-        'ubicacion_actual', coalesce(a->>'hasta', ''),
-        'estado', '',
-        'camion_encargado', v_patente,
-        'conductor_encargado', upper(v_chofer)
-      )) r;
+    if coalesce(trim(a->>'afi'), '') = '' then continue; end if;
+
+    -- 1) Movimiento (igual que "Registrar nuevo movimiento")
+    v_mov := jsonb_build_object(
+      'afi', upper(trim(a->>'afi')),
+      'fecha', coalesce(v_fecha, current_date)::text,
+      'tipo', trim(both ' ·' from concat_ws(' · ', nullif(a->>'tipo_equipo', ''), nullif(a->>'traslado', ''), 'CHOFER')),
+      'ubicacion_anterior', coalesce(a->>'desde', ''),
+      'ubicacion_actual', coalesce(a->>'hasta', ''),
+      'empresa_arriendo', upper(coalesce(a->>'empresa', '')),
+      'estado', '',
+      'camion_encargado', v_patente,
+      'conductor_encargado', upper(v_chofer),
+      'locacion_id', nullif(a->>'locacion_id', ''),
+      'fotos', coalesce(a->'fotos', '[]'::jsonb));
+    execute format('insert into public."BD_MOVIMIENTOS" (%1$s) select %1$s from jsonb_populate_record(null::public."BD_MOVIMIENTOS", $1)', v_cols)
+      using v_mov;
+
+    -- 2) Ubicación del equipo en el Inventario (si existe y se indicó destino)
+    if coalesce(trim(a->>'hasta'), '') <> '' then
+      v_inv := jsonb_build_object('ubicacion', a->>'hasta');
+      if nullif(a->>'locacion_id', '') is not null then v_inv := v_inv || jsonb_build_object('locacion_id', a->>'locacion_id'); end if;
+      if coalesce(a->>'empresa', '') <> '' then v_inv := v_inv || jsonb_build_object('empresa_arriendo', upper(a->>'empresa')); end if;
+      select string_agg(format('%1$I = r.%1$I', column_name), ', ') into v_set
+        from information_schema.columns
+       where table_schema = 'public' and table_name = 'BD_INVENTARIO' and column_name in (select jsonb_object_keys(v_inv));
+      if v_set is not null then
+        execute format('update public."BD_INVENTARIO" i set %s from jsonb_populate_record(null::public."BD_INVENTARIO", $1) r where upper(trim(i.afi::text)) = $2', v_set)
+          using v_inv, upper(trim(a->>'afi'));
+      end if;
     end if;
   end loop;
 
