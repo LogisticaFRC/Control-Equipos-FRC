@@ -903,7 +903,7 @@ export const cerrarOTsDeItem = async (item, cerrar = true) => {
     if (!O.dbOT.value.length) await O.cargarOT();
     let repIds = [];
     try { repIds = (await sb(supabaseClient.from(TABLAS.TALLER).select('id').eq('programa_item_id', item.id))).map(r => String(r.id)); } catch (e) { repIds = []; }
-    const folios = new Set(reportesDeItem(item).map(m => (String(m.numeroOT || '').match(/\d+/) || [])[0]).filter(Boolean).map(Number));
+    const folios = new Set(reportesDeItem(item).filter(m => !/F/i.test(String(m.numeroOT || '').replace(/\d.*$/, ''))).map(m => (String(m.numeroOT || '').match(/\d+/) || [])[0]).filter(Boolean).map(Number));
     const ids = O.dbOT.value.filter(o => (o.reparacion_id != null && repIds.includes(String(o.reparacion_id)))
       || (folios.has(Number(o.folio)) && mismoEquipo(o.afi, item.afi))).map(o => o.id);
     return await O.cerrarOTs(ids, cerrar);

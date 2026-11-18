@@ -111,7 +111,7 @@ export const dispHistorica = computed(() => {
 // =====================================================================
 // 2. MANTENCIÓN
 // =====================================================================
-const intervF = computed(() => dbIntervenciones.value.filter(i => enFiltro(i.afi) && dentro(i.fecha)));
+export const intervF = computed(() => dbIntervenciones.value.filter(i => enFiltro(i.afi) && dentro(i.fecha)));
 export const mantencion = computed(() => {
   const lista = intervF.value;
   const prev = lista.filter(i => claseMantencion(i) || /PREVENTIV|PREDICTIV/i.test(`${i.tipoMant} ${i.causa}`)).length;

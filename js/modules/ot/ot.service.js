@@ -77,8 +77,16 @@ export const cargarOT = async () => {
 
 // ---------- Relación con el Historial ----------
 const numeroDe = (v) => { const m = String(v || '').match(/\d+/); return m ? Number(m[0]) : null; };
+// ---------- OTR / OTF (2026-11-18): el N° OT del Historial puede ser una OT de Reparación (130) o de Fallas (OTF-2) ----------
+/** ¿El N° OT es de una OT de Fallas? ("OTF-2", "OF-2"). */
+export const esOTF = (v) => /^\s*O?T?F\s*-?\s*\d+/i.test(String(v || '')) && /F/i.test(String(v || '').replace(/\d.*$/, ''));
+/** Etiqueta para mostrar: { tipo: 'OTR' | 'OTF', num, texto: 'OTR-130' | 'OTF-2' } (null si no hay N°). */
+export const tipoNumeroOT = (v) => { const n = numeroDe(v); if (!n) return null; const tipo = esOTF(v) ? 'OTF' : 'OTR'; return { tipo, num: n, texto: `${tipo}-${n}` }; };
+/** Pestaña del módulo OT y OT de Fallas por abrir (clic desde el Historial). */
+export const vistaOT = ref('REPARACION');
+export const otfPorAbrir = ref(null);
 /** Mantenciones del Historial cuyo N° OT es el folio. */
-export const mantencionesDeOT = (folio) => dbIntervenciones.value.filter(i => folio && numeroDe(i.numeroOT) === Number(folio));
+export const mantencionesDeOT = (folio) => dbIntervenciones.value.filter(i => folio && !esOTF(i.numeroOT) && numeroDe(i.numeroOT) === Number(folio));
 /** ¿El registro del Historial pertenece a un programa de REPARACIÓN? */
 const regDeReparacion = (m) => {
   const n = String(m.programaCorrespondiente || '').trim().toUpperCase();
@@ -120,7 +128,7 @@ export const ESTILO_ESTADO_OT = {
 export const otsAbiertasDeAfi = (afi) => (afi ? dbOT.value
   .filter(o => mismoAfi(o.afi, afi) && otAbierta(o))
   .sort((a, b) => (Number(b.folio) || 0) - (Number(a.folio) || 0)) : []);
-export const otPorFolio = (v) => { const n = numeroDe(v); return n ? dbOT.value.find(o => Number(o.folio) === n) || null : null; };
+export const otPorFolio = (v) => { if (esOTF(v)) return null; const n = numeroDe(v); return n ? dbOT.value.find(o => Number(o.folio) === n) || null : null; };
 export const textoOT = (o) => `OT ${o.folio} · ${o.tipo_mantencion || 'OT'}${o.fecha ? ' · ' + formatDateForDisplay(normalizarFecha(o.fecha)) : ''} · ${ETIQUETA_ESTADO_OT[estadoOT(o)]}`;
 
 /** Cierra (o reabre) OT por id. Reabrir solo lo hace el Admin (salvo `forzar` interno). */
@@ -528,6 +536,8 @@ ${htmlAnexoRepuestos(ot)}
 export const irAOT = (numero) => {
   const n = numeroDe(numero);
   if (!n) return;
+  if (esOTF(numero)) { otfPorAbrir.value = n; vistaOT.value = 'FALLAS'; otActual.value = null; currentTab.value = 'ot'; return; }
+  vistaOT.value = 'REPARACION';
   folioPorAbrir.value = n;
   otActual.value = null;
   if (currentTab.value === 'ot') cargarOT(); else currentTab.value = 'ot';

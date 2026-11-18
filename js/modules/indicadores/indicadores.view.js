@@ -4,6 +4,7 @@
 //   gráficos (Chart.js) y exportación a Excel. Lógica en indicadores.service.js.
 // =====================================================================
 import * as K from './indicadores.service.js';
+import TiemposActividad from './tiempos.view.js';   // tiempo promedio por actividad (2026-11-18)
 import { formatDateForDisplay, hoyISO } from '../../core/utils.js';
 
 const { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } = Vue;
@@ -13,6 +14,7 @@ const fmtCLP = (v) => (v ? '$' + Math.round(v).toLocaleString('es-CL') : '—');
 
 export default {
   name: 'IndicadoresView',
+  components: { TiemposActividad },
   template: /* html */ `
 <section class="space-y-5" data-kpi="vista">
   <!-- Encabezado y filtros -->
@@ -80,6 +82,9 @@ export default {
         <div class="h-56"><canvas ref="cMtbf"></canvas></div>
       </div>
     </div>
+
+    <!-- 3b. Tiempo promedio por actividad (por equipo y tipo de equipo) -->
+    <tiempos-actividad></tiempos-actividad>
 
     <!-- 4. Taller y OT -->
     <div class="bg-white rounded-2xl shadow-sm border p-5 space-y-4">

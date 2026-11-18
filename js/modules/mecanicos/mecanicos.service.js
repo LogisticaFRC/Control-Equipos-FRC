@@ -528,7 +528,7 @@ export const pasarAHistorial = async (r, opciones = {}) => {
       causa_falla: r.tipo === 'MECANICA' && ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'].includes(r.causa_falla) ? r.causa_falla : '',
       ...aceites
     };
-    if (r.modo === 'REPARACION' && r.ot_fallas_folio) payload.numero_ot = 'OF-' + r.ot_fallas_folio;   // N° OT del Historial = OT de Fallas
+    if (r.modo === 'REPARACION' && r.ot_fallas_folio) payload.numero_ot = 'OTF-' + r.ot_fallas_folio;   // N° OT del Historial = OT de Fallas
     let data;
     if (r.historial_id) {   // ya estaba en el Historial (enviada sin firma): solo se cambia el documento
       await sb(supabaseClient.rpc('frc_historial_doc_app', { p_hist: r.historial_id, p_link: url }));
@@ -689,7 +689,7 @@ export const borrarLevantamiento = async (r) => {
 export const folioOF = (r) => (r ? (r.folio_falla || r.id) : '');
 /** Admin: cambia el N° de una OT de Fallas (no se puede repetir). */
 export const cambiarFolioOF = async (r) => {
-  const v = prompt(`N° de la OT de Fallas (ahora OF-${folioOF(r)}):`, String(folioOF(r)));
+  const v = prompt(`N° de la OT de Fallas (ahora OTF-${folioOF(r)}):`, String(folioOF(r)));
   if (v === null) return;
   const n = Number(String(v).replace(/\D/g, ''));
   if (!(n > 0)) return alert('Escribe un número.');

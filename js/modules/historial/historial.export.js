@@ -13,6 +13,8 @@ import { claseMantencion } from '../../core/horometros.js';
 import { totalOCMantencion, totalOCEquipo, ocsDelEquipo } from '../oc/oc.service.js';
 import { errMsg } from '../../core/supabase.js';
 import { corregirTexto as ok } from '../../core/ortografia.js';   // tipeo y tildes (diccionario técnico)
+/** N° OT con su tipo (2026-11-18): OTR-130 (OT de Reparación) · OTF-2 (OT de Fallas). */
+const etOT = (v) => { const n = (String(v || '').match(/\d+/) || [])[0]; if (!n) return String(v || ''); return (/F/i.test(String(v).replace(/\d.*$/, '')) ? 'OTF-' : 'OTR-') + n; };
 
 const { ref } = Vue;
 export const exportandoHistorial = ref(false);
@@ -67,7 +69,7 @@ const columnasDetalle = (conEquipo) => [
   { t: 'HORAS', w: 7, fmt: '0.0', v: r => horas(r) },
   { t: 'MECÁNICOS', w: 18, v: r => getMecanicosText(r).split(', ').join('\n') },
   { t: 'LUGAR', w: 12, v: r => ok(r.lugar) || '-' },
-  { t: 'OT / OC', w: 12, v: r => [r.numeroOT ? 'OT ' + r.numeroOT : '', r.numeroOC ? 'OC ' + r.numeroOC : ''].filter(Boolean).join('\n') || '-' },
+  { t: 'OT / OC', w: 12, v: r => [r.numeroOT ? etOT(r.numeroOT) : '', r.numeroOC ? 'OC ' + r.numeroOC : ''].filter(Boolean).join('\n') || '-' },
   { t: 'COSTO', w: 11, fmt: PESOS, v: r => costoReg(r) || '' },
   { t: 'DOC.', w: 6, v: r => r.linkDrive ? { text: 'Ver', hyperlink: r.linkDrive } : '-' }
 ];
@@ -130,7 +132,7 @@ const COLUMNAS_COMPLETAS = [
   { t: 'USO ART', w: 8, v: r => siNo(r.usoArt) },
   { t: 'BLOQUEO EQUIPO', w: 9, v: r => siNo(r.bloqueo) },
   { t: 'N° FOLIO', w: 11, v: r => txt(r.numeroFolio) },
-  { t: 'N° OT', w: 10, v: r => txt(r.numeroOT) },
+  { t: 'N° OT', w: 10, v: r => (r.numeroOT ? etOT(r.numeroOT) : txt(r.numeroOT)) },
   { t: 'N° OC', w: 12, v: r => txt(r.numeroOC) },
   { t: 'COSTO', w: 12, fmt: PESOS, v: r => costoReg(r) || '' },
   { t: 'FILTROS', w: 40, al: 'left', v: r => txt(r.filtrosTexto) },

@@ -11,6 +11,7 @@ import * as M from '../mecanicos/mecanicos.service.js';
 import { asegurarFallas } from '../mecanicos/fallas-equipo.js';
 import { currentTab, buscarEquipoPorAfi, isAdmin } from '../../core/store.js';
 import { formatDateForDisplay } from '../../core/utils.js';
+import { otfPorAbrir } from './ot.service.js';
 
 const { ref, computed, onMounted } = Vue;
 
@@ -37,7 +38,7 @@ export default {
         <tbody>
           <template v-for="o in lista" :key="o.r.id">
             <tr :class="['border-t cursor-pointer hover:bg-amber-50/50', abierta === o.r.id ? 'bg-amber-50' : '']" @click="abierta = abierta === o.r.id ? null : o.r.id" :data-ot="'fila-' + o.r.id">
-              <td class="p-2.5 font-black text-amber-700 whitespace-nowrap" @click.stop>OF-{{ M.folioOF(o.r) }}<button v-if="isAdmin" @click="cambiarFolio(o.r)" class="ml-1 text-slate-400 hover:text-amber-700" title="Cambiar N° (Admin)" :data-ot="'folio-' + o.r.id"><i class="fa-solid fa-pen text-[10px]"></i></button></td>
+              <td class="p-2.5 font-black text-amber-700 whitespace-nowrap" @click.stop>OTF-{{ M.folioOF(o.r) }}<button v-if="isAdmin" @click="cambiarFolio(o.r)" class="ml-1 text-slate-400 hover:text-amber-700" title="Cambiar N° (Admin)" :data-ot="'folio-' + o.r.id"><i class="fa-solid fa-pen text-[10px]"></i></button></td>
               <td class="p-2.5 font-mono">{{ formatDateForDisplay(o.r.fecha) }}</td>
               <td class="p-2.5 font-mono">{{ o.r.hora_falla || o.r.fecha_falla ? [formatDateForDisplay(o.r.fecha_falla || o.r.fecha), o.r.hora_falla].filter(Boolean).join(' ') : '—' }}</td>
               <td class="p-2.5 font-bold">{{ o.r.afi }}</td>
@@ -80,15 +81,25 @@ export default {
     onMounted(recargar);
     const filtro = ref({ estado: 'ABIERTA', texto: '' });
     const abierta = ref(null);
+    // Desde el Historial (clic en OTF-n): se busca y se abre esa OT de Fallas
+    const abrirPendiente = () => {
+      if (!otfPorAbrir.value) return;
+      const n = otfPorAbrir.value;
+      const o = todasRef().find(x => Number(M.folioOF(x.r)) === Number(n));
+      if (!o) return;
+      otfPorAbrir.value = null; filtro.value = { estado: '', texto: 'OTF-' + n }; abierta.value = o.r.id;
+    };
     const todas = computed(() => M.dbMec.value.filter(r => r.modo === 'INSPECCION').sort((a, b) => b.id - a.id).map(r => {
       const items = M.fallasDeLevantamiento(r), av = M.avanceLevantamiento(r);
       const e = buscarEquipoPorAfi(r.afi);
       return { r, items, av, completa: !items.some(i => ['PENDIENTE', 'AGREGADO'].includes(i.estado)), equipo: e ? [e.tipo, e.marca, e.modelo].filter(Boolean).join(' ') : (r.equipo || '') };
     }));
+    const todasRef = () => todas.value;
+    Vue.watch([todas, otfPorAbrir], abrirPendiente, { immediate: true });
     const lista = computed(() => {
       const q = String(filtro.value.texto || '').trim().toUpperCase();
       return todas.value.filter(o => (!filtro.value.estado || (['ABIERTA', 'FALLAS'].includes(filtro.value.estado) ? !o.completa : o.completa))
-        && (!q || ['OF-' + M.folioOF(o.r), o.r.afi, o.equipo, o.r.descripcion, (o.r.mecanicos || []).map(m => m.nombre).join(' '), o.items.map(i => i.descripcion).join(' ')].join(' ').toUpperCase().includes(q)));
+        && (!q || ['OTF-' + M.folioOF(o.r), 'OF-' + M.folioOF(o.r), o.r.afi, o.equipo, o.r.descripcion, (o.r.mecanicos || []).map(m => m.nombre).join(' '), o.items.map(i => i.descripcion).join(' ')].join(' ').toUpperCase().includes(q)));
     });
     const kpis = computed(() => [
       { e: '', t: 'Total OT de Fallas', n: todas.value.length, c: 'bg-white text-slate-800' },
@@ -99,6 +110,6 @@ export default {
     // Abre el report de reparación en el panel MECÁNICOS
     const verReport = (x) => { M.filtroPanel.value = ''; M.abrirRegPanel(x); currentTab.value = 'mecPanel'; };
     const cambiarFolio = (r) => M.cambiarFolioOF(r);
-    return { cambiarFolio, M, filtro, abierta, lista, kpis, verReport, formatDateForDisplay, isAdmin };
+    return { recargar, cambiarFolio, M, filtro, abierta, lista, kpis, verReport, formatDateForDisplay, isAdmin };
   }
 };
