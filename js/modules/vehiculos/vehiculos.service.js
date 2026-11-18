@@ -375,12 +375,14 @@ export const abrirNuevoDoc = (v, categoria, clave = '', nombre = '') => {
   };
   recalcularVencDoc();
   archivoDoc.value = null;
+  lecturaDoc.value = null;
   showDocForm.value = true;
 };
 export const abrirEditarDoc = (doc) => {
   if (!soloEditor()) return;
   formDoc.value = { ...doc, vencManual: doc.fechaVencimiento !== calcularVencimiento(doc.fechaEmision, doc.duracion, doc.unidad) };
   archivoDoc.value = null;
+  lecturaDoc.value = null;
   showDocForm.value = true;
 };
 /** Recalcula el vencimiento (emisión + duración) salvo que el usuario lo haya escrito a mano. */
@@ -391,7 +393,42 @@ export const recalcularVencDoc = () => {
 };
 export const vencimientoManual = () => { formDoc.value.vencManual = true; };
 export const usarVencimientoCalculado = () => { formDoc.value.vencManual = false; recalcularVencDoc(); };
-export const elegirArchivoDoc = (e) => { archivoDoc.value = e.target.files[0] || null; };
+/** Lectura automática del documento elegido (2026-11-18): completa emisión, vencimiento y N° / folio. */
+export const lecturaDoc = ref(null);   // { estado: 'leyendo' | 'ok' | 'nada' | 'error', paso, campos: [], avisos: [] }
+const NOMBRE_TIPO = { PERMISO_CIRCULACION: 'Permiso de Circulación', REVISION_TECNICA: 'Revisión Técnica', SOAP: 'SOAP', GASES: 'Revisión de gases' };
+const mesesEntre = (a, b) => { const [y1, m1, d1] = a.split('-').map(Number), [y2, m2, d2] = b.split('-').map(Number); return (y2 - y1) * 12 + (m2 - m1) + (d2 >= d1 ? 0 : -1); };
+export const elegirArchivoDoc = async (e) => {
+  const file = e.target.files[0] || null;
+  archivoDoc.value = file;
+  lecturaDoc.value = null;
+  if (!file) return;
+  const f = formDoc.value;
+  lecturaDoc.value = { estado: 'leyendo', paso: 'Leyendo el documento…', campos: [], avisos: [] };
+  try {
+    const { leerDocVehiculo } = await import('./lector-docs.js');
+    const r = await leerDocVehiculo(file, f.patente, (paso) => { if (lecturaDoc.value) lecturaDoc.value.paso = paso; });
+    if (formDoc.value !== f) return;   // se cerró o cambió el formulario mientras leía
+    const campos = [], avisos = [];
+    if (r.emision) { f.fechaEmision = r.emision; campos.push('Fecha de emisión'); }
+    if (r.vencimiento) {
+      // si el vencimiento calza con una duración en meses, se deja la duración; si no, queda escrito a mano
+      if (r.emision) {
+        const m = mesesEntre(r.emision, r.vencimiento);
+        if (m > 0 && calcularVencimiento(r.emision, m, 'MESES') === r.vencimiento) { f.duracion = m; f.unidad = 'MESES'; f.vencManual = false; }
+        else f.vencManual = true;
+      } else f.vencManual = true;
+      f.fechaVencimiento = r.vencimiento; campos.push('Fecha de vencimiento');
+    }
+    if (r.numero && !String(f.numero || '').trim()) { f.numero = r.numero; campos.push('N° / Folio'); }
+    if (f.categoria === 'SECUNDARIO' && !String(f.nombre || '').trim() && r.tipo) { f.nombre = NOMBRE_TIPO[r.tipo]; campos.push('Nombre'); }
+    if (f.categoria === 'PRINCIPAL' && r.tipo && r.tipo !== f.clave && NOMBRE_TIPO[r.tipo]) avisos.push(`El archivo parece ser ${NOMBRE_TIPO[r.tipo]}, no ${f.nombre}.`);
+    if (r.patenteOk === false) avisos.push(`La patente del documento (${r.patentes.slice(0, 2).join(', ')}) no es la de este vehículo (${f.patente}).`);
+    if (r.modo === 'imagen' && campos.length) avisos.push('Era una imagen o PDF escaneado: revisa bien las fechas leídas.');
+    lecturaDoc.value = { estado: campos.length ? 'ok' : 'nada', paso: '', campos, avisos, patente: r.patenteOk };
+  } catch (err) {
+    lecturaDoc.value = { estado: 'error', paso: '', campos: [], avisos: ['No se pudo leer el archivo: ' + errMsg(err)] };
+  }
+};
 
 const limpiarNombreArchivo = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_');
 const rutaDeLink = (link) => {

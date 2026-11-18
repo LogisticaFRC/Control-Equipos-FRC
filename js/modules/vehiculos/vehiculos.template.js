@@ -387,6 +387,14 @@ export default /* html */ `
         <div>
           <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Archivo {{ formDoc.link ? '(reemplazar, opcional)' : '' }}</label>
           <input type="file" @change="elegirArchivoDoc" accept=".pdf,image/*" class="w-full p-1.5 border rounded-lg bg-white">
+          <!-- Lectura automática del documento (2026-11-18) -->
+          <div v-if="lecturaDoc" :class="['mt-2 rounded-lg border p-2.5 text-xs space-y-1', lecturaDoc.estado === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : lecturaDoc.estado === 'leyendo' ? 'bg-sky-50 border-sky-200 text-sky-900' : 'bg-amber-50 border-amber-200 text-amber-900']" data-veh="lectura">
+            <p v-if="lecturaDoc.estado === 'leyendo'" class="font-bold"><i class="fa-solid fa-spinner fa-spin mr-1"></i>{{ lecturaDoc.paso }}</p>
+            <p v-else-if="lecturaDoc.estado === 'ok'" class="font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Leído del documento: {{ lecturaDoc.campos.join(', ') }}. Revisa antes de guardar.</p>
+            <p v-else-if="lecturaDoc.estado === 'nada'" class="font-bold"><i class="fa-solid fa-circle-info mr-1"></i>No se encontraron fechas en el documento: complétalas a mano.</p>
+            <p v-if="lecturaDoc.patente === true" class="text-emerald-800"><i class="fa-solid fa-check mr-1"></i>La patente del documento coincide con el vehículo.</p>
+            <p v-for="a in lecturaDoc.avisos" :key="a" class="font-semibold text-amber-800"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ a }}</p>
+          </div>
           <p v-if="formDoc.link && !archivoDoc" class="text-[10px] mt-0.5">Actual: <a :href="formDoc.link" target="_blank" rel="noopener" class="text-blue-600 underline">{{ formDoc.nombreArchivo || 'ver archivo' }}</a></p>
         </div>
         <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Observación</label><input v-model="formDoc.observacion" type="text" class="w-full p-2.5 border rounded-lg bg-white"></div>
