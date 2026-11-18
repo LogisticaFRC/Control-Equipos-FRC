@@ -16,11 +16,14 @@ const VERDE = 0x2f8a4c, VERDE_OSC = 0x1f5f35, OSCURO = 0x27313b, ACERO = 0x9aa4a
 /** Tipo de figura según el tipo del equipo. */
 export const figuraDe = (tipo) => {
   const t = String(tipo || '').toUpperCase();
+  if (/TIJERA|PLATAFORMA|ELEVADOR|ALZA ?HOMBRE|MANLIFT|SCISSOR/.test(t)) return 'tijera';
+  if (/RETRO/.test(t)) return 'retro';
+  if (/EXCAVADOR/.test(t)) return 'excavadora';
   if (/TORRE|ILUMIN/.test(t)) return 'torre';
   if (/COMPRESOR/.test(t)) return 'compresor';
   if (/BOMBA|HORMIG/.test(t)) return 'bomba';
   if (/MANIPULADOR|TELESC|TELEHANDLER/.test(t)) return 'manipulador';
-  if (/MINICARG|CARGADOR|BOBCAT|SKID/.test(t)) return 'minicargador';
+  if (/MINI\s*-?\s*CARG|CARGADOR|BOBCAT|SKID/.test(t)) return 'minicargador';
   if (/CAMION|CAMIONETA|PLUMA/.test(t)) return 'camion';
   return 'generador';
 };
@@ -204,7 +207,7 @@ export async function montarEquipo3D(host, opciones = {}) {
       caja(0.012, 0.6, Wd - 0.45, M.vidrio, 0.48, yc + 1.0, 0);
       [1, -1].forEach(s => caja(0.6, 0.55, 0.012, M.vidrio, 0.05, yc + 1.02, s * ((Wd - 0.25) / 2 + 0.006)));
       const top = yc + 1.45; caja(0.95, 0.06, Wd - 0.15, M.verde, 0.05, top, 0);
-      [1, -1].forEach(s => { const b = caja(1.3, 0.14, 0.1, M.verdeOsc, 0.35, yc + 0.55, s * (Wd / 2 + 0.02)); b.rotation.z = -0.5; });
+      [1, -1].forEach(s => { const b = caja(1.85, 0.13, 0.1, M.verdeOsc, 0.2, yc + 0.45, s * (Wd / 2 + 0.08)); b.rotation.z = -0.55; });
       caja(0.35, 0.45, Wd + 0.2, M.oscuro, 1.05, yc - 0.25, 0);
       const escape = cil(0.04, 0.04, 0.3, M.oscuro, -0.75, yc + 0.65, 0.3);
       return { top, Wd: Wd - 0.15, baliza: [0.3, top + 0.03, 0.3], gps: [-0.2, top + 0.03, 0.3], extintor: [-0.88, yc, 0.2], extintorRot: -Math.PI / 2,
@@ -230,6 +233,80 @@ export async function montarEquipo3D(host, opciones = {}) {
         afi: [2.96, yc + 0.35, 0, Math.PI / 2], rotulos: [[-0.3, yc + 0.42, Wd / 2 + 0.035, 0], [-1.3, yc + 0.42, Wd / 2 + 0.035, 0], [-0.8, yc + 0.42, -Wd / 2 - 0.035, Math.PI]],
         senales: { y: yc + 0.42, z: -Wd / 2 - 0.035, rot: Math.PI, xs: [0.6, 0.3, -1.6, -1.9, -2.2] }, huincha: { L: 5.6, W: Wd, y: yc + 0.18, cx: 0 }, bandeja, escape };
     }
+  };
+  // ---------- 2026-11-18: plataforma tijera, retroexcavadora, excavadora ----------
+  FIG.tijera = () => {
+    const L = 2.4, Wd = 1.1, yc = 0.5, top = yc + 0.25;
+    [[-0.85, 1], [-0.85, -1], [0.85, 1], [0.85, -1]].forEach(([x, s]) => rueda(x, s * (Wd / 2 + 0.02), 0.22, 0.18));
+    caja(L, 0.5, Wd, M.verde, 0, yc, 0);
+    const bandeja = caja(L - 0.3, 0.06, Wd - 0.2, M.oscuro, 0, yc - 0.27, 0);
+    caja(L + 0.04, 0.05, Wd + 0.04, M.verdeOsc, 0, top, 0);
+    // tijeras: 3 niveles de brazos cruzados a cada lado
+    const niv = 3, hN = 0.55, largo = 2.0, ang = Math.asin(hN / largo);
+    for (let n = 0; n < niv; n++) [1, -1].forEach(s => [1, -1].forEach(d => { const b = caja(largo, 0.07, 0.06, M.oscuro, 0, top + 0.05 + hN * n + hN / 2, s * 0.42); b.rotation.z = d * ang; }));
+    const yp = top + 0.1 + hN * niv;
+    caja(L + 0.1, 0.08, Wd + 0.1, M.oscuro, 0, yp, 0);
+    const baranda = (x, z, w, d) => caja(w, 0.04, d, M.verde, x, yp + 1.0, z);
+    [[-(L + 0.1) / 2, (Wd + 0.1) / 2], [(L + 0.1) / 2, (Wd + 0.1) / 2], [-(L + 0.1) / 2, -(Wd + 0.1) / 2], [(L + 0.1) / 2, -(Wd + 0.1) / 2], [0, (Wd + 0.1) / 2], [0, -(Wd + 0.1) / 2]].forEach(([x, z]) => caja(0.04, 1.0, 0.04, M.verde, x, yp + 0.5, z));
+    baranda(0, (Wd + 0.1) / 2, L + 0.1, 0.04); baranda(0, -(Wd + 0.1) / 2, L + 0.1, 0.04); baranda((L + 0.1) / 2, 0, 0.04, Wd + 0.1); baranda(-(L + 0.1) / 2, 0, 0.04, Wd + 0.1);
+    [1, -1].forEach(s => caja(L + 0.1, 0.03, 0.03, M.verde, 0, yp + 0.5, s * (Wd + 0.1) / 2));
+    caja(0.3, 0.25, 0.18, M.oscuro, 0.9, yp + 1.15, 0.35);
+    return { top, Wd, baliza: [-0.95, top + 0.03, 0.38], gps: [-0.6, top + 0.03, -0.35], extintor: [L / 2 + 0.08, yc, 0.25], extintorRot: 0,
+      paradas: [[0.75, yc + 0.05, Wd / 2 + 0.035, 0], [0.9, yp + 1.15, 0.47, 0]],
+      logos: [[-0.35, yc + 0.02, Wd / 2 + 0.008, 0], [-0.35, yc + 0.02, -Wd / 2 - 0.008, Math.PI]], logoW: 0.7,
+      afi: [0.25, yc + 0.08, Wd / 2 + 0.008, 0], rotulos: [[0.25, yc - 0.13, Wd / 2 + 0.008, 0], [0.5, yc + 0.05, -Wd / 2 - 0.008, Math.PI], [0.8, yc + 0.05, -Wd / 2 - 0.008, Math.PI]],
+      senales: { y: yc + 0.05, z: -Wd / 2 - 0.008, rot: Math.PI, xs: [0.2, -0.95, -1.05, 0.05, -0.1] }, huincha: { L, W: Wd, y: yc - 0.18 }, bandeja, escape: null };
+  };
+  FIG.retro = () => {
+    const Wd = 1.7, yc = 1.0;
+    rueda(1.3, Wd / 2 + 0.05, 0.5, 0.35); rueda(1.3, -Wd / 2 - 0.05, 0.5, 0.35); rueda(-1.0, Wd / 2 + 0.08, 0.72, 0.45); rueda(-1.0, -Wd / 2 - 0.08, 0.72, 0.45);
+    caja(3.4, 0.45, Wd - 0.4, M.verde, 0, yc, 0);
+    const bandeja = caja(2.6, 0.08, Wd - 0.5, M.oscuro, 0, yc - 0.26, 0);
+    caja(1.2, 0.55, Wd - 0.5, M.verde, 1.2, yc + 0.5, 0);
+    caja(1.1, 1.3, Wd - 0.3, M.verde, -0.35, yc + 0.88, 0);
+    caja(0.9, 0.75, 0.02, M.vidrio, -0.35, yc + 1.05, (Wd - 0.3) / 2 + 0.01); caja(0.02, 0.75, Wd - 0.5, M.vidrio, 0.21, yc + 1.05, 0);
+    const top = yc + 1.55; caja(1.2, 0.06, Wd - 0.2, M.verdeOsc, -0.35, top, 0);
+    // pala delantera
+    [1, -1].forEach(s => { const b = caja(1.7, 0.14, 0.12, M.verdeOsc, 1.85, yc + 0.35, s * (Wd / 2 - 0.1)); b.rotation.z = -0.35; });
+    const pala = caja(0.45, 0.55, Wd + 0.1, M.oscuro, 2.75, yc - 0.45, 0); pala.rotation.z = 0.15;
+    // brazo trasero (retro)
+    const g = new THREE.Group(); g.position.set(-1.75, yc + 0.3, 0); equipo.add(g);
+    const b1 = caja(1.6, 0.22, 0.24, M.verde, -0.65, 0.55, 0, g); b1.rotation.z = -0.75;
+    const b2 = caja(1.3, 0.18, 0.2, M.verdeOsc, -1.55, 0.6, 0, g); b2.rotation.z = 0.95;
+    caja(0.35, 0.35, 0.5, M.oscuro, -2.0, -0.05, 0, g);
+    [1, -1].forEach(s => { const e = caja(0.12, 0.9, 0.12, M.oscuro, -1.65, yc - 0.45, s * (Wd / 2 + 0.05)); e.rotation.x = s * 0.25; });
+    const escape = cil(0.05, 0.05, 0.5, M.oscuro, 1.55, yc + 1.0, 0.35);
+    return { top, Wd: Wd - 0.4, baliza: [-0.1, top + 0.03, 0.5], gps: [-0.6, top + 0.03, -0.5], extintor: [0.55, yc - 0.05, (Wd - 0.4) / 2 + 0.12], extintorRot: 0,
+      paradas: [[0.21, yc + 0.55, 0.35, Math.PI / 2], [-1.72, yc, 0, -Math.PI / 2]],
+      logos: [[1.2, yc + 0.52, (Wd - 0.5) / 2 + 0.008, 0], [1.2, yc + 0.52, -(Wd - 0.5) / 2 - 0.008, Math.PI]], logoW: 0.75,
+      afi: [-1.35, yc + 0.02, (Wd - 0.4) / 2 + 0.008, 0], rotulos: [[-0.35, yc + 0.4, (Wd - 0.3) / 2 + 0.008, 0], [0.55, yc + 0.05, -(Wd - 0.4) / 2 - 0.008, Math.PI], [-0.4, yc + 0.4, -(Wd - 0.3) / 2 - 0.008, Math.PI]],
+      senales: { y: yc + 0.02, z: -(Wd - 0.4) / 2 - 0.008, rot: Math.PI, xs: [0.2, -0.05, -1.35, -1.55, 0.95] }, huincha: { L: 3.4, W: Wd - 0.4, y: yc - 0.15 }, bandeja, escape };
+  };
+  FIG.excavadora = () => {
+    const Wt = 2.3, yT = 0.45;
+    [1, -1].forEach(s => {
+      caja(3.2, 0.7, 0.55, M.goma, 0, yT, s * (Wt / 2 - 0.27));
+      cil(0.35, 0.35, 0.55, M.goma, 1.6, yT, s * (Wt / 2 - 0.27), [Math.PI / 2, 0, 0]); cil(0.35, 0.35, 0.55, M.goma, -1.6, yT, s * (Wt / 2 - 0.27), [Math.PI / 2, 0, 0]);
+      for (let i = -3; i <= 3; i++) cil(0.14, 0.14, 0.57, M.acero, i * 0.45, yT - 0.05, s * (Wt / 2 - 0.27), [Math.PI / 2, 0, 0], 12);
+    });
+    caja(2.4, 0.3, Wt - 1.0, M.oscuro, 0, yT + 0.3, 0);
+    const bandeja = caja(2.2, 0.06, Wt - 1.1, M.oscuro, 0, yT + 0.47, 0);
+    const yc = 1.35, Wd = 2.2;
+    caja(2.8, 0.9, Wd, M.verde, -0.25, yc, 0);
+    caja(0.9, 0.95, Wd, M.verdeOsc, -1.6, yc + 0.05, 0);
+    caja(1.0, 1.1, 0.95, M.verde, 0.65, yc + 0.95, 0.55);
+    caja(0.85, 0.8, 0.02, M.vidrio, 0.65, yc + 1.0, 1.03); caja(0.02, 0.8, 0.8, M.vidrio, 1.16, yc + 1.0, 0.55);
+    const top = yc + 1.52; caja(1.05, 0.05, 1.0, M.verdeOsc, 0.65, top, 0.55);
+    const g = new THREE.Group(); g.position.set(0.9, yc + 0.35, -0.25); equipo.add(g);
+    const b1 = caja(2.6, 0.38, 0.36, M.verde, 1.0, 0.75, 0, g); b1.rotation.z = 0.6;
+    const b2 = caja(2.0, 0.28, 0.28, M.verde, 2.85, 0.6, 0, g); b2.rotation.z = -1.05;
+    const cuch = caja(0.55, 0.55, 0.75, M.oscuro, 3.3, -0.35, 0, g); cuch.rotation.z = 0.4;
+    const escape = cil(0.06, 0.06, 0.45, M.oscuro, -0.9, yc + 0.65, 0.6);
+    return { top, Wd, baliza: [0.4, top + 0.03, 0.8], gps: [0.9, top + 0.03, 0.3], extintor: [-0.3, yc - 0.05, Wd / 2 + 0.12], extintorRot: 0,
+      paradas: [[1.16, yc + 0.6, 0.55, Math.PI / 2], [-2.06, yc + 0.05, 0, -Math.PI / 2]],
+      logos: [[-0.85, yc + 0.08, Wd / 2 + 0.008, 0], [-0.4, yc + 0.08, -Wd / 2 - 0.008, Math.PI]], logoW: 0.85,
+      afi: [0.65, yc + 0.25, 1.031, 0], rotulos: [[-1.6, yc + 0.25, Wd / 2 + 0.008, 0], [-1.6, yc - 0.15, Wd / 2 + 0.008, 0], [0.5, yc + 0.0, -Wd / 2 - 0.008, Math.PI]],
+      senales: { y: yc - 0.25, z: -Wd / 2 - 0.008, rot: Math.PI, xs: [0.85, 0.6, 0.35, 0.1, -0.15] }, huincha: { L: 2.8, W: Wd, y: yc - 0.35, cx: -0.25 }, bandeja, escape };
   };
   FIG.camioneta = FIG.camion;
   const fig = figuraDe(tipo);
