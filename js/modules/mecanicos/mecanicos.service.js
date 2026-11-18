@@ -223,6 +223,7 @@ export const elegirFalla = (f, h) => {
   const lev = f.levantamiento_id ? dbMec.value.find(x => String(x.id) === String(f.levantamiento_id)) : null;
   f.hora_falla = lev ? (lev.hora_falla || '') : (h ? '' : f.hora_falla);
   f.fecha_falla = lev ? (lev.fecha_falla || lev.fecha || '') : (h ? '' : f.fecha_falla);
+  f.ot_fallas_folio = lev ? (lev.folio_falla || null) : null;
   const titulo = h ? String(h.descripcion || '').trim() : '';
   if (f.tipo === 'ELECTRICA') f.causa_falla = titulo; else f.causa_intervencion = titulo;
 };
@@ -347,6 +348,7 @@ const filaDB = (f) => ({
     })) : [],
     falla_id: f.modo === 'REPARACION' ? (f.falla_id || null) : null, falla_texto: f.modo === 'REPARACION' ? (f.falla_texto || null) : null,
     levantamiento_id: f.modo === 'REPARACION' ? (f.levantamiento_id || null) : null,
+    ot_fallas_folio: f.modo === 'REPARACION' ? (f.ot_fallas_folio || null) : null,
     fecha_falla: normalizarFecha(f.fecha_falla) || null,
     art_fotos: f.uso_art ? (f.art_fotos || []).filter(Boolean) : [], bloqueo_foto: f.bloqueo ? (f.bloqueo_foto || null) : null
   } : {}),
@@ -396,7 +398,7 @@ export const enviarIntervencion = async () => {
     if (esLev) {   // vuelve al equipo: ahí aparece la carpeta del levantamiento con sus fallas y el botón Reparar
       if (reg && !dbMec.value.some(x => x.id === reg.id)) dbMec.value = [reg, ...dbMec.value];
       tabApp.value = 'equipos';
-      avisoApp(`OT de Fallas N° ${reg?.id || ''} creado ✔` + avisoFallas + ' Repáralas desde su carpeta.');
+      avisoApp(`OT de Fallas N° ${reg ? folioOF(reg) : ''} creada ✔` + avisoFallas + ' Repáralas desde su carpeta.');
       await cargarMec();
       return;
     }
@@ -406,13 +408,16 @@ export const enviarIntervencion = async () => {
     if (conFirma && reg) {
       const ok = await pasarAHistorial(reg);
       avisoApp((ok ? '¡Enviada y guardada en el Historial! ✔' : 'Enviada. Quedó firmada; se pasará al Historial desde el panel.') + avisoFallas);
+    } else if (reg && f.modo === 'REPARACION') {   // 2026-11-18: la reparación queda en el Historial al enviarla
+      const ok = await pasarAHistorial(reg, { provisional: true });
+      avisoApp((ok ? '¡Enviada y registrada en el Historial! Falta la firma del supervisor.' : '¡Enviada! Queda pendiente la firma del supervisor.') + avisoFallas);
     } else {
       avisoApp('¡Enviada! Queda pendiente la firma del supervisor.' + avisoFallas);
     }
     await cargarMec();
   } catch (err) {
     const m = errMsg(err);
-    alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min|levantamiento_id|art_fotos|bloqueo_foto|codigo_repuesto|serie_motor|fecha_falla|disp_anterior)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
+    alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min|levantamiento_id|art_fotos|bloqueo_foto|codigo_repuesto|serie_motor|fecha_falla|disp_anterior|ot_fallas_folio|folio_falla)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
   } finally { enviando.value = false; }
 };
 
@@ -484,14 +489,17 @@ const CAUSA_HIST_ELEC = { 'FALLA OPERACIONAL': 'FALLA ELECTRICA', 'PUESTA EN MAR
 const causaHistorial = (r) => (r.tipo === 'ELECTRICA' ? (CAUSA_HIST_ELEC[String(r.causa_intervencion || '').toUpperCase()] || 'FALLA ELECTRICA') : (CAUSA_HIST_MEC[r.causa_falla] && !listaCausas.includes(r.causa_falla) ? CAUSA_HIST_MEC[r.causa_falla] : (r.causa_falla || 'REPARACION')));
 
 /** Crea el registro del Historial con la hoja en PDF. Devuelve true si quedó EN_HISTORIAL. */
-export const pasarAHistorial = async (r) => {
+export const pasarAHistorial = async (r, opciones = {}) => {
   if (r.estado === 'EN_HISTORIAL') return true;
+  // 2026-11-18: provisional = la REPARACIÓN entra al Historial al enviarla (sin firma del supervisor);
+  // al firmar, el mismo registro del Historial cambia su PDF por el firmado.
+  const provisional = Boolean(opciones.provisional);
   try {
     // 1) PDF con el formato y se sube al almacenamiento
-    let url = r.documento_url || '';
+    let url = r.historial_id ? '' : (r.documento_url || '');
     if (!url) {
       const blob = await generarPDF(r);
-      const nombre = `intervenciones_app/${String(r.afi).replace(/[^\w-]/g, '')}_${r.fecha || hoyISO()}_${r.tipo}_${r.id}.pdf`;
+      const nombre = `intervenciones_app/${String(r.afi).replace(/[^\w-]/g, '')}_${r.fecha || hoyISO()}_${r.tipo}_${r.id}${provisional ? '_sin_firma_' + Date.now() : r.historial_id ? '_firmado_' + Date.now() : ''}.pdf`;
       url = await subirArchivoStorage(nombre, new File([blob], nombre.split('/').pop(), { type: 'application/pdf' }));
     }
     // 2) Registro en el Historial
@@ -513,27 +521,34 @@ export const pasarAHistorial = async (r) => {
       hora_total: r.duracion_min != null ? String(Math.round(r.duracion_min / 6) / 10) : String(calcularRestaHoras(r.hora_inicio, r.hora_termino) || ''),
       causa_intervencion: r.modo === 'INSPECCION' ? `OT DE FALLAS (${(r.fallas || []).length})` : (r.tipo === 'ELECTRICA' ? (r.causa_falla || r.causa_intervencion) : r.causa_intervencion) || '', descripcion: [r.modo === 'INSPECCION' ? 'OBSERVACIÓN: ' + (r.descripcion || '') : (r.descripcion || ''),
         ...(r.modo === 'INSPECCION' ? (r.fallas || []).map(i => `Falla ${i.n}: ${i.sistema ? i.sistema + ' · ' : ''}${i.descripcion}`) : []),
-        r.modo === 'REPARACION' && r.falla_texto ? 'Falla reparada: ' + r.falla_texto + (r.levantamiento_id ? ` (OT de Fallas N° ${r.levantamiento_id})` : '') : '',
+        r.modo === 'REPARACION' && r.falla_texto ? 'Falla reparada: ' + r.falla_texto + (r.levantamiento_id ? ` (OT de Fallas N° ${r.ot_fallas_folio || r.levantamiento_id})` : '') : '',
         r.fecha_termino && r.fecha_termino !== r.fecha ? `Término: ${r.fecha_termino} ${r.hora_termino || ''}` : '', ...extras].filter(Boolean).join('\n'),
       interferencia: r.interferencia || '', empresa: r.usuario_arriendo || '', link: url,
       art: r.uso_art ? 'SI' : 'NO', numero_folio: `APP-${r.id}`,
       causa_falla: r.tipo === 'MECANICA' && ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'].includes(r.causa_falla) ? r.causa_falla : '',
       ...aceites
     };
+    if (r.modo === 'REPARACION' && r.ot_fallas_folio) payload.numero_ot = 'OF-' + r.ot_fallas_folio;   // N° OT del Historial = OT de Fallas
     let data;
-    try { data = await sb(supabaseClient.from(TABLAS.HISTORIAL).insert([payload]).select('id')); }
+    if (r.historial_id) {   // ya estaba en el Historial (enviada sin firma): solo se cambia el documento
+      await sb(supabaseClient.rpc('frc_historial_doc_app', { p_hist: r.historial_id, p_link: url }));
+      data = [{ id: r.historial_id }];
+    } else try { data = await sb(supabaseClient.from(TABLAS.HISTORIAL).insert([payload]).select('id')); }
     catch (err) {
-      if (!/'(art|numero_folio|causa_falla)'|column/i.test(errMsg(err))) throw err;
-      const p = { ...payload }; delete p.art; delete p.numero_folio; delete p.causa_falla;
+      if (!/'(art|numero_folio|causa_falla|numero_ot)'|column/i.test(errMsg(err))) throw err;
+      const p = { ...payload }; delete p.art; delete p.numero_folio; delete p.causa_falla; delete p.numero_ot;
       data = await sb(supabaseClient.from(TABLAS.HISTORIAL).insert([p]).select('id'));
     }
-    await sb(supabaseClient.from(TABLA_MEC).update({ estado: 'EN_HISTORIAL', historial_id: data?.[0]?.id || null, documento_url: url, updated_at: new Date().toISOString() }).eq('id', r.id));
-    Object.assign(r, { estado: 'EN_HISTORIAL', historial_id: data?.[0]?.id || null, documento_url: url });
+    const cambios = { historial_id: data?.[0]?.id || null, documento_url: url, ...(provisional ? {} : { estado: 'EN_HISTORIAL' }) };
+    await sb(supabaseClient.from(TABLA_MEC).update({ ...cambios, updated_at: new Date().toISOString() }).eq('id', r.id));
+    Object.assign(r, cambios);
     cargarDatosDesdeSupabase(['historial']);
     return true;
   } catch (err) {
     console.warn('[Mecánicos] No pasó al Historial:', err);
-    alert('La intervención quedó firmada, pero no se pudo pasar al Historial: ' + errMsg(err) + '\nSe puede reintentar desde el panel MECÁNICOS.');
+    const m = errMsg(err);
+    if (/frc_historial_doc_app|function|schema cache/i.test(m)) alert(SQL_FALLAS);
+    else alert((provisional ? 'El report se envió, pero no se pudo poner en el Historial: ' : 'La intervención quedó firmada, pero no se pudo pasar al Historial: ') + m + '\nSe puede reintentar desde el panel MECÁNICOS.');
     return false;
   }
 };
@@ -653,19 +668,35 @@ export const dispLocal = (afi, disp) => { const e = dbEquipos.value.find(x => mi
 /** Admin: borra un levantamiento sin reparaciones (y sus fallas); devuelve la disponibilidad si lo había dejado fuera de servicio. */
 export const borrarLevantamiento = async (r) => {
   if (!esSupervisorMec.value) return alert('Solo un Admin puede borrar una OT de Fallas.');
-  if (!confirm(`¿Borrar la OT de Fallas N° ${r.id} (AFI ${r.afi}) y sus ${(r.fallas || []).length} falla(s)?\nTambién se quitan de Repuestos pedidos.`)) return false;
+  if (!confirm(`¿Borrar la OT de Fallas N° ${folioOF(r)} (AFI ${r.afi}) y sus ${(r.fallas || []).length} falla(s)?\nTambién se quitan de Repuestos pedidos.`)) return false;
   try {
     const d = await sb(supabaseClient.rpc('frc_levantamiento_borrar', { p_id: r.id }));
     dbMec.value = dbMec.value.filter(x => x.id !== r.id);
     dbProblemasRef().value = dbProblemasRef().value.filter(h => String(h.intervencion_id) !== String(r.id));
     if (d) dispLocal(r.afi, d);
     if (regPanel.value && regPanel.value.id === r.id) regPanel.value = null;
-    avisoApp(`OT de Fallas N° ${r.id} borrado.` + (d ? ` El equipo volvió a "${d}".` : ''));
+    avisoApp(`OT de Fallas N° ${folioOF(r)} borrada.` + (d ? ` El equipo volvió a "${d}".` : ''));
     return true;
   } catch (err) {
     const m = errMsg(err);
     alert(/frc_levantamiento_borrar|function|schema cache/i.test(m) ? SQL_FALLAS : 'No se pudo borrar: ' + m);
     return false;
   }
+};
+
+// ---------- N° DE LA OT DE FALLAS (2026-11-18) ----------
+/** N° correlativo de una OT de Fallas (OF-1, OF-2…). Si aún no corre el SQL, usa el id. */
+export const folioOF = (r) => (r ? (r.folio_falla || r.id) : '');
+/** Admin: cambia el N° de una OT de Fallas (no se puede repetir). */
+export const cambiarFolioOF = async (r) => {
+  const v = prompt(`N° de la OT de Fallas (ahora OF-${folioOF(r)}):`, String(folioOF(r)));
+  if (v === null) return;
+  const n = Number(String(v).replace(/\D/g, ''));
+  if (!(n > 0)) return alert('Escribe un número.');
+  try {
+    await sb(supabaseClient.rpc('frc_ot_fallas_folio', { p_id: r.id, p_folio: n }));
+    r.folio_falla = n;
+    dbMec.value.filter(x => String(x.levantamiento_id) === String(r.id)).forEach(x => { x.ot_fallas_folio = n; });
+  } catch (err) { const m = errMsg(err); alert(/frc_ot_fallas_folio|function|schema cache/i.test(m) ? SQL_FALLAS : m); }
 };
 

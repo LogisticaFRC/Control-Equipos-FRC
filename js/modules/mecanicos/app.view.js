@@ -130,7 +130,7 @@ export default {
         <div v-if="f.modo === 'REPARACION'" class="bg-white rounded-2xl p-4 shadow-sm space-y-2" data-int="elegir-falla">
           <span class="lbl">Falla a reparar</span>
           <!-- Viene del botón Reparar de una falla: solo se muestra esa falla (2026-11-18) -->
-          <div v-if="f.modoFijo && f.falla_id" class="chip-lg on text-left w-full" data-int="falla-elegida"><i class="fa-solid fa-circle-check mr-2"></i>{{ f.falla_texto || f.causa_intervencion || f.causa_falla }}<span v-if="f.levantamiento_id" class="block text-[11px] font-normal opacity-80 pl-6">OT de Fallas N° {{ f.levantamiento_id }}</span></div>
+          <div v-if="f.modoFijo && f.falla_id" class="chip-lg on text-left w-full" data-int="falla-elegida"><i class="fa-solid fa-circle-check mr-2"></i>{{ f.falla_texto || f.causa_intervencion || f.causa_falla }}<span v-if="f.levantamiento_id" class="block text-[11px] font-normal opacity-80 pl-6">OT de Fallas N° {{ f.ot_fallas_folio || f.levantamiento_id }}</span></div>
           <template v-else>
           <button v-for="(h, i) in fallasEq" :key="h.id" @click="S.elegirFalla(f, h)" :class="['chip-lg text-left w-full', String(f.falla_id) === String(h.id) ? 'on' : '']"><i :class="['fa-solid mr-2', String(f.falla_id) === String(h.id) ? 'fa-circle-check' : 'fa-circle']"></i><b>{{ i + 1 }}.</b> {{ h.descripcion }}<span v-if="h.sistema" class="block text-[11px] font-normal opacity-80 pl-6">{{ h.sistema }}</span></button>
           <p v-if="!fallasEq.length" class="text-sm text-slate-400 italic">El equipo no tiene fallas abiertas.</p>
@@ -167,7 +167,7 @@ export default {
             <label class="block"><span class="lbl">Hora término</span><input type="time" v-model="f.hora_termino" class="inp px-2"><button @click="f.hora_termino = S.horaAhora(); f.fecha_termino = hoyISO()" class="text-[11px] font-bold text-emerald-700 mt-1">Ahora</button></label>
           </div>
           <label class="block"><span class="lbl">Fecha y hora de la falla</span><div class="flex gap-2"><input type="date" v-model="f.fecha_falla" class="inp px-2 flex-1"><input type="time" v-model="f.hora_falla" class="inp px-2 w-32"></div>
-            <span v-if="f.levantamiento_id" class="block text-[11px] text-slate-500"><i class="fa-solid fa-link mr-1 text-emerald-700"></i>Viene de la OT de Fallas N° {{ f.levantamiento_id }}{{ f.hora_falla ? ' (se copió su fecha y hora de falla)' : '' }}</span></label>
+            <span v-if="f.levantamiento_id" class="block text-[11px] text-slate-500"><i class="fa-solid fa-link mr-1 text-emerald-700"></i>Viene de la OT de Fallas N° {{ f.ot_fallas_folio || f.levantamiento_id }}{{ f.hora_falla ? ' (se copió su fecha y hora de falla)' : '' }}</span></label>
           <p :class="['text-center font-black text-lg rounded-xl py-2', S.duracionMin(f) == null ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-800']" data-int="duracion"><i class="fa-regular fa-clock mr-1"></i>Duración: {{ S.textoDuracion(S.duracionMin(f)) }}</p>
         </div>
         <div v-if="f.tipo === 'MECANICA' && f.modo !== 'INSPECCION'" class="bg-white rounded-2xl p-4 shadow-sm space-y-3">

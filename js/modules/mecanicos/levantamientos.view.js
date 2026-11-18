@@ -26,7 +26,7 @@ export default {
   <div v-for="l in activos" :key="l.r.id" class="border-2 border-amber-200 rounded-xl overflow-hidden" :data-lev="'carpeta-' + l.r.id">
     <button @click="abrir[l.r.id] = !abrir[l.r.id]" class="w-full flex items-center gap-3 px-3 py-2.5 bg-amber-50 text-left">
       <i :class="['fa-solid text-amber-500 text-xl', abrir[l.r.id] ? 'fa-folder-open' : 'fa-folder']"></i>
-      <span class="flex-1 min-w-0"><b class="block text-sm">OT de Fallas N° {{ l.r.id }} · {{ formatDateForDisplay(l.r.fecha) }}</b>
+      <span class="flex-1 min-w-0"><b class="block text-sm">OT de Fallas N° {{ S.folioOF(l.r) }} · {{ formatDateForDisplay(l.r.fecha) }}</b>
         <span class="text-[11px] text-slate-600">{{ l.r.hora_falla || l.r.fecha_falla ? 'Falla ' + [formatDateForDisplay(l.r.fecha_falla || l.r.fecha), l.r.hora_falla].filter(Boolean).join(' ') + ' · ' : '' }}{{ (l.r.mecanicos || [])[0]?.nombre || l.r.creado_por }}</span>
         <span v-if="l.r.disp_anterior" class="block text-[10px] font-bold text-rose-700"><i class="fa-solid fa-ban mr-0.5"></i>Equipo fuera de servicio hasta reparar todo</span></span>
       <span class="text-xs font-black text-amber-800 whitespace-nowrap">{{ l.av.listas }}/{{ l.av.total }}</span>
@@ -71,7 +71,7 @@ export default {
     <summary class="text-xs font-bold text-emerald-700 cursor-pointer py-1"><i class="fa-solid fa-folder-closed mr-1"></i>OT de Fallas completas ({{ completos.length }})</summary>
     <div v-for="l in completos" :key="l.r.id" class="py-1.5 border-b last:border-0 text-xs flex items-center gap-2">
       <i class="fa-solid fa-circle-check text-emerald-600"></i>
-      <span class="flex-1">N° {{ l.r.id }} · {{ formatDateForDisplay(l.r.fecha) }} · {{ l.av.total }} falla{{ l.av.total === 1 ? '' : 's' }} reparada{{ l.av.total === 1 ? '' : 's' }}</span>
+      <span class="flex-1">N° {{ S.folioOF(l.r) }} · {{ formatDateForDisplay(l.r.fecha) }} · {{ l.av.total }} falla{{ l.av.total === 1 ? '' : 's' }} reparada{{ l.av.total === 1 ? '' : 's' }}</span>
     </div>
   </details>
 </div>`,

@@ -77,7 +77,7 @@ const bloqueNuevo = (r, elec) => {
   ${banda('2', 'FALLA REPARADA')}
   <div style="border:1.5px solid #333;border-top:0;padding:6px 12px 9px;font-size:12px;font-weight:800">${esc(titulo) || '&nbsp;'}
     ${r.falla_texto && r.falla_texto !== titulo ? `<div style="font-size:9.5px;font-weight:400;color:#475569;margin-top:2px">Falla abierta en el equipo: ${esc(r.falla_texto)}</div>` : ''}
-    ${r.levantamiento_id ? `<div style="font-size:9.5px;font-weight:700;color:${V};margin-top:3px">Viene de la OT de Fallas N° ${esc(r.levantamiento_id)}</div>` : r.falla_id ? `<div style="font-size:8.5px;font-weight:400;color:#94a3b8;margin-top:2px">Falla N° ${esc(r.falla_id)} del equipo</div>` : ''}</div>
+    ${r.levantamiento_id ? `<div style="font-size:9.5px;font-weight:700;color:${V};margin-top:3px">Viene de la OT de Fallas N° ${esc(r.ot_fallas_folio || r.levantamiento_id)}</div>` : r.falla_id ? `<div style="font-size:8.5px;font-weight:400;color:#94a3b8;margin-top:2px">Falla N° ${esc(r.falla_id)} del equipo</div>` : ''}</div>
   <div style="height:9px"></div>
   ${banda('3', 'DESCRIPCIÓN DE LO REALIZADO')}
   ${lineasTexto(r.descripcion, 7, 20)}
@@ -113,9 +113,9 @@ export const hojaIntervencion = (r, logo) => {
     ${lbl('TURNO:')} ${caja(r.turno, '50px')} ${lbl('LUGAR INTERVENCION:')} ${caja(r.lugar, '330px')}
   </div>
   ${lev ? `
-  <table style="width:60%;border-collapse:collapse;font-size:10px;margin:0 auto 12px;text-align:center">
-    <tr><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA OT</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA Y HORA FALLA DEL EQUIPO</td></tr>
-    <tr><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:700;font-size:11px">${fecha(r.fecha)}</td><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:900;font-size:12px">${r.hora_falla || r.fecha_falla ? [fecha(r.fecha_falla || r.fecha), esc(r.hora_falla)].filter(Boolean).join(' · ') : '&nbsp;'}</td></tr>
+  <table style="width:80%;border-collapse:collapse;font-size:10px;margin:0 auto 12px;text-align:center">
+    <tr><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">N° OT DE FALLAS</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA OT</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA Y HORA FALLA DEL EQUIPO</td></tr>
+    <tr><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:900;font-size:13px;color:${V}">OF-${esc(r.folio_falla || r.id || '')}</td><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:700;font-size:11px">${fecha(r.fecha)}</td><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:900;font-size:12px">${r.hora_falla || r.fecha_falla ? [fecha(r.fecha_falla || r.fecha), esc(r.hora_falla)].filter(Boolean).join(' · ') : '&nbsp;'}</td></tr>
   </table>` : nuevo ? `
   <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;text-align:center">
     <tr>${['FECHA INICIO', 'HORA INICIO', 'FECHA TÉRMINO', 'HORA TÉRMINO', 'DURACIÓN', 'FALLA'].map(t => `<td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">${t}</td>`).join('')}</tr>

@@ -62,8 +62,9 @@ export default {
         <div v-if="r.modo === 'INSPECCION'" class="text-slate-600 mt-1 line-clamp-2">{{ r.descripcion }}</div>
         <div v-else class="text-slate-600 mt-1 line-clamp-2"><b v-if="r.tipo === 'MECANICA' && r.causa_falla">{{ r.causa_falla }} · </b>{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
         <div v-if="r.bloqueo" class="text-[10px] font-bold text-violet-700 mt-0.5"><i class="fa-solid fa-lock mr-0.5"></i>Con registro de bloqueo</div>
+        <div v-if="r.historial_id && r.estado !== 'EN_HISTORIAL'" class="text-[10px] font-bold text-emerald-700 mt-0.5"><i class="fa-solid fa-book mr-0.5"></i>Ya está en el Historial · al firmar se cambia su PDF por el firmado</div>
         <div v-if="r.modo === 'INSPECCION' && (r.fallas || []).length" class="text-[10px] font-bold text-amber-700 mt-0.5"><i class="fa-solid fa-list-ol mr-0.5"></i>{{ S.avanceLevantamiento(r).listas }} de {{ S.avanceLevantamiento(r).total }} fallas reparadas</div>
-        <div v-else-if="r.modo === 'REPARACION' && S.levantamientoDe(r)" class="text-[10px] font-bold text-emerald-700 mt-0.5"><i class="fa-solid fa-link mr-0.5"></i>De la OT de Fallas N° {{ S.levantamientoDe(r).id }}</div>
+        <div v-else-if="r.modo === 'REPARACION' && S.levantamientoDe(r)" class="text-[10px] font-bold text-emerald-700 mt-0.5"><i class="fa-solid fa-link mr-0.5"></i>De la OT de Fallas N° {{ r.ot_fallas_folio || S.folioOF(S.levantamientoDe(r)) }}</div>
       </div>
       <div v-if="!S.listaPanel.value.length" class="p-10 text-center text-slate-400 font-bold">No hay intervenciones en este estado.</div>
     </div>
@@ -74,7 +75,7 @@ export default {
       <div v-if="!r" class="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-400 font-bold">Elige una intervención de la lista.</div>
       <div v-else class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b bg-slate-50">
-          <div class="font-extrabold text-slate-800">N° {{ r.id }} · AFI {{ r.afi }} · {{ r.modo === 'INSPECCION' ? 'OT de Fallas' + (r.tipo === 'ELECTRICA' ? ' (eléctrico)' : ' (mecánico)') : r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
+          <div class="font-extrabold text-slate-800">{{ r.modo === 'INSPECCION' ? 'OF-' + S.folioOF(r) : 'N° ' + r.id }} · AFI {{ r.afi }} · {{ r.modo === 'INSPECCION' ? 'OT de Fallas' + (r.tipo === 'ELECTRICA' ? ' (eléctrico)' : ' (mecánico)') : r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
           <div class="flex gap-2">
             <button @click="S.descargarPDF(r)" class="px-3 py-1.5 rounded-lg border font-bold"><i class="fa-solid fa-file-pdf text-rose-600 mr-1"></i>PDF</button>
             <a v-if="r.documento_url" :href="r.documento_url" target="_blank" class="px-3 py-1.5 rounded-lg border font-bold text-emerald-700"><i class="fa-solid fa-link mr-1"></i>Doc. Historial</a>
@@ -100,8 +101,8 @@ export default {
         </div>
         <div v-else-if="r.modo === 'REPARACION' && lev" class="px-4 py-2.5 border-b bg-slate-50 flex flex-wrap items-center gap-2" data-panel="enlace-lev">
           <i class="fa-solid fa-link text-emerald-700"></i><span>Esta reparación viene de la</span>
-          <button v-if="!lev.noCargado" @click="S.abrirRegPanel(lev)" class="font-bold text-emerald-700 underline">OT de Fallas N° {{ lev.id }} · {{ formatDateForDisplay(lev.fecha) }}</button>
-          <b v-else>OT de Fallas N° {{ lev.id }}</b>
+          <button v-if="!lev.noCargado" @click="S.abrirRegPanel(lev)" class="font-bold text-emerald-700 underline">OT de Fallas N° {{ S.folioOF(lev) }} · {{ formatDateForDisplay(lev.fecha) }}</button>
+          <b v-else>OT de Fallas N° {{ r.ot_fallas_folio || lev.id }}</b>
           <span v-if="!lev.noCargado" class="text-slate-500">({{ S.avanceLevantamiento(lev).listas }} de {{ S.avanceLevantamiento(lev).total }} fallas reparadas)</span>
         </div>
         <!-- Corregir datos -->

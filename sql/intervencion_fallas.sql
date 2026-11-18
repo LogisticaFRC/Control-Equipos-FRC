@@ -10,6 +10,7 @@
 --     ✓ terminado → al enviar la falla queda REPARADA. Cada envío es un report (una hoja).
 --   · Cada falla puede pedir repuesto (con código y serie del motor) → aparece en Repuestos pedidos. Hasta 2 fotos.
 --   · ART (2 hojas) y bloqueo (1 hoja) se llenan en papel: en la reparación solo se sube la FOTO.
+--   · OT de Fallas con N° correlativo propio (OF-1, OF-2…). La reparación entra al Historial al enviarla.
 --   · El levantamiento deja el equipo FUERA DE SERVICIO hasta reparar todas sus fallas. Se puede borrar si no tiene reparaciones.
 -- =====================================================================
 
@@ -26,6 +27,8 @@ alter table public.bd_mec_intervenciones add column if not exists art_fotos     
 alter table public.bd_mec_intervenciones add column if not exists bloqueo_foto  text;      -- foto del registro de bloqueo (papel)
 alter table public.bd_mec_intervenciones add column if not exists fecha_falla   date;      -- fecha en que falló el equipo (con hora_falla)
 alter table public.bd_mec_intervenciones add column if not exists disp_anterior text;      -- LEVANTAMIENTO: disponibilidad del equipo antes de dejarlo Fuera de Servicio
+alter table public.bd_mec_intervenciones add column if not exists folio_falla   integer;   -- OT DE FALLAS: N° correlativo propio (OF-1, OF-2…), el Admin lo puede cambiar
+alter table public.bd_mec_intervenciones add column if not exists ot_fallas_folio integer; -- REPARACIÓN: N° de la OT de Fallas de donde viene
 create index if not exists bd_mec_intervenciones_falla_idx on public.bd_mec_intervenciones (falla_id);
 create index if not exists bd_mec_intervenciones_lev_idx on public.bd_mec_intervenciones (levantamiento_id);
 
@@ -135,5 +138,61 @@ begin
 end $$;
 revoke all on function public.frc_levantamiento_borrar(bigint) from public, anon;
 grant execute on function public.frc_levantamiento_borrar(bigint) to authenticated;
+
+-- 6) OT DE FALLAS: N° correlativo propio. Al crear toma el siguiente (máximo + 1); si se borra la última, el N° se reutiliza.
+with n as (
+  select id, row_number() over (order by id) as rn from public.bd_mec_intervenciones where modo = 'INSPECCION' and folio_falla is null
+)
+update public.bd_mec_intervenciones m
+   set folio_falla = (select coalesce(max(folio_falla), 0) from public.bd_mec_intervenciones where modo = 'INSPECCION') + n.rn
+  from n where m.id = n.id;
+update public.bd_mec_intervenciones r set ot_fallas_folio = l.folio_falla
+  from public.bd_mec_intervenciones l
+ where r.modo = 'REPARACION' and r.levantamiento_id = l.id and r.ot_fallas_folio is distinct from l.folio_falla;
+create unique index if not exists bd_mec_intervenciones_folio_falla_uq on public.bd_mec_intervenciones (folio_falla) where modo = 'INSPECCION';
+
+create or replace function public.frc_folio_falla_nuevo()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.modo = 'INSPECCION' and new.folio_falla is null then
+    perform pg_advisory_xact_lock(20261118);
+    select coalesce(max(folio_falla), 0) + 1 into new.folio_falla from public.bd_mec_intervenciones where modo = 'INSPECCION';
+  end if;
+  return new;
+end $$;
+drop trigger if exists frc_folio_falla_nuevo on public.bd_mec_intervenciones;
+create trigger frc_folio_falla_nuevo before insert on public.bd_mec_intervenciones
+  for each row execute function public.frc_folio_falla_nuevo();
+
+-- El Admin cambia el N° de una OT de Fallas (no se puede repetir); sus reparaciones se actualizan
+create or replace function public.frc_ot_fallas_folio(p_id bigint, p_folio integer)
+returns integer language plpgsql security definer set search_path = public as $$
+begin
+  if not public.frc_puede(array['mecanicos','operaciones'], 'admin') then raise exception 'Solo un Admin puede cambiar el N° de una OT de Fallas.'; end if;
+  if p_folio is null or p_folio < 1 then raise exception 'N° no válido.'; end if;
+  if exists (select 1 from public.bd_mec_intervenciones where modo = 'INSPECCION' and folio_falla = p_folio and id <> p_id) then
+    raise exception 'Ya existe la OT de Fallas N° %.', p_folio;
+  end if;
+  update public.bd_mec_intervenciones set folio_falla = p_folio where id = p_id and modo = 'INSPECCION';
+  if not found then raise exception 'No existe esa OT de Fallas.'; end if;
+  update public.bd_mec_intervenciones set ot_fallas_folio = p_folio where modo = 'REPARACION' and levantamiento_id = p_id;
+  return p_folio;
+end $$;
+revoke all on function public.frc_ot_fallas_folio(bigint, integer) from public, anon;
+grant execute on function public.frc_ot_fallas_folio(bigint, integer) to authenticated;
+
+-- 7) La reparación entra al Historial al ENVIARLA; cuando el supervisor firma se cambia el PDF por el firmado
+--    (el técnico no puede editar el Historial: solo el enlace del documento de un registro hecho por la app)
+create or replace function public.frc_historial_doc_app(p_hist bigint, p_link text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.frc_puede(array['mecanicos','operaciones'], 'subadmin') then raise exception 'Sin permiso.'; end if;
+  if not exists (select 1 from public.bd_mec_intervenciones where historial_id = p_hist) then
+    raise exception 'El registro % del Historial no viene de la app.', p_hist;
+  end if;
+  update public."BD_HISTORIAL" set link = p_link where id = p_hist;
+end $$;
+revoke all on function public.frc_historial_doc_app(bigint, text) from public, anon;
+grant execute on function public.frc_historial_doc_app(bigint, text) to authenticated;
 
 notify pgrst, 'reload schema';

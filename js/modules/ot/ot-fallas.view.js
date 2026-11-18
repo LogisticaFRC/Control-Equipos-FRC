@@ -37,7 +37,7 @@ export default {
         <tbody>
           <template v-for="o in lista" :key="o.r.id">
             <tr :class="['border-t cursor-pointer hover:bg-amber-50/50', abierta === o.r.id ? 'bg-amber-50' : '']" @click="abierta = abierta === o.r.id ? null : o.r.id" :data-ot="'fila-' + o.r.id">
-              <td class="p-2.5 font-black text-amber-700">OF-{{ o.r.id }}</td>
+              <td class="p-2.5 font-black text-amber-700 whitespace-nowrap" @click.stop>OF-{{ M.folioOF(o.r) }}<button v-if="isAdmin" @click="cambiarFolio(o.r)" class="ml-1 text-slate-400 hover:text-amber-700" title="Cambiar N° (Admin)" :data-ot="'folio-' + o.r.id"><i class="fa-solid fa-pen text-[10px]"></i></button></td>
               <td class="p-2.5 font-mono">{{ formatDateForDisplay(o.r.fecha) }}</td>
               <td class="p-2.5 font-mono">{{ o.r.hora_falla || o.r.fecha_falla ? [formatDateForDisplay(o.r.fecha_falla || o.r.fecha), o.r.hora_falla].filter(Boolean).join(' ') : '—' }}</td>
               <td class="p-2.5 font-bold">{{ o.r.afi }}</td>
@@ -88,7 +88,7 @@ export default {
     const lista = computed(() => {
       const q = String(filtro.value.texto || '').trim().toUpperCase();
       return todas.value.filter(o => (!filtro.value.estado || (['ABIERTA', 'FALLAS'].includes(filtro.value.estado) ? !o.completa : o.completa))
-        && (!q || ['OF-' + o.r.id, o.r.afi, o.equipo, o.r.descripcion, (o.r.mecanicos || []).map(m => m.nombre).join(' '), o.items.map(i => i.descripcion).join(' ')].join(' ').toUpperCase().includes(q)));
+        && (!q || ['OF-' + M.folioOF(o.r), o.r.afi, o.equipo, o.r.descripcion, (o.r.mecanicos || []).map(m => m.nombre).join(' '), o.items.map(i => i.descripcion).join(' ')].join(' ').toUpperCase().includes(q)));
     });
     const kpis = computed(() => [
       { e: '', t: 'Total OT de Fallas', n: todas.value.length, c: 'bg-white text-slate-800' },
@@ -98,6 +98,7 @@ export default {
     ]);
     // Abre el report de reparación en el panel MECÁNICOS
     const verReport = (x) => { M.filtroPanel.value = ''; M.abrirRegPanel(x); currentTab.value = 'mecPanel'; };
-    return { M, filtro, abierta, lista, kpis, verReport, formatDateForDisplay, isAdmin };
+    const cambiarFolio = (r) => M.cambiarFolioOF(r);
+    return { cambiarFolio, M, filtro, abierta, lista, kpis, verReport, formatDateForDisplay, isAdmin };
   }
 };
