@@ -668,7 +668,7 @@ export const cargarProblemas = async () => {
     const data = await sb(supabaseClient.from(TABLA_PROBLEMAS).select('*').order('id', { ascending: true }));
     dbProblemas.value = data;
     faltaTablaProblemas.value = false;
-    hallazgosSinOT.value = data.filter(p => p.estado === 'PENDIENTE').length;
+    hallazgosSinOT.value = data.filter(p => p.estado === 'PENDIENTE' && p.reparacion_id != null).length;   // las de terreno (sin reparación) no cuentan para el taller
   } catch (err) {
     if (/bd_taller_problemas|schema cache|does not exist/i.test(errMsg(err))) faltaTablaProblemas.value = true;
     else console.warn('[Taller] No se pudieron leer los problemas:', errMsg(err));
@@ -677,7 +677,7 @@ export const cargarProblemas = async () => {
 export const problemasDeRep = (rep) => (rep ? dbProblemas.value.filter(p => String(p.reparacion_id) === String(rep.id)) : []);
 export const problemasPendientesRep = (rep) => problemasDeRep(rep).filter(p => p.estado === 'PENDIENTE');
 /** Problemas que el Admin aún no procesa (todo el taller). */
-export const problemasPendientes = computed(() => dbProblemas.value.filter(p => p.estado === 'PENDIENTE'));
+export const problemasPendientes = computed(() => dbProblemas.value.filter(p => p.estado === 'PENDIENTE' && p.reparacion_id != null));
 
 export const enviarProblema = async (rep, ot, texto) => {
   if (!soloEditor()) return false;
@@ -721,7 +721,8 @@ export const SISTEMAS_HALLAZGO = ['MOTOR', 'ELÉCTRICO / CONTROL', 'GENERACIÓN'
 export const ESTADO_HALLAZGO = {
   PENDIENTE: { t: 'Esperando OT', c: 'bg-amber-100 text-amber-800 border-amber-300' },
   AGREGADO: { t: 'En OT', c: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-  RECHAZADO: { t: 'Descartado', c: 'bg-slate-100 text-slate-500 border-slate-300' }
+  RECHAZADO: { t: 'Descartado', c: 'bg-slate-100 text-slate-500 border-slate-300' },
+  REPARADO: { t: 'Reparada', c: 'bg-sky-100 text-sky-800 border-sky-300' }   // 2026-11-18: cerrada con una intervención (report de reparación)
 };
 export const hallazgoVacio = () => ({ sistema: '', descripcion: '', foto: null, necesita_repuesto: false, repuesto: '', cantidad: '' });
 /** Texto de la actividad de la OT que sale de un hallazgo. */

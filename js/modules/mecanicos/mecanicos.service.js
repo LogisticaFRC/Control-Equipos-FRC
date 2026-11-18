@@ -21,6 +21,7 @@ import { logoDataURL } from '../../core/excel.js';
 import { listaCausas } from '../historial/historial.service.js';
 import { ACEITES } from '../historial/historial.mapper.js';
 import { naveDeAfi } from '../taller/taller.service.js';   // TALLER: solo equipos en nave (2026-11-17)
+import { crearFallasDeInspeccion, marcarFallaReparada, fallaPorId, textoFalla, asegurarFallas, SQL_FALLAS } from './fallas-equipo.js';   // 2026-11-18
 import { hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 
 const { ref, computed } = Vue;
@@ -179,23 +180,58 @@ export const nuevaIntervencion = (tipo, e) => ({
   uso_art: false, bloqueo: false,
   mecanicos: [{ nombre: usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || '', usuario: usuarioActivo.value?.usuario || '', firma: '' }],
   causa_intervencion: '', descripcion: '', interferencia: '', causa_falla: '',
+  // 2026-11-18: modo INSPECCION (observación + fallas enumeradas) | REPARACION (una falla abierta) · cada envío = un report
+  modo: '', fallas: [{ descripcion: '', sistema: '' }], falla_id: null, falla_texto: '', fecha_termino: hoyISO(), terminado: false,
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
   supervisor: { modo: 'DESPUES', nombre: '', empresa: '', tipo: 'CLIENTE', firma: '' }
 });
 export const formInt = ref(null);       // intervención en edición (app)
 export const pasoInt = ref(1);
-export const abrirIntervencion = (tipo, e) => {
+export const abrirIntervencion = (tipo, e, falla = null) => {
   // TALLER: intervenciones solo en equipos que están en una nave · CHOFER: nunca (2026-11-17)
   if (esChofer.value) { alert('El perfil Chofer no hace intervenciones: registra el check list / report del camión.'); return; }
   if (esTaller.value && !naveDeAfi(e.afi)) { alert(`El AFI ${e.afi} no está en una nave. En taller primero se ingresa el equipo a una nave.`); return; }
   let b = null; try { b = JSON.parse(localStorage.getItem(BORRADOR()) || 'null'); } catch (x) { b = null; }
   if (b && b.afi === String(e.afi) && b.tipo === tipo && confirm('Tienes un borrador sin enviar de este equipo. ¿Seguir con ese borrador?')) formInt.value = b;
   else formInt.value = nuevaIntervencion(tipo, e);
+  if (falla) elegirFalla(formInt.value, falla);
   pasoInt.value = 1;
+  asegurarFallas();
 };
+/** Paso "Trabajo": elige INSPECCIÓN o REPARACIÓN. */
+export const elegirModo = (f, modo) => {
+  f.modo = modo;
+  if (modo === 'INSPECCION') {
+    if (f.tipo === 'ELECTRICA') { f.causa_intervencion = 'INSPECCIÓN'; } else { f.causa_falla = 'INSPECCION'; }
+    if (!(f.fallas || []).length) f.fallas = [{ descripcion: '', sistema: '' }];
+  } else if (f.tipo === 'ELECTRICA' ? f.causa_intervencion === 'INSPECCIÓN' : f.causa_falla === 'INSPECCION') {
+    if (f.tipo === 'ELECTRICA') f.causa_intervencion = ''; else f.causa_falla = '';
+  }
+};
+/** Reparación de una falla abierta: deja el título con el texto de la falla (se puede cambiar). */
+export const elegirFalla = (f, h) => {
+  elegirModo(f, 'REPARACION');
+  f.falla_id = h ? h.id : null;
+  f.falla_texto = h ? textoFalla(h) : '';
+  const titulo = h ? String(h.descripcion || '').trim() : '';
+  if (f.tipo === 'ELECTRICA') f.causa_falla = titulo; else f.causa_intervencion = titulo;
+};
+/** Minutos entre inicio y término (acepta días distintos). null si falta algo o queda negativo. */
+export const duracionMin = (f) => {
+  const fi = normalizarFecha(f.fecha), ft = normalizarFecha(f.fecha_termino || f.fecha);
+  if (!fi || !ft || !/^\d{1,2}:\d{2}/.test(f.hora_inicio || '') || !/^\d{1,2}:\d{2}/.test(f.hora_termino || '')) return null;
+  const t = (d, h) => { const [y, m, dd] = d.split('-').map(Number); const [hh, mm] = h.split(':').map(Number); return Date.UTC(y, m - 1, dd, hh, mm) / 60000; };
+  const n = t(ft, f.hora_termino) - t(fi, f.hora_inicio);
+  return n >= 0 ? n : null;
+};
+export const textoDuracion = (min) => (min == null ? '—' : min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ' ' + (min % 60) + ' min' : ''}`);
 export const editarRegistro = (r) => {
   formInt.value = { ...JSON.parse(JSON.stringify(r)), horometro: r.horometro ? String(r.horometro) : '', supervisor: { modo: 'DESPUES', nombre: '', empresa: '', tipo: 'CLIENTE', firma: '' } };
+  if (formInt.value.modo) {   // formato 2026-11-18
+    if (!formInt.value.fecha_termino) formInt.value.fecha_termino = formInt.value.fecha;
+    if (!(formInt.value.fallas || []).length) formInt.value.fallas = [{ descripcion: '', sistema: '' }];
+  }
   pasoInt.value = 1;
 };
 export const guardarBorrador = () => { try { if (formInt.value && !formInt.value.id) localStorage.setItem(BORRADOR(), JSON.stringify(formInt.value)); } catch (e) { /* lleno */ } };
@@ -222,6 +258,20 @@ export const faltantes = (f) => {
   if (!f.fecha) x.push('Fecha');
   if (!f.hora_inicio) x.push('Hora inicio');
   if (!f.hora_termino) x.push('Hora término');
+  if (f.modo != null) {   // formato nuevo (2026-11-18) · registros antiguos (modo null) siguen como antes
+    if (!f.modo) x.push('Elegir: Levantamiento de fallas o Reparación');
+    if (f.hora_inicio && f.hora_termino && duracionMin(f) == null) x.push('El término no puede ser antes del inicio');
+    if (f.modo === 'INSPECCION') {
+      if (!String(f.descripcion || '').trim()) x.push('Observación del equipo');
+      if ((f.lubricantes || []).some(l => l.key && !(Number(String(l.cantidad).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
+      if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
+      if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
+      if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor');
+      if (!f.terminado) x.push('Marcar ✓ terminado');
+      return x;
+    }
+    if (f.modo === 'REPARACION' && !f.terminado) x.push('Marcar ✓ terminado');
+  }
   if (f.tipo === 'MECANICA' && !f.causa_falla) x.push('Causa de la intervención');
   if (!String(f.causa_intervencion || '').trim()) x.push(f.tipo === 'MECANICA' ? 'Causa detallada (título)' : 'Causa de la intervención');
   if ((f.lubricantes || []).some(l => l.key && !(Number(String(l.cantidad).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
@@ -246,6 +296,11 @@ const filaDB = (f) => ({
   usuario_arriendo: String(f.usuario_arriendo || '').trim() || null, operador: String(f.operador || '').trim() || null,
   vale_consumo: String(f.vale_consumo || '').trim() || null,
   registro_bloqueo: f.bloqueo ? f.registro_bloqueo : null,
+  ...(f.modo ? {   // 2026-11-18 (sql/intervencion_fallas.sql)
+    modo: f.modo, fecha_termino: normalizarFecha(f.fecha_termino) || null, terminado: Boolean(f.terminado), duracion_min: duracionMin(f),
+    fallas: f.modo === 'INSPECCION' ? (f.fallas || []).filter(i => String(i.descripcion || '').trim()).map((i, k) => ({ n: k + 1, id: i.id || null, descripcion: String(i.descripcion).trim(), sistema: i.sistema || '' })) : [],
+    falla_id: f.modo === 'REPARACION' ? (f.falla_id || null) : null, falla_texto: f.modo === 'REPARACION' ? (f.falla_texto || null) : null
+  } : {}),
   updated_at: new Date().toISOString()
 });
 
@@ -265,19 +320,34 @@ export const enviarIntervencion = async () => {
     let reg;
     if (f.id) reg = (await sb(supabaseClient.from(TABLA_MEC).update(fila).eq('id', f.id).select()))[0];
     else reg = (await sb(supabaseClient.from(TABLA_MEC).insert([{ ...fila, creado_por: usuarioActivo.value?.usuario || null }]).select()))[0];
+    // Fallas del equipo (2026-11-18): la inspección las deja abiertas · la reparación cierra la elegida
+    let avisoFallas = '';
+    if (reg && f.modo === 'INSPECCION' && fila.fallas.length) {
+      try {
+        const conId = await crearFallasDeInspeccion(reg, fila.fallas);
+        await sb(supabaseClient.from(TABLA_MEC).update({ fallas: conId }).eq('id', reg.id));
+        reg.fallas = conId;
+        avisoFallas = ` ${conId.length} falla(s) quedaron abiertas en el equipo.`;
+      } catch (err) { alert((/intervencion_id|tipo_intervencion|reparacion_id|null value|column|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero las fallas no quedaron en el equipo: ' + errMsg(err)); }
+    }
+    if (reg && f.modo === 'REPARACION' && f.falla_id && fallaPorId(f.falla_id)?.estado !== 'REPARADO') {
+      try { await marcarFallaReparada(f.falla_id, reg); avisoFallas = ' La falla quedó reparada en el equipo.'; }
+      catch (err) { alert((/frc_falla_reparada|function|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero la falla no se marcó reparada: ' + errMsg(err)); }
+    }
     try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
     formInt.value = null; equipoSel.value = null; tabApp.value = 'registros';   // vuelve a "Mis documentos"
     carpetaApp.value = fila.estado === 'FIRMADA' ? 'REALIZADOS' : 'SIN_FIRMA';
 
     if (conFirma && reg) {
       const ok = await pasarAHistorial(reg);
-      avisoApp(ok ? '¡Enviada y guardada en el Historial! ✔' : 'Enviada. Quedó firmada; se pasará al Historial desde el panel.');
+      avisoApp((ok ? '¡Enviada y guardada en el Historial! ✔' : 'Enviada. Quedó firmada; se pasará al Historial desde el panel.') + avisoFallas);
     } else {
-      avisoApp('¡Enviada! Queda pendiente la firma del supervisor.');
+      avisoApp('¡Enviada! Queda pendiente la firma del supervisor.' + avisoFallas);
     }
     await cargarMec();
   } catch (err) {
-    alert(/bd_mec_intervenciones|schema cache|does not exist/i.test(errMsg(err)) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + errMsg(err));
+    const m = errMsg(err);
+    alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
   } finally { enviando.value = false; }
 };
 
@@ -319,7 +389,7 @@ export const descargarPDF = async (r) => {
   try {
     const blob = await generarPDF(r);
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `Intervencion ${r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica'} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
+    a.download = `${r.modo === 'INSPECCION' ? 'Levantamiento de fallas ' + (r.tipo === 'ELECTRICA' ? 'electrico' : 'mecanico') : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   } catch (err) { alert('No se pudo generar el PDF: ' + errMsg(err)); }
 };
@@ -358,8 +428,11 @@ export const pasarAHistorial = async (r) => {
       horometro: Number(r.horometro) || null,
       mecanico_1: mecs[0] || '', mecanico_2: mecs[1] || '', mecanico_3: mecs[2] || '', mecanico_4: mecs[3] || '',
       bloqueo_de_equipo: r.bloqueo ? 'SI' : 'NO', hora_falla: r.hora_falla || '', hora_inicio: r.hora_inicio || '', hora_termino: r.hora_termino || '',
-      hora_total: String(calcularRestaHoras(r.hora_inicio, r.hora_termino) || ''),
-      causa_intervencion: (r.tipo === 'ELECTRICA' ? (r.causa_falla || r.causa_intervencion) : r.causa_intervencion) || '', descripcion: [r.descripcion || '', ...extras].filter(Boolean).join('\n'),
+      hora_total: r.duracion_min != null ? String(Math.round(r.duracion_min / 6) / 10) : String(calcularRestaHoras(r.hora_inicio, r.hora_termino) || ''),
+      causa_intervencion: r.modo === 'INSPECCION' ? `LEVANTAMIENTO DE FALLAS (${(r.fallas || []).length})` : (r.tipo === 'ELECTRICA' ? (r.causa_falla || r.causa_intervencion) : r.causa_intervencion) || '', descripcion: [r.modo === 'INSPECCION' ? 'OBSERVACIÓN: ' + (r.descripcion || '') : (r.descripcion || ''),
+        ...(r.modo === 'INSPECCION' ? (r.fallas || []).map(i => `Falla ${i.n}: ${i.sistema ? i.sistema + ' · ' : ''}${i.descripcion}`) : []),
+        r.modo === 'REPARACION' && r.falla_texto ? 'Falla reparada: ' + r.falla_texto : '',
+        r.fecha_termino && r.fecha_termino !== r.fecha ? `Término: ${r.fecha_termino} ${r.hora_termino || ''}` : '', ...extras].filter(Boolean).join('\n'),
       interferencia: r.interferencia || '', empresa: r.usuario_arriendo || '', link: url,
       art: r.uso_art ? 'SI' : 'NO', numero_folio: `APP-${r.id}`,
       causa_falla: r.tipo === 'MECANICA' && ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'].includes(r.causa_falla) ? r.causa_falla : '',
@@ -451,3 +524,26 @@ export const descargarFormatoVacio = async (tipo) => {
 
 export const htmlHoja = (r, logo = '') => hojaIntervencion(r, logo);
 export const htmlBloqueo = (r, logo = '') => hojaBloqueo(r, logo);
+
+/** TIEMPOS DE TRABAJO (2026-11-18): Excel con cada report (inspección / reparación), inicio, término y cuánto demoró. */
+export const exportarTiempos = () => {
+  if (!window.XLSX) return alert('No se cargó la librería Excel. Actualiza la página.');
+  const filas = dbMec.value.slice().sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || ''))).map(r => {
+    const min = r.duracion_min != null ? r.duracion_min : duracionMin({ ...r, fecha_termino: r.fecha_termino || r.fecha });
+    return {
+      'N° report': r.id, Tipo: r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica',
+      Trabajo: r.modo === 'INSPECCION' ? 'Levantamiento de fallas' : r.modo === 'REPARACION' ? 'Reparación' : 'Intervención (formato antiguo)',
+      AFI: r.afi, Equipo: r.equipo || '', Lugar: r.lugar || '',
+      'Falla / título': r.modo === 'INSPECCION' ? `${(r.fallas || []).length} falla(s) encontradas` : (r.tipo === 'ELECTRICA' ? r.causa_falla : r.causa_intervencion) || '',
+      'Fallas encontradas': r.modo === 'INSPECCION' ? (r.fallas || []).map(i => `${i.n}. ${i.descripcion}`).join(' | ') : '',
+      'Fecha inicio': r.fecha || '', 'Hora inicio': r.hora_inicio || '', 'Fecha término': r.fecha_termino || r.fecha || '', 'Hora término': r.hora_termino || '',
+      'Duración (min)': min ?? '', 'Duración (h)': min != null ? Math.round(min / 6) / 10 : '',
+      Mecánicos: (r.mecanicos || []).map(m => m.nombre).filter(Boolean).join(', '), Terminado: r.terminado ? 'Sí' : '', Estado: (ESTADOS_MEC[r.estado] || {}).t || r.estado || ''
+    };
+  });
+  const ws = window.XLSX.utils.json_to_sheet(filas);
+  ws['!cols'] = Object.keys(filas[0] || { a: 1 }).map(k => ({ wch: Math.max(10, Math.min(45, k.length + 4)) }));
+  const wb = window.XLSX.utils.book_new(); window.XLSX.utils.book_append_sheet(wb, ws, 'Tiempos de trabajo');
+  window.XLSX.writeFile(wb, `Tiempos de trabajo mecanicos ${hoyISO()}.xlsx`);
+};
+

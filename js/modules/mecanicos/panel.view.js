@@ -25,6 +25,7 @@ export default {
       </div>
       <div class="flex gap-2">
         <button @click="S.cargarMec()" class="w-9 h-9 rounded-xl border text-slate-500 hover:bg-slate-50" title="Actualizar"><i :class="['fa-solid fa-rotate', S.cargandoMec.value ? 'fa-spin' : '']"></i></button>
+        <button @click="S.exportarTiempos()" class="bg-white border border-emerald-600 text-emerald-700 hover:bg-emerald-50 font-bold px-4 py-2 rounded-xl" title="Cada report con inicio, término y duración" data-panel="tiempos"><i class="fa-solid fa-file-excel mr-1"></i>Tiempos de trabajo</button>
         <button @click="S.vistaAppForzada.value = true" class="bg-[#1f4d3a] hover:bg-emerald-900 text-white font-bold px-4 py-2 rounded-xl shadow"><i class="fa-solid fa-mobile-screen mr-1"></i>Ver la app de técnicos</button>
       </div>
     </div>
@@ -53,7 +54,7 @@ export default {
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-fit">
       <div v-for="r in S.listaPanel.value" :key="r.id" @click="S.abrirRegPanel(r)" :class="['p-3 border-b cursor-pointer hover:bg-slate-50', S.regPanel.value && S.regPanel.value.id === r.id ? 'bg-emerald-50' : '']">
         <div class="flex items-start justify-between gap-2">
-          <div><b class="text-amber-700">AFI {{ r.afi }}</b> <span class="font-bold text-slate-700">· {{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span>
+          <div><b class="text-amber-700">AFI {{ r.afi }}</b> <span class="font-bold text-slate-700">· {{ r.modo === 'INSPECCION' ? 'Levantamiento de fallas · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span>
             <div class="text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }} · {{ (r.mecanicos || []).map(m => m.nombre).join(', ') }}</div></div>
           <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]">{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
         </div>
@@ -69,7 +70,7 @@ export default {
       <div v-if="!r" class="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-400 font-bold">Elige una intervención de la lista.</div>
       <div v-else class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b bg-slate-50">
-          <div class="font-extrabold text-slate-800">N° {{ r.id }} · AFI {{ r.afi }} · {{ r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
+          <div class="font-extrabold text-slate-800">N° {{ r.id }} · AFI {{ r.afi }} · {{ r.modo === 'INSPECCION' ? 'Levantamiento de fallas' + (r.tipo === 'ELECTRICA' ? ' (eléctrico)' : ' (mecánico)') : r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
           <div class="flex gap-2">
             <button @click="S.descargarPDF(r)" class="px-3 py-1.5 rounded-lg border font-bold"><i class="fa-solid fa-file-pdf text-rose-600 mr-1"></i>PDF</button>
             <a v-if="r.documento_url" :href="r.documento_url" target="_blank" class="px-3 py-1.5 rounded-lg border font-bold text-emerald-700"><i class="fa-solid fa-link mr-1"></i>Doc. Historial</a>

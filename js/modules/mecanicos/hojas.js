@@ -37,6 +37,57 @@ const CELDA_ENC = 'border:1px solid #333;height:20px;padding:0 4px 5px;line-heig
 const casilla = (on, txt) => `<span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle">${check(on)}<span style="font-size:9.5px;font-weight:700;color:#0f172a;padding-bottom:4px">${txt}</span></span>`;
 
 export const CAUSAS_ELECTRICA = ['FALLA OPERACIONAL', 'PUESTA EN MARCHA', 'CONEXIÓN/DESCONEXIÓN DE EQUIPO', 'INSPECCIÓN', 'PRUEBAS MEDICIONES'];
+const durTxt = (min) => (min == null || min === '' ? '' : Number(min) < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ' ' + (min % 60) + ' min' : ''}`);
+const listo = (on, txt) => `<div style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;border:1.5px solid ${on ? V : '#9ca3af'};border-radius:6px;padding:2px 10px 6px;font-weight:900;font-size:11px;color:${on ? V : '#64748b'}"><span style="font-size:14px">${on ? '✔' : '☐'}</span>${txt}</div>`;
+/** Cuerpo del report 2026-11-18: INSPECCIÓN (observación + fallas) o REPARACIÓN (una falla, lo realizado). */
+const bloqueNuevo = (r, elec) => {
+  const lubs = [...(r.lubricantes || [])].filter(l => l.tipo || l.cantidad);
+  const extra = `<table style="width:100%;border-collapse:collapse;margin-top:10px"><tr>
+    ${!elec && lubs.length ? `<td style="width:48%;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10px">
+      <tr><td style="background:${V};color:#fff;font-weight:800;padding:2px 6px 5px;border:1px solid #333">LUBRICANTE UTILIZADO</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 6px 5px;border:1px solid #333;text-align:center;width:34%">CANTIDAD</td></tr>
+      ${lubs.map(l => `<tr><td style="border:1px solid #9ca3af;height:18px;padding:0 6px 3px;font-weight:700">${esc(l.tipo)}</td><td style="border:1px solid #9ca3af;padding:0 4px 3px;font-weight:700;text-align:center">${esc(l.cantidad)}${l.cantidad && /^[\d.,]+$/.test(String(l.cantidad).trim()) ? ' L' : ''}</td></tr>`).join('')}
+    </table></td><td style="width:4%"></td>` : ''}
+    <td style="vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:9.5px">
+      ${[['Usuario arriendo', r.usuario_arriendo], ['N° vale de consumo (repuestos)', r.vale_consumo]].map(([l, v]) => `<tr><td style="font-weight:700;color:${V};padding:3px 6px 6px;border-bottom:1px solid #9ca3af;width:40%">${l}</td><td style="font-weight:800;padding:3px 6px 6px;border-bottom:1px solid #9ca3af">${esc(v) || '&nbsp;'}</td></tr>`).join('')}
+    </table></td></tr></table>`;
+  if (r.modo === 'INSPECCION') {
+    const fallas = r.fallas || [];
+    const filas = fallas.length ? fallas : [];
+    return `
+  ${banda('1', 'TIPO DE TRABAJO')}
+  <div style="border:1.5px solid #333;border-top:0;padding:8px 12px 10px"><span style="display:inline-block;background:#ecfdf5;border:1.5px solid ${V};border-radius:16px;padding:2px 14px 6px;font-weight:900;color:${V};font-size:13px">LEVANTAMIENTO DE FALLAS</span> <span style="font-size:10px;color:#475569;margin-left:6px">sin intervención del equipo</span></div>
+  <div style="height:9px"></div>
+  ${banda('2', 'OBSERVACIÓN DEL EQUIPO')}
+  ${lineasTexto(r.descripcion, 5, 20)}
+  <div style="height:9px"></div>
+  ${banda('3', `FALLAS ENCONTRADAS (${fallas.length})`)}
+  <table style="width:100%;border-collapse:collapse;font-size:10.5px">
+    <tr><td style="border:1px solid #333;border-top:0;width:30px;text-align:center;font-weight:800;color:${V};padding:2px 0 5px">N°</td><td style="border:1px solid #333;border-top:0;width:150px;font-weight:800;color:${V};padding:2px 6px 5px">SISTEMA</td><td style="border:1px solid #333;border-top:0;font-weight:800;color:${V};padding:2px 6px 5px">FALLA</td><td style="border:1px solid #333;border-top:0;width:90px;text-align:center;font-weight:800;color:${V};padding:2px 0 5px">ESTADO</td></tr>
+    ${filas.map(i => `<tr><td style="border:1px solid #9ca3af;text-align:center;font-weight:900;padding:3px 0 6px">${esc(i.n)}</td><td style="border:1px solid #9ca3af;padding:3px 6px 6px;font-size:9.5px">${esc(i.sistema)}</td><td style="border:1px solid #9ca3af;padding:3px 6px 6px;font-weight:700">${esc(i.descripcion)}</td><td style="border:1px solid #9ca3af;text-align:center;font-size:9px;font-weight:700;color:#b45309;padding:3px 0 6px">ABIERTA</td></tr>`).join('')}
+    ${filas.length ? '' : `<tr><td colspan="4" style="border:1px solid #9ca3af;padding:6px;text-align:center;color:#64748b">Sin fallas encontradas</td></tr>`}
+  </table>
+  ${extra}
+  ${listo(r.terminado, 'LEVANTAMIENTO DE FALLAS TERMINADO')}`;
+  }
+  const causa = elec ? r.causa_intervencion : r.causa_falla, titulo = elec ? r.causa_falla : r.causa_intervencion;
+  return `
+  ${banda('1', 'CAUSA')}
+  <div style="border:1.5px solid #333;border-top:0;padding:8px 12px 10px;min-height:30px">${causa ? `<span style="display:inline-block;background:#ecfdf5;border:1.5px solid ${V};border-radius:16px;padding:2px 14px 6px;font-weight:900;color:${V};font-size:13px">${esc(causa)}</span>` : '&nbsp;'}</div>
+  <div style="height:9px"></div>
+  ${banda('2', 'FALLA REPARADA')}
+  <div style="border:1.5px solid #333;border-top:0;padding:6px 12px 9px;font-size:12px;font-weight:800">${esc(titulo) || '&nbsp;'}
+    ${r.falla_texto && r.falla_texto !== titulo ? `<div style="font-size:9.5px;font-weight:400;color:#475569;margin-top:2px">Falla abierta en el equipo: ${esc(r.falla_texto)}</div>` : ''}
+    ${r.falla_id ? `<div style="font-size:8.5px;font-weight:400;color:#94a3b8;margin-top:2px">Falla N° ${esc(r.falla_id)} del equipo</div>` : ''}</div>
+  <div style="height:9px"></div>
+  ${banda('3', 'DESCRIPCIÓN DE LO REALIZADO')}
+  ${lineasTexto(r.descripcion, 7, 20)}
+  <div style="height:9px"></div>
+  ${banda('4', 'INTERFERENCIA')}
+  ${lineasTexto(r.interferencia, 1, 22)}
+  ${extra}
+  ${listo(r.terminado, 'REPARACIÓN TERMINADA')}`;
+};
+
 export const CAUSAS_FALLA_MEC = ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'];
 
 /** INTERVENCIÓN MECÁNICA / ELÉCTRICA con el formato oficial. */
@@ -48,20 +99,26 @@ export const hojaIntervencion = (r, logo) => {
   const sup = r.supervisor || {};
   const lubs = [...(r.lubricantes || [])]; while (lubs.length < 4) lubs.push({ tipo: '', cantidad: '' });
   const lbl = (t) => `<b style="color:${V};font-size:10.5px">${t}</b>`;
+  const nuevo = r.modo === 'INSPECCION' || r.modo === 'REPARACION';   // formato 2026-11-18
   return `
 <div style="width:${ANCHO_VERTICAL}px;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:26px 34px;box-sizing:border-box">
  <div style="border:2px solid #333;padding:14px 18px">
-  ${encabezado(logo, elec ? 'INTERVENCIÓN ELÉCTRICA' : 'INTERVENCION MECANICA', elec ? 'IE-FRC' : 'FRC-RE-OPE-017', elec ? '20-01-2026' : '07-01-2026', elec ? '01' : '0')}
-  <div style="font-weight:700;font-style:italic;color:${V};text-decoration:underline;font-size:11px;margin:4px 0 10px">SERVICIO TECNICO</div>
+  ${encabezado(logo, r.modo === 'INSPECCION' ? 'LEVANTAMIENTO DE FALLAS' : elec ? 'INTERVENCIÓN ELÉCTRICA' : 'INTERVENCION MECANICA', elec ? 'IE-FRC' : 'FRC-RE-OPE-017', elec ? '20-01-2026' : '07-01-2026', elec ? '01' : '0')}
+  <div style="font-weight:700;font-style:italic;color:${V};text-decoration:underline;font-size:11px;margin:4px 0 10px">SERVICIO TECNICO${r.modo === 'INSPECCION' ? (elec ? ' · ELÉCTRICO' : ' · MECÁNICO') : ''}</div>
   <div style="display:flex;gap:10px;align-items:center;font-size:10.5px;margin-bottom:9px;flex-wrap:wrap">
     ${lbl('FECHA:')} ${caja(fecha(r.fecha), '80px')} ${lbl('EQUIPO:')} ${caja(r.equipo, '170px')} ${lbl('AFI:')} ${caja(r.afi, '48px')} ${lbl('HOROMETRO:')} ${caja(r.horometro ? Number(r.horometro).toLocaleString('es-CL') : '', '70px')}
   </div>
   <div style="display:flex;gap:10px;align-items:center;font-size:10.5px;margin-bottom:9px">
     ${lbl('TURNO:')} ${caja(r.turno, '50px')} ${lbl('LUGAR INTERVENCION:')} ${caja(r.lugar, '330px')}
   </div>
+  ${nuevo ? `
+  <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;text-align:center">
+    <tr>${['FECHA INICIO', 'HORA INICIO', 'FECHA TÉRMINO', 'HORA TÉRMINO', 'DURACIÓN', ...(r.modo === 'REPARACION' ? ['HORA FALLA'] : [])].map(t => `<td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">${t}</td>`).join('')}</tr>
+    <tr>${[fecha(r.fecha), r.hora_inicio, fecha(r.fecha_termino || r.fecha), r.hora_termino, durTxt(r.duracion_min), ...(r.modo === 'REPARACION' ? [r.hora_falla] : [])].map((v, i) => `<td style="border:1px solid #333;padding:2px 4px 6px;font-weight:${i === 4 ? 900 : 700};font-size:${i === 4 ? 12 : 11}px">${esc(v) || '&nbsp;'}</td>`).join('')}</tr>
+  </table>` : `
   <div style="display:flex;gap:10px;align-items:center;font-size:10.5px;margin-bottom:12px;justify-content:center">
     ${lbl('HORA FALLA:')} ${caja(r.hora_falla, '58px')} ${lbl('HORA INICIO:')} ${caja(r.hora_inicio, '58px')} ${lbl('HORA TERMINO:')} ${caja(r.hora_termino, '58px')}
-  </div>
+  </div>`}
   <table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:10px"><tr>
     <td style="width:180px;vertical-align:top;padding-top:16px">
       <div style="margin-bottom:12px">${lbl('USO DE ART:')} ${casilla(r.uso_art, !r.afi ? 'SI / NO' : r.uso_art ? 'SI' : 'NO')}</div>
@@ -73,7 +130,7 @@ export const hojaIntervencion = (r, logo) => {
         ${mecs.map(m => `<tr><td style="border-bottom:1px solid #333;height:26px;padding:0 6px;font-weight:700">${esc(m.nombre)}</td><td style="border-bottom:1px solid #333;text-align:center">${firmaImg(m.firma, 24)}</td></tr>`).join('')}
       </table>
     </td></tr></table>
-  ${elec ? `
+  ${nuevo ? bloqueNuevo(r, elec) : elec ? `
   <!-- ELÉCTRICA (2026-11-13): mismo orden que la mecánica -->
   ${banda('1', 'CAUSA')}
   <div style="border:1.5px solid #333;border-top:0;padding:8px 6px;display:flex;justify-content:space-around;font-size:9.5px;font-weight:700;text-align:center">

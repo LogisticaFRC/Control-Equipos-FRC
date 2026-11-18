@@ -49,6 +49,7 @@ export default {
         <div v-if="h.necesita_repuesto" class="text-sm text-amber-800 font-semibold"><i class="fa-solid fa-gear mr-1"></i>Pide repuesto: {{ h.cantidad ? h.cantidad + ' x ' : '' }}{{ h.repuesto }}</div>
         <p v-if="h.descripcion_original && h.descripcion_original !== h.descripcion" class="text-[11px] text-slate-400 italic">Original: {{ h.descripcion_original }}</p>
         <p class="text-[11px] text-slate-500">{{ h.reportado_por }} · {{ fechaHora(h.created_at) }}<template v-if="h.editado_por"> · editado por {{ h.editado_por }}</template><template v-if="h.estado === 'RECHAZADO' && h.respuesta"> · <b>{{ h.respuesta }}</b></template></p>
+        <p v-if="h.estado === 'REPARADO'" class="text-[11px] text-sky-800 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Reparada por {{ h.reparado_por || '—' }} · {{ fechaHora(h.reparado_at) }}<template v-if="h.reparado_int_id"> · report N° {{ h.reparado_int_id }}</template></p>
       </div>
       <button v-if="S.puedeEditarHallazgo(h) && editando !== h.id" @click="editando = h.id" title="Editar el texto" class="shrink-0 text-xs font-bold text-sky-700 border border-sky-200 hover:bg-sky-50 rounded-lg px-2 py-1" data-editar-h><i class="fa-solid fa-pen mr-1"></i>Editar</button>
       <button v-if="isAdmin" @click="S.eliminarHallazgos([h])" title="Eliminar esta falla (Admin)" class="shrink-0 text-slate-300 hover:text-rose-600 text-lg px-1"><i class="fa-solid fa-trash"></i></button>
@@ -59,7 +60,7 @@ export default {
     <label v-if="gestor && h.estado === 'PENDIENTE' && marcados[h.id]" class="block md:pl-9 text-[10px] font-bold uppercase text-violet-700">Tarea en la OT (puedes cambiar el texto)
       <input v-model="textosOT[h.id]" class="mt-0.5 w-full p-2 border-2 border-violet-300 rounded-lg text-sm font-bold normal-case bg-violet-50" data-tarea-ot></label>
     <!-- Nota y fecha aprox. del repuesto (la ve el mecánico) -->
-    <div v-if="gestor && h.estado !== 'RECHAZADO'" class="flex flex-wrap items-end gap-2 md:pl-9">
+    <div v-if="gestor && h.estado !== 'RECHAZADO' && h.estado !== 'REPARADO'" class="flex flex-wrap items-end gap-2 md:pl-9">
       <label class="flex-1 min-w-[200px] text-[10px] font-bold uppercase text-slate-500">Nota para el mecánico<input v-model="notas[h.id].nota" class="mt-0.5 w-full p-2 border-2 rounded-lg text-sm normal-case font-semibold" placeholder="Ej: repuesto pedido a proveedor"></label>
       <label class="text-[10px] font-bold uppercase text-slate-500">Fecha aprox. repuesto<input type="date" v-model="notas[h.id].fecha" class="mt-0.5 block p-2 border-2 rounded-lg text-sm font-bold"></label>
       <button @click="guardarNota(h)" :disabled="!cambioNota(h)" class="px-3 py-2 rounded-lg bg-sky-600 text-white font-bold text-sm disabled:opacity-40"><i class="fa-solid fa-floppy-disk mr-1"></i>Guardar nota</button>
