@@ -21,7 +21,7 @@ import { logoDataURL } from '../../core/excel.js';
 import { listaCausas } from '../historial/historial.service.js';
 import { ACEITES } from '../historial/historial.mapper.js';
 import { naveDeAfi } from '../taller/taller.service.js';   // TALLER: solo equipos en nave (2026-11-17)
-import { crearFallasDeInspeccion, marcarFallaReparada, fallaPorId, textoFalla, asegurarFallas, SQL_FALLAS } from './fallas-equipo.js';   // 2026-11-18
+import { crearFallasDeInspeccion, marcarFallaReparada, fallaPorId, textoFalla, asegurarFallas, SQL_FALLAS, dbProblemasRef } from './fallas-equipo.js';   // 2026-11-18
 import { hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 
 const { ref, computed } = Vue;
@@ -185,7 +185,7 @@ export const nuevaIntervencion = (tipo, e) => ({
   causa_intervencion: '', descripcion: '', interferencia: '', causa_falla: '',
   // 2026-11-18: modo INSPECCION (observación + fallas enumeradas) | REPARACION (una falla abierta) · cada envío = un report
   modo: '', fallas: [itemFallaVacio()], falla_id: null, falla_texto: '', levantamiento_id: null,
-  art_fotos: [], bloqueo_foto: '', modoFijo: false, fecha_termino: hoyISO(), terminado: false,   // ART (2 hojas) y bloqueo (1 hoja) en fotos: el papel se llena físico
+  art_fotos: [], bloqueo_foto: '', modoFijo: false, fecha_termino: hoyISO(), terminado: false, fecha_falla: hoyISO(),   // ART (2 hojas) y bloqueo (1 hoja) en fotos: el papel se llena físico
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
   supervisor: { modo: 'DESPUES', nombre: '', empresa: '', tipo: 'CLIENTE', firma: '' }
@@ -222,6 +222,7 @@ export const elegirFalla = (f, h) => {
   f.levantamiento_id = h && h.intervencion_id ? h.intervencion_id : null;
   const lev = f.levantamiento_id ? dbMec.value.find(x => String(x.id) === String(f.levantamiento_id)) : null;
   f.hora_falla = lev ? (lev.hora_falla || '') : (h ? '' : f.hora_falla);
+  f.fecha_falla = lev ? (lev.fecha_falla || lev.fecha || '') : (h ? '' : f.fecha_falla);
   const titulo = h ? String(h.descripcion || '').trim() : '';
   if (f.tipo === 'ELECTRICA') f.causa_falla = titulo; else f.causa_intervencion = titulo;
 };
@@ -346,6 +347,7 @@ const filaDB = (f) => ({
     })) : [],
     falla_id: f.modo === 'REPARACION' ? (f.falla_id || null) : null, falla_texto: f.modo === 'REPARACION' ? (f.falla_texto || null) : null,
     levantamiento_id: f.modo === 'REPARACION' ? (f.levantamiento_id || null) : null,
+    fecha_falla: normalizarFecha(f.fecha_falla) || null,
     art_fotos: f.uso_art ? (f.art_fotos || []).filter(Boolean) : [], bloqueo_foto: f.bloqueo ? (f.bloqueo_foto || null) : null
   } : {}),
   updated_at: new Date().toISOString()
@@ -377,10 +379,16 @@ export const enviarIntervencion = async () => {
         await sb(supabaseClient.from(TABLA_MEC).update({ fallas: conId }).eq('id', reg.id));
         reg.fallas = conId;
         avisoFallas = ` ${conId.length} falla(s) quedaron abiertas en el equipo.`;
+        // el equipo queda FUERA DE SERVICIO hasta reparar todas las fallas del levantamiento
+        try { const d = await sb(supabaseClient.rpc('frc_levantamiento_fs', { p_id: reg.id })); if (d) { reg.disp_anterior = reg.disp_anterior || 'SI'; dispLocal(reg.afi, d); avisoFallas += ' El equipo quedó FUERA DE SERVICIO.'; } }
+        catch (err) { console.warn('[Mecánicos] No se pudo dejar fuera de servicio:', errMsg(err)); }
       } catch (err) { alert((/intervencion_id|tipo_intervencion|reparacion_id|null value|column|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero las fallas no quedaron en el equipo: ' + errMsg(err)); }
     }
     if (reg && f.modo === 'REPARACION' && f.falla_id && fallaPorId(f.falla_id)?.estado !== 'REPARADO') {
-      try { await marcarFallaReparada(f.falla_id, reg); avisoFallas = ' La falla quedó reparada en el equipo.'; }
+      try {
+        const d = await marcarFallaReparada(f.falla_id, reg); avisoFallas = ' La falla quedó reparada en el equipo.';
+        if (d) { dispLocal(reg.afi, d); avisoFallas += ` Levantamiento completo: el equipo volvió a "${d}".`; }
+      }
       catch (err) { alert((/frc_falla_reparada|function|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero la falla no se marcó reparada: ' + errMsg(err)); }
     }
     try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
@@ -404,7 +412,7 @@ export const enviarIntervencion = async () => {
     await cargarMec();
   } catch (err) {
     const m = errMsg(err);
-    alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min|levantamiento_id|art_fotos|bloqueo_foto|codigo_repuesto|serie_motor)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
+    alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min|levantamiento_id|art_fotos|bloqueo_foto|codigo_repuesto|serie_motor|fecha_falla|disp_anterior)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
   } finally { enviando.value = false; }
 };
 
@@ -574,6 +582,7 @@ export const rechazarReg = async (r) => {
 };
 export const eliminarReg = async (r) => {
   if (!esSupervisorMec.value) return;
+  if (r.modo === 'INSPECCION') return borrarLevantamiento(r);
   if (!confirm(`¿Eliminar la intervención N° ${r.id} (AFI ${r.afi})? No borra el registro del Historial si ya pasó.`)) return;
   try { await sb(supabaseClient.from(TABLA_MEC).delete().eq('id', r.id)); regPanel.value = null; await cargarMec(); }
   catch (err) { alert('Error: ' + errMsg(err)); }
@@ -637,4 +646,26 @@ export const fallasDeLevantamiento = (r) => (r && r.modo === 'INSPECCION' ? (r.f
 }) : []);
 /** "2/3" reparadas de un levantamiento. */
 export const avanceLevantamiento = (r) => { const l = fallasDeLevantamiento(r); return { total: l.length, listas: l.filter(x => x.estado === 'REPARADO').length }; };
+
+// ---------- DISPONIBILIDAD Y BORRADO DE LEVANTAMIENTOS (2026-11-18) ----------
+/** Cambia la disponibilidad del equipo en memoria (la base ya la cambió la función del servidor). */
+export const dispLocal = (afi, disp) => { const e = dbEquipos.value.find(x => mismoAfi(x.afi, afi)); if (e && disp) e.disponibilidad = disp; if (equipoSel.value && mismoAfi(equipoSel.value.afi, afi) && disp) equipoSel.value.disponibilidad = disp; };
+/** Admin: borra un levantamiento sin reparaciones (y sus fallas); devuelve la disponibilidad si lo había dejado fuera de servicio. */
+export const borrarLevantamiento = async (r) => {
+  if (!esSupervisorMec.value) return alert('Solo un Admin puede borrar un levantamiento.');
+  if (!confirm(`¿Borrar el levantamiento de fallas N° ${r.id} (AFI ${r.afi}) y sus ${(r.fallas || []).length} falla(s)?\nTambién se quitan de Repuestos pedidos.`)) return false;
+  try {
+    const d = await sb(supabaseClient.rpc('frc_levantamiento_borrar', { p_id: r.id }));
+    dbMec.value = dbMec.value.filter(x => x.id !== r.id);
+    dbProblemasRef().value = dbProblemasRef().value.filter(h => String(h.intervencion_id) !== String(r.id));
+    if (d) dispLocal(r.afi, d);
+    if (regPanel.value && regPanel.value.id === r.id) regPanel.value = null;
+    avisoApp(`Levantamiento N° ${r.id} borrado.` + (d ? ` El equipo volvió a "${d}".` : ''));
+    return true;
+  } catch (err) {
+    const m = errMsg(err);
+    alert(/frc_levantamiento_borrar|function|schema cache/i.test(m) ? SQL_FALLAS : 'No se pudo borrar: ' + m);
+    return false;
+  }
+};
 

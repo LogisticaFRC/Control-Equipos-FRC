@@ -27,11 +27,15 @@ export default {
     <button @click="abrir[l.r.id] = !abrir[l.r.id]" class="w-full flex items-center gap-3 px-3 py-2.5 bg-amber-50 text-left">
       <i :class="['fa-solid text-amber-500 text-xl', abrir[l.r.id] ? 'fa-folder-open' : 'fa-folder']"></i>
       <span class="flex-1 min-w-0"><b class="block text-sm">Levantamiento N° {{ l.r.id }} · {{ formatDateForDisplay(l.r.fecha) }}</b>
-        <span class="text-[11px] text-slate-600">{{ l.r.hora_falla ? 'Falla ' + l.r.hora_falla + ' · ' : '' }}{{ (l.r.mecanicos || [])[0]?.nombre || l.r.creado_por }}</span></span>
+        <span class="text-[11px] text-slate-600">{{ l.r.hora_falla || l.r.fecha_falla ? 'Falla ' + [formatDateForDisplay(l.r.fecha_falla || l.r.fecha), l.r.hora_falla].filter(Boolean).join(' ') + ' · ' : '' }}{{ (l.r.mecanicos || [])[0]?.nombre || l.r.creado_por }}</span>
+        <span v-if="l.r.disp_anterior" class="block text-[10px] font-bold text-rose-700"><i class="fa-solid fa-ban mr-0.5"></i>Equipo fuera de servicio hasta reparar todo</span></span>
       <span class="text-xs font-black text-amber-800 whitespace-nowrap">{{ l.av.listas }}/{{ l.av.total }}</span>
       <i :class="['fa-solid fa-chevron-down text-slate-400 transition', abrir[l.r.id] ? 'rotate-180' : '']"></i>
     </button>
     <div v-if="abrir[l.r.id]" class="divide-y">
+      <div v-if="S.esSupervisorMec.value && !l.items.some(i => ['REPARADO', 'AGREGADO'].includes(i.estado))" class="px-3 py-1.5 bg-white text-right">
+        <button @click="S.borrarLevantamiento(l.r)" class="text-xs font-bold text-rose-600 hover:text-rose-800" :data-lev="'borrar-' + l.r.id"><i class="fa-solid fa-trash mr-1"></i>Borrar levantamiento (Admin)</button>
+      </div>
       <p v-if="l.r.descripcion" class="px-3 py-2 text-xs text-slate-600 italic bg-white"><i class="fa-solid fa-eye mr-1"></i>{{ l.r.descripcion }}</p>
       <div v-for="i in l.items" :key="i.n" class="px-3 py-2.5 flex items-start gap-3 bg-white">
         <span :class="['w-7 h-7 rounded-full text-white font-black text-sm flex items-center justify-center shrink-0', i.estado === 'REPARADO' ? 'bg-emerald-600' : 'bg-amber-500']">{{ i.n }}</span>
@@ -45,7 +49,6 @@ export default {
         </div>
         <div v-if="i.id && ['PENDIENTE', 'AGREGADO'].includes(i.estado)" class="flex flex-col gap-1 shrink-0">
           <button @click="reparar(i, 'MECANICA', l)" class="px-2.5 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-extrabold" :data-lev="'reparar-' + i.id"><i class="fa-solid fa-wrench mr-1"></i>Reparar</button>
-          <button @click="reparar(i, 'ELECTRICA', l)" class="px-2.5 py-1 rounded-lg bg-sky-100 text-sky-800 text-[11px] font-bold"><i class="fa-solid fa-bolt mr-1"></i>Eléctrica</button>
         </div>
       </div>
     </div>
@@ -59,7 +62,6 @@ export default {
       <div class="flex-1 min-w-0"><p class="font-bold text-sm leading-snug">{{ h.descripcion }}</p><p class="text-[11px] text-slate-500">{{ h.sistema ? h.sistema + ' · ' : '' }}{{ h.reportado_por }}</p></div>
       <div class="flex flex-col gap-1 shrink-0">
         <button @click="$emit('reparar', { falla: h, tipo: 'MECANICA' })" class="px-2.5 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-extrabold"><i class="fa-solid fa-wrench mr-1"></i>Reparar</button>
-        <button @click="$emit('reparar', { falla: h, tipo: 'ELECTRICA' })" class="px-2.5 py-1 rounded-lg bg-sky-100 text-sky-800 text-[11px] font-bold"><i class="fa-solid fa-bolt mr-1"></i>Eléctrica</button>
       </div>
     </div>
   </div>
@@ -95,6 +97,6 @@ export default {
       const real = (fallasAbiertasDe(props.eq.afi).find(x => String(x.id) === String(i.id))) || h;
       emit('reparar', { falla: real, tipo });
     };
-    return { abrir, activos, completos, sueltas, nAbiertas, reparar, formatDateForDisplay };
+    return { S, abrir, activos, completos, sueltas, nAbiertas, reparar, formatDateForDisplay };
   }
 };

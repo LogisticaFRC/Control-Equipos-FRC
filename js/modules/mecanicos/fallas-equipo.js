@@ -16,6 +16,7 @@ import { dbProblemas, cargarProblemas, TABLA_PROBLEMAS, repActivaAfi, SISTEMAS_H
 
 const { ref, computed, onMounted } = Vue;
 export { SISTEMAS_HALLAZGO };
+export const dbProblemasRef = () => dbProblemas;
 export const SQL_FALLAS = 'Falta ejecutar sql/intervencion_fallas.sql en Supabase (SQL Editor → Run).';
 const ABIERTAS = ['PENDIENTE', 'AGREGADO'];
 const quien = () => { const u = usuarioActivo.value; return (u && (u.nombre || u.usuario)) || ''; };
@@ -67,6 +68,7 @@ export const marcarFallaReparada = async (fallaId, reg) => {
   const args = { p_id: Number(fallaId), p_intervencion_id: reg.id, p_quien: quien(), p_trabajo: String(reg.descripcion || '').trim() || null };
   const fila = await sb(supabaseClient.rpc('frc_falla_reparada', args));
   if (f) Object.assign(f, fila && typeof fila === 'object' ? fila : { estado: 'REPARADO', reparado_por: args.p_quien, reparado_at: new Date().toISOString(), reparado_int_id: reg.id });
+  return fila && typeof fila === 'object' ? fila.disp_equipo || null : null;   // disponibilidad devuelta si se completó el levantamiento
 };
 
 // ---------------------------------------------------------------------

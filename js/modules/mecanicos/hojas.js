@@ -114,12 +114,12 @@ export const hojaIntervencion = (r, logo) => {
   </div>
   ${lev ? `
   <table style="width:60%;border-collapse:collapse;font-size:10px;margin:0 auto 12px;text-align:center">
-    <tr><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA LEVANTAMIENTO</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">HORA FALLA DEL EQUIPO</td></tr>
-    <tr><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:700;font-size:11px">${fecha(r.fecha)}</td><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:900;font-size:12px">${esc(r.hora_falla) || '&nbsp;'}</td></tr>
+    <tr><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA LEVANTAMIENTO</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA Y HORA FALLA DEL EQUIPO</td></tr>
+    <tr><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:700;font-size:11px">${fecha(r.fecha)}</td><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:900;font-size:12px">${r.hora_falla || r.fecha_falla ? [fecha(r.fecha_falla || r.fecha), esc(r.hora_falla)].filter(Boolean).join(' · ') : '&nbsp;'}</td></tr>
   </table>` : nuevo ? `
   <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;text-align:center">
-    <tr>${['FECHA INICIO', 'HORA INICIO', 'FECHA TÉRMINO', 'HORA TÉRMINO', 'DURACIÓN', 'HORA FALLA'].map(t => `<td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">${t}</td>`).join('')}</tr>
-    <tr>${[fecha(r.fecha), r.hora_inicio, fecha(r.fecha_termino || r.fecha), r.hora_termino, durTxt(r.duracion_min), r.hora_falla].map((v, i) => `<td style="border:1px solid #333;padding:2px 4px 6px;font-weight:${i === 4 ? 900 : 700};font-size:${i === 4 ? 12 : 11}px">${esc(v) || '&nbsp;'}</td>`).join('')}</tr>
+    <tr>${['FECHA INICIO', 'HORA INICIO', 'FECHA TÉRMINO', 'HORA TÉRMINO', 'DURACIÓN', 'FALLA'].map(t => `<td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">${t}</td>`).join('')}</tr>
+    <tr>${[fecha(r.fecha), r.hora_inicio, fecha(r.fecha_termino || r.fecha), r.hora_termino, durTxt(r.duracion_min), r.hora_falla ? (r.fecha_falla ? fecha(r.fecha_falla) + ' ' : '') + r.hora_falla : ''].map((v, i) => `<td style="border:1px solid #333;padding:2px 4px 6px;font-weight:${i === 4 ? 900 : 700};font-size:${i === 4 ? 12 : 11}px">${esc(v) || '&nbsp;'}</td>`).join('')}</tr>
   </table>` : `
   <div style="display:flex;gap:10px;align-items:center;font-size:10.5px;margin-bottom:12px;justify-content:center">
     ${lbl('HORA FALLA:')} ${caja(r.hora_falla, '58px')} ${lbl('HORA INICIO:')} ${caja(r.hora_inicio, '58px')} ${lbl('HORA TERMINO:')} ${caja(r.hora_termino, '58px')}
