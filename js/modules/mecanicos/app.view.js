@@ -13,6 +13,7 @@ import { formatDateForDisplay } from '../../core/utils.js';
 import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js';
 import TallerMecanico from '../taller/taller-mecanico.view.js';
 import ActividadesEquipo from './actividades-equipo.view.js';
+import EstandarBoton from '../estandarizacion/estandar-form.view.js';   // Inspección general estandarización (2026-11-18)
 import * as CH from './chofer.service.js';   // CHOFER: check list / report camión pluma (2026-11-17)
 import { ChoferChecklist, ChecklistLista } from './chofer-checklist.view.js';
 import { CrtgPrograma, CrtgPedido, CrtgUbicacion } from './crtg.view.js';   // TERRENO CRTG (2026-11-17)
@@ -27,7 +28,7 @@ const LUGARES = ['TALLER FRC', 'TERRENO', 'FAENA CLIENTE'];
 
 export default {
   name: 'MecanicoApp',
-  components: { TallerMecanico, ActividadesEquipo, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
+  components: { TallerMecanico, ActividadesEquipo, EstandarBoton, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
 <div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
@@ -276,6 +277,7 @@ export default {
         </div>
         <!-- TERRENO: opciones de siempre -->
         <div v-else class="grid grid-cols-1 gap-3">
+          <estandar-boton :eq="eq"></estandar-boton>
           <button @click="S.abrirIntervencion('MECANICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-wrench"></i></span><span class="flex-1"><b class="block text-lg">Intervención mecánica</b><span class="text-xs text-slate-500">FRC-RE-OPE-017</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <button @click="S.abrirIntervencion('ELECTRICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-bolt"></i></span><span class="flex-1"><b class="block text-lg">Intervención eléctrica</b><span class="text-xs text-slate-500">IE-FRC</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <div class="bg-white/60 rounded-2xl p-4 flex items-center gap-4 opacity-60"><span class="w-14 h-14 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-oil-can"></i></span><span class="flex-1"><b class="block text-lg">Mantenciones</b><span class="text-xs">Próximamente</span></span></div>

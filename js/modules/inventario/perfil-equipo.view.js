@@ -18,6 +18,7 @@ import { getHistorialMovimientosAFI } from '../movimientos/movimientos.service.j
 import { editarMantencion, eliminarMantencion } from '../historial/historial.service.js';
 import { requeridosPorModelo, irAFiltrosDelModelo, fmtPrecio } from '../filtros/filtros.service.js';
 import { costoModelo, proyeccionEquipo, horasProyeccion, cargarConfigCostos, configCostos, exportarCostosExcel, exportandoCostos, TIPOS_MANT, ETIQ_MANT, ESTILO_MANT } from '../costos/costos.service.js';
+import EstandarEquipo from '../estandarizacion/estandar-perfil.view.js';   // pestaña Estandarización (2026-11-18)
 import OtsEquipo, { otsAbiertasDelEquipo } from './ots-equipo.view.js';   // pestaña OT asignadas (2026-11-17)
 import { fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC } from '../oc/oc.service.js';
 
@@ -25,7 +26,7 @@ const { onMounted, onBeforeUnmount, watch, nextTick, computed, ref } = Vue;
 
 export default {
   name: 'PerfilEquipo',
-  components: { OtsEquipo },
+  components: { OtsEquipo, EstandarEquipo },
   template,
   setup() {
     let chartCausas = null, chartTipos = null;

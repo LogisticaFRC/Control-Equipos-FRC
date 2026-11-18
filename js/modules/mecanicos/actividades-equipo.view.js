@@ -6,12 +6,15 @@
 //   · ART y Mantención: el formato aún no está cargado → quedan como "pendiente" hasta subirlo.
 // =====================================================================
 import * as M from './mecanicos.service.js';
+import EstandarBoton from '../estandarizacion/estandar-form.view.js';   // Inspección general estandarización (2026-11-18)
 
 export default {
   name: 'ActividadesEquipo',
   props: { eq: { type: Object, required: true } },
+  components: { EstandarBoton },
   template: /* html */ `
 <div class="grid grid-cols-1 gap-3">
+  <estandar-boton :eq="eq"></estandar-boton>
   <button @click="M.abrirIntervencion('MECANICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-wrench"></i></span><span class="flex-1"><b class="block text-lg">Intervención mecánica</b><span class="text-xs text-slate-500">FRC-RE-OPE-017</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
   <button @click="M.abrirIntervencion('ELECTRICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-bolt"></i></span><span class="flex-1"><b class="block text-lg">Intervención eléctrica</b><span class="text-xs text-slate-500">IE-FRC</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
   <button @click="bloqueo" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-lock"></i></span><span class="flex-1"><b class="block text-lg">Agregar bloqueo de equipo</b><span class="text-xs text-slate-500">Registro de bloqueo FRC-RE-OP-015</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>

@@ -969,3 +969,15 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   - **Pedir repuestos**: equipo, fecha, descripción y hasta 5 fotos → `bd_pedidos_repuestos`; ve el estado, la fecha aprox. y la nota.
 - Área Operaciones: el grupo **"Abastecimiento y bodega" ahora es "Repuestos y compras"** con el submódulo nuevo **Pedida de repuestos** (`modules/repuestos/`): junta lo pedido en el **taller** (hallazgos/inspecciones con repuesto, `bd_taller_problemas.repuesto_estado`) y por **CRTG**; filtros, estado Pendiente/Pedido/Recibido/Rechazado, llega aprox. y nota. Contador de pendientes en el menú. (Más adelante: Bodega repuestos.)
 - Ejecutar **sql/crtg.sql**.
+
+## 2026-11-18 · Estandarización de equipos + figura 3D
+- App técnicos (taller, terreno, CRTG y tótem): tarjeta **Inspección general estandarización** en cada equipo.
+  Check list EGT-FRC (23 ítems: cantidad + Bueno / Malo / N/A, comentario si está malo), observaciones y firma(s).
+- Perfil del equipo → pestaña **Estandarización**: figura 3D del equipo (verde, sin marca, logo FRC; según el tipo:
+  generador, torre, compresor, bomba de hormigón, manipulador, minicargador, camión), con los elementos del estándar
+  marcados según la última revisión (malo = rojo parpadeando, N/A = transparente), la lista de esa revisión al lado
+  y el historial completo debajo.
+- Archivos: js/modules/estandarizacion/ (estandarizacion.service.js, equipo3d.js, estandar-form.view.js, estandar-perfil.view.js).
+  three.js se carga desde cdn.jsdelivr.net (sin instalar nada).
+- SQL: sql/estandarizacion.sql (tabla bd_estandarizaciones).
+- Para otros tipos (compresores, bombas…) se usa por ahora el mismo estándar EGT-FRC: agregar su plantilla en PLANTILLAS / plantillaDe().

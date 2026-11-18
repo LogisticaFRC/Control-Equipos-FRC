@@ -45,6 +45,7 @@ export default /* html */ `
 
       <!-- ===== OT ASIGNADAS (2026-11-17) ===== -->
       <ots-equipo v-if="perfilTab === 'ots' && perfilEquipo.afi" :afi="perfilEquipo.afi"></ots-equipo>
+      <estandar-equipo v-if="perfilTab === 'estandar' && perfilEquipo.afi" :eq="perfilEquipo"></estandar-equipo>
 
       <!-- ===== RESUMEN ===== -->
       <div v-show="perfilTab === 'resumen'" class="space-y-5">

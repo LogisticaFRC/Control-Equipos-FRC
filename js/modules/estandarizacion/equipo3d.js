@@ -1,0 +1,348 @@
+// =====================================================================
+// FIGURA 3D DEL EQUIPO (2026-11-18) · three.js desde CDN, sin archivos de modelo
+//   · Figura genérica por TIPO (generador, torre de iluminación, compresor, bomba de hormigón,
+//     manipulador telescópico, minicargador, camión), pintada verde, sin marca, con el logo FRC.
+//   · Los elementos del estándar (baliza, extintor, paradas de emergencia, GPS, huincha reflectante,
+//     rótulos, señaléticas, bandeja, termoseal) se dibujan sobre el equipo según la ÚLTIMA estandarización:
+//       Bueno = normal · Malo = rojo parpadeando · N/A = transparente · sin registro = normal.
+//   · Arrastrar = girar · rueda / pellizco = acercar · tocar un elemento = lo marca en la lista.
+// =====================================================================
+const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+let threeP = null;
+const cargarThree = () => (threeP = threeP || import(THREE_URL));
+
+const VERDE = 0x2f8a4c, VERDE_OSC = 0x1f5f35, OSCURO = 0x27313b, ACERO = 0x9aa4ae, GOMA = 0x16181b, AMARILLO = 0xf2c200, ROJO = 0xd62828, AMBAR = 0xffa31a;
+
+/** Tipo de figura según el tipo del equipo. */
+export const figuraDe = (tipo) => {
+  const t = String(tipo || '').toUpperCase();
+  if (/TORRE|ILUMIN/.test(t)) return 'torre';
+  if (/COMPRESOR/.test(t)) return 'compresor';
+  if (/BOMBA|HORMIG/.test(t)) return 'bomba';
+  if (/MANIPULADOR|TELESC|TELEHANDLER/.test(t)) return 'manipulador';
+  if (/MINICARG|CARGADOR|BOBCAT|SKID/.test(t)) return 'minicargador';
+  if (/CAMION|CAMIONETA|PLUMA/.test(t)) return 'camion';
+  return 'generador';
+};
+
+export async function montarEquipo3D(host, opciones = {}) {
+  const THREE = await cargarThree();
+  const { tipo = '', afi = '', logoUrl = 'icons/logo-frc-neon.png', onPick = null } = opciones;
+  let estados = opciones.estados || {};
+
+  // ---------- escena ----------
+  const W0 = Math.max(260, host.clientWidth || 600), H0 = Math.max(260, host.clientHeight || 420);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(W0, H0);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.domElement.style.cssText = 'width:100%;height:100%;display:block;touch-action:none;cursor:grab';
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(34, W0 / H0, 0.1, 100);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9a8f, 1.1));
+  const sol = new THREE.DirectionalLight(0xffffff, 2.2);
+  sol.position.set(5, 9, 6); sol.castShadow = true;
+  sol.shadow.mapSize.set(1024, 1024);
+  Object.assign(sol.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 });
+  scene.add(sol);
+  const relleno = new THREE.DirectionalLight(0xdfe9ff, 0.7); relleno.position.set(-6, 4, -5); scene.add(relleno);
+  const piso = new THREE.Mesh(new THREE.CircleGeometry(5.5, 64), new THREE.ShadowMaterial({ opacity: 0.22 }));
+  piso.rotation.x = -Math.PI / 2; piso.receiveShadow = true; scene.add(piso);
+  const anillo = new THREE.Mesh(new THREE.RingGeometry(3.6, 3.66, 96), new THREE.MeshBasicMaterial({ color: 0x2f8a4c, transparent: true, opacity: 0.35 }));
+  anillo.rotation.x = -Math.PI / 2; anillo.position.y = 0.002; scene.add(anillo);
+
+  const equipo = new THREE.Group(); scene.add(equipo);
+
+  // ---------- ayudas ----------
+  const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, metalness: 0.25, roughness: 0.5, ...extra });
+  const M = { verde: mat(VERDE, { metalness: 0.35, roughness: 0.38 }), verdeOsc: mat(VERDE_OSC), oscuro: mat(OSCURO, { roughness: 0.7 }), acero: mat(ACERO, { metalness: 0.7, roughness: 0.3 }),
+    goma: mat(GOMA, { roughness: 0.9, metalness: 0 }), vidrio: mat(0x1d2a33, { metalness: 0.6, roughness: 0.15 }), amarillo: mat(AMARILLO, { roughness: 0.35 }), rojo: mat(ROJO, { roughness: 0.4 }),
+    blanco: mat(0xf4f4f0, { roughness: 0.6, metalness: 0 }), luz: mat(0xfff6d8, { emissive: 0xfff1b8, emissiveIntensity: 1.4 }) };
+  const sombra = (m) => { m.castShadow = true; m.receiveShadow = true; return m; };
+  const caja = (w, h, d, m, x, y, z, padre = equipo) => { const o = sombra(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m)); o.position.set(x, y, z); padre.add(o); return o; };
+  const cil = (rt, rb, h, m, x, y, z, rot = null, seg = 28, padre = equipo) => { const o = sombra(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m)); o.position.set(x, y, z); if (rot) o.rotation.set(rot[0], rot[1], rot[2]); padre.add(o); return o; };
+  const rueda = (x, z, r = 0.33, ancho = 0.24) => {
+    const g = new THREE.Group(); g.position.set(x, r, z); equipo.add(g);
+    cil(r, r, ancho, M.goma, 0, 0, 0, [Math.PI / 2, 0, 0], 32, g);
+    cil(r * 0.55, r * 0.55, ancho + 0.02, M.acero, 0, 0, 0, [Math.PI / 2, 0, 0], 24, g);
+    return g;
+  };
+  const textura = (dibujar, w = 512, h = 256) => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const ctx = c.getContext('2d'); dibujar(ctx, w, h);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+  };
+  const placa = (w, h, tex, x, y, z, rotY = 0) => {
+    const o = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, transparent: true }));
+    o.position.set(x, y, z); o.rotation.y = rotY; equipo.add(o); return o;
+  };
+  // logo FRC sobre placa oscura (se dibuja cuando carga la imagen)
+  const texLogo = textura((ctx, w, h) => { ctx.fillStyle = '#0d1b14'; ctx.beginPath(); ctx.roundRect(4, 4, w - 8, h - 8, 28); ctx.fill(); ctx.fillStyle = '#4ade80'; ctx.font = 'bold 120px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FRC', w / 2, h / 2); });
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  img.onload = () => { const c = texLogo.image, ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height); ctx.fillStyle = '#0d1b14'; ctx.beginPath(); ctx.roundRect(4, 4, c.width - 8, c.height - 8, 28); ctx.fill();
+    const k = Math.min((c.width - 60) / img.width, (c.height - 40) / img.height); const w = img.width * k, h = img.height * k; ctx.drawImage(img, (c.width - w) / 2, (c.height - h) / 2, w, h); texLogo.needsUpdate = true; };
+  img.src = logoUrl;
+  const texAfi = textura((ctx, w, h) => { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = '#111'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, w - 10, h - 10); ctx.fillStyle = '#111'; ctx.font = 'bold 120px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`AFI ${afi}`, w / 2, h / 2 + 6); });
+  const texRotulo = (titulo) => textura((ctx, w, h) => { ctx.fillStyle = '#fbfbf6'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = '#1f5f35'; ctx.fillRect(0, 0, w, 64); ctx.fillStyle = '#fff'; ctx.font = 'bold 40px Arial'; ctx.textAlign = 'center'; ctx.fillText(titulo, w / 2, 46); ctx.fillStyle = '#9aa'; for (let i = 0; i < 5; i++) ctx.fillRect(40, 96 + i * 30, w - 80 - (i % 2) * 120, 12); });
+  const texSenal = (simbolo) => textura((ctx, w, h) => { ctx.fillStyle = '#f2c200'; ctx.strokeStyle = '#111'; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(w / 2, 14); ctx.lineTo(w - 14, h - 14); ctx.lineTo(14, h - 14); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#111'; ctx.font = 'bold 110px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(simbolo, w / 2, h * 0.62); }, 256, 224);
+
+  // ---------- figuras por tipo: devuelven anclas para los elementos del estándar ----------
+  const remolque = (L, W, yChasis, xRueda) => {
+    caja(L, 0.14, W - 0.1, M.oscuro, 0, yChasis, 0);
+    rueda(xRueda, W / 2 + 0.1); rueda(xRueda, -W / 2 - 0.1);
+    caja(0.9, 0.08, 0.08, M.oscuro, L / 2 + 0.45, yChasis - 0.05, 0.18).rotation.y = 0.25;
+    caja(0.9, 0.08, 0.08, M.oscuro, L / 2 + 0.45, yChasis - 0.05, -0.18).rotation.y = -0.25;
+    cil(0.07, 0.07, 0.12, M.acero, L / 2 + 0.9, yChasis - 0.05, 0, [0, 0, Math.PI / 2]);
+    cil(0.03, 0.03, yChasis - 0.1, M.acero, L / 2 + 0.6, (yChasis - 0.1) / 2 + 0.08, 0);
+    cil(0.08, 0.08, 0.06, M.goma, L / 2 + 0.6, 0.08, 0, [Math.PI / 2, 0, 0]);
+    cil(0.05, 0.05, yChasis - 0.1, M.acero, -L / 2 + 0.15, (yChasis - 0.1) / 2, 0);
+  };
+  const FIG = {
+    generador() {
+      const L = 3.2, H = 1.55, Wd = 1.3, y0 = 0.34, top = y0 + H;
+      caja(L + 0.25, 0.12, Wd + 0.2, M.oscuro, 0, 0.06, 0);
+      const bandeja = caja(L + 0.1, 0.22, Wd + 0.08, M.verdeOsc, 0, 0.23, 0);
+      caja(L, H, Wd, M.verde, 0, y0 + H / 2, 0);
+      caja(L + 0.05, 0.06, Wd + 0.05, M.verdeOsc, 0, top, 0);
+      [-0.8, 0, 0.8].forEach(x => { caja(0.02, H - 0.25, 0.012, M.verdeOsc, x, y0 + H / 2, Wd / 2 + 0.006); caja(0.02, H - 0.25, 0.012, M.verdeOsc, x, y0 + H / 2, -Wd / 2 - 0.006); });
+      for (let i = 0; i < 8; i++) caja(0.012, 0.05, Wd - 0.3, M.oscuro, L / 2 + 0.006, y0 + 0.35 + i * 0.13, 0);
+      caja(0.012, H - 0.4, Wd - 0.3, M.oscuro, -L / 2 - 0.006, y0 + H / 2, 0);
+      caja(0.42, 0.3, 0.02, M.vidrio, 1.18, y0 + 1.05, Wd / 2 + 0.01);
+      const escape = cil(0.07, 0.07, 0.55, M.oscuro, -1.05, top + 0.27, 0.25);
+      cil(0.09, 0.07, 0.06, M.oscuro, -1.05, top + 0.56, 0.25);
+      const ojo = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.025, 12, 24), M.acero); ojo.position.set(0, top + 0.1, 0); equipo.add(ojo);
+      return { top, Wd, baliza: [1.3, top + 0.04, 0.42], gps: [0.45, top + 0.04, -0.35], extintor: [L / 2 + 0.13, y0 + 0.5, 0.42], extintorRot: 0,
+        paradas: [[1.18, y0 + 0.65, Wd / 2 + 0.035, 0], [1.18, y0 + 0.65, -Wd / 2 - 0.035, Math.PI]],
+        logos: [[-0.35, y0 + 1.0, Wd / 2 + 0.008, 0], [-0.35, y0 + 1.0, -Wd / 2 - 0.008, Math.PI]], logoW: 1.05,
+        afi: [-1.25, y0 + 0.3, Wd / 2 + 0.008, 0], rotulos: [[0.45, y0 + 1.15, Wd / 2 + 0.008, 0], [0.45, y0 + 0.75, Wd / 2 + 0.008, 0], [0.45, y0 + 0.35, Wd / 2 + 0.008, 0]],
+        senales: { y: y0 + 0.45, z: -Wd / 2 - 0.008, rot: Math.PI, xs: [0.9, 0.55, 0.2, -0.15, -0.5] }, huincha: { L: L + 0.01, W: Wd + 0.01, y: y0 + 0.12 }, bandeja, escape };
+    },
+    torre() {
+      const L = 2.6, Wd = 1.1, yc = 0.6;
+      remolque(L, Wd + 0.1, yc, -0.2);
+      const bandeja = caja(1.85, 0.06, Wd + 0.04, M.oscuro, -0.25, yc + 0.1, 0);
+      const H = 1.05, y0 = yc + 0.13, top = y0 + H;
+      caja(1.8, H, Wd, M.verde, -0.25, y0 + H / 2, 0);
+      caja(1.85, 0.05, Wd + 0.04, M.verdeOsc, -0.25, top, 0);
+      caja(0.02, H - 0.2, 0.012, M.verdeOsc, -0.25, y0 + H / 2, Wd / 2 + 0.006);
+      const xm = -0.95;
+      cil(0.1, 0.1, 1.2, M.acero, xm, top + 0.6, 0); cil(0.08, 0.08, 1.1, M.acero, xm, top + 1.7, 0); cil(0.06, 0.06, 0.9, M.acero, xm, top + 2.6, 0);
+      const yb = top + 3.05; caja(0.06, 0.06, 1.3, M.oscuro, xm, yb, 0);
+      [[-0.35, 0.18], [0.35, 0.18], [-0.35, -0.18], [0.35, -0.18]].forEach(([z, dy]) => { caja(0.16, 0.24, 0.32, M.oscuro, xm, yb + dy, z); caja(0.012, 0.2, 0.28, M.luz, xm + 0.085, yb + dy, z); });
+      [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sz]) => { const p = caja(0.9, 0.07, 0.07, M.amarillo, -0.25 + sx * 0.75, yc - 0.05, sz * 0.75); p.rotation.y = sx * sz * 0.8; cil(0.03, 0.03, yc - 0.1, M.acero, -0.25 + sx * 1.1, (yc - 0.1) / 2, sz * 1.05); cil(0.12, 0.12, 0.03, M.oscuro, -0.25 + sx * 1.1, 0.015, sz * 1.05); });
+      const escape = cil(0.05, 0.05, 0.35, M.oscuro, 0.4, top + 0.17, -0.3);
+      return { top, Wd, baliza: [0.45, top + 0.03, 0.32], gps: [0.05, top + 0.03, 0.32], extintor: [1.15, yc + 0.3, 0.3], extintorRot: 0,
+        paradas: [[0.42, y0 + 0.6, Wd / 2 + 0.035, 0], [0.42, y0 + 0.6, -Wd / 2 - 0.035, Math.PI]],
+        logos: [[-0.55, y0 + 0.62, Wd / 2 + 0.008, 0], [-0.55, y0 + 0.62, -Wd / 2 - 0.008, Math.PI]], logoW: 0.85,
+        afi: [-0.7, y0 + 0.2, Wd / 2 + 0.008, 0], rotulos: [[0.2, y0 + 0.82, Wd / 2 + 0.008, 0], [0.2, y0 + 0.45, Wd / 2 + 0.008, 0], [0.2, y0 + 0.1, -Wd / 2 - 0.008, Math.PI]],
+        senales: { y: y0 + 0.3, z: -Wd / 2 - 0.008, rot: Math.PI, xs: [0.35, 0.05, -0.25, -0.55, -0.85] }, huincha: { L: L, W: Wd, y: yc, cx: 0 }, bandeja, escape };
+    },
+    compresor() {
+      const L = 2.6, Wd = 1.15, yc = 0.6;
+      remolque(L, Wd + 0.1, yc, -0.25);
+      const bandeja = caja(2.3, 0.06, Wd + 0.04, M.oscuro, -0.15, yc + 0.1, 0);
+      const H = 0.95, y0 = yc + 0.13, top = y0 + H;
+      caja(2.25, H, Wd, M.verde, -0.15, y0 + H / 2, 0);
+      const techo = cil(Wd / 2, Wd / 2, 2.25, M.verde, -0.15, top, 0, [0, 0, Math.PI / 2], 40); techo.scale.set(1, 1, 0.45);
+      for (let i = 0; i < 7; i++) caja(0.25, 0.012, 0.02, M.oscuro, 0.75, y0 + 0.2 + i * 0.09, Wd / 2 + 0.006);
+      caja(0.02, H - 0.15, 0.012, M.verdeOsc, -0.15, y0 + H / 2, Wd / 2 + 0.006);
+      const escape = cil(0.05, 0.05, 0.3, M.oscuro, -0.9, top + 0.35, 0.2);
+      const t2 = top + 0.26;
+      return { top: t2, Wd, baliza: [0.45, t2 - 0.02, 0], gps: [-0.5, t2 - 0.02, 0], extintor: [1.15, yc + 0.3, 0.3], extintorRot: 0,
+        paradas: [[0.95, y0 + 0.7, Wd / 2 + 0.035, 0], [0.95, y0 + 0.7, -Wd / 2 - 0.035, Math.PI]],
+        logos: [[-0.55, y0 + 0.58, Wd / 2 + 0.008, 0], [-0.55, y0 + 0.58, -Wd / 2 - 0.008, Math.PI]], logoW: 0.9,
+        afi: [-0.95, y0 + 0.15, Wd / 2 + 0.008, 0], rotulos: [[0.25, y0 + 0.72, Wd / 2 + 0.008, 0], [0.25, y0 + 0.38, Wd / 2 + 0.008, 0], [0.6, y0 + 0.5, -Wd / 2 - 0.008, Math.PI]],
+        senales: { y: y0 + 0.25, z: -Wd / 2 - 0.008, rot: Math.PI, xs: [0.25, -0.05, -0.35, -0.65, -0.95] }, huincha: { L: L, W: Wd, y: yc }, bandeja, escape };
+    },
+    bomba() {
+      const L = 3.2, Wd = 1.15, yc = 0.6;
+      remolque(L, Wd + 0.1, yc, -0.1);
+      const bandeja = caja(2.1, 0.06, Wd + 0.04, M.oscuro, 0.45, yc + 0.1, 0);
+      const H = 0.95, y0 = yc + 0.13, top = y0 + H;
+      caja(2.1, H, Wd, M.verde, 0.45, y0 + H / 2, 0);
+      caja(2.15, 0.05, Wd + 0.04, M.verdeOsc, 0.45, top, 0);
+      const tolva = cil(0.75, 0.32, 0.6, M.verdeOsc, -1.15, y0 + 0.75, 0, [0, Math.PI / 4, 0], 4); tolva.scale.set(1, 1, 0.9);
+      caja(0.6, 0.35, 0.6, M.oscuro, -1.15, y0 + 0.28, 0);
+      cil(0.11, 0.11, 0.7, M.acero, -1.7, y0 + 0.25, 0, [0, 0, Math.PI / 2]);
+      cil(0.11, 0.11, 0.5, M.acero, -2.05, y0 + 0.5, 0);
+      const escape = cil(0.05, 0.05, 0.3, M.oscuro, 1.2, top + 0.15, -0.3);
+      return { top, Wd, baliza: [1.25, top + 0.03, 0.3], gps: [0.6, top + 0.03, 0.3], extintor: [1.75, yc + 0.3, 0.3], extintorRot: 0,
+        paradas: [[1.2, y0 + 0.6, Wd / 2 + 0.035, 0], [-0.45, y0 + 0.5, -Wd / 2 - 0.035, Math.PI]],
+        logos: [[0.25, y0 + 0.6, Wd / 2 + 0.008, 0], [0.25, y0 + 0.6, -Wd / 2 - 0.008, Math.PI]], logoW: 0.95,
+        afi: [-0.35, y0 + 0.2, Wd / 2 + 0.008, 0], rotulos: [[1.05, y0 + 0.82, Wd / 2 + 0.008, 0], [1.05, y0 + 0.2, Wd / 2 + 0.008, 0], [1.15, y0 + 0.25, -Wd / 2 - 0.008, Math.PI]],
+        senales: { y: y0 + 0.25, z: -Wd / 2 - 0.008, rot: Math.PI, xs: [0.85, 0.55, 0.25, -0.05, 1.15] }, huincha: { L: L, W: Wd, y: yc }, bandeja, escape };
+    },
+    manipulador() {
+      const Wd = 1.6, yc = 0.95;
+      [[-1.25, 1], [-1.25, -1], [1.25, 1], [1.25, -1]].forEach(([x, s]) => rueda(x, s * (Wd / 2 + 0.05), 0.55, 0.42));
+      caja(3.6, 0.55, Wd - 0.3, M.verde, 0, yc, 0);
+      const bandeja = caja(3.0, 0.08, Wd - 0.35, M.oscuro, 0, yc - 0.32, 0);
+      caja(0.95, 1.25, 0.8, M.verde, 0.15, yc + 0.9, 0.35);
+      caja(0.8, 0.7, 0.02, M.vidrio, 0.15, yc + 1.05, 0.76); caja(0.02, 0.7, 0.65, M.vidrio, 0.63, yc + 1.05, 0.35);
+      const top = yc + 1.53; caja(1.0, 0.05, 0.85, M.verdeOsc, 0.15, top, 0.35);
+      const pluma = new THREE.Group(); pluma.position.set(-1.45, yc + 0.5, -0.25); pluma.rotation.z = 0.22; equipo.add(pluma);
+      caja(4.1, 0.38, 0.42, M.verde, 2.05, 0, 0, pluma); caja(1.2, 0.3, 0.34, M.verdeOsc, 4.4, 0, 0, pluma);
+      const horq = new THREE.Group(); horq.position.set(3.65, yc + 1.32, -0.25); equipo.add(horq);
+      caja(0.08, 0.7, 1.0, M.oscuro, 0, -0.2, 0, horq); caja(0.9, 0.05, 0.1, M.acero, 0.45, -0.52, 0.3, horq); caja(0.9, 0.05, 0.1, M.acero, 0.45, -0.52, -0.3, horq);
+      const escape = cil(0.05, 0.05, 0.4, M.oscuro, -1.4, yc + 0.47, 0.5);
+      return { top, Wd: Wd - 0.3, baliza: [0.35, top + 0.03, 0.55], gps: [-0.1, top + 0.03, 0.55], extintor: [-1.0, yc + 0.0, (Wd - 0.3) / 2 + 0.12], extintorRot: 0,
+        paradas: [[0.62, yc + 0.6, 0.55, Math.PI / 2], [-1.82, yc + 0.1, 0, -Math.PI / 2]],
+        logos: [[-0.6, yc + 0.02, (Wd - 0.3) / 2 + 0.008, 0], [0.3, yc + 0.02, -(Wd - 0.3) / 2 - 0.008, Math.PI]], logoW: 0.9,
+        afi: [1.2, yc + 0.02, (Wd - 0.3) / 2 + 0.008, 0], rotulos: [[0.15, yc + 0.6, 0.761, 0], [-1.3, yc + 0.02, -(Wd - 0.3) / 2 - 0.008, Math.PI], [1.3, yc + 0.02, -(Wd - 0.3) / 2 - 0.008, Math.PI]],
+        senales: { y: yc + 0.02, z: (Wd - 0.3) / 2 + 0.008, rot: 0, xs: [0.35, 0.6, 1.6, -1.45, -1.7] }, huincha: { L: 3.6, W: Wd - 0.3, y: yc - 0.2 }, bandeja, escape };
+    },
+    minicargador() {
+      const Wd = 1.2, yc = 0.65;
+      [[-0.45, 1], [-0.45, -1], [0.45, 1], [0.45, -1]].forEach(([x, s]) => rueda(x, s * (Wd / 2 + 0.05), 0.32, 0.26));
+      caja(1.5, 0.75, Wd - 0.15, M.verde, -0.1, yc + 0.1, 0);
+      const bandeja = caja(1.2, 0.06, Wd - 0.2, M.oscuro, -0.1, yc - 0.3, 0);
+      caja(0.85, 0.95, Wd - 0.25, M.verde, 0.05, yc + 0.95, 0);
+      caja(0.012, 0.6, Wd - 0.45, M.vidrio, 0.48, yc + 1.0, 0);
+      [1, -1].forEach(s => caja(0.6, 0.55, 0.012, M.vidrio, 0.05, yc + 1.02, s * ((Wd - 0.25) / 2 + 0.006)));
+      const top = yc + 1.45; caja(0.95, 0.06, Wd - 0.15, M.verde, 0.05, top, 0);
+      [1, -1].forEach(s => { const b = caja(1.3, 0.14, 0.1, M.verdeOsc, 0.35, yc + 0.55, s * (Wd / 2 + 0.02)); b.rotation.z = -0.5; });
+      caja(0.35, 0.45, Wd + 0.2, M.oscuro, 1.05, yc - 0.25, 0);
+      const escape = cil(0.04, 0.04, 0.3, M.oscuro, -0.75, yc + 0.65, 0.3);
+      return { top, Wd: Wd - 0.15, baliza: [0.3, top + 0.03, 0.3], gps: [-0.2, top + 0.03, 0.3], extintor: [-0.88, yc, 0.2], extintorRot: -Math.PI / 2,
+        paradas: [[0.48, yc + 0.95, 0.4, Math.PI / 2], [-0.86, yc + 0.3, -0.2, -Math.PI / 2]],
+        logos: [[-0.35, yc + 0.18, (Wd - 0.15) / 2 + 0.008, 0], [-0.35, yc + 0.18, -(Wd - 0.15) / 2 - 0.008, Math.PI]], logoW: 0.65,
+        afi: [0.35, yc - 0.12, (Wd - 0.15) / 2 + 0.008, 0], rotulos: [[0.35, yc + 0.32, (Wd - 0.15) / 2 + 0.008, 0], [0.3, yc + 0.32, -(Wd - 0.15) / 2 - 0.008, Math.PI], [0.3, yc - 0.12, -(Wd - 0.15) / 2 - 0.008, Math.PI]],
+        senales: { y: yc - 0.14, z: -(Wd - 0.15) / 2 - 0.008, rot: Math.PI, xs: [-0.05, -0.3, -0.55, -0.8, 0.0] }, huincha: { L: 1.5, W: Wd - 0.15, y: yc - 0.18, cx: -0.1 }, bandeja, escape };
+    },
+    camion() {
+      const Wd = 2.0, yc = 0.9, pluma = /PLUMA/i.test(tipo);
+      [[1.9, 1], [1.9, -1], [-1.1, 1], [-1.1, -1], [-2.0, 1], [-2.0, -1]].forEach(([x, s]) => rueda(x, s * (Wd / 2 - 0.15), 0.48, 0.32));
+      caja(5.6, 0.25, 1.0, M.oscuro, 0, yc, 0);
+      const bandeja = caja(3.8, 0.08, Wd, M.oscuro, -0.8, yc + 0.16, 0);
+      caja(1.5, 1.7, Wd, M.verde, 2.2, yc + 0.95, 0);
+      caja(0.02, 0.75, Wd - 0.3, M.vidrio, 2.96, yc + 1.3, 0); caja(0.7, 0.55, 0.02, M.vidrio, 2.35, yc + 1.35, Wd / 2 + 0.01);
+      const top = yc + 1.8; caja(1.5, 0.06, Wd, M.verdeOsc, 2.2, top, 0);
+      [1, -1].forEach(s => caja(3.8, 0.45, 0.06, M.verde, -0.8, yc + 0.42, s * (Wd / 2 - 0.03)));
+      if (pluma) { cil(0.18, 0.2, 1.0, M.verdeOsc, 1.1, yc + 0.7, 0); const b = caja(3.4, 0.25, 0.28, M.verde, -0.4, yc + 1.25, 0); b.rotation.z = 0.08; }
+      const escape = cil(0.06, 0.06, 1.0, M.acero, 1.35, yc + 1.2, -0.75);
+      return { top, Wd, baliza: [2.2, top + 0.03, 0.55], gps: [2.2, top + 0.03, -0.55], extintor: [1.3, yc + 0.15, Wd / 2 + 0.05], extintorRot: 0,
+        paradas: [[1.4, yc + 0.55, 0.55, 0], [-2.7, yc + 0.3, 0, -Math.PI / 2]],
+        logos: [[2.2, yc + 0.6, Wd / 2 + 0.008, 0], [2.2, yc + 0.6, -Wd / 2 - 0.008, Math.PI]], logoW: 0.9,
+        afi: [2.96, yc + 0.35, 0, Math.PI / 2], rotulos: [[-0.3, yc + 0.42, Wd / 2 + 0.035, 0], [-1.3, yc + 0.42, Wd / 2 + 0.035, 0], [-0.8, yc + 0.42, -Wd / 2 - 0.035, Math.PI]],
+        senales: { y: yc + 0.42, z: -Wd / 2 - 0.035, rot: Math.PI, xs: [0.6, 0.3, -1.6, -1.9, -2.2] }, huincha: { L: 5.6, W: Wd, y: yc + 0.18, cx: 0 }, bandeja, escape };
+    }
+  };
+  FIG.camioneta = FIG.camion;
+  const fig = figuraDe(tipo);
+  const A = (FIG[fig] || FIG.generador)();
+
+  // ---------- elementos del estándar ----------
+  const items = {};   // k → [objetos]
+  const reg = (k, o) => { (items[k] = items[k] || []).push(o); o.traverse(x => { x.userData.k = k; }); return o; };
+  const grupo = (x, y, z, rotY = 0) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = rotY; equipo.add(g); return g; };
+  // baliza
+  { const g = grupo(...A.baliza); cil(0.08, 0.09, 0.05, M.oscuro, 0, 0.025, 0, null, 24, g); const luz = cil(0.06, 0.07, 0.14, new THREE.MeshStandardMaterial({ color: AMBAR, emissive: AMBAR, emissiveIntensity: 1.2, transparent: true, opacity: 0.92 }), 0, 0.12, 0, null, 24, g); luz.userData.baliza = true; reg('baliza', g); }
+  // GPS
+  { const g = grupo(...A.gps); caja(0.18, 0.05, 0.12, M.goma, 0, 0.025, 0, g); cil(0.012, 0.012, 0.12, M.goma, 0.06, 0.1, 0, null, 8, g); reg('gps', g); }
+  // extintor
+  { const g = grupo(...A.extintor, A.extintorRot || 0); cil(0.075, 0.075, 0.42, M.rojo, 0, 0, 0, null, 24, g); cil(0.03, 0.04, 0.06, M.oscuro, 0, 0.24, 0, null, 12, g); caja(0.1, 0.02, 0.03, M.oscuro, 0.05, 0.28, 0, g); caja(0.2, 0.05, 0.05, M.oscuro, 0, -0.1, -0.06, g); reg('extintor', g); }
+  // paradas de emergencia
+  A.paradas.forEach(([x, y, z, r]) => { const g = grupo(x, y, z, r); caja(0.16, 0.16, 0.03, M.amarillo, 0, 0, -0.015, g); cil(0.055, 0.045, 0.05, M.rojo, 0, 0, 0.02, [Math.PI / 2, 0, 0], 24, g); reg('parada', g); });
+  // logos FRC (rótulos empresa)
+  A.logos.forEach(([x, y, z, r]) => reg('rotulo_frc', placa(A.logoW, A.logoW / 2, texLogo, x, y, z, r)));
+  // número AFI
+  reg('afi', placa(0.46, 0.23, texAfi, ...A.afi));
+  // rótulos de capacidades / uso / mantención
+  ['rotulo_cap', 'rotulo_uso', 'rotulo_mant'].forEach((k, i) => { const [x, y, z, r] = A.rotulos[i]; reg(k, placa(0.26, 0.2, texRotulo(['CAPACIDADES', 'USO PASO A PASO', 'MANTENCIÓN'][i]), x, y, z, r)); });
+  // señaléticas
+  [['sen_bloqueo', '🔒'], ['sen_bateria', '+−'], ['sen_atrap', '✋'], ['sen_energias', '⚡'], ['sen_comb', '⛽']].forEach(([k, s], i) => reg(k, placa(0.17, 0.15, texSenal(s), A.senales.xs[i], A.senales.y, A.senales.z, A.senales.rot)));
+  // huincha reflectante perimetral
+  { const h = A.huincha, cx = h.cx || 0, g = grupo(cx, h.y, 0); const t = 0.012, a = 0.05;
+    caja(h.L + 0.02, a, t, M.amarillo, 0, 0, h.W / 2 + 0.006, g); caja(h.L + 0.02, a, t, M.amarillo, 0, 0, -h.W / 2 - 0.006, g);
+    caja(t, a, h.W + 0.02, M.amarillo, h.L / 2 + 0.006, 0, 0, g); caja(t, a, h.W + 0.02, M.amarillo, -h.L / 2 - 0.006, 0, 0, g); reg('huincha', g); }
+  // bandeja antiderrame y termoseal
+  if (A.bandeja) reg('bandeja', A.bandeja);
+  if (A.escape) { const e = A.escape; const w = cil(0.085, 0.085, 0.22, mat(0xc9ccc4, { metalness: 0.2, roughness: 0.9 }), e.position.x, e.position.y - 0.08, e.position.z, null, 20); reg('termoseal', w); }
+
+  // ---------- encuadre ----------
+  const caj = new THREE.Box3().setFromObject(equipo), centro = caj.getCenter(new THREE.Vector3()), tam = caj.getSize(new THREE.Vector3());
+  equipo.position.x -= centro.x; equipo.position.z -= centro.z;
+  const radio = Math.max(tam.x, tam.y * 1.2, tam.z) * 0.95;
+  let dist = radio * 2.3, alt = 0.32, ang = -0.65, auto = true;
+  const objetivo = new THREE.Vector3(0, tam.y * 0.42, 0);
+  const ubicarCamara = () => { camera.position.set(Math.sin(ang) * Math.cos(alt) * dist, objetivo.y + Math.sin(alt) * dist, Math.cos(ang) * Math.cos(alt) * dist); camera.lookAt(objetivo); };
+
+  // ---------- estado de cada elemento ----------
+  const rojo = new THREE.MeshStandardMaterial({ color: ROJO, emissive: ROJO, emissiveIntensity: 0.6, transparent: true, opacity: 0.95 });
+  const originales = new Map();
+  Object.values(items).flat().forEach(g => g.traverse(o => { if (o.isMesh && !originales.has(o)) originales.set(o, o.material); }));
+  let malos = [], resaltado = null;
+  const aplicarEstados = () => {
+    malos = [];
+    Object.entries(items).forEach(([k, objs]) => {
+      const e = estados[k];
+      objs.forEach(g => {
+        g.visible = true;
+        g.traverse(o => {
+          if (!o.isMesh) return;
+          const base = originales.get(o);
+          if (e === 'MALO') o.material = rojo;
+          else if (e === 'NA') { o.material = base.clone(); o.material.transparent = true; o.material.opacity = 0.18; }
+          else o.material = base;
+        });
+        if (e === 'MALO') malos.push(g);
+      });
+    });
+  };
+  aplicarEstados();
+
+  // ---------- interacción ----------
+  const el = renderer.domElement;
+  let arrastre = null, movio = false;
+  const raton = new THREE.Vector2(), rayo = new THREE.Raycaster();
+  el.addEventListener('pointerdown', (e) => { arrastre = { x: e.clientX, y: e.clientY, ang, alt }; movio = false; auto = false; el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing'; });
+  el.addEventListener('pointermove', (e) => {
+    if (!arrastre) return;
+    const dx = e.clientX - arrastre.x, dy = e.clientY - arrastre.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) movio = true;
+    ang = arrastre.ang - dx * 0.008; alt = Math.max(0.05, Math.min(1.2, arrastre.alt + dy * 0.006));
+  });
+  el.addEventListener('pointerup', (e) => {
+    el.style.cursor = 'grab';
+    if (arrastre && !movio && onPick) {
+      const r = el.getBoundingClientRect(); raton.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      rayo.setFromCamera(raton, camera);
+      const hit = rayo.intersectObjects(equipo.children, true).find(h => h.object.userData.k);
+      onPick(hit ? hit.object.userData.k : null);
+    }
+    arrastre = null;
+  });
+  el.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.max(radio * 1.2, Math.min(radio * 4, dist * (1 + Math.sign(e.deltaY) * 0.08))); }, { passive: false });
+
+  // ---------- animación ----------
+  let vivo = true, t0 = performance.now();
+  const tick = (t) => {
+    if (!vivo) return;
+    const s = (t - t0) / 1000;
+    if (auto) ang += 0.004;
+    ubicarCamara();
+    const pulso = 0.5 + 0.5 * Math.sin(s * 5);
+    rojo.emissiveIntensity = 0.25 + pulso * 0.9;
+    Object.values(items).flat().forEach(g => g.scale.setScalar(1));
+    if (resaltado && items[resaltado]) items[resaltado].forEach(g => g.scale.setScalar(1.25 + 0.1 * pulso));
+    (items.baliza || []).forEach(g => g.traverse(o => { if (o.userData.baliza && estados.baliza !== 'MALO') o.material.emissiveIntensity = 0.6 + pulso * 1.4; }));
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  const ro = new ResizeObserver(() => { const w = host.clientWidth, h = host.clientHeight; if (w && h) { renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); } });
+  ro.observe(host);
+
+  return {
+    figura: fig,
+    actualizar(nuevos) { estados = nuevos || {}; aplicarEstados(); },
+    resaltar(k) { resaltado = k; },
+    vista(v) { auto = false; ang = { frente: 0, lado: -Math.PI / 2, atras: Math.PI, arriba: ang }[v] ?? ang; if (v === 'arriba') alt = 1.1; else alt = 0.32; },
+    girar(v) { auto = v; },
+    destruir() { vivo = false; ro.disconnect(); renderer.dispose(); el.remove(); }
+  };
+}

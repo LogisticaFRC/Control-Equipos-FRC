@@ -22,6 +22,7 @@ export const TABS_PERFIL = [
   { k: 'resumen', l: 'Resumen', i: 'fa-gauge-high' },
   { k: 'ots', l: 'OT asignadas', i: 'fa-file-signature' },
   { k: 'historial', l: 'Historial', i: 'fa-wrench' },
+  { k: 'estandar', l: 'Estandarización', i: 'fa-shield-halved' },   // check list de estandarización + figura 3D (2026-11-18)
   { k: 'fallas', l: 'Fallas', i: 'fa-magnifying-glass-chart' },
   { k: 'datos', l: 'Datos y ubicación', i: 'fa-truck-monster' },
   { k: 'ficha', l: 'Filtros y ficha', i: 'fa-filter' },
