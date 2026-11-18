@@ -288,11 +288,12 @@ export default /* html */ `
                   <a v-if="p.doc?.link" :href="p.doc.link" target="_blank" rel="noopener" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-2.5 py-1.5 rounded-lg"><i class="fa-solid fa-eye mr-1"></i> Ver</a>
                   <button v-if="puedeEditar" @click="abrirNuevoDoc(vehPerfil, 'PRINCIPAL', p.def.key)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-2.5 py-1.5 rounded-lg"><i :class="['fa-solid mr-1', p.doc ? 'fa-rotate' : 'fa-upload']"></i> {{ p.doc ? 'Renovar' : 'Subir' }}</button>
                   <button v-if="puedeEditar && p.doc" @click="abrirEditarDoc(p.doc)" class="bg-white border hover:bg-slate-100 font-bold px-2.5 py-1.5 rounded-lg" title="Corregir datos"><i class="fa-solid fa-pen"></i></button>
-                  <button v-if="p.hist.length > 1" @click="docsHistAbierto = docsHistAbierto === p.def.key ? '' : p.def.key" class="ml-auto text-blue-600 underline font-bold">Historial ({{ p.hist.length - 1 }})</button>
+                  <button v-if="p.hist.length > 1" @click="docsHistAbierto = docsHistAbierto === p.def.key ? '' : p.def.key" class="ml-auto text-blue-600 underline font-bold"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Documentos anteriores ({{ p.hist.length - 1 }})</button>
                 </div>
                 <div v-if="docsHistAbierto === p.def.key" class="bg-white/80 rounded-lg border divide-y">
                   <div v-for="h in p.hist.slice(1)" :key="h.id" class="px-2 py-1.5 flex items-center gap-2 text-[11px]">
                     <span class="font-mono">{{ formatDateForDisplay(h.fechaEmision) }} → {{ formatDateForDisplay(h.fechaVencimiento) }}</span>
+                    <span v-if="h.numero" class="text-slate-500">N° {{ h.numero }}</span>
                     <a v-if="h.link" :href="h.link" target="_blank" rel="noopener" class="text-blue-600 underline">ver</a>
                     <button v-if="isAdmin" @click="eliminarDoc(h)" class="ml-auto text-rose-500 hover:text-rose-700" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                   </div>
@@ -321,15 +322,16 @@ export default /* html */ `
                       <td class="p-2"><span :class="['px-2 py-0.5 rounded text-[10px] font-bold', s.est.badge]">{{ s.est.label }}</span></td>
                       <td class="p-2 text-right whitespace-nowrap space-x-2">
                         <a v-if="s.doc.link" :href="s.doc.link" target="_blank" rel="noopener" class="text-slate-700 hover:text-slate-900" title="Ver archivo"><i class="fa-solid fa-eye"></i></a>
-                        <button v-if="puedeEditar" @click="abrirNuevoDoc(vehPerfil, 'SECUNDARIO', '', s.nombre)" class="text-amber-600 hover:text-amber-800" title="Renovar"><i class="fa-solid fa-rotate"></i></button>
+                        <button v-if="puedeEditar" @click="abrirNuevoDoc(vehPerfil, 'SECUNDARIO', '', s.nombre)" class="text-amber-600 hover:text-amber-800 font-bold" title="Cargar uno nuevo; el actual queda en Documentos anteriores" data-veh="renovar-sec"><i class="fa-solid fa-rotate mr-0.5"></i>Renovar</button>
                         <button v-if="puedeEditar" @click="abrirEditarDoc(s.doc)" class="text-blue-600 hover:text-blue-800" title="Corregir"><i class="fa-solid fa-pen"></i></button>
-                        <button v-if="s.hist.length > 1" @click="docsHistAbierto = docsHistAbierto === s.nombre ? '' : s.nombre" class="text-slate-500 underline" title="Versiones anteriores">{{ s.hist.length - 1 }} ant.</button>
+                        <button v-if="s.hist.length > 1" @click="docsHistAbierto = docsHistAbierto === s.nombre ? '' : s.nombre" class="text-blue-600 underline font-bold" title="Documentos anteriores"><i class="fa-solid fa-clock-rotate-left mr-0.5"></i>Anteriores ({{ s.hist.length - 1 }})</button>
                         <button v-if="isAdmin" @click="eliminarDoc(s.doc)" class="text-rose-500 hover:text-rose-700" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                       </td>
                     </tr>
                     <template v-if="docsHistAbierto === s.nombre">
                     <tr v-for="h in s.hist.slice(1)" :key="'h' + h.id" class="bg-slate-50 text-slate-500">
-                      <td class="p-2 pl-6 italic" colspan="2">versión anterior</td>
+                      <td class="p-2 pl-6 italic"><i class="fa-solid fa-clock-rotate-left mr-1"></i>documento anterior</td>
+                      <td class="p-2">{{ h.numero || '-' }}</td>
                       <td class="p-2 font-mono">{{ formatDateForDisplay(h.fechaEmision) }}</td>
                       <td class="p-2">{{ textoDuracion(h) }}</td>
                       <td class="p-2 font-mono">{{ formatDateForDisplay(h.fechaVencimiento) }}</td>
@@ -405,7 +407,8 @@ export default /* html */ `
         </div>
         <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Observación</label><input v-model="formDoc.observacion" type="text" class="w-full p-2.5 border rounded-lg bg-white"></div>
         <p v-if="formDoc.fechaVencimiento && !formDoc.sinVenc" class="bg-white border rounded-lg p-2 text-center font-semibold">{{ textoRestante(diasHasta(formDoc.fechaVencimiento)) }}</p>
-        <p v-if="!formDoc.id && formDoc.categoria === 'PRINCIPAL'" class="text-[10px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>Al renovar, el documento anterior queda en el historial.</p>
+        <p v-if="!formDoc.id && formDoc.renueva" class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg p-2 text-xs font-semibold" data-veh="aviso-renueva"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Renovación: el documento actual no se borra, queda en "Documentos anteriores".</p>
+        <p v-if="formDoc.id && archivoDoc" class="bg-amber-50 border border-amber-300 text-amber-900 rounded-lg p-2 text-xs font-semibold" data-veh="aviso-reemplaza"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Estás corrigiendo: el archivo actual se reemplaza y se pierde. Si es un documento nuevo, cancela y usa <b>Renovar</b> para que el anterior quede en el historial.</p>
       </div>
       <div class="px-6 py-3 border-t flex justify-end gap-2 bg-white">
         <button @click="showDocForm = false" class="px-4 py-2 rounded-lg border font-bold">Cancelar</button>

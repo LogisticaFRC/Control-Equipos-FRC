@@ -129,7 +129,8 @@ export const estadoDoc = (doc) => {
   return { key, dias, texto: textoRestante(dias), ...ESTADOS_DOC[key] };
 };
 /** Más nuevo primero (por vencimiento, emisión y luego id). */
-const ordenDocs = (a, b) => String(b.fechaVencimiento || b.fechaEmision || '').localeCompare(String(a.fechaVencimiento || a.fechaEmision || '')) || (b.id - a.id);
+// (2026-11-18) por emisión: así también ordena bien los documentos sin vencimiento (duplicado de patente, etc.)
+const ordenDocs = (a, b) => String(b.fechaEmision || b.fechaVencimiento || '').localeCompare(String(a.fechaEmision || a.fechaVencimiento || '')) || (b.id - a.id);
 
 // ---------------------------------------------------------------------
 // Kilometraje (mismo cálculo que el horómetro, en km)
@@ -374,8 +375,20 @@ export const abrirNuevoDoc = (v, categoria, clave = '', nombre = '') => {
     id: null, patente: v.patente, categoria, clave: def ? def.key : '',
     nombre: def ? def.label : nombre, numero: '', fechaEmision: hoyISO(),
     duracion: def ? def.duracionMeses : 12, unidad: 'MESES', fechaVencimiento: '', vencManual: false, sinVenc: !def && sugiereSinVenc(nombre),
+    renueva: false,
     diasAviso: v.conf.diasAviso || DIAS_AVISO_DEFAULT, link: '', observacion: ''
   };
+  // Renovar un secundario: parte con la misma duración / "sin vencimiento" del vigente; el vigente pasa a "Documentos anteriores"
+  const actual = !def && nombre ? (v.secundarios || []).find(x => up(x.nombre) === up(nombre))?.doc : (def ? (v.principales || []).find(x => x.def.key === def.key)?.doc : null);
+  if (actual) {
+    formDoc.value.renueva = true;
+    if (!def) {
+      const sv = !actual.fechaVencimiento && !(Number(actual.duracion) > 0);
+      formDoc.value.sinVenc = sv;
+      if (!sv && Number(actual.duracion) > 0) { formDoc.value.duracion = actual.duracion; formDoc.value.unidad = actual.unidad || 'MESES'; }
+      formDoc.value.diasAviso = actual.diasAviso || formDoc.value.diasAviso;
+    }
+  }
   recalcularVencDoc();
   archivoDoc.value = null;
   lecturaDoc.value = null;
