@@ -4,6 +4,7 @@
 //   → pasa sola al Historial (PDF igual al formato). También: rechazar para que el mecánico corrija.
 // =====================================================================
 import * as S from './mecanicos.service.js';
+import { asegurarFallas } from './fallas-equipo.js';
 import { logoSrc } from '../configuracion/configuracion.service.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 import { dbUsuarios, permisosDe } from '../../core/store.js';
@@ -58,8 +59,11 @@ export default {
             <div class="text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }} · {{ (r.mecanicos || []).map(m => m.nombre).join(', ') }}</div></div>
           <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]">{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
         </div>
-        <div class="text-slate-600 mt-1 line-clamp-2"><b v-if="r.tipo === 'MECANICA' && r.causa_falla">{{ r.causa_falla }} · </b>{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
+        <div v-if="r.modo === 'INSPECCION'" class="text-slate-600 mt-1 line-clamp-2">{{ r.descripcion }}</div>
+        <div v-else class="text-slate-600 mt-1 line-clamp-2"><b v-if="r.tipo === 'MECANICA' && r.causa_falla">{{ r.causa_falla }} · </b>{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
         <div v-if="r.bloqueo" class="text-[10px] font-bold text-violet-700 mt-0.5"><i class="fa-solid fa-lock mr-0.5"></i>Con registro de bloqueo</div>
+        <div v-if="r.modo === 'INSPECCION' && (r.fallas || []).length" class="text-[10px] font-bold text-amber-700 mt-0.5"><i class="fa-solid fa-list-ol mr-0.5"></i>{{ S.avanceLevantamiento(r).listas }} de {{ S.avanceLevantamiento(r).total }} fallas reparadas</div>
+        <div v-else-if="r.modo === 'REPARACION' && S.levantamientoDe(r)" class="text-[10px] font-bold text-emerald-700 mt-0.5"><i class="fa-solid fa-link mr-0.5"></i>Del levantamiento N° {{ S.levantamientoDe(r).id }}</div>
       </div>
       <div v-if="!S.listaPanel.value.length" class="p-10 text-center text-slate-400 font-bold">No hay intervenciones en este estado.</div>
     </div>
@@ -77,6 +81,27 @@ export default {
             <button @click="editando = !editando" v-if="r.estado !== 'EN_HISTORIAL'" :class="['px-3 py-1.5 rounded-lg border font-bold', editando ? 'bg-amber-100 border-amber-300' : '']"><i class="fa-solid fa-pen mr-1"></i>{{ editando ? 'Ver hoja' : 'Corregir' }}</button>
             <button @click="S.eliminarReg(r)" class="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold"><i class="fa-solid fa-trash"></i></button>
           </div>
+        </div>
+        <!-- Enlaces (2026-11-18): levantamiento de fallas ↔ reports de reparación -->
+        <div v-if="r.modo === 'INSPECCION'" class="px-4 py-3 border-b bg-amber-50/40" data-panel="enlaces">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="font-extrabold text-slate-800"><i class="fa-solid fa-list-ol mr-1 text-amber-600"></i>Fallas de este levantamiento</span>
+            <span :class="['text-[11px] font-black px-2 py-0.5 rounded-full', av.listas === av.total && av.total ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-800']">{{ av.listas }} de {{ av.total }} reparadas</span>
+          </div>
+          <div v-if="av.total" class="h-1.5 rounded-full bg-slate-200 overflow-hidden mb-2"><div class="h-full bg-emerald-500" :style="{ width: (100 * av.listas / av.total) + '%' }"></div></div>
+          <div v-for="i in S.fallasDeLevantamiento(r)" :key="i.n" class="flex flex-wrap items-center gap-2 py-1.5 border-b last:border-0 border-amber-100">
+            <span :class="['w-6 h-6 rounded-full text-white text-[11px] font-black flex items-center justify-center shrink-0', i.estado === 'REPARADO' ? 'bg-emerald-600' : 'bg-amber-500']">{{ i.n }}</span>
+            <span :class="['flex-1 min-w-[180px] font-semibold', i.estado === 'REPARADO' ? 'text-slate-500' : 'text-slate-800']">{{ i.descripcion }}<span v-if="i.sistema" class="text-slate-400 font-normal"> · {{ i.sistema }}</span></span>
+            <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', i.estado === 'REPARADO' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : i.estado === 'AGREGADO' ? 'bg-sky-50 text-sky-800 border-sky-300' : i.estado === 'RECHAZADO' ? 'bg-slate-100 text-slate-500 border-slate-300' : 'bg-amber-50 text-amber-800 border-amber-300']">{{ i.estado === 'REPARADO' ? 'Reparada' : i.estado === 'AGREGADO' ? 'En OT' : i.estado === 'RECHAZADO' ? 'Descartada' : 'Abierta' }}</span>
+            <button v-for="x in i.reparaciones" :key="x.id" @click="S.abrirRegPanel(x)" class="text-[11px] font-bold text-emerald-700 border border-emerald-300 bg-white hover:bg-emerald-50 rounded-lg px-2 py-0.5" :title="'Abrir el report de reparación · ' + S.textoDuracion(x.duracion_min)"><i class="fa-solid fa-wrench mr-1"></i>Report N° {{ x.id }} · {{ formatDateForDisplay(x.fecha) }} · {{ S.textoDuracion(x.duracion_min) }}</button>
+          </div>
+          <p v-if="!av.total" class="text-slate-500 italic">No se encontraron fallas en este levantamiento.</p>
+        </div>
+        <div v-else-if="r.modo === 'REPARACION' && lev" class="px-4 py-2.5 border-b bg-slate-50 flex flex-wrap items-center gap-2" data-panel="enlace-lev">
+          <i class="fa-solid fa-link text-emerald-700"></i><span>Esta reparación viene del</span>
+          <button v-if="!lev.noCargado" @click="S.abrirRegPanel(lev)" class="font-bold text-emerald-700 underline">Levantamiento de fallas N° {{ lev.id }} · {{ formatDateForDisplay(lev.fecha) }}</button>
+          <b v-else>Levantamiento de fallas N° {{ lev.id }}</b>
+          <span v-if="!lev.noCargado" class="text-slate-500">({{ S.avanceLevantamiento(lev).listas }} de {{ S.avanceLevantamiento(lev).total }} fallas reparadas)</span>
         </div>
         <!-- Corregir datos -->
         <div v-if="editando" class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -128,6 +153,8 @@ export default {
   setup() {
     const editando = ref(false);
     const r = computed(() => S.regPanel.value);
+    const av = computed(() => S.avanceLevantamiento(r.value));
+    const lev = computed(() => S.levantamientoDe(r.value));
     const escala = ref(Math.min(1, (window.innerWidth > 1280 ? 760 : window.innerWidth - 60) / 794));
     const altoHoja = 1123;
     const kpis = computed(() => [
@@ -139,7 +166,7 @@ export default {
     ]);
     const mecanicos = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'subadmin' && !['chofer', 'totem'].includes(permisosDe(u).mec_modo)).map(u => u.usuario));
     const supervisores = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'admin').map(u => u.usuario));
-    onMounted(() => S.cargarMec());
-    return { S, r, editando, escala, altoHoja, kpis, mecanicos, supervisores, logoSrc, formatDateForDisplay, CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, listaCausas };
+    onMounted(() => { S.cargarMec(); asegurarFallas(); });
+    return { av, lev, S, r, editando, escala, altoHoja, kpis, mecanicos, supervisores, logoSrc, formatDateForDisplay, CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, listaCausas };
   }
 };

@@ -94,6 +94,9 @@ export default {
           <label class="block"><span class="lbl flex items-center justify-between">Observación del equipo
             <button v-if="hayVoz" type="button" @click="dictar('descripcion')" :class="['text-xs font-bold px-2 py-1 rounded-lg', dictando === 'descripcion' ? 'bg-rose-600 text-white animate-pulse' : 'bg-emerald-50 text-emerald-700']"><i class="fa-solid fa-microphone mr-1"></i>{{ dictando === 'descripcion' ? 'Escuchando…' : 'Dictar' }}</button></span>
             <textarea v-model="f.descripcion" rows="4" class="inp" placeholder="Cómo encontraste el equipo, en qué estado está…"></textarea></label>
+          <label class="block" data-int="hora-falla"><span class="lbl">Hora de la falla del equipo</span>
+            <div class="flex items-center gap-2"><input type="time" v-model="f.hora_falla" class="inp px-2 w-40"><button @click="f.hora_falla = S.horaAhora()" class="text-[11px] font-bold text-emerald-700">Ahora</button></div>
+            <span class="text-[11px] text-slate-500">Cuándo falló o se detuvo el equipo (si aplica). Queda también en las reparaciones de estas fallas.</span></label>
           <div><span class="lbl">Fallas encontradas</span>
             <div v-for="(it, i) in f.fallas" :key="i" class="flex gap-2 items-start mt-2">
               <span class="w-8 h-8 mt-1.5 rounded-full bg-amber-500 text-white font-black flex items-center justify-center shrink-0">{{ i + 1 }}</span>
@@ -142,7 +145,8 @@ export default {
             <label class="block"><span class="lbl">Fecha término</span><input type="date" v-model="f.fecha_termino" class="inp px-2"></label>
             <label class="block"><span class="lbl">Hora término</span><input type="time" v-model="f.hora_termino" class="inp px-2"><button @click="f.hora_termino = S.horaAhora(); f.fecha_termino = hoyISO()" class="text-[11px] font-bold text-emerald-700 mt-1">Ahora</button></label>
           </div>
-          <label v-if="f.modo === 'REPARACION'" class="block"><span class="lbl">Hora de la falla (opcional)</span><input type="time" v-model="f.hora_falla" class="inp px-2 w-40"></label>
+          <p v-if="f.modo === 'REPARACION' && f.levantamiento_id" class="text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2"><i class="fa-solid fa-link mr-1 text-emerald-700"></i>Viene del levantamiento de fallas N° {{ f.levantamiento_id }}<template v-if="f.hora_falla"> · hora de la falla <b>{{ f.hora_falla }}</b></template></p>
+          <label v-else-if="f.modo === 'REPARACION'" class="block"><span class="lbl">Hora de la falla (opcional)</span><input type="time" v-model="f.hora_falla" class="inp px-2 w-40"></label>
           <p :class="['text-center font-black text-lg rounded-xl py-2', S.duracionMin(f) == null ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-800']" data-int="duracion"><i class="fa-regular fa-clock mr-1"></i>Duración: {{ S.textoDuracion(S.duracionMin(f)) }}</p>
         </div>
         <div v-if="f.tipo === 'MECANICA'" class="bg-white rounded-2xl p-4 shadow-sm space-y-3">

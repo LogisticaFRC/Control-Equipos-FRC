@@ -77,7 +77,7 @@ const bloqueNuevo = (r, elec) => {
   ${banda('2', 'FALLA REPARADA')}
   <div style="border:1.5px solid #333;border-top:0;padding:6px 12px 9px;font-size:12px;font-weight:800">${esc(titulo) || '&nbsp;'}
     ${r.falla_texto && r.falla_texto !== titulo ? `<div style="font-size:9.5px;font-weight:400;color:#475569;margin-top:2px">Falla abierta en el equipo: ${esc(r.falla_texto)}</div>` : ''}
-    ${r.falla_id ? `<div style="font-size:8.5px;font-weight:400;color:#94a3b8;margin-top:2px">Falla N° ${esc(r.falla_id)} del equipo</div>` : ''}</div>
+    ${r.levantamiento_id ? `<div style="font-size:9.5px;font-weight:700;color:${V};margin-top:3px">Viene del Levantamiento de fallas N° ${esc(r.levantamiento_id)}</div>` : r.falla_id ? `<div style="font-size:8.5px;font-weight:400;color:#94a3b8;margin-top:2px">Falla N° ${esc(r.falla_id)} del equipo</div>` : ''}</div>
   <div style="height:9px"></div>
   ${banda('3', 'DESCRIPCIÓN DE LO REALIZADO')}
   ${lineasTexto(r.descripcion, 7, 20)}
@@ -113,8 +113,8 @@ export const hojaIntervencion = (r, logo) => {
   </div>
   ${nuevo ? `
   <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;text-align:center">
-    <tr>${['FECHA INICIO', 'HORA INICIO', 'FECHA TÉRMINO', 'HORA TÉRMINO', 'DURACIÓN', ...(r.modo === 'REPARACION' ? ['HORA FALLA'] : [])].map(t => `<td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">${t}</td>`).join('')}</tr>
-    <tr>${[fecha(r.fecha), r.hora_inicio, fecha(r.fecha_termino || r.fecha), r.hora_termino, durTxt(r.duracion_min), ...(r.modo === 'REPARACION' ? [r.hora_falla] : [])].map((v, i) => `<td style="border:1px solid #333;padding:2px 4px 6px;font-weight:${i === 4 ? 900 : 700};font-size:${i === 4 ? 12 : 11}px">${esc(v) || '&nbsp;'}</td>`).join('')}</tr>
+    <tr>${['FECHA INICIO', 'HORA INICIO', 'FECHA TÉRMINO', 'HORA TÉRMINO', 'DURACIÓN', 'HORA FALLA'].map(t => `<td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">${t}</td>`).join('')}</tr>
+    <tr>${[fecha(r.fecha), r.hora_inicio, fecha(r.fecha_termino || r.fecha), r.hora_termino, durTxt(r.duracion_min), r.hora_falla].map((v, i) => `<td style="border:1px solid #333;padding:2px 4px 6px;font-weight:${i === 4 ? 900 : 700};font-size:${i === 4 ? 12 : 11}px">${esc(v) || '&nbsp;'}</td>`).join('')}</tr>
   </table>` : `
   <div style="display:flex;gap:10px;align-items:center;font-size:10.5px;margin-bottom:12px;justify-content:center">
     ${lbl('HORA FALLA:')} ${caja(r.hora_falla, '58px')} ${lbl('HORA INICIO:')} ${caja(r.hora_inicio, '58px')} ${lbl('HORA TERMINO:')} ${caja(r.hora_termino, '58px')}

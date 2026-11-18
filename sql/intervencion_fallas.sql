@@ -18,7 +18,9 @@ alter table public.bd_mec_intervenciones add column if not exists terminado     
 alter table public.bd_mec_intervenciones add column if not exists fallas        jsonb not null default '[]'::jsonb; -- INSPECCIÓN: [{ n, id, sistema, descripcion }]
 alter table public.bd_mec_intervenciones add column if not exists falla_id      bigint;    -- REPARACIÓN: bd_taller_problemas.id
 alter table public.bd_mec_intervenciones add column if not exists falla_texto   text;
+alter table public.bd_mec_intervenciones add column if not exists levantamiento_id bigint; -- REPARACIÓN: report del levantamiento de fallas de donde viene (2026-11-18)
 create index if not exists bd_mec_intervenciones_falla_idx on public.bd_mec_intervenciones (falla_id);
+create index if not exists bd_mec_intervenciones_lev_idx on public.bd_mec_intervenciones (levantamiento_id);
 
 -- 2) Fallas del equipo: también en terreno (sin reparación del taller) y estado REPARADO
 alter table public.bd_taller_problemas alter column reparacion_id drop not null;

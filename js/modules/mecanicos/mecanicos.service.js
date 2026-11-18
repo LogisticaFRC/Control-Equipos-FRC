@@ -181,7 +181,7 @@ export const nuevaIntervencion = (tipo, e) => ({
   mecanicos: [{ nombre: usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || '', usuario: usuarioActivo.value?.usuario || '', firma: '' }],
   causa_intervencion: '', descripcion: '', interferencia: '', causa_falla: '',
   // 2026-11-18: modo INSPECCION (observación + fallas enumeradas) | REPARACION (una falla abierta) · cada envío = un report
-  modo: '', fallas: [{ descripcion: '', sistema: '' }], falla_id: null, falla_texto: '', fecha_termino: hoyISO(), terminado: false,
+  modo: '', fallas: [{ descripcion: '', sistema: '' }], falla_id: null, falla_texto: '', levantamiento_id: null, fecha_termino: hoyISO(), terminado: false,
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
   supervisor: { modo: 'DESPUES', nombre: '', empresa: '', tipo: 'CLIENTE', firma: '' }
@@ -214,6 +214,10 @@ export const elegirFalla = (f, h) => {
   elegirModo(f, 'REPARACION');
   f.falla_id = h ? h.id : null;
   f.falla_texto = h ? textoFalla(h) : '';
+  // enlace con el levantamiento de fallas que la creó (y su hora de falla)
+  f.levantamiento_id = h && h.intervencion_id ? h.intervencion_id : null;
+  const lev = f.levantamiento_id ? dbMec.value.find(x => String(x.id) === String(f.levantamiento_id)) : null;
+  f.hora_falla = lev ? (lev.hora_falla || '') : (h ? '' : f.hora_falla);
   const titulo = h ? String(h.descripcion || '').trim() : '';
   if (f.tipo === 'ELECTRICA') f.causa_falla = titulo; else f.causa_intervencion = titulo;
 };
@@ -299,7 +303,8 @@ const filaDB = (f) => ({
   ...(f.modo ? {   // 2026-11-18 (sql/intervencion_fallas.sql)
     modo: f.modo, fecha_termino: normalizarFecha(f.fecha_termino) || null, terminado: Boolean(f.terminado), duracion_min: duracionMin(f),
     fallas: f.modo === 'INSPECCION' ? (f.fallas || []).filter(i => String(i.descripcion || '').trim()).map((i, k) => ({ n: k + 1, id: i.id || null, descripcion: String(i.descripcion).trim(), sistema: i.sistema || '' })) : [],
-    falla_id: f.modo === 'REPARACION' ? (f.falla_id || null) : null, falla_texto: f.modo === 'REPARACION' ? (f.falla_texto || null) : null
+    falla_id: f.modo === 'REPARACION' ? (f.falla_id || null) : null, falla_texto: f.modo === 'REPARACION' ? (f.falla_texto || null) : null,
+    levantamiento_id: f.modo === 'REPARACION' ? (f.levantamiento_id || null) : null
   } : {}),
   updated_at: new Date().toISOString()
 });
@@ -347,7 +352,7 @@ export const enviarIntervencion = async () => {
     await cargarMec();
   } catch (err) {
     const m = errMsg(err);
-    alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
+    alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min|levantamiento_id)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
   } finally { enviando.value = false; }
 };
 
@@ -431,7 +436,7 @@ export const pasarAHistorial = async (r) => {
       hora_total: r.duracion_min != null ? String(Math.round(r.duracion_min / 6) / 10) : String(calcularRestaHoras(r.hora_inicio, r.hora_termino) || ''),
       causa_intervencion: r.modo === 'INSPECCION' ? `LEVANTAMIENTO DE FALLAS (${(r.fallas || []).length})` : (r.tipo === 'ELECTRICA' ? (r.causa_falla || r.causa_intervencion) : r.causa_intervencion) || '', descripcion: [r.modo === 'INSPECCION' ? 'OBSERVACIÓN: ' + (r.descripcion || '') : (r.descripcion || ''),
         ...(r.modo === 'INSPECCION' ? (r.fallas || []).map(i => `Falla ${i.n}: ${i.sistema ? i.sistema + ' · ' : ''}${i.descripcion}`) : []),
-        r.modo === 'REPARACION' && r.falla_texto ? 'Falla reparada: ' + r.falla_texto : '',
+        r.modo === 'REPARACION' && r.falla_texto ? 'Falla reparada: ' + r.falla_texto + (r.levantamiento_id ? ` (levantamiento de fallas N° ${r.levantamiento_id})` : '') : '',
         r.fecha_termino && r.fecha_termino !== r.fecha ? `Término: ${r.fecha_termino} ${r.hora_termino || ''}` : '', ...extras].filter(Boolean).join('\n'),
       interferencia: r.interferencia || '', empresa: r.usuario_arriendo || '', link: url,
       art: r.uso_art ? 'SI' : 'NO', numero_folio: `APP-${r.id}`,
@@ -546,4 +551,21 @@ export const exportarTiempos = () => {
   const wb = window.XLSX.utils.book_new(); window.XLSX.utils.book_append_sheet(wb, ws, 'Tiempos de trabajo');
   window.XLSX.writeFile(wb, `Tiempos de trabajo mecanicos ${hoyISO()}.xlsx`);
 };
+
+// ---------- ENLACE LEVANTAMIENTO ↔ REPARACIONES (2026-11-18) ----------
+/** Report de levantamiento de una reparación (o null). */
+export const levantamientoDe = (r) => {
+  if (!r || r.modo !== 'REPARACION') return null;
+  const id = r.levantamiento_id || (fallaPorId(r.falla_id) || {}).intervencion_id;
+  return id ? dbMec.value.find(x => String(x.id) === String(id)) || { id, noCargado: true } : null;
+};
+/** Fallas de un levantamiento con su estado actual y los reports de reparación que las cerraron. */
+export const fallasDeLevantamiento = (r) => (r && r.modo === 'INSPECCION' ? (r.fallas || []).map(i => {
+  const h = i.id ? fallaPorId(i.id) : null;
+  const reps = dbMec.value.filter(x => x.modo === 'REPARACION' && i.id && String(x.falla_id) === String(i.id)).sort((a, b) => a.id - b.id);
+  const estado = h ? h.estado : (reps.length ? 'REPARADO' : 'PENDIENTE');
+  return { ...i, estado, reparaciones: reps, reparado_por: h?.reparado_por || '', reparado_at: h?.reparado_at || '' };
+}) : []);
+/** "2/3" reparadas de un levantamiento. */
+export const avanceLevantamiento = (r) => { const l = fallasDeLevantamiento(r); return { total: l.length, listas: l.filter(x => x.estado === 'REPARADO').length }; };
 
