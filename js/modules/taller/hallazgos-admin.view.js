@@ -46,7 +46,8 @@ export default {
           <span class="text-base font-bold text-slate-800"><span v-if="h.item_n" class="text-slate-400 mr-1">{{ h.item_n }}.</span><b v-if="h.sistema" class="text-violet-800">{{ h.sistema }} · </b>{{ h.descripcion }}</span>
           <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', (S.ESTADO_HALLAZGO[h.estado] || {}).c]">{{ (S.ESTADO_HALLAZGO[h.estado] || {}).t || h.estado }}{{ S.otDeHallazgo(h) ? ' N° ' + S.otDeHallazgo(h).folio : '' }}</span>
         </div>
-        <div v-if="h.necesita_repuesto" class="text-sm text-amber-800 font-semibold"><i class="fa-solid fa-gear mr-1"></i>Pide repuesto: {{ h.cantidad ? h.cantidad + ' x ' : '' }}{{ h.repuesto }}</div>
+        <div v-if="h.necesita_repuesto" class="text-sm text-amber-800 font-semibold"><i class="fa-solid fa-gear mr-1"></i>Pide repuesto: {{ h.cantidad ? h.cantidad + ' x ' : '' }}{{ h.repuesto }}<span v-if="h.codigo_repuesto" class="font-mono"> · Cód. {{ h.codigo_repuesto }}</span></div>
+        <div v-if="h.serie_motor" class="text-xs text-slate-600"><i class="fa-solid fa-barcode mr-1"></i>Serie motor: <b class="font-mono">{{ h.serie_motor }}</b></div>
         <p v-if="h.descripcion_original && h.descripcion_original !== h.descripcion" class="text-[11px] text-slate-400 italic">Original: {{ h.descripcion_original }}</p>
         <p class="text-[11px] text-slate-500">{{ h.reportado_por }} · {{ fechaHora(h.created_at) }}<template v-if="h.editado_por"> · editado por {{ h.editado_por }}</template><template v-if="h.estado === 'RECHAZADO' && h.respuesta"> · <b>{{ h.respuesta }}</b></template></p>
         <p v-if="h.estado === 'REPARADO'" class="text-[11px] text-sky-800 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Reparada por {{ h.reparado_por || '—' }} · {{ fechaHora(h.reparado_at) }}<template v-if="h.reparado_int_id"> · report N° {{ h.reparado_int_id }}</template></p>

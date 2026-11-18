@@ -49,7 +49,10 @@ export const crearFallasDeInspeccion = async (reg, items) => {
   const filas = nuevas.map(i => ({
     reparacion_id: rep ? rep.id : null, ot_id: null, afi: limpiarAfi(reg.afi), nave: rep ? rep.nave || null : null,
     inspeccion_id: `INT-${reg.id}`, item_n: lista.indexOf(i) + 1, intervencion_id: reg.id, tipo_intervencion: reg.tipo,
-    descripcion: String(i.descripcion).trim(), sistema: i.sistema || null, necesita_repuesto: false,
+    descripcion: String(i.descripcion).trim(), sistema: i.sistema || null,
+    necesita_repuesto: Boolean(i.necesita_repuesto), repuesto: i.necesita_repuesto ? i.repuesto || null : null, cantidad: i.necesita_repuesto ? i.cantidad || null : null,
+    codigo_repuesto: i.codigo_repuesto || null, serie_motor: i.serie_motor || null,
+    foto_url: (i.fotos || [])[0] || null, fotos: (i.fotos || []).filter(Boolean),
     reportado_por: quien(), estado: 'PENDIENTE'
   }));
   const creadas = await sb(supabaseClient.from(TABLA_PROBLEMAS).insert(filas).select());

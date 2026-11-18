@@ -14,7 +14,8 @@ import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js'
 import TallerMecanico from '../taller/taller-mecanico.view.js';
 import ActividadesEquipo from './actividades-equipo.view.js';
 import EstandarBoton from '../estandarizacion/estandar-form.view.js';   // Inspección general estandarización (2026-11-18)
-import * as F from './fallas-equipo.js';   // fallas abiertas del equipo (2026-11-18)
+import * as F from './fallas-equipo.js';
+import LevantamientosEquipo from './levantamientos.view.js';   // carpetas de levantamientos (2026-11-18)   // fallas abiertas del equipo (2026-11-18)
 import * as CH from './chofer.service.js';   // CHOFER: check list / report camión pluma (2026-11-17)
 import { ChoferChecklist, ChecklistLista } from './chofer-checklist.view.js';
 import { CrtgPrograma, CrtgPedido, CrtgUbicacion } from './crtg.view.js';   // TERRENO CRTG (2026-11-17)
@@ -29,7 +30,7 @@ const LUGARES = ['TALLER FRC', 'TERRENO', 'FAENA CLIENTE'];
 
 export default {
   name: 'MecanicoApp',
-  components: { TallerMecanico, ActividadesEquipo, EstandarBoton, FallasAbiertas: F.FallasAbiertas, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
+  components: { TallerMecanico, ActividadesEquipo, EstandarBoton, LevantamientosEquipo, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
 <div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
@@ -85,7 +86,7 @@ export default {
       <!-- Paso 2: qué se hizo -->
       <section v-show="S.pasoInt.value === 2" class="p-4 space-y-3">
         <!-- 2026-11-18: INSPECCIÓN (observación + fallas enumeradas) o REPARACIÓN de una falla · cada envío = un report -->
-        <div v-if="f.modo != null" class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+        <div v-if="f.modo != null && !f.modoFijo" class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
           <span class="lbl">¿Qué vas a registrar?</span>
           <button @click="S.elegirModo(f, 'INSPECCION')" :class="['chip-lg text-left w-full', f.modo === 'INSPECCION' ? 'on' : '']" data-int="modo-insp"><i class="fa-solid fa-list-ol mr-2"></i>Levantamiento de fallas<span class="block text-[11px] font-normal opacity-80">Sin intervenir el equipo: anota la observación y enumera las fallas</span></button>
           <button @click="S.elegirModo(f, 'REPARACION')" :class="['chip-lg text-left w-full', f.modo === 'REPARACION' ? 'on' : '']" data-int="modo-rep"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>Reparar una falla<span class="block text-[11px] font-normal opacity-80">Elige una falla abierta del equipo y registra lo que hiciste</span></button>
@@ -98,15 +99,31 @@ export default {
             <div class="flex items-center gap-2"><input type="time" v-model="f.hora_falla" class="inp px-2 w-40"><button @click="f.hora_falla = S.horaAhora()" class="text-[11px] font-bold text-emerald-700">Ahora</button></div>
             <span class="text-[11px] text-slate-500">Cuándo falló o se detuvo el equipo (si aplica). Queda también en las reparaciones de estas fallas.</span></label>
           <div><span class="lbl">Fallas encontradas</span>
-            <div v-for="(it, i) in f.fallas" :key="i" class="flex gap-2 items-start mt-2">
+            <div v-for="(it, i) in f.fallas" :key="i" class="flex gap-2 items-start mt-3 pb-3 border-b last:border-0" :data-int="'item-' + i">
               <span class="w-8 h-8 mt-1.5 rounded-full bg-amber-500 text-white font-black flex items-center justify-center shrink-0">{{ i + 1 }}</span>
-              <div class="flex-1 space-y-1">
+              <div class="flex-1 space-y-1.5 min-w-0">
                 <input v-model="it.descripcion" class="inp" :placeholder="i === 0 ? 'Ej: Fuga de aceite en tapa de válvulas' : 'Otra falla'" :disabled="Boolean(it.id)">
                 <select v-model="it.sistema" class="inp text-sm py-2" :disabled="Boolean(it.id)"><option value="">Sistema (opcional)</option><option v-for="x in F.SISTEMAS_HALLAZGO" :key="x" :value="x">{{ x }}</option></select>
+                <input v-model="it.serie_motor" class="inp text-sm py-2 font-mono" placeholder="Código / serie del motor (si aplica)" :disabled="Boolean(it.id)">
+                <label class="flex items-center gap-2 text-sm font-bold text-slate-700 py-1"><input type="checkbox" v-model="it.necesita_repuesto" class="w-5 h-5 accent-amber-500" :disabled="Boolean(it.id)" :data-int="'rep-' + i"><i class="fa-solid fa-gear text-amber-600"></i>Necesita repuesto</label>
+                <div v-if="it.necesita_repuesto" class="bg-amber-50 border border-amber-200 rounded-xl p-2 space-y-1.5">
+                  <div class="grid gap-2" style="grid-template-columns:minmax(0,1fr) 4.5rem"><input v-model="it.repuesto" class="inp text-sm py-2" placeholder="¿Qué repuesto?" :disabled="Boolean(it.id)"><input v-model="it.cantidad" class="inp text-sm py-2 text-center" placeholder="Cant." inputmode="numeric" :disabled="Boolean(it.id)"></div>
+                  <input v-model="it.codigo_repuesto" class="inp text-sm py-2 font-mono" placeholder="Código del repuesto (si tiene)" :disabled="Boolean(it.id)">
+                  <p class="text-[10px] text-amber-800"><i class="fa-solid fa-cart-shopping mr-1"></i>Llega a <b>Repuestos pedidos</b> al enviar.</p>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <template v-for="k in [0, 1]" :key="k">
+                    <label :class="['w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden cursor-pointer shrink-0', (it.fotos || [])[k] ? 'border-emerald-500' : 'border-slate-300 bg-slate-50']">
+                      <img v-if="(it.fotos || [])[k]" :src="it.fotos[k]" class="w-full h-full object-cover" alt="">
+                      <i v-else :class="['fa-solid text-slate-400', S.subiendoFoto.value === 'FALLA' + i + k ? 'fa-spinner fa-spin' : 'fa-camera']"></i>
+                      <input type="file" accept="image/*" capture="environment" class="hidden" :disabled="Boolean(it.id)" @change="e => S.subirFotoDoc(f, 'FALLA' + i, k, e.target.files[0])"></label>
+                  </template>
+                  <span class="text-[11px] text-slate-500">Fotos de la falla (hasta 2)</span>
+                </div>
               </div>
               <button v-if="f.fallas.length > 1 && !it.id" @click="f.fallas.splice(i, 1)" class="w-9 pt-3 text-rose-500"><i class="fa-solid fa-trash"></i></button>
             </div>
-            <button @click="f.fallas.push({ descripcion: '', sistema: '' })" class="mt-2 text-sm font-bold text-emerald-700" data-int="agregar-falla"><i class="fa-solid fa-plus mr-1"></i>Agregar falla</button>
+            <button @click="f.fallas.push(S.itemFallaVacio())" class="mt-2 text-sm font-bold text-emerald-700" data-int="agregar-falla"><i class="fa-solid fa-plus mr-1"></i>Agregar falla</button>
             <p class="text-[11px] text-slate-500 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>Al enviar, cada falla queda <b>abierta en el equipo</b> para repararla después, una por una. Si no encontraste fallas, deja la lista vacía.</p>
           </div>
         </div>
@@ -165,7 +182,45 @@ export default {
 
       <!-- Paso 3: seguridad -->
       <section v-show="S.pasoInt.value === 3" class="p-4 space-y-3">
-        <div class="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+        <!-- 2026-11-18: ART y BLOQUEO se llenan en papel → solo FOTO de las hojas -->
+        <div v-if="f.modo != null" class="bg-white rounded-2xl p-4 shadow-sm space-y-4" data-int="seguridad">
+          <div><span class="lbl">¿Se usó ART?</span>
+            <div class="grid grid-cols-2 gap-2 mt-1"><button @click="f.uso_art = true" :class="['chip-lg', f.uso_art ? 'on' : '']">SÍ</button><button @click="f.uso_art = false" :class="['chip-lg', !f.uso_art ? 'on' : '']">NO</button></div>
+            <div v-if="f.uso_art" class="space-y-2 mt-2">
+            <div class="border-2 border-dashed rounded-xl p-2 flex items-center gap-3" data-int="foto-art-0">
+              <img v-if="(f.art_fotos || [])[0]" :src="(f.art_fotos || [])[0]" class="w-16 h-20 object-cover rounded-lg border" alt="">
+              <span v-else class="w-16 h-20 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 text-2xl"><i class="fa-solid fa-file-image"></i></span>
+              <div class="flex-1"><b class="text-sm block">ART · hoja 1</b>
+                <label class="inline-block mt-1 px-3 py-2 rounded-lg bg-[#1f4d3a] text-white text-xs font-bold cursor-pointer"><i :class="['fa-solid mr-1', S.subiendoFoto.value === 'ART0' ? 'fa-spinner fa-spin' : 'fa-camera']"></i>{{ (f.art_fotos || [])[0] ? 'Cambiar foto' : 'Tomar / subir foto' }}
+                  <input type="file" accept="image/*" capture="environment" class="hidden" @change="e => S.subirFotoDoc(f, 'ART', 0, e.target.files[0])"></label></div>
+              <i v-if="(f.art_fotos || [])[0]" class="fa-solid fa-circle-check text-emerald-600 text-xl"></i>
+            </div>
+            <div class="border-2 border-dashed rounded-xl p-2 flex items-center gap-3" data-int="foto-art-1">
+              <img v-if="(f.art_fotos || [])[1]" :src="(f.art_fotos || [])[1]" class="w-16 h-20 object-cover rounded-lg border" alt="">
+              <span v-else class="w-16 h-20 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 text-2xl"><i class="fa-solid fa-file-image"></i></span>
+              <div class="flex-1"><b class="text-sm block">ART · hoja 2</b>
+                <label class="inline-block mt-1 px-3 py-2 rounded-lg bg-[#1f4d3a] text-white text-xs font-bold cursor-pointer"><i :class="['fa-solid mr-1', S.subiendoFoto.value === 'ART1' ? 'fa-spinner fa-spin' : 'fa-camera']"></i>{{ (f.art_fotos || [])[1] ? 'Cambiar foto' : 'Tomar / subir foto' }}
+                  <input type="file" accept="image/*" capture="environment" class="hidden" @change="e => S.subirFotoDoc(f, 'ART', 1, e.target.files[0])"></label></div>
+              <i v-if="(f.art_fotos || [])[1]" class="fa-solid fa-circle-check text-emerald-600 text-xl"></i>
+            </div>
+            </div>
+          </div>
+          <div><span class="lbl">¿Hubo bloqueo de equipo?</span>
+            <div class="grid grid-cols-2 gap-2 mt-1"><button @click="f.bloqueo = true" :class="['chip-lg', f.bloqueo ? 'on' : '']">SÍ</button><button @click="f.bloqueo = false" :class="['chip-lg', !f.bloqueo ? 'on' : '']">NO</button></div>
+            <div v-if="f.bloqueo" class="mt-2">
+            <div class="border-2 border-dashed rounded-xl p-2 flex items-center gap-3" data-int="foto-bloqueo">
+              <img v-if="f.bloqueo_foto" :src="f.bloqueo_foto" class="w-16 h-20 object-cover rounded-lg border" alt="">
+              <span v-else class="w-16 h-20 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 text-2xl"><i class="fa-solid fa-file-image"></i></span>
+              <div class="flex-1"><b class="text-sm block">Registro de bloqueo (FRC-RE-OP-015)</b>
+                <label class="inline-block mt-1 px-3 py-2 rounded-lg bg-[#1f4d3a] text-white text-xs font-bold cursor-pointer"><i :class="['fa-solid mr-1', S.subiendoFoto.value === 'BLOQUEO0' ? 'fa-spinner fa-spin' : 'fa-camera']"></i>{{ f.bloqueo_foto ? 'Cambiar foto' : 'Tomar / subir foto' }}
+                  <input type="file" accept="image/*" capture="environment" class="hidden" @change="e => S.subirFotoDoc(f, 'BLOQUEO', 0, e.target.files[0])"></label></div>
+              <i v-if="f.bloqueo_foto" class="fa-solid fa-circle-check text-emerald-600 text-xl"></i>
+            </div>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>Los papeles se llenan a mano: saca una foto clara de cada hoja. Quedan en el PDF del report.</p>
+        </div>
+        <div v-if="f.modo == null" class="bg-white rounded-2xl p-4 shadow-sm space-y-4">
           <div><span class="lbl">¿Se usó ART?</span>
             <div class="grid grid-cols-2 gap-2 mt-1"><button @click="f.uso_art = true" :class="['chip-lg', f.uso_art ? 'on' : '']">SÍ</button><button @click="f.uso_art = false" :class="['chip-lg', !f.uso_art ? 'on' : '']">NO</button></div>
             <p v-if="f.uso_art" class="text-[11px] text-slate-500 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>El formulario ART se agregará más adelante.</p>
@@ -175,7 +230,7 @@ export default {
           </div>
         </div>
         <!-- Registro de bloqueo -->
-        <template v-if="f.bloqueo && f.registro_bloqueo">
+        <template v-if="f.modo == null && f.bloqueo && f.registro_bloqueo">
           <div class="bg-[#1f4d3a] text-white rounded-2xl px-4 py-3 font-extrabold"><i class="fa-solid fa-lock mr-2"></i>Registro de bloqueo <span class="text-[11px] font-normal text-emerald-200 block">FRC-RE-OP-015</span></div>
           <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
             <h4 class="sec">1 · Identificación del trabajo</h4>
@@ -328,9 +383,9 @@ export default {
         </div>
         <!-- TERRENO: opciones de siempre -->
         <div v-else class="grid grid-cols-1 gap-3">
-          <fallas-abiertas :eq="eq" @reparar="x => S.abrirIntervencion(x.tipo, eq, x.falla)"></fallas-abiertas>
+          <levantamientos-equipo :eq="eq" @reparar="x => S.abrirIntervencion(x.tipo, eq, x.falla)"></levantamientos-equipo>
+          <button @click="S.abrirLevantamiento(eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]" data-menu="levantamiento"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-list-ol"></i></span><span class="flex-1"><b class="block text-lg">Levantamiento de fallas</b><span class="text-xs text-slate-500">Observación del equipo y fallas enumeradas</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <estandar-boton :eq="eq"></estandar-boton>
-          <button @click="S.abrirIntervencion('MECANICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-wrench"></i></span><span class="flex-1"><b class="block text-lg">Intervención mecánica</b><span class="text-xs text-slate-500">FRC-RE-OPE-017</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <button @click="S.abrirIntervencion('ELECTRICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-bolt"></i></span><span class="flex-1"><b class="block text-lg">Intervención eléctrica</b><span class="text-xs text-slate-500">IE-FRC</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <div class="bg-white/60 rounded-2xl p-4 flex items-center gap-4 opacity-60"><span class="w-14 h-14 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-oil-can"></i></span><span class="flex-1"><b class="block text-lg">Mantenciones</b><span class="text-xs">Próximamente</span></span></div>
         </div>
@@ -370,8 +425,11 @@ export default {
           <div class="flex items-start justify-between gap-2">
             <span class="w-14 h-14 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center" data-foto-eq><img v-if="e.foto" :src="e.foto" loading="lazy" alt="" class="w-full h-full object-cover"><i v-else class="fa-solid fa-truck-monster text-slate-300 text-xl"></i></span>
             <div class="min-w-0 flex-1"><div class="text-lg font-black text-[#1f4d3a] leading-tight">AFI {{ e.afi }} <span class="text-sm font-bold text-slate-700">{{ e.tipo }}</span></div><div class="text-xs text-slate-500 truncate">{{ e.marca }} {{ e.modelo }} · {{ e.ubicacion || '—' }}</div></div>
+            <span class="flex flex-col items-end gap-1">
             <span v-if="S.esTaller.value && naveDeAfi(e.afi)" :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', colorNave(naveDeAfi(e.afi)).chip]">{{ naveDeAfi(e.afi) }}</span>
             <span v-else-if="S.enTaller(e)" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 whitespace-nowrap">En taller</span>
+            <span v-if="F.fallasAbiertasDe(e.afi).length" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white whitespace-nowrap" data-eq-fallas><i class="fa-solid fa-triangle-exclamation mr-0.5"></i>{{ F.fallasAbiertasDe(e.afi).length }} falla{{ F.fallasAbiertasDe(e.afi).length === 1 ? '' : 's' }} abierta{{ F.fallasAbiertasDe(e.afi).length === 1 ? '' : 's' }}</span>
+            </span>
           </div>
           <div class="grid grid-cols-2 gap-2 mt-3">
             <div class="bg-slate-50 rounded-xl px-3 py-2"><div class="text-[10px] font-bold uppercase text-slate-500">Último horómetro</div><div class="font-mono font-black">{{ fmtH(e.horometros?.hTomado) }}</div><div class="text-[10px] text-slate-500">{{ formatDateForDisplay(e.horometros?.fechaUltimoHorometro) }}</div></div>
@@ -456,7 +514,7 @@ export default {
       rec.onend = () => { dictando.value = ''; };
       dictando.value = campo; rec.start();
     };
-    onMounted(() => { S.cargarMec(); if (S.esTaller.value) recargarTaller(); });
+    onMounted(() => { S.cargarMec(); F.asegurarFallas(); if (S.esTaller.value) recargarTaller(); });
     // TERRENO no tiene Taller: si quedó en esa pantalla, vuelve al menú
     watch(() => S.esTaller.value, (t) => { if (!t && tab.value === 'taller') tab.value = 'inicio'; if (t) recargarTaller(); }, { immediate: true });
     // Menú en tarjetas

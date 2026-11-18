@@ -173,6 +173,8 @@ export const ESTADOS_MEC = {
 const BORRADOR = () => 'frc_mec_borrador_' + String(usuarioActivo.value?.usuario || '').toLowerCase();
 const horaAhora = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 export { horaAhora };
+/** Ítem del levantamiento de fallas (2026-11-18): falla + repuesto (código, serie motor) + hasta 2 fotos. */
+export const itemFallaVacio = () => ({ descripcion: '', sistema: '', necesita_repuesto: false, repuesto: '', cantidad: '', codigo_repuesto: '', serie_motor: '', fotos: [] });
 export const nuevaIntervencion = (tipo, e) => ({
   id: null, tipo, afi: String(e.afi), equipo: [e.tipo, e.marca, e.modelo].filter(Boolean).join(' '),
   fecha: hoyISO(), horometro: e.horometros?.hTomado ? String(e.horometros.hTomado) : '', turno: new Date().getHours() >= 20 || new Date().getHours() < 8 ? 'NOCHE' : 'DÍA',
@@ -181,7 +183,8 @@ export const nuevaIntervencion = (tipo, e) => ({
   mecanicos: [{ nombre: usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || '', usuario: usuarioActivo.value?.usuario || '', firma: '' }],
   causa_intervencion: '', descripcion: '', interferencia: '', causa_falla: '',
   // 2026-11-18: modo INSPECCION (observación + fallas enumeradas) | REPARACION (una falla abierta) · cada envío = un report
-  modo: '', fallas: [{ descripcion: '', sistema: '' }], falla_id: null, falla_texto: '', levantamiento_id: null, fecha_termino: hoyISO(), terminado: false,
+  modo: '', fallas: [itemFallaVacio()], falla_id: null, falla_texto: '', levantamiento_id: null,
+  art_fotos: [], bloqueo_foto: '', modoFijo: false,   // ART (2 hojas) y bloqueo (1 hoja) en fotos: el papel se llena físico fecha_termino: hoyISO(), terminado: false,
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
   supervisor: { modo: 'DESPUES', nombre: '', empresa: '', tipo: 'CLIENTE', firma: '' }
@@ -195,7 +198,7 @@ export const abrirIntervencion = (tipo, e, falla = null) => {
   let b = null; try { b = JSON.parse(localStorage.getItem(BORRADOR()) || 'null'); } catch (x) { b = null; }
   if (b && b.afi === String(e.afi) && b.tipo === tipo && confirm('Tienes un borrador sin enviar de este equipo. ¿Seguir con ese borrador?')) formInt.value = b;
   else formInt.value = nuevaIntervencion(tipo, e);
-  if (falla) elegirFalla(formInt.value, falla);
+  if (falla) { elegirFalla(formInt.value, falla); formInt.value.modoFijo = true; }
   pasoInt.value = 1;
   asegurarFallas();
 };
@@ -204,7 +207,7 @@ export const elegirModo = (f, modo) => {
   f.modo = modo;
   if (modo === 'INSPECCION') {
     if (f.tipo === 'ELECTRICA') { f.causa_intervencion = 'INSPECCIÓN'; } else { f.causa_falla = 'INSPECCION'; }
-    if (!(f.fallas || []).length) f.fallas = [{ descripcion: '', sistema: '' }];
+    if (!(f.fallas || []).length) f.fallas = [itemFallaVacio()];
   } else if (f.tipo === 'ELECTRICA' ? f.causa_intervencion === 'INSPECCIÓN' : f.causa_falla === 'INSPECCION') {
     if (f.tipo === 'ELECTRICA') f.causa_intervencion = ''; else f.causa_falla = '';
   }
@@ -230,11 +233,35 @@ export const duracionMin = (f) => {
   return n >= 0 ? n : null;
 };
 export const textoDuracion = (min) => (min == null ? '—' : min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ' ' + (min % 60) + ' min' : ''}`);
+/** Menú del equipo → "Levantamiento de fallas" (2026-11-18). */
+export const abrirLevantamiento = (e) => {
+  abrirIntervencion('MECANICA', e);
+  const f = formInt.value;
+  if (!f) return;
+  if (f.modo == null || (f.modo && f.modo !== 'INSPECCION')) return;   // borrador antiguo o de otra cosa
+  elegirModo(f, 'INSPECCION'); f.modoFijo = true;
+};
+/** ART (hoja 0 y 1) y BLOQUEO: foto del papel físico → se achica y se sube. */
+export const subiendoFoto = ref('');
+export const subirFotoDoc = async (f, cual, i, file) => {
+  if (!file) return;
+  subiendoFoto.value = cual + i;
+  try {
+    const { comprimirImagen } = await import('../inventario/fotos-equipo.js');
+    const blob = await comprimirImagen(file, 1600, 0.82);
+    const nombre = `intervenciones_app/fotos/${limpiarAfi(f.afi).replace(/[^\w-]/g, '')}_${cual}_${Date.now()}_${i + 1}.jpg`;
+    const url = await subirArchivoStorage(nombre, new File([blob], nombre.split('/').pop(), { type: 'image/jpeg' }));
+    if (cual === 'ART') { const a = [...(f.art_fotos || [])]; a[i] = url; f.art_fotos = a; }
+    else if (typeof cual === 'string' && cual.startsWith('FALLA')) { const it = f.fallas[Number(cual.slice(5))]; if (it) { const a = [...(it.fotos || [])]; a[i] = url; it.fotos = a; } }
+    else f.bloqueo_foto = url;
+  } catch (err) { alert('No se pudo subir la foto: ' + errMsg(err)); }
+  finally { subiendoFoto.value = ''; }
+};
 export const editarRegistro = (r) => {
   formInt.value = { ...JSON.parse(JSON.stringify(r)), horometro: r.horometro ? String(r.horometro) : '', supervisor: { modo: 'DESPUES', nombre: '', empresa: '', tipo: 'CLIENTE', firma: '' } };
   if (formInt.value.modo) {   // formato 2026-11-18
     if (!formInt.value.fecha_termino) formInt.value.fecha_termino = formInt.value.fecha;
-    if (!(formInt.value.fallas || []).length) formInt.value.fallas = [{ descripcion: '', sistema: '' }];
+    if (!(formInt.value.fallas || []).length) formInt.value.fallas = [itemFallaVacio()];
   }
   pasoInt.value = 1;
 };
@@ -267,6 +294,7 @@ export const faltantes = (f) => {
     if (f.hora_inicio && f.hora_termino && duracionMin(f) == null) x.push('El término no puede ser antes del inicio');
     if (f.modo === 'INSPECCION') {
       if (!String(f.descripcion || '').trim()) x.push('Observación del equipo');
+      (f.fallas || []).forEach((i, k) => { if (String(i.descripcion || '').trim() && i.necesita_repuesto && !String(i.repuesto || '').trim()) x.push(`Falla ${k + 1}: qué repuesto`); });
       if ((f.lubricantes || []).some(l => l.key && !(Number(String(l.cantidad).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
       if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
       if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
@@ -275,6 +303,8 @@ export const faltantes = (f) => {
       return x;
     }
     if (f.modo === 'REPARACION' && !f.terminado) x.push('Marcar ✓ terminado');
+    if (f.uso_art && (f.art_fotos || []).filter(Boolean).length < 2) x.push('Fotos de las 2 hojas del ART');
+    if (f.bloqueo && !f.bloqueo_foto) x.push('Foto del registro de bloqueo');
   }
   if (f.tipo === 'MECANICA' && !f.causa_falla) x.push('Causa de la intervención');
   if (!String(f.causa_intervencion || '').trim()) x.push(f.tipo === 'MECANICA' ? 'Causa detallada (título)' : 'Causa de la intervención');
@@ -282,7 +312,7 @@ export const faltantes = (f) => {
   if (!String(f.descripcion || '').trim()) x.push('Descripción de lo realizado');
   if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
   if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
-  if (f.bloqueo && !f.registro_bloqueo) x.push('Registro de bloqueo');
+  if (f.modo == null && f.bloqueo && !f.registro_bloqueo) x.push('Registro de bloqueo');
   if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor');
   return x;
 };
@@ -299,12 +329,17 @@ const filaDB = (f) => ({
   lubricantes: (f.lubricantes || []).filter(l => l.key || String(l.tipo || '').trim()),
   usuario_arriendo: String(f.usuario_arriendo || '').trim() || null, operador: String(f.operador || '').trim() || null,
   vale_consumo: String(f.vale_consumo || '').trim() || null,
-  registro_bloqueo: f.bloqueo ? f.registro_bloqueo : null,
+  registro_bloqueo: f.bloqueo && f.modo == null ? f.registro_bloqueo : null,   // 2026-11-18: formato nuevo = foto del papel
   ...(f.modo ? {   // 2026-11-18 (sql/intervencion_fallas.sql)
     modo: f.modo, fecha_termino: normalizarFecha(f.fecha_termino) || null, terminado: Boolean(f.terminado), duracion_min: duracionMin(f),
-    fallas: f.modo === 'INSPECCION' ? (f.fallas || []).filter(i => String(i.descripcion || '').trim()).map((i, k) => ({ n: k + 1, id: i.id || null, descripcion: String(i.descripcion).trim(), sistema: i.sistema || '' })) : [],
+    fallas: f.modo === 'INSPECCION' ? (f.fallas || []).filter(i => String(i.descripcion || '').trim()).map((i, k) => ({
+      n: k + 1, id: i.id || null, descripcion: String(i.descripcion).trim(), sistema: i.sistema || '',
+      necesita_repuesto: Boolean(i.necesita_repuesto), repuesto: i.necesita_repuesto ? String(i.repuesto || '').trim() : '', cantidad: i.necesita_repuesto ? String(i.cantidad || '').trim() : '',
+      codigo_repuesto: i.necesita_repuesto ? String(i.codigo_repuesto || '').trim() : '', serie_motor: String(i.serie_motor || '').trim(), fotos: (i.fotos || []).filter(Boolean)
+    })) : [],
     falla_id: f.modo === 'REPARACION' ? (f.falla_id || null) : null, falla_texto: f.modo === 'REPARACION' ? (f.falla_texto || null) : null,
-    levantamiento_id: f.modo === 'REPARACION' ? (f.levantamiento_id || null) : null
+    levantamiento_id: f.modo === 'REPARACION' ? (f.levantamiento_id || null) : null,
+    art_fotos: f.uso_art ? (f.art_fotos || []).filter(Boolean) : [], bloqueo_foto: f.bloqueo ? (f.bloqueo_foto || null) : null
   } : {}),
   updated_at: new Date().toISOString()
 });
@@ -352,7 +387,7 @@ export const enviarIntervencion = async () => {
     await cargarMec();
   } catch (err) {
     const m = errMsg(err);
-    alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min|levantamiento_id)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
+    alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min|levantamiento_id|art_fotos|bloqueo_foto|codigo_repuesto|serie_motor)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
   } finally { enviando.value = false; }
 };
 
@@ -374,6 +409,12 @@ const renderHTML = async (html, ancho, html2canvas) => {
   try { return await html2canvas(box.firstElementChild, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false }); }
   finally { box.remove(); }
 };
+const imagenDataURL = (url) => new Promise((ok, mal) => {
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  img.onload = () => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); ok({ url: c.toDataURL('image/jpeg', 0.85), w: c.width, h: c.height }); };
+  img.onerror = () => mal(new Error('No se pudo leer la foto'));
+  img.src = url;
+});
 /** Genera el PDF (hoja de intervención + registro de bloqueo si corresponde). Devuelve un Blob. */
 export const generarPDF = async (r) => {
   const { html2canvas, jsPDF } = await libsPDF();
@@ -387,6 +428,17 @@ export const generarPDF = async (r) => {
     pdf.addPage('a4', 'landscape');
     const w2 = 297, h2 = Math.min(210, c2.height * w2 / c2.width);
     pdf.addImage(c2.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, w2, h2);
+  }
+  // Fotos de los papeles (2026-11-18): ART (2 hojas) y registro de bloqueo, una por página
+  const fotos = [...(r.modo === 'INSPECCION' ? (r.fallas || []).flatMap(i => (i.fotos || []).map((u, k) => [u, `Falla ${i.n} · foto ${k + 1} · ${String(i.descripcion || '').slice(0, 60)}`])) : []), ...(r.uso_art ? (r.art_fotos || []).map((u, i) => [u, `ART · hoja ${i + 1}`]) : []), ...(r.bloqueo && r.bloqueo_foto ? [[r.bloqueo_foto, 'Registro de bloqueo FRC-RE-OP-015']] : [])].filter(x => x[0]);
+  for (const [url, titulo] of fotos) {
+    try {
+      const img = await imagenDataURL(url);
+      pdf.addPage('a4', 'portrait');
+      pdf.setFontSize(11); pdf.text(`${titulo} · AFI ${r.afi} · report N° ${r.id || ''}`, 10, 10);
+      const k = Math.min(190 / img.w, 272 / img.h);
+      pdf.addImage(img.url, 'JPEG', (210 - img.w * k) / 2, 15, img.w * k, img.h * k);
+    } catch (e) { console.warn('[Mecánicos] Foto no agregada al PDF', e); }
   }
   return pdf.output('blob');
 };

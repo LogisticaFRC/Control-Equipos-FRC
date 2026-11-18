@@ -841,7 +841,7 @@ const volcarHallazgosEnOT = async (ot, lista, textosOT = {}) => {   // textosOT:
       while (ot.insumos.length < N_ACEITES) ot.insumos.push(filaInsumoVacia());
       let k = ot.insumos.findIndex((x, j) => j >= N_ACEITES && !String(x.repuestos || '').trim() && !String(x.aceites || '').trim());
       if (k < 0) { ot.insumos.push(filaInsumoVacia()); k = ot.insumos.length - 1; }
-      Object.assign(ot.insumos[k], { repuestos: [h.cantidad ? h.cantidad + ' x' : '', h.repuesto].filter(Boolean).join(' '), fecha: '', retira: '' });
+      Object.assign(ot.insumos[k], { repuestos: [h.cantidad ? h.cantidad + ' x' : '', h.repuesto, h.codigo_repuesto ? '(cód. ' + h.codigo_repuesto + ')' : ''].filter(Boolean).join(' '), fecha: '', retira: '' });
     }
     pasados.push(h);
     n++;

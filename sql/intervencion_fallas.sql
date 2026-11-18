@@ -8,6 +8,8 @@
 --     (en bd_taller_problemas, la misma lista de hallazgos del taller: el Admin la puede pasar a OT).
 --   · REPARACIÓN: se elige UNA falla abierta, se describe lo realizado con fecha/hora de inicio y término,
 --     ✓ terminado → al enviar la falla queda REPARADA. Cada envío es un report (una hoja).
+--   · Cada falla puede pedir repuesto (con código y serie del motor) → aparece en Repuestos pedidos. Hasta 2 fotos.
+--   · ART (2 hojas) y bloqueo (1 hoja) se llenan en papel: en la reparación solo se sube la FOTO.
 -- =====================================================================
 
 -- 1) Report de intervención: modo, tiempo de trabajo y fallas
@@ -19,6 +21,8 @@ alter table public.bd_mec_intervenciones add column if not exists fallas        
 alter table public.bd_mec_intervenciones add column if not exists falla_id      bigint;    -- REPARACIÓN: bd_taller_problemas.id
 alter table public.bd_mec_intervenciones add column if not exists falla_texto   text;
 alter table public.bd_mec_intervenciones add column if not exists levantamiento_id bigint; -- REPARACIÓN: report del levantamiento de fallas de donde viene (2026-11-18)
+alter table public.bd_mec_intervenciones add column if not exists art_fotos     jsonb not null default '[]'::jsonb; -- fotos de las 2 hojas del ART (papel)
+alter table public.bd_mec_intervenciones add column if not exists bloqueo_foto  text;      -- foto del registro de bloqueo (papel)
 create index if not exists bd_mec_intervenciones_falla_idx on public.bd_mec_intervenciones (falla_id);
 create index if not exists bd_mec_intervenciones_lev_idx on public.bd_mec_intervenciones (levantamiento_id);
 
@@ -30,6 +34,9 @@ alter table public.bd_taller_problemas add column if not exists reparado_por    
 alter table public.bd_taller_problemas add column if not exists reparado_at       timestamptz;
 alter table public.bd_taller_problemas add column if not exists reparado_int_id   bigint;      -- report de reparación que la cerró
 alter table public.bd_taller_problemas add column if not exists trabajo_realizado text;
+alter table public.bd_taller_problemas add column if not exists codigo_repuesto   text;        -- código del repuesto (si tiene)
+alter table public.bd_taller_problemas add column if not exists serie_motor       text;        -- código / serie del motor
+alter table public.bd_taller_problemas add column if not exists fotos             jsonb not null default '[]'::jsonb;  -- hasta 2 fotos de la falla
 create index if not exists bd_taller_problemas_afi_idx on public.bd_taller_problemas (afi);
 
 -- 3) El técnico marca la falla REPARADA (sin permiso para editar toda la tabla)
