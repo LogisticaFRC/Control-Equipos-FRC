@@ -31,7 +31,7 @@ export const docPrincipal = (key) => DOCS_PRINCIPALES.find(d => d.key === key) |
 
 /** Documentos secundarios sugeridos (se puede escribir cualquier otro nombre). */
 export const DOCS_SECUNDARIOS_SUGERIDOS = [
-  'Padrón / Certificado de inscripción', 'Revisión de gases', 'Seguro particular', 'Certificado GPS',
+  'Padrón / Certificado de inscripción', 'Duplicado de patente', 'Revisión de gases', 'Seguro particular', 'Certificado GPS',
   'Certificado de extintor', 'Acreditación faena', 'Certificación de grúa / pluma', 'Tacógrafo', 'Factura de compra'
 ];
 

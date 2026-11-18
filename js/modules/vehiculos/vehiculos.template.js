@@ -360,7 +360,7 @@ export default /* html */ `
           <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Documento {{ formDoc.categoria === 'PRINCIPAL' ? '(principal)' : '(secundario)' }}</label>
           <input v-if="formDoc.categoria === 'PRINCIPAL'" :value="formDoc.nombre" disabled class="w-full p-2.5 border rounded-lg bg-slate-100 font-bold">
           <template v-else>
-            <input v-model="formDoc.nombre" list="veh-docs-sugeridos" type="text" placeholder="Ej: Revisión de gases" class="w-full p-2.5 border rounded-lg bg-white font-bold">
+            <input v-model="formDoc.nombre" @input="nombreDocCambio" list="veh-docs-sugeridos" type="text" placeholder="Ej: Revisión de gases" class="w-full p-2.5 border rounded-lg bg-white font-bold">
             <datalist id="veh-docs-sugeridos"><option v-for="n in DOCS_SECUNDARIOS_SUGERIDOS" :key="n" :value="n"></option></datalist>
           </template>
         </div>
@@ -368,7 +368,13 @@ export default /* html */ `
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Fecha de emisión</label><input v-model="formDoc.fechaEmision" @change="recalcularVencDoc" type="date" class="w-full p-2.5 border rounded-lg bg-white"></div>
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">N° / Folio (opcional)</label><input v-model="formDoc.numero" type="text" class="w-full p-2.5 border rounded-lg bg-white"></div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <label v-if="formDoc.categoria === 'SECUNDARIO'" class="flex items-center gap-2 p-2.5 border rounded-lg bg-white cursor-pointer select-none" data-veh="sinvenc">
+          <input type="checkbox" v-model="formDoc.sinVenc" @change="cambiarSinVenc" class="w-4 h-4 accent-sky-600">
+          <span class="font-bold text-slate-700 text-sm whitespace-nowrap">Sin vencimiento</span>
+          <span class="text-[10px] text-slate-500">(duplicado de patente, padrón, factura… no lleva duración ni avisos)</span>
+        </label>
+        <p v-if="formDoc.sinVenc" class="bg-sky-50 border border-sky-200 text-sky-800 rounded-lg p-2 text-xs font-semibold text-center"><i class="fa-solid fa-infinity mr-1"></i>Queda como SIN VENCIMIENTO: no aparece en avisos de documentos vencidos.</p>
+        <div v-if="!formDoc.sinVenc" class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Duración</label>
             <div class="flex gap-1">
@@ -383,7 +389,7 @@ export default /* html */ `
             <p class="text-[10px] mt-0.5 text-slate-400" v-else>= emisión + duración</p>
           </div>
         </div>
-        <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Avisar cuántos días antes</label><input v-model="formDoc.diasAviso" type="number" min="1" class="w-32 p-2.5 border rounded-lg bg-white font-bold"></div>
+        <div v-if="!formDoc.sinVenc"><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Avisar cuántos días antes</label><input v-model="formDoc.diasAviso" type="number" min="1" class="w-32 p-2.5 border rounded-lg bg-white font-bold"></div>
         <div>
           <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Archivo {{ formDoc.link ? '(reemplazar, opcional)' : '' }}</label>
           <input type="file" @change="elegirArchivoDoc" accept=".pdf,image/*" class="w-full p-1.5 border rounded-lg bg-white">
@@ -398,7 +404,7 @@ export default /* html */ `
           <p v-if="formDoc.link && !archivoDoc" class="text-[10px] mt-0.5">Actual: <a :href="formDoc.link" target="_blank" rel="noopener" class="text-blue-600 underline">{{ formDoc.nombreArchivo || 'ver archivo' }}</a></p>
         </div>
         <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Observación</label><input v-model="formDoc.observacion" type="text" class="w-full p-2.5 border rounded-lg bg-white"></div>
-        <p v-if="formDoc.fechaVencimiento" class="bg-white border rounded-lg p-2 text-center font-semibold">{{ textoRestante(diasHasta(formDoc.fechaVencimiento)) }}</p>
+        <p v-if="formDoc.fechaVencimiento && !formDoc.sinVenc" class="bg-white border rounded-lg p-2 text-center font-semibold">{{ textoRestante(diasHasta(formDoc.fechaVencimiento)) }}</p>
         <p v-if="!formDoc.id && formDoc.categoria === 'PRINCIPAL'" class="text-[10px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>Al renovar, el documento anterior queda en el historial.</p>
       </div>
       <div class="px-6 py-3 border-t flex justify-end gap-2 bg-white">

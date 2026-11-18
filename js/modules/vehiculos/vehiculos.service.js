@@ -362,7 +362,10 @@ export const eliminarLecturaKm = async (l) => {
 export const showDocForm = ref(false);
 export const formDoc = ref({});
 export const archivoDoc = shallowRef(null);
-export const docsHistAbierto = ref('');   // clave/nombre del documento con historial desplegado
+export const docsHistAbierto = ref('');
+/** Documentos que normalmente no vencen (duplicado de patente, padrón, factura…). */
+const RE_SIN_VENC = /DUPLICAD|PADR[OÓ]N|INSCRIPCI|FACTURA|COMPRA/i;
+export const sugiereSinVenc = (nombre) => RE_SIN_VENC.test(String(nombre || ''));   // clave/nombre del documento con historial desplegado
 
 export const abrirNuevoDoc = (v, categoria, clave = '', nombre = '') => {
   if (!soloEditor()) return;
@@ -370,7 +373,7 @@ export const abrirNuevoDoc = (v, categoria, clave = '', nombre = '') => {
   formDoc.value = {
     id: null, patente: v.patente, categoria, clave: def ? def.key : '',
     nombre: def ? def.label : nombre, numero: '', fechaEmision: hoyISO(),
-    duracion: def ? def.duracionMeses : 12, unidad: 'MESES', fechaVencimiento: '', vencManual: false,
+    duracion: def ? def.duracionMeses : 12, unidad: 'MESES', fechaVencimiento: '', vencManual: false, sinVenc: !def && sugiereSinVenc(nombre),
     diasAviso: v.conf.diasAviso || DIAS_AVISO_DEFAULT, link: '', observacion: ''
   };
   recalcularVencDoc();
@@ -380,7 +383,8 @@ export const abrirNuevoDoc = (v, categoria, clave = '', nombre = '') => {
 };
 export const abrirEditarDoc = (doc) => {
   if (!soloEditor()) return;
-  formDoc.value = { ...doc, vencManual: doc.fechaVencimiento !== calcularVencimiento(doc.fechaEmision, doc.duracion, doc.unidad) };
+  const sinVenc = !doc.fechaVencimiento && !(Number(doc.duracion) > 0);
+  formDoc.value = { ...doc, sinVenc, duracion: sinVenc ? 12 : doc.duracion, vencManual: !sinVenc && doc.fechaVencimiento !== calcularVencimiento(doc.fechaEmision, doc.duracion, doc.unidad) };
   archivoDoc.value = null;
   lecturaDoc.value = null;
   showDocForm.value = true;
@@ -388,11 +392,16 @@ export const abrirEditarDoc = (doc) => {
 /** Recalcula el vencimiento (emisión + duración) salvo que el usuario lo haya escrito a mano. */
 export const recalcularVencDoc = () => {
   const f = formDoc.value;
+  if (f.sinVenc) { f.fechaVencimiento = ''; return; }
   if (f.vencManual) return;
   f.fechaVencimiento = calcularVencimiento(f.fechaEmision, f.duracion, f.unidad);
 };
 export const vencimientoManual = () => { formDoc.value.vencManual = true; };
 export const usarVencimientoCalculado = () => { formDoc.value.vencManual = false; recalcularVencDoc(); };
+/** Activa / desactiva "Sin vencimiento" (no lleva duración ni fecha de vencimiento). */
+export const cambiarSinVenc = () => { const f = formDoc.value; if (!f.sinVenc) f.vencManual = false; recalcularVencDoc(); };
+/** Al escribir el nombre de un secundario: si es tipo duplicado / padrón / factura, marca "Sin vencimiento" (sólo documentos nuevos). */
+export const nombreDocCambio = () => { const f = formDoc.value; if (!f.id && f.categoria === 'SECUNDARIO' && sugiereSinVenc(f.nombre) && !f.sinVenc) { f.sinVenc = true; recalcularVencDoc(); } };
 /** Lectura automática del documento elegido (2026-11-18): completa emisión, vencimiento y N° / folio. */
 export const lecturaDoc = ref(null);   // { estado: 'leyendo' | 'ok' | 'nada' | 'error', paso, campos: [], avisos: [] }
 const NOMBRE_TIPO = { PERMISO_CIRCULACION: 'Permiso de Circulación', REVISION_TECNICA: 'Revisión Técnica', SOAP: 'SOAP', GASES: 'Revisión de gases' };
@@ -410,7 +419,7 @@ export const elegirArchivoDoc = async (e) => {
     if (formDoc.value !== f) return;   // se cerró o cambió el formulario mientras leía
     const campos = [], avisos = [];
     if (r.emision) { f.fechaEmision = r.emision; campos.push('Fecha de emisión'); }
-    if (r.vencimiento) {
+    if (r.vencimiento && !f.sinVenc) {
       // si el vencimiento calza con una duración en meses, se deja la duración; si no, queda escrito a mano
       if (r.emision) {
         const m = mesesEntre(r.emision, r.vencimiento);
@@ -446,6 +455,7 @@ export const guardarDoc = async () => {
   if (!soloEditor()) return;
   const f = formDoc.value;
   if (f.categoria === 'SECUNDARIO' && !String(f.nombre || '').trim()) return alert('Escribe el nombre del documento.');
+  if (f.sinVenc && !f.fechaEmision) return alert('Ingresa la fecha de emisión del documento.');
   if (!f.fechaEmision && !f.fechaVencimiento) return alert('Ingresa al menos la fecha de emisión o la de vencimiento.');
   if (f.fechaEmision && f.fechaVencimiento && f.fechaVencimiento < f.fechaEmision) return alert('El vencimiento no puede ser anterior a la emisión.');
   guardandoVeh.value = true;
@@ -465,9 +475,9 @@ export const guardarDoc = async () => {
       nombre: String(f.nombre || '').trim(),
       numero: String(f.numero || '').trim() || null,
       fecha_emision: f.fechaEmision || null,
-      duracion: Number(f.duracion) > 0 ? Number(f.duracion) : null,
+      duracion: !f.sinVenc && Number(f.duracion) > 0 ? Number(f.duracion) : null,
       unidad: f.unidad || 'MESES',
-      fecha_vencimiento: f.fechaVencimiento || null,
+      fecha_vencimiento: f.sinVenc ? null : (f.fechaVencimiento || null),
       dias_aviso: Math.round(parseNum(f.diasAviso)) || DIAS_AVISO_DEFAULT,
       link: link || null,
       nombre_archivo: nombreArchivo || null,
