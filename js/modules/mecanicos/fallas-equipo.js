@@ -84,7 +84,7 @@ export const FallasAbiertas = {
     <div class="lbl"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i>Fallas abiertas del equipo</div>
     <span :class="['text-xs font-black px-2 py-0.5 rounded-full', abiertas.length ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800']">{{ abiertas.length }}</span>
   </div>
-  <p v-if="!abiertas.length" class="text-sm text-slate-400 italic">Sin fallas abiertas. Si encuentras alguna, haz una intervención → <b>Levantamiento de fallas</b> y enuméralas.</p>
+  <p v-if="!abiertas.length" class="text-sm text-slate-400 italic">Sin fallas abiertas. Si encuentras alguna, haz una intervención → <b>OT de Fallas</b> y enuméralas.</p>
   <div v-for="(h, i) in abiertas" :key="h.id" class="py-2.5 border-b last:border-0 flex items-start gap-3">
     <span class="w-7 h-7 rounded-full bg-amber-500 text-white font-black text-sm flex items-center justify-center shrink-0">{{ i + 1 }}</span>
     <div class="flex-1 min-w-0">

@@ -42,7 +42,7 @@ export default {
     <button v-else-if="tab !== 'inicio'" @click="tab = 'inicio'" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Menú"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <div v-else class="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center"><img :src="logoSrc" @error="onLogoError" class="max-h-full max-w-full object-contain" referrerpolicy="no-referrer"></div>
     <div class="flex-1 min-w-0">
-      <div class="font-extrabold leading-tight truncate">{{ CH.formCheck.value ? 'Check list camión · ' + (CH.formCheck.value.patente || 'nuevo') : S.formInt.value ? (S.formInt.value.modo === 'INSPECCION' ? 'Levantamiento de fallas' : S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
+      <div class="font-extrabold leading-tight truncate">{{ CH.formCheck.value ? 'Check list camión · ' + (CH.formCheck.value.patente || 'nuevo') : S.formInt.value ? (S.formInt.value.modo === 'INSPECCION' ? 'OT de Fallas' : S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
       <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Técnicos FRC' + (S.cargoActual.value ? ' · ' + S.cargoActual.value : '') + ' · ' + (S.esChofer.value ? 'Chofer' : S.esCrtg.value ? 'Terreno CRTG' : S.esTaller.value ? 'Taller' : 'Terreno') }}</div>
     </div>
     <img v-if="S.esCrtg.value" :src="LOGO_CRTG" alt="CRTG" title="CRTG" class="h-8 w-8 object-contain bg-white rounded-lg p-0.5 shrink-0">
@@ -88,7 +88,7 @@ export default {
         <!-- 2026-11-18: INSPECCIÓN (observación + fallas enumeradas) o REPARACIÓN de una falla · cada envío = un report -->
         <div v-if="f.modo != null && !f.modoFijo" class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
           <span class="lbl">¿Qué vas a registrar?</span>
-          <button @click="S.elegirModo(f, 'INSPECCION')" :class="['chip-lg text-left w-full', f.modo === 'INSPECCION' ? 'on' : '']" data-int="modo-insp"><i class="fa-solid fa-list-ol mr-2"></i>Levantamiento de fallas<span class="block text-[11px] font-normal opacity-80">Sin intervenir el equipo: anota la observación y enumera las fallas</span></button>
+          <button @click="S.elegirModo(f, 'INSPECCION')" :class="['chip-lg text-left w-full', f.modo === 'INSPECCION' ? 'on' : '']" data-int="modo-insp"><i class="fa-solid fa-list-ol mr-2"></i>OT de Fallas<span class="block text-[11px] font-normal opacity-80">Sin intervenir el equipo: anota la observación y enumera las fallas</span></button>
           <button @click="S.elegirModo(f, 'REPARACION')" :class="['chip-lg text-left w-full', f.modo === 'REPARACION' ? 'on' : '']" data-int="modo-rep"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>Reparar una falla<span class="block text-[11px] font-normal opacity-80">Elige una falla abierta del equipo y registra lo que hiciste</span></button>
         </div>
         <div v-if="f.modo === 'INSPECCION'" class="bg-white rounded-2xl p-4 shadow-sm space-y-3" data-int="inspeccion">
@@ -130,7 +130,7 @@ export default {
         <div v-if="f.modo === 'REPARACION'" class="bg-white rounded-2xl p-4 shadow-sm space-y-2" data-int="elegir-falla">
           <span class="lbl">Falla a reparar</span>
           <!-- Viene del botón Reparar de una falla: solo se muestra esa falla (2026-11-18) -->
-          <div v-if="f.modoFijo && f.falla_id" class="chip-lg on text-left w-full" data-int="falla-elegida"><i class="fa-solid fa-circle-check mr-2"></i>{{ f.falla_texto || f.causa_intervencion || f.causa_falla }}<span v-if="f.levantamiento_id" class="block text-[11px] font-normal opacity-80 pl-6">Levantamiento N° {{ f.levantamiento_id }}</span></div>
+          <div v-if="f.modoFijo && f.falla_id" class="chip-lg on text-left w-full" data-int="falla-elegida"><i class="fa-solid fa-circle-check mr-2"></i>{{ f.falla_texto || f.causa_intervencion || f.causa_falla }}<span v-if="f.levantamiento_id" class="block text-[11px] font-normal opacity-80 pl-6">OT de Fallas N° {{ f.levantamiento_id }}</span></div>
           <template v-else>
           <button v-for="(h, i) in fallasEq" :key="h.id" @click="S.elegirFalla(f, h)" :class="['chip-lg text-left w-full', String(f.falla_id) === String(h.id) ? 'on' : '']"><i :class="['fa-solid mr-2', String(f.falla_id) === String(h.id) ? 'fa-circle-check' : 'fa-circle']"></i><b>{{ i + 1 }}.</b> {{ h.descripcion }}<span v-if="h.sistema" class="block text-[11px] font-normal opacity-80 pl-6">{{ h.sistema }}</span></button>
           <p v-if="!fallasEq.length" class="text-sm text-slate-400 italic">El equipo no tiene fallas abiertas.</p>
@@ -167,7 +167,7 @@ export default {
             <label class="block"><span class="lbl">Hora término</span><input type="time" v-model="f.hora_termino" class="inp px-2"><button @click="f.hora_termino = S.horaAhora(); f.fecha_termino = hoyISO()" class="text-[11px] font-bold text-emerald-700 mt-1">Ahora</button></label>
           </div>
           <label class="block"><span class="lbl">Fecha y hora de la falla</span><div class="flex gap-2"><input type="date" v-model="f.fecha_falla" class="inp px-2 flex-1"><input type="time" v-model="f.hora_falla" class="inp px-2 w-32"></div>
-            <span v-if="f.levantamiento_id" class="block text-[11px] text-slate-500"><i class="fa-solid fa-link mr-1 text-emerald-700"></i>Viene del levantamiento de fallas N° {{ f.levantamiento_id }}{{ f.hora_falla ? ' (se copió su fecha y hora de falla)' : '' }}</span></label>
+            <span v-if="f.levantamiento_id" class="block text-[11px] text-slate-500"><i class="fa-solid fa-link mr-1 text-emerald-700"></i>Viene de la OT de Fallas N° {{ f.levantamiento_id }}{{ f.hora_falla ? ' (se copió su fecha y hora de falla)' : '' }}</span></label>
           <p :class="['text-center font-black text-lg rounded-xl py-2', S.duracionMin(f) == null ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-800']" data-int="duracion"><i class="fa-regular fa-clock mr-1"></i>Duración: {{ S.textoDuracion(S.duracionMin(f)) }}</p>
         </div>
         <div v-if="f.tipo === 'MECANICA' && f.modo !== 'INSPECCION'" class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
@@ -326,7 +326,7 @@ export default {
         </div>
         <label v-if="f.modo === 'REPARACION'" :class="['flex items-start gap-3 rounded-2xl p-4 border-2 cursor-pointer', f.terminado ? 'bg-emerald-50 border-emerald-500' : 'bg-white border-slate-300']" data-int="terminado">
           <input type="checkbox" v-model="f.terminado" class="w-7 h-7 mt-0.5 accent-emerald-600 shrink-0">
-          <span><b class="block text-base">✓ {{ f.modo === 'INSPECCION' ? 'Levantamiento de fallas terminado' : 'Reparación terminada' }}</b>
+          <span><b class="block text-base">✓ {{ f.modo === 'INSPECCION' ? 'OT de Fallas terminada' : 'Reparación terminada' }}</b>
             <span class="text-xs text-slate-600">{{ f.modo === 'INSPECCION' ? ((f.fallas || []).filter(x => String(x.descripcion || '').trim()).length + ' falla(s) quedarán abiertas en el equipo.') : (f.falla_id ? 'La falla queda REPARADA en el equipo al enviar.' : 'Queda registrada como reparación (falla nueva).') }}</span></span>
         </label>
         <div v-if="S.faltantes(f).length" class="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-sm text-amber-900">
@@ -338,7 +338,7 @@ export default {
       <div class="fixed bottom-0 left-0 right-0 z-30 max-w-xl mx-auto bg-white border-t p-3 flex gap-2">
         <button v-if="S.pasoInt.value > 1" @click="S.pasoInt.value--" class="flex-1 py-3.5 rounded-2xl border-2 font-extrabold text-slate-600"><i class="fa-solid fa-chevron-left mr-1"></i>Atrás</button>
         <button v-if="S.pasoInt.value < pasos.length" @click="S.pasoInt.value++" class="flex-[2] py-3.5 rounded-2xl bg-emerald-600 text-white font-extrabold text-lg">Siguiente<i class="fa-solid fa-chevron-right ml-2"></i></button>
-        <button v-else @click="S.enviarIntervencion()" :disabled="S.enviando.value" class="flex-[2] py-3.5 rounded-2xl bg-emerald-600 text-white font-extrabold text-lg disabled:opacity-60"><i :class="['fa-solid mr-2', S.enviando.value ? 'fa-spinner fa-spin' : 'fa-paper-plane']"></i>{{ S.enviando.value ? 'Enviando…' : f.modo === 'INSPECCION' ? 'Crear levantamiento' : 'Enviar' }}</button>
+        <button v-else @click="S.enviarIntervencion()" :disabled="S.enviando.value" class="flex-[2] py-3.5 rounded-2xl bg-emerald-600 text-white font-extrabold text-lg disabled:opacity-60"><i :class="['fa-solid mr-2', S.enviando.value ? 'fa-spinner fa-spin' : 'fa-paper-plane']"></i>{{ S.enviando.value ? 'Enviando…' : f.modo === 'INSPECCION' ? 'Crear OT de Fallas' : 'Enviar' }}</button>
       </div>
     </template>
 
@@ -388,7 +388,7 @@ export default {
         <!-- TERRENO: opciones de siempre -->
         <div v-else class="grid grid-cols-1 gap-3">
           <levantamientos-equipo :eq="eq" @reparar="x => S.abrirIntervencion(x.tipo, eq, x.falla)"></levantamientos-equipo>
-          <button @click="S.abrirLevantamiento(eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]" data-menu="levantamiento"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-list-ol"></i></span><span class="flex-1"><b class="block text-lg">Levantamiento de fallas</b><span class="text-xs text-slate-500">Observación del equipo y fallas enumeradas</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
+          <button @click="S.abrirLevantamiento(eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]" data-menu="levantamiento"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-list-ol"></i></span><span class="flex-1"><b class="block text-lg">OT de Fallas</b><span class="text-xs text-slate-500">Observación del equipo y fallas enumeradas</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <estandar-boton :eq="eq"></estandar-boton>
           <button @click="S.abrirIntervencion('ELECTRICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-bolt"></i></span><span class="flex-1"><b class="block text-lg">Intervención eléctrica</b><span class="text-xs text-slate-500">IE-FRC</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <div class="bg-white/60 rounded-2xl p-4 flex items-center gap-4 opacity-60"><span class="w-14 h-14 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-oil-can"></i></span><span class="flex-1"><b class="block text-lg">Mantenciones</b><span class="text-xs">Próximamente</span></span></div>
@@ -452,7 +452,7 @@ export default {
         </div>
         <div v-for="r in (S.carpetaApp.value === 'SIN_FIRMA' ? S.misSinFirma.value : S.misRealizados.value)" :key="r.id" class="bg-white rounded-2xl shadow-sm p-4">
           <div class="flex items-start justify-between gap-2">
-            <div><b class="text-[#1f4d3a]">AFI {{ r.afi }}</b> · <span class="text-sm">{{ r.modo === 'INSPECCION' ? 'Levantamiento de fallas · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span><div class="text-xs text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }}</div></div>
+            <div><b class="text-[#1f4d3a]">AFI {{ r.afi }}</b> · <span class="text-sm">{{ r.modo === 'INSPECCION' ? 'OT de Fallas · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span><div class="text-xs text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }}</div></div>
             <span :class="['text-[10px] font-bold px-2 py-1 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]"><i :class="['fa-solid mr-1', S.ESTADOS_MEC[r.estado]?.i]"></i>{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
           </div>
           <div class="text-sm text-slate-600 mt-1 line-clamp-2"><b v-if="r.tipo === 'MECANICA' && r.causa_falla">{{ r.causa_falla }} · </b>{{ r.causa_intervencion }} — {{ r.descripcion }}</div>

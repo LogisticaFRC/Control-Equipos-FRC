@@ -4,9 +4,16 @@ export default /* html */ `
 
   <!-- ===================== LISTA ===================== -->
   <template v-if="!otActual">
+    <!-- 2026-11-18: las OT se dividen en dos: OT de Reparación (la de siempre) y OT de Fallas (la crea el técnico en la app) -->
+    <div class="flex gap-2" data-ot="tabs">
+      <button @click="vistaOT = 'REPARACION'" :class="['flex-1 sm:flex-none px-5 py-3 rounded-2xl font-extrabold text-sm border-2 flex items-center justify-center gap-2', vistaOT === 'REPARACION' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50']"><i class="fa-solid fa-file-signature"></i>OT de Reparación</button>
+      <button @click="vistaOT = 'FALLAS'" :class="['flex-1 sm:flex-none px-5 py-3 rounded-2xl font-extrabold text-sm border-2 flex items-center justify-center gap-2', vistaOT === 'FALLAS' ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50']" data-ot="tab-fallas"><i class="fa-solid fa-list-ol"></i>OT de Fallas</button>
+    </div>
+    <ot-fallas v-if="vistaOT === 'FALLAS'"></ot-fallas>
+    <template v-else>
     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h2 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-file-signature text-amber-600"></i> Órdenes de Trabajo</h2>
+        <h2 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-file-signature text-amber-600"></i> OT de Reparación</h2>
         <p class="text-slate-500 mt-0.5">Formato FRC-RE-OPE-006 · el N° de folio se escribe a mano en la hoja (no se puede repetir). Una OT queda <b>Realizada</b> cuando se registra en el Historial con su N° de OT.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
@@ -65,6 +72,7 @@ export default /* html */ `
         </table>
       </div>
     </div>
+    </template>
   </template>
 
   <!-- ===================== EDITOR (mismo formato del Excel) ===================== -->

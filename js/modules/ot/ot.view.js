@@ -8,8 +8,11 @@ import { FORMATO_OT } from './ot.formato.js';
 import { editarMantencion } from '../historial/historial.service.js';
 import { cargarReparaciones, opcionesEnlaceOT, valorEnlaceOT, enlazarOT, etiquetaTallerOT, repPorId, progresoRep, ubicacionRep, faltaTablaTaller, vistaReparacion, sugerenciaEnlaceOT } from '../taller/taller.service.js';
 import { currentTab } from '../../core/store.js';
+import OtFallas from './ot-fallas.view.js';   // OT de Fallas (2026-11-18)
 
-const { onMounted } = Vue;
+const { onMounted, ref } = Vue;
+/** Pestaña: OT de Reparación | OT de Fallas (se recuerda mientras la página esté abierta). */
+const vistaOT = ref('REPARACION');
 
 /** Escala del editor en pantalla (la impresión usa el tamaño real). */
 const E = 1.8;
@@ -21,6 +24,7 @@ const anchoHoja = FORMATO_OT.cols.reduce((a, b) => a + b, 0);
 export default {
   name: 'OtView',
   template,
+  components: { OtFallas },
   setup() {
     onMounted(() => { S.cargarOT(); cargarReparaciones(); });
     const irAlTaller = () => { vistaReparacion.value = 'taller'; currentTab.value = 'progReparacion'; };
@@ -35,7 +39,7 @@ export default {
     };
     return {
       ...comunes(), ...S, editarMantencion, F: FORMATO_OT, E, filasFormato, anchoHoja, guardarYAvisar,
-      opcionesEnlaceOT, valorEnlaceOT, enlazarOT, etiquetaTallerOT, repPorId, progresoRep, ubicacionRep, faltaTablaTaller, irAlTaller
+      vistaOT, opcionesEnlaceOT, valorEnlaceOT, enlazarOT, etiquetaTallerOT, repPorId, progresoRep, ubicacionRep, faltaTablaTaller, irAlTaller
     };
   }
 };

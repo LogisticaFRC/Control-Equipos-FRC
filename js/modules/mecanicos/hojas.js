@@ -55,7 +55,7 @@ const bloqueNuevo = (r, elec) => {
     const filas = fallas.length ? fallas : [];
     return `
   ${banda('1', 'TIPO DE TRABAJO')}
-  <div style="border:1.5px solid #333;border-top:0;padding:8px 12px 10px"><span style="display:inline-block;background:#ecfdf5;border:1.5px solid ${V};border-radius:16px;padding:2px 14px 6px;font-weight:900;color:${V};font-size:13px">LEVANTAMIENTO DE FALLAS</span> <span style="font-size:10px;color:#475569;margin-left:6px">sin intervención del equipo</span></div>
+  <div style="border:1.5px solid #333;border-top:0;padding:8px 12px 10px"><span style="display:inline-block;background:#ecfdf5;border:1.5px solid ${V};border-radius:16px;padding:2px 14px 6px;font-weight:900;color:${V};font-size:13px">OT DE FALLAS</span> <span style="font-size:10px;color:#475569;margin-left:6px">sin intervención del equipo</span></div>
   <div style="height:9px"></div>
   ${banda('2', 'OBSERVACIÓN DEL EQUIPO')}
   ${lineasTexto(r.descripcion, 5, 20)}
@@ -77,7 +77,7 @@ const bloqueNuevo = (r, elec) => {
   ${banda('2', 'FALLA REPARADA')}
   <div style="border:1.5px solid #333;border-top:0;padding:6px 12px 9px;font-size:12px;font-weight:800">${esc(titulo) || '&nbsp;'}
     ${r.falla_texto && r.falla_texto !== titulo ? `<div style="font-size:9.5px;font-weight:400;color:#475569;margin-top:2px">Falla abierta en el equipo: ${esc(r.falla_texto)}</div>` : ''}
-    ${r.levantamiento_id ? `<div style="font-size:9.5px;font-weight:700;color:${V};margin-top:3px">Viene del Levantamiento de fallas N° ${esc(r.levantamiento_id)}</div>` : r.falla_id ? `<div style="font-size:8.5px;font-weight:400;color:#94a3b8;margin-top:2px">Falla N° ${esc(r.falla_id)} del equipo</div>` : ''}</div>
+    ${r.levantamiento_id ? `<div style="font-size:9.5px;font-weight:700;color:${V};margin-top:3px">Viene de la OT de Fallas N° ${esc(r.levantamiento_id)}</div>` : r.falla_id ? `<div style="font-size:8.5px;font-weight:400;color:#94a3b8;margin-top:2px">Falla N° ${esc(r.falla_id)} del equipo</div>` : ''}</div>
   <div style="height:9px"></div>
   ${banda('3', 'DESCRIPCIÓN DE LO REALIZADO')}
   ${lineasTexto(r.descripcion, 7, 20)}
@@ -104,7 +104,7 @@ export const hojaIntervencion = (r, logo) => {
   return `
 <div style="width:${ANCHO_VERTICAL}px;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:26px 34px;box-sizing:border-box">
  <div style="border:2px solid #333;padding:14px 18px">
-  ${encabezado(logo, r.modo === 'INSPECCION' ? 'LEVANTAMIENTO DE FALLAS' : elec ? 'INTERVENCIÓN ELÉCTRICA' : 'INTERVENCION MECANICA', elec ? 'IE-FRC' : 'FRC-RE-OPE-017', elec ? '20-01-2026' : '07-01-2026', elec ? '01' : '0')}
+  ${encabezado(logo, r.modo === 'INSPECCION' ? 'OT DE FALLAS' : elec ? 'INTERVENCIÓN ELÉCTRICA' : 'INTERVENCION MECANICA', elec ? 'IE-FRC' : 'FRC-RE-OPE-017', elec ? '20-01-2026' : '07-01-2026', elec ? '01' : '0')}
   <div style="font-weight:700;font-style:italic;color:${V};text-decoration:underline;font-size:11px;margin:4px 0 10px">SERVICIO TECNICO${r.modo === 'INSPECCION' ? (elec ? ' · ELÉCTRICO' : ' · MECÁNICO') : ''}</div>
   <div style="display:flex;gap:10px;align-items:center;font-size:10.5px;margin-bottom:9px;flex-wrap:wrap">
     ${lbl('FECHA:')} ${caja(fecha(r.fecha), '80px')} ${lbl('EQUIPO:')} ${caja(r.equipo, '170px')} ${lbl('AFI:')} ${caja(r.afi, '48px')} ${lbl('HOROMETRO:')} ${caja(r.horometro ? Number(r.horometro).toLocaleString('es-CL') : '', '70px')}
@@ -114,7 +114,7 @@ export const hojaIntervencion = (r, logo) => {
   </div>
   ${lev ? `
   <table style="width:60%;border-collapse:collapse;font-size:10px;margin:0 auto 12px;text-align:center">
-    <tr><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA LEVANTAMIENTO</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA Y HORA FALLA DEL EQUIPO</td></tr>
+    <tr><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA OT</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA Y HORA FALLA DEL EQUIPO</td></tr>
     <tr><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:700;font-size:11px">${fecha(r.fecha)}</td><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:900;font-size:12px">${r.hora_falla || r.fecha_falla ? [fecha(r.fecha_falla || r.fecha), esc(r.hora_falla)].filter(Boolean).join(' · ') : '&nbsp;'}</td></tr>
   </table>` : nuevo ? `
   <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;text-align:center">
@@ -176,7 +176,7 @@ export const hojaIntervencion = (r, logo) => {
     <td style="vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:9.5px">
       ${[['Usuario arriendo', r.usuario_arriendo], ['N° vale de consumo (repuestos)', r.vale_consumo]].map(([l, v]) => `<tr><td style="font-weight:700;color:${V};padding:3px 6px 6px;border-bottom:1px solid #9ca3af;width:52%">${l}</td><td style="font-weight:800;padding:3px 6px 6px;border-bottom:1px solid #9ca3af">${esc(v) || '&nbsp;'}</td></tr>`).join('')}
     </table></td></tr></table>`}
-  ${lev ? `<div style="margin-top:16px;font-size:10px;color:#475569;border-top:1px solid #cbd5e1;padding-top:6px">Levantamiento creado por <b>${esc(resp.nombre || r.creado_por || '')}</b>${r.created_at ? ' · ' + fecha(String(r.created_at).slice(0, 10)) : ''}. Cada falla se repara en su propio report (con tiempos, ART, bloqueo y firmas).</div>` : `
+  ${lev ? `<div style="margin-top:16px;font-size:10px;color:#475569;border-top:1px solid #cbd5e1;padding-top:6px">OT de Fallas creada por <b>${esc(resp.nombre || r.creado_por || '')}</b>${r.created_at ? ' · ' + fecha(String(r.created_at).slice(0, 10)) : ''}. Cada falla se repara en su propio report (con tiempos, ART, bloqueo y firmas).</div>` : `
   <table style="width:100%;border-collapse:collapse;margin-top:${elec ? 26 : 16}px;font-size:10px"><tr>
     <td style="width:44%;text-align:center;vertical-align:bottom">
       <div style="height:42px">${firmaImg(resp.firma, 40)}</div>

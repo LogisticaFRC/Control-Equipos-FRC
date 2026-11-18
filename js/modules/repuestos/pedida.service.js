@@ -37,7 +37,7 @@ export const pedidosTodos = computed(() => {
     key: 'T' + h.id, origen: 'TALLER', id: h.id, afi: h.afi, equipo: descEquipo(h.afi), fecha: String(h.created_at || '').slice(0, 10),
     descripcion: [h.repuesto, h.cantidad ? '(' + h.cantidad + ')' : '', h.codigo_repuesto ? '· Cód. ' + h.codigo_repuesto : '', h.serie_motor ? '· Serie motor ' + h.serie_motor : ''].filter(Boolean).join(' '), detalle: h.descripcion,
     fotos: Array.isArray(h.fotos) && h.fotos.length ? h.fotos : h.foto_url ? [h.foto_url] : [], solicitante: h.reportado_por || '',
-    lugar: h.nave || (h.intervencion_id ? 'Levantamiento N° ' + h.intervencion_id : ''),
+    lugar: h.nave || (h.intervencion_id ? 'OT de Fallas N° ' + h.intervencion_id : ''),
     estado: h.repuesto_estado || 'PENDIENTE', fecha_aprox: h.fecha_aprox_repuesto || '', nota: h.nota_admin || '', raw: h
   }));
   const otros = dbPedidos.value.map(p => ({

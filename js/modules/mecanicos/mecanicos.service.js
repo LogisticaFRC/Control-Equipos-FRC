@@ -163,7 +163,7 @@ export const carpetasPanel = computed(() => {
 });
 export const carpetaPanel = ref('');   // usuario elegido en el panel ('' = todas)
 export const ESTADOS_MEC = {
-  LEVANTAMIENTO: { t: 'Levantamiento creado', c: 'bg-amber-100 text-amber-800 border-amber-300', i: 'fa-list-ol' },
+  LEVANTAMIENTO: { t: 'OT de Fallas creada', c: 'bg-amber-100 text-amber-800 border-amber-300', i: 'fa-list-ol' },
   PENDIENTE_FIRMA: { t: 'Falta firma supervisor', c: 'bg-amber-100 text-amber-800 border-amber-300', i: 'fa-hourglass-half' },
   FIRMADA: { t: 'Firmada (pasando al Historial)', c: 'bg-sky-100 text-sky-800 border-sky-300', i: 'fa-signature' },
   EN_HISTORIAL: { t: 'En el Historial', c: 'bg-emerald-100 text-emerald-800 border-emerald-300', i: 'fa-circle-check' },
@@ -298,7 +298,7 @@ export const faltantes = (f) => {
   if (!f.hora_inicio) x.push('Hora inicio');
   if (!f.hora_termino) x.push('Hora término');
   if (f.modo != null) {   // formato nuevo (2026-11-18) · registros antiguos (modo null) siguen como antes
-    if (!f.modo) x.push('Elegir: Levantamiento de fallas o Reparación');
+    if (!f.modo) x.push('Elegir: OT de Fallas o Reparación');
     if (f.hora_inicio && f.hora_termino && duracionMin(f) == null) x.push('El término no puede ser antes del inicio');
     if (f.modo === 'INSPECCION') {
       if (!String(f.descripcion || '').trim()) x.push('Observación del equipo');
@@ -387,7 +387,7 @@ export const enviarIntervencion = async () => {
     if (reg && f.modo === 'REPARACION' && f.falla_id && fallaPorId(f.falla_id)?.estado !== 'REPARADO') {
       try {
         const d = await marcarFallaReparada(f.falla_id, reg); avisoFallas = ' La falla quedó reparada en el equipo.';
-        if (d) { dispLocal(reg.afi, d); avisoFallas += ` Levantamiento completo: el equipo volvió a "${d}".`; }
+        if (d) { dispLocal(reg.afi, d); avisoFallas += ` OT de Fallas completa: el equipo volvió a "${d}".`; }
       }
       catch (err) { alert((/frc_falla_reparada|function|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero la falla no se marcó reparada: ' + errMsg(err)); }
     }
@@ -396,7 +396,7 @@ export const enviarIntervencion = async () => {
     if (esLev) {   // vuelve al equipo: ahí aparece la carpeta del levantamiento con sus fallas y el botón Reparar
       if (reg && !dbMec.value.some(x => x.id === reg.id)) dbMec.value = [reg, ...dbMec.value];
       tabApp.value = 'equipos';
-      avisoApp(`Levantamiento N° ${reg?.id || ''} creado ✔` + avisoFallas + ' Repáralas desde su carpeta.');
+      avisoApp(`OT de Fallas N° ${reg?.id || ''} creado ✔` + avisoFallas + ' Repáralas desde su carpeta.');
       await cargarMec();
       return;
     }
@@ -471,7 +471,7 @@ export const descargarPDF = async (r) => {
   try {
     const blob = await generarPDF(r);
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `${r.modo === 'INSPECCION' ? 'Levantamiento de fallas ' + (r.tipo === 'ELECTRICA' ? 'electrico' : 'mecanico') : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
+    a.download = `${r.modo === 'INSPECCION' ? 'OT de Fallas ' + (r.tipo === 'ELECTRICA' ? 'electrico' : 'mecanico') : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   } catch (err) { alert('No se pudo generar el PDF: ' + errMsg(err)); }
 };
@@ -511,9 +511,9 @@ export const pasarAHistorial = async (r) => {
       mecanico_1: mecs[0] || '', mecanico_2: mecs[1] || '', mecanico_3: mecs[2] || '', mecanico_4: mecs[3] || '',
       bloqueo_de_equipo: r.bloqueo ? 'SI' : 'NO', hora_falla: r.hora_falla || '', hora_inicio: r.hora_inicio || '', hora_termino: r.hora_termino || '',
       hora_total: r.duracion_min != null ? String(Math.round(r.duracion_min / 6) / 10) : String(calcularRestaHoras(r.hora_inicio, r.hora_termino) || ''),
-      causa_intervencion: r.modo === 'INSPECCION' ? `LEVANTAMIENTO DE FALLAS (${(r.fallas || []).length})` : (r.tipo === 'ELECTRICA' ? (r.causa_falla || r.causa_intervencion) : r.causa_intervencion) || '', descripcion: [r.modo === 'INSPECCION' ? 'OBSERVACIÓN: ' + (r.descripcion || '') : (r.descripcion || ''),
+      causa_intervencion: r.modo === 'INSPECCION' ? `OT DE FALLAS (${(r.fallas || []).length})` : (r.tipo === 'ELECTRICA' ? (r.causa_falla || r.causa_intervencion) : r.causa_intervencion) || '', descripcion: [r.modo === 'INSPECCION' ? 'OBSERVACIÓN: ' + (r.descripcion || '') : (r.descripcion || ''),
         ...(r.modo === 'INSPECCION' ? (r.fallas || []).map(i => `Falla ${i.n}: ${i.sistema ? i.sistema + ' · ' : ''}${i.descripcion}`) : []),
-        r.modo === 'REPARACION' && r.falla_texto ? 'Falla reparada: ' + r.falla_texto + (r.levantamiento_id ? ` (levantamiento de fallas N° ${r.levantamiento_id})` : '') : '',
+        r.modo === 'REPARACION' && r.falla_texto ? 'Falla reparada: ' + r.falla_texto + (r.levantamiento_id ? ` (OT de Fallas N° ${r.levantamiento_id})` : '') : '',
         r.fecha_termino && r.fecha_termino !== r.fecha ? `Término: ${r.fecha_termino} ${r.hora_termino || ''}` : '', ...extras].filter(Boolean).join('\n'),
       interferencia: r.interferencia || '', empresa: r.usuario_arriendo || '', link: url,
       art: r.uso_art ? 'SI' : 'NO', numero_folio: `APP-${r.id}`,
@@ -615,7 +615,7 @@ export const exportarTiempos = () => {
     const min = r.duracion_min != null ? r.duracion_min : duracionMin({ ...r, fecha_termino: r.fecha_termino || r.fecha });
     return {
       'N° report': r.id, Tipo: r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica',
-      Trabajo: r.modo === 'INSPECCION' ? 'Levantamiento de fallas' : r.modo === 'REPARACION' ? 'Reparación' : 'Intervención (formato antiguo)',
+      Trabajo: r.modo === 'INSPECCION' ? 'OT de Fallas' : r.modo === 'REPARACION' ? 'Reparación' : 'Intervención (formato antiguo)',
       AFI: r.afi, Equipo: r.equipo || '', Lugar: r.lugar || '',
       'Falla / título': r.modo === 'INSPECCION' ? `${(r.fallas || []).length} falla(s) encontradas` : (r.tipo === 'ELECTRICA' ? r.causa_falla : r.causa_intervencion) || '',
       'Fallas encontradas': r.modo === 'INSPECCION' ? (r.fallas || []).map(i => `${i.n}. ${i.descripcion}`).join(' | ') : '',
@@ -652,15 +652,15 @@ export const avanceLevantamiento = (r) => { const l = fallasDeLevantamiento(r); 
 export const dispLocal = (afi, disp) => { const e = dbEquipos.value.find(x => mismoAfi(x.afi, afi)); if (e && disp) e.disponibilidad = disp; if (equipoSel.value && mismoAfi(equipoSel.value.afi, afi) && disp) equipoSel.value.disponibilidad = disp; };
 /** Admin: borra un levantamiento sin reparaciones (y sus fallas); devuelve la disponibilidad si lo había dejado fuera de servicio. */
 export const borrarLevantamiento = async (r) => {
-  if (!esSupervisorMec.value) return alert('Solo un Admin puede borrar un levantamiento.');
-  if (!confirm(`¿Borrar el levantamiento de fallas N° ${r.id} (AFI ${r.afi}) y sus ${(r.fallas || []).length} falla(s)?\nTambién se quitan de Repuestos pedidos.`)) return false;
+  if (!esSupervisorMec.value) return alert('Solo un Admin puede borrar una OT de Fallas.');
+  if (!confirm(`¿Borrar la OT de Fallas N° ${r.id} (AFI ${r.afi}) y sus ${(r.fallas || []).length} falla(s)?\nTambién se quitan de Repuestos pedidos.`)) return false;
   try {
     const d = await sb(supabaseClient.rpc('frc_levantamiento_borrar', { p_id: r.id }));
     dbMec.value = dbMec.value.filter(x => x.id !== r.id);
     dbProblemasRef().value = dbProblemasRef().value.filter(h => String(h.intervencion_id) !== String(r.id));
     if (d) dispLocal(r.afi, d);
     if (regPanel.value && regPanel.value.id === r.id) regPanel.value = null;
-    avisoApp(`Levantamiento N° ${r.id} borrado.` + (d ? ` El equipo volvió a "${d}".` : ''));
+    avisoApp(`OT de Fallas N° ${r.id} borrado.` + (d ? ` El equipo volvió a "${d}".` : ''));
     return true;
   } catch (err) {
     const m = errMsg(err);
