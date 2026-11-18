@@ -49,7 +49,7 @@ export default {
     let timer = null;
     onMounted(async () => {
       await S.recargarTaller();
-      timer = setInterval(() => { if (!hayModal.value && !document.hidden) S.recargarTaller(); }, REFRESCO_MS);
+      timer = setInterval(() => { if (!hayModal.value && !document.hidden) S.refrescarTallerSiCambio(); }, REFRESCO_MS);   // solo recarga si algo cambió (ahorro de datos)
       document.addEventListener('fullscreenchange', onFs);
     });
     onBeforeUnmount(() => { clearInterval(timer); document.removeEventListener('fullscreenchange', onFs); });

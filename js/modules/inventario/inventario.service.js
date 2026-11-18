@@ -6,6 +6,7 @@ import { dbEquipos, cargarDatosDesdeSupabase, soloEditor, soloAdmin } from '../.
 import { normalizarClave, parseNum, parseStr, compararAfi, exportarCSV, getVal, tieneColumna, parseFileAnyFormat, resetInputFile, formatDateForDisplay } from '../../core/utils.js';
 import { esEquipoCritico, VEH_FRECUENCIA_KM } from '../../core/horometros.js';
 import { TABLA_INVENTARIO, empresaDe, esVehiculo, esPatente } from './inventario.mapper.js';
+import { subirFotoEquipo } from './fotos-equipo.js';   // fotos en Storage (ahorro de datos)
 import { currentTab } from '../../core/store.js';
 import { listaEmpresas } from '../../core/store.js';
 export { empresaDe, listaEmpresas };
@@ -85,18 +86,11 @@ export const uploadFotoEquipo = (e, item) => {
   if (!soloEditor()) return;
   const file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (evt) => {
-    const fotoBase64 = evt.target.result;
-    try {
-      await sb(supabaseClient.from(TABLA_INVENTARIO).update({ foto: fotoBase64 }).eq('id', item.id));
-      item.foto = fotoBase64;
-      alert("¡Foto guardada con éxito!");
-    } catch (err) {
-      alert("Error al guardar la foto: " + errMsg(err));
-    } finally { resetInputFile(e); }
-  };
-  reader.readAsDataURL(file);
+  // 2026-11-18: la foto se achica y va a Storage (antes quedaba en la tabla como base64 y gastaba mucha transferencia)
+  subirFotoEquipo(item, file)
+    .then(() => alert("¡Foto guardada con éxito!"))
+    .catch(err => alert("Error al guardar la foto: " + errMsg(err)))
+    .finally(() => resetInputFile(e));
 };
 
 // ---------- Alta de equipo ----------

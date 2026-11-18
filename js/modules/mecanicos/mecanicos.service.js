@@ -14,7 +14,7 @@
 // =====================================================================
 import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
-import { usuarioActivo, dbEquipos, dbIntervenciones, dbUsuarios, nivelEnArea, esAdminGeneral, cargarDatosDesdeSupabase, permisosDe, cargoDe, modoTecnicoDe } from '../../core/store.js';
+import { usuarioActivo, dbEquipos, dbIntervenciones, dbUsuarios, nivelEnArea, esAdminGeneral, cargarDatosDesdeSupabase, permisosDe, cargoDe, modoTecnicoDe, recalcularHorometros } from '../../core/store.js';
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, calcularRestaHoras } from '../../core/utils.js';
 import { esVehiculo, empresaDe, EMPRESA_TALLER } from '../inventario/inventario.mapper.js';
 import { logoDataURL } from '../../core/excel.js';
@@ -96,8 +96,10 @@ export const guardarHorometro = async (e) => {
   guardandoHoro.value = true;
   try {
     await sb(supabaseClient.rpc('frc_mec_horometro', { p_afi: String(e.afi), p_horometro: v, p_fecha: horoForm.value.fecha || hoyISO() }));
-    await cargarDatosDesdeSupabase(['inventario']);
-    equipoSel.value = dbEquipos.value.find(x => mismoAfi(x.afi, e.afi)) || null;
+    // ahorro de datos: se actualiza el equipo en memoria (antes se bajaba todo el inventario con fotos)
+    const eqMem = dbEquipos.value.find(x => mismoAfi(x.afi, e.afi));
+    if (eqMem) { eqMem.horometroActual = v; eqMem.fechaHorometroManual = horoForm.value.fecha || hoyISO(); recalcularHorometros(); }
+    equipoSel.value = eqMem || null;
     horoForm.value = { valor: '', fecha: hoyISO() };
     avisoApp('Horómetro actualizado ✔');
   } catch (err) {

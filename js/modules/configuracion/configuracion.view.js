@@ -7,10 +7,12 @@ import { config, dbUsuarios, esAdminGeneral } from '../../core/store.js';
 import * as S from './configuracion.service.js';
 import { cargarInfoTotem, guardarClaveTotem, infoClaveTotem, faltaSqlTotem } from '../taller/totem.service.js';
 import { importarInventarioFile } from '../inventario/inventario.service.js';
+import { OptimizarFotos } from '../inventario/fotos-equipo.js';   // ahorro de datos: fotos a Storage (2026-11-18)
 import { importarMovimientosFile } from '../movimientos/movimientos.service.js';
 import { importarIntervencionesFile } from '../historial/historial.service.js';
 
 export default {
+  components: { OptimizarFotos },
   name: 'ConfiguracionView',
   template,
   setup() {

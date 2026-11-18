@@ -211,7 +211,7 @@ export default {
     let timer = null;
     onMounted(() => {
       S.recargarTaller();
-      timer = setInterval(() => { if (!document.hidden && !ocupado.value) S.recargarTaller(); }, REFRESCO_MS);
+      timer = setInterval(() => { if (!document.hidden && !ocupado.value) S.refrescarTallerSiCambio(); }, REFRESCO_MS);   // solo recarga si algo cambió
     });
     onBeforeUnmount(() => clearInterval(timer));
 

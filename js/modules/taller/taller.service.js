@@ -77,7 +77,27 @@ export const recargarTaller = async () => {
   try {
     await Promise.all([cargarReparaciones(), cargarOT(), cargarProblemas()]);
     ultimaActualizacion.value = new Date();
+    ultimaCompleta = Date.now();
   } finally { cargandoTaller.value = false; }
+};
+
+/**
+ * AHORRO DE DATOS (2026-11-18): el refresco automático (cada 45 s en naves, tótem y celular) ya no baja todo.
+ * Primero consulta una "firma" muy liviana (última modificación de OT, reparaciones y fallas) y solo
+ * recarga si algo cambió; igual hace una recarga completa cada 10 minutos.
+ */
+let firmaTaller = '', ultimaCompleta = 0;
+const ultimoValor = async (tabla, col) => {
+  try { const r = await sb(supabaseClient.from(tabla).select(col).order(col, { ascending: false }).limit(1)); return r && r[0] ? String(r[0][col] ?? '') : ''; }
+  catch (_) { return '?'; }
+};
+export const refrescarTallerSiCambio = async () => {
+  const f = (await Promise.all([
+    ultimoValor(TABLA_OT, 'updated_at'), ultimoValor(TABLA_TALLER, 'updated_at'),
+    ultimoValor(TABLA_PROBLEMAS, 'id'), ultimoValor(TABLA_PROBLEMAS, 'procesado_at'), ultimoValor(TABLA_PROBLEMAS, 'nota_at')
+  ])).join('|');
+  const vencida = Date.now() - ultimaCompleta > 10 * 60 * 1000;
+  if (f !== firmaTaller || vencida || f.includes('?')) { firmaTaller = f; await recargarTaller(); }
 };
 
 // ---------- Programa de reparación del taller ----------

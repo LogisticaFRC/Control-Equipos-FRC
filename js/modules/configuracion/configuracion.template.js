@@ -12,6 +12,8 @@ export default /* html */ `
     </button>
   </div>
 
+  <optimizar-fotos v-if="esAdminGeneral"></optimizar-fotos>
+
   <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
       <div>

@@ -981,3 +981,12 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   three.js se carga desde cdn.jsdelivr.net (sin instalar nada).
 - SQL: sql/estandarizacion.sql (tabla bd_estandarizaciones).
 - Para otros tipos (compresores, bombas…) se usa por ahora el mismo estándar EGT-FRC: agregar su plantilla en PLANTILLAS / plantillaDe().
+
+## 2026-11-18 · Ahorro de datos (egress de Supabase)
+- Fotos de equipos: ahora se achican (máx. 900 px, JPG) y se guardan en Storage; en BD_INVENTARIO.foto queda solo el enlace
+  (js/modules/inventario/fotos-equipo.js). Antes iban en base64 a tamaño original y se bajaban enteras en cada carga.
+- Configuración → "Ahorro de datos · fotos de equipos" (Admin general): botón **Optimizar fotos** que pasa las fotos antiguas
+  a Storage (el original queda respaldado en equipos/original/).
+- Taller (naves, tótem, celular): el refresco cada 45 s consulta primero si algo cambió (refrescarTallerSiCambio) y solo
+  entonces recarga; recarga completa cada 10 min.
+- Horómetro desde la app de mecánicos: ya no vuelve a bajar todo el inventario.
