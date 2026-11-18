@@ -15,7 +15,8 @@ import TallerMecanico from '../taller/taller-mecanico.view.js';
 import ActividadesEquipo from './actividades-equipo.view.js';
 import EstandarBoton from '../estandarizacion/estandar-form.view.js';   // Inspección general estandarización (2026-11-18)
 import * as F from './fallas-equipo.js';
-import LevantamientosEquipo from './levantamientos.view.js';   // carpetas de levantamientos (2026-11-18)   // fallas abiertas del equipo (2026-11-18)
+import LevantamientosEquipo from './levantamientos.view.js';
+import RiesgosFatalidad from '../seguridad/riesgos-fatalidad.view.js';   // riesgos de fatalidad Codelco (2026-11-18)   // carpetas de levantamientos (2026-11-18)   // fallas abiertas del equipo (2026-11-18)
 import * as CH from './chofer.service.js';   // CHOFER: check list / report camión pluma (2026-11-17)
 import { ChoferChecklist, ChecklistLista } from './chofer-checklist.view.js';
 import { CrtgPrograma, CrtgPedido, CrtgUbicacion } from './crtg.view.js';   // TERRENO CRTG (2026-11-17)
@@ -30,7 +31,7 @@ const LUGARES = ['TALLER FRC', 'TERRENO', 'FAENA CLIENTE'];
 
 export default {
   name: 'MecanicoApp',
-  components: { TallerMecanico, ActividadesEquipo, EstandarBoton, LevantamientosEquipo, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
+  components: { RiesgosFatalidad, TallerMecanico, ActividadesEquipo, EstandarBoton, LevantamientosEquipo, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
 <div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
@@ -470,6 +471,7 @@ export default {
       <section v-if="tab === 'taller' && S.esTaller.value"><taller-mecanico></taller-mecanico></section>
 
       <section v-if="tab === 'tareas'" class="p-3"><recordatorios-view></recordatorios-view></section>
+      <section v-if="tab === 'riesgos'" class="p-3"><riesgos-fatalidad compacto></riesgos-fatalidad></section>
 
       <!-- TERRENO CRTG (2026-11-17) -->
       <crtg-programa v-if="tab === 'progcrtg' && S.esCrtg.value"></crtg-programa>
@@ -523,28 +525,32 @@ export default {
     // TERRENO no tiene Taller: si quedó en esa pantalla, vuelve al menú
     watch(() => S.esTaller.value, (t) => { if (!t && tab.value === 'taller') tab.value = 'inicio'; if (t) recargarTaller(); }, { immediate: true });
     // Menú en tarjetas
-    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas', checklist: 'Check list / Report', progcrtg: 'Programa CRTG', repuestos: 'Pedir repuestos', docschofer: 'Mis documentos' };
+    const TITULOS = { riesgos: 'Riesgos de fatalidad', equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas', checklist: 'Check list / Report', progcrtg: 'Programa CRTG', repuestos: 'Pedir repuestos', docschofer: 'Mis documentos' };
     const irA = (t) => { tab.value = t; if (t === 'registros') S.cargarMec(); if (t === 'taller') recargarTaller(); window.scrollTo(0, 0); };
     const tarjetas = computed(() => S.esCrtg.value ? [
       { tab: 'equipos', titulo: 'Equipos CRTG', sub: S.equiposApp.value.length + ' equipos · horómetro, ubicación e intervenciones', icon: 'fa-truck-monster', color: 'bg-blue-100 text-blue-700', ancha: true },
       { tab: 'progcrtg', titulo: 'Programa mantención', sub: 'CRTG · marcar realizado / no realizado', icon: 'fa-calendar-check', color: 'bg-emerald-100 text-emerald-700' },
       { tab: 'repuestos', titulo: 'Pedir repuestos', sub: 'Equipo, descripción y fotos', icon: 'fa-cart-plus', color: 'bg-orange-100 text-orange-700' },
       { tab: 'registros', titulo: 'Mis documentos', sub: 'Sin firma y realizados', icon: 'fa-folder-open', color: 'bg-sky-100 text-sky-700', badge: pendientesMios.value },
-      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-list-check', color: 'bg-violet-100 text-violet-700' }
+      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-list-check', color: 'bg-violet-100 text-violet-700' },
+      { tab: 'riesgos', titulo: 'Riesgos de fatalidad', sub: 'Estándares Codelco (ECF)', icon: 'fa-skull-crossbones', color: 'bg-rose-100 text-rose-700', ancha: true }
     ] : S.esChofer.value ? [
       { tab: 'checklist', titulo: 'Check list / Report', sub: 'Datos del camión, check list, traslados y firma', icon: 'fa-clipboard-check', color: 'bg-sky-100 text-sky-700', ancha: true },
       { tab: 'docschofer', titulo: 'Mis documentos', sub: 'Check list enviados (Excel)', icon: 'fa-folder-open', color: 'bg-amber-100 text-amber-700' },
       { tab: 'equipos', titulo: 'Equipos', sub: 'Consulta', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700' },
-      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700', ancha: true }
+      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700', ancha: true },
+      { tab: 'riesgos', titulo: 'Riesgos de fatalidad', sub: 'Estándares Codelco (ECF)', icon: 'fa-skull-crossbones', color: 'bg-rose-100 text-rose-700', ancha: true }
     ] : S.esTaller.value ? [
       { tab: 'taller', titulo: 'Taller · Naves', sub: equiposEnNaves.value + ' equipo(s) en naves · inspección, OT, intervenciones', icon: 'fa-warehouse', color: 'bg-amber-100 text-amber-700', ancha: true },
       { tab: 'equipos', titulo: 'Equipos', sub: 'Agregar a nave un equipo no programado', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700' },
       { tab: 'registros', titulo: 'Mis documentos', sub: 'Sin firma y realizados', icon: 'fa-folder-open', color: 'bg-sky-100 text-sky-700', badge: pendientesMios.value },
-      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700', ancha: true }
+      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700', ancha: true },
+      { tab: 'riesgos', titulo: 'Riesgos de fatalidad', sub: 'Estándares Codelco (ECF)', icon: 'fa-skull-crossbones', color: 'bg-rose-100 text-rose-700', ancha: true }
     ] : [
       { tab: 'equipos', titulo: 'Equipos', sub: 'Horómetro e intervenciones', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700', ancha: true },
       { tab: 'registros', titulo: 'Mis documentos', sub: 'Sin firma y realizados', icon: 'fa-folder-open', color: 'bg-sky-100 text-sky-700', badge: pendientesMios.value },
-      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700' }
+      { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700' },
+      { tab: 'riesgos', titulo: 'Riesgos de fatalidad', sub: 'Estándares Codelco (ECF)', icon: 'fa-skull-crossbones', color: 'bg-rose-100 text-rose-700', ancha: true }
     ]);
     // TALLER: equipos en nave primero
     const listaEquipos = computed(() => S.esTaller.value
