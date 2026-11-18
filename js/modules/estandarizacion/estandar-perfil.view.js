@@ -25,6 +25,7 @@ export default {
         <p class="text-lg font-black text-slate-800 leading-tight">AFI {{ eq.afi }} <span class="text-sm font-bold text-slate-500">{{ eq.tipo }}</span></p>
       </div>
       <div class="absolute top-3 right-3 z-10 flex gap-1">
+        <button @click="alternarNombres" :class="['px-2 py-1 rounded-lg border text-[11px] font-bold', conNombres ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white/90 text-slate-600']" title="Mostrar u ocultar los nombres" data-est="nombres"><i class="fa-solid fa-tags mr-1"></i>Nombres</button>
         <button v-for="v in VISTAS" :key="v.k" @click="vista(v.k)" class="px-2 py-1 rounded-lg bg-white/90 border text-[11px] font-bold text-slate-600 hover:bg-white" :title="v.t"><i :class="['fa-solid', v.i]"></i></button>
       </div>
       <div ref="host3d" class="w-full h-[380px] sm:h-[440px]" data-est="3d"></div>
@@ -33,7 +34,7 @@ export default {
         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-emerald-600"></span>Bueno</span>
         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-rose-600 animate-pulse"></span>Malo / falta</span>
         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-slate-300"></span>N/A</span>
-        <span class="ml-auto text-slate-400 font-semibold">Arrastra para girar · toca un elemento</span>
+        <span class="ml-auto text-slate-400 font-semibold">Arrastra para girar · rueda para acercar · toca un nombre</span>
       </div>
     </div>
     <!-- Última estandarización -->
@@ -92,7 +93,8 @@ export default {
 </div>`,
   setup(props) {
     const VISTAS = [{ k: 'girar', i: 'fa-rotate', t: 'Girar solo' }, { k: 'frente', i: 'fa-arrow-right', t: 'Lado derecho' }, { k: 'lado', i: 'fa-arrow-down', t: 'Frente' }, { k: 'atras', i: 'fa-arrow-left', t: 'Lado izquierdo' }];
-    const host3d = ref(null), error3d = ref(''), sel = ref(null), abierto = ref(null);
+    const host3d = ref(null), error3d = ref(''), sel = ref(null), abierto = ref(null), conNombres = ref(true);
+    const alternarNombres = () => { conNombres.value = !conNombres.value; vis && vis.nombres(conNombres.value); };
     let vis = null;
     const lista = computed(() => E.registrosDe(props.eq.afi));
     const ult = computed(() => lista.value[0] || null);
@@ -105,7 +107,7 @@ export default {
       if (vis) { vis.destruir(); vis = null; }
       await nextTick();
       if (!host3d.value) return;
-      try { vis = await montarEquipo3D(host3d.value, { tipo: props.eq.tipo, afi: props.eq.afi, estados: estados3d(), onPick: (k) => { sel.value = k; vis && vis.resaltar(k); if (k) { const b = document.querySelector(`[data-est=perfil] [data-k="${k}"]`); b && b.scrollIntoView({ block: 'nearest' }); } } }); error3d.value = ''; }
+      try { vis = await montarEquipo3D(host3d.value, { tipo: props.eq.tipo, afi: props.eq.afi, estados: estados3d(), nombres: conNombres.value, onPick: (k) => { sel.value = k; vis && vis.resaltar(k); if (k) { const b = document.querySelector(`[data-est=perfil] [data-k="${k}"]`); b && b.scrollIntoView({ block: 'nearest' }); } } }); error3d.value = ''; }
       catch (e) { error3d.value = 'No se pudo cargar la figura 3D (revisa la conexión a internet).'; console.warn(e); }
     };
     const elegir = (k) => { sel.value = sel.value === k ? null : k; vis && vis.resaltar(sel.value); };
@@ -115,6 +117,6 @@ export default {
     watch(() => props.eq.afi, async () => { await E.cargarEstandarizaciones(props.eq.afi); montar(); });
     watch(ult, () => { vis && vis.actualizar(estados3d()); });
     onBeforeUnmount(() => { vis && vis.destruir(); });
-    return { E, VISTAS, host3d, error3d, sel, abierto, lista, ult, nBuenos, nMalos, malos, responsables, elegir, hover, vista, isAdmin, formatDateForDisplay, figuraDe };
+    return { E, conNombres, alternarNombres, VISTAS, host3d, error3d, sel, abierto, lista, ult, nBuenos, nMalos, malos, responsables, elegir, hover, vista, isAdmin, formatDateForDisplay, figuraDe };
   }
 };

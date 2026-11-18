@@ -7,7 +7,7 @@
 //       Bueno = normal · Malo = rojo parpadeando · N/A = transparente · sin registro = normal.
 //   · Arrastrar = girar · rueda / pellizco = acercar · tocar un elemento = lo marca en la lista.
 // =====================================================================
-const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js';
 let threeP = null;
 const cargarThree = () => (threeP = threeP || import(THREE_URL));
 
@@ -318,6 +318,80 @@ export async function montarEquipo3D(host, opciones = {}) {
   });
   el.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.max(radio * 1.2, Math.min(radio * 4, dist * (1 + Math.sign(e.deltaY) * 0.08))); }, { passive: false });
 
+  // ---------- nombres sobre la figura (2026-11-18) ----------
+  // Etiqueta por elemento, pegada a su posición en pantalla; se oculta si el elemento queda detrás del equipo.
+  const NOMBRES = { baliza: 'Baliza', gps: 'GPS', extintor: 'Extintor', parada: 'Parada de emergencia', rotulo_frc: 'Rótulo FRC', afi: 'N° AFI',
+    rotulo_cap: 'Rótulo capacidades', rotulo_uso: 'Rótulo uso', rotulo_mant: 'Rótulo mantención', sen_energias: 'Señaléticas',
+    huincha: 'Huincha reflectante', bandeja: 'Bandeja antiderrame', termoseal: 'Termoseal escape' };
+  if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  const capa = document.createElement('div');
+  capa.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;font-family:Inter,system-ui,sans-serif';
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const svgL = document.createElementNS(SVGNS, 'svg'); svgL.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:visible';
+  capa.appendChild(svgL); host.appendChild(capa);
+  let conNombres = opciones.nombres !== false;
+  const etiquetas = [];
+  Object.entries(NOMBRES).forEach(([k, txt]) => (items[k] || []).forEach(obj => {
+    const caja3 = new THREE.Box3().setFromObject(obj), p = caja3.getCenter(new THREE.Vector3());
+    if (k === 'huincha' || k === 'bandeja') p.z = caja3.max.z;   // en la cara de adelante, no en el centro del equipo
+    const local = equipo.worldToLocal(p.clone());
+    const d = document.createElement('div');
+    d.style.cssText = 'position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;white-space:nowrap;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.95);border:1.5px solid #2f8a4c;color:#1f2937;box-shadow:0 1px 3px rgba(0,0,0,.15)';
+    d.textContent = txt;
+    d.addEventListener('click', (ev) => { ev.stopPropagation(); onPick && onPick(k); });
+    const linea = document.createElementNS(SVGNS, 'polyline'); linea.setAttribute('fill', 'none'); linea.setAttribute('stroke-width', '1.3');
+    const punto = document.createElementNS(SVGNS, 'circle'); punto.setAttribute('r', '3.5'); punto.setAttribute('stroke', '#fff'); punto.setAttribute('stroke-width', '1.5');
+    svgL.appendChild(linea); svgL.appendChild(punto); capa.appendChild(d);
+    etiquetas.push({ k, local, d, linea, punto, col: '#2f8a4c' });
+  }));
+  const SEN = ['sen_bloqueo', 'sen_bateria', 'sen_atrap', 'sen_energias', 'sen_comb'];
+  const pintarEtiquetas = () => etiquetas.forEach(et => {
+    const e = et.k === 'sen_energias' ? (SEN.some(x => estados[x] === 'MALO') ? 'MALO' : estados[et.k]) : estados[et.k];
+    et.col = e === 'MALO' ? '#dc2626' : e === 'NA' ? '#94a3b8' : '#2f8a4c';
+    et.d.style.borderColor = et.col; et.d.style.color = e === 'MALO' ? '#b91c1c' : '#1f2937';
+    et.linea.setAttribute('stroke', et.col); et.punto.setAttribute('fill', et.col);
+  });
+  pintarEtiquetas();
+  // Los nombres van en dos columnas (izquierda y derecha) con una línea hasta su punto: así no se tapan entre ellos
+  const vW = new THREE.Vector3(), dirR = new THREE.Vector3(), rayoE = new THREE.Raycaster();
+  const ALTO = 22, MARGEN = 14, ARRIBA = 64, ABAJO = 40;
+  const moverEtiquetas = () => {
+    const w = host.clientWidth, h = host.clientHeight;
+    const vis = [];
+    etiquetas.forEach(et => {
+      const ocultar = () => { et.d.style.display = 'none'; et.linea.style.display = 'none'; et.punto.style.display = 'none'; };
+      if (!conNombres) return ocultar();
+      vW.copy(et.local); equipo.localToWorld(vW);
+      dirR.copy(vW).sub(camera.position); const dist = dirR.length(); dirR.normalize();
+      rayoE.set(camera.position, dirR); rayoE.far = dist + 0.02;
+      const hit = rayoE.intersectObjects(equipo.children, true)[0];
+      if (hit && hit.distance < dist - 0.06 && hit.object.userData.k !== et.k) return ocultar();   // queda detrás del equipo
+      const sp = vW.clone().project(camera);
+      et.ax = (sp.x * 0.5 + 0.5) * w; et.ay = (-sp.y * 0.5 + 0.5) * h;
+      vis.push(et);
+    });
+    // un solo nombre por elemento aunque tenga dos (paradas, rótulos FRC): el más cercano al borde de su lado
+    const unicos = new Map();
+    vis.forEach(et => { const o = unicos.get(et.k); if (!o || Math.abs(et.ax - w / 2) > Math.abs(o.ax - w / 2)) unicos.set(et.k, et); });
+    vis.forEach(et => { if (unicos.get(et.k) !== et) { et.d.style.display = 'none'; et.linea.style.display = 'none'; et.punto.style.display = 'none'; } });
+    const lista = [...unicos.values()];
+    [lista.filter(et => et.ax < w / 2), lista.filter(et => et.ax >= w / 2)].forEach((lado, iz) => {
+      const izq = iz === 0;
+      lado.sort((a, b) => a.ay - b.ay);
+      let y = ARRIBA - ALTO;
+      lado.forEach(et => { y = Math.max(et.ay, y + ALTO + 4); et.ly = y; });
+      const exceso = (lado.length ? lado[lado.length - 1].ly : 0) - (h - ABAJO);
+      if (exceso > 0) { let lim = h - ABAJO; for (let i = lado.length - 1; i >= 0; i--) { lado[i].ly = Math.min(lado[i].ly, lim); lim = lado[i].ly - ALTO - 4; } }
+      lado.forEach(et => {
+        const dw = et.d.offsetWidth || 90, lx = izq ? MARGEN : w - MARGEN - dw, bordeX = izq ? lx + dw : lx, codo = izq ? bordeX + 14 : bordeX - 14;
+        et.d.style.display = 'block'; et.linea.style.display = ''; et.punto.style.display = '';
+        et.d.style.transform = `translate(${lx}px, ${et.ly - ALTO / 2}px)`;
+        et.linea.setAttribute('points', `${bordeX},${et.ly} ${codo},${et.ly} ${et.ax},${et.ay}`);
+        et.punto.setAttribute('cx', et.ax); et.punto.setAttribute('cy', et.ay);
+      });
+    });
+  };
+
   // ---------- animación ----------
   let vivo = true, t0 = performance.now();
   const tick = (t) => {
@@ -331,6 +405,7 @@ export async function montarEquipo3D(host, opciones = {}) {
     if (resaltado && items[resaltado]) items[resaltado].forEach(g => g.scale.setScalar(1.25 + 0.1 * pulso));
     (items.baliza || []).forEach(g => g.traverse(o => { if (o.userData.baliza && estados.baliza !== 'MALO') o.material.emissiveIntensity = 0.6 + pulso * 1.4; }));
     renderer.render(scene, camera);
+    moverEtiquetas();
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -339,10 +414,11 @@ export async function montarEquipo3D(host, opciones = {}) {
 
   return {
     figura: fig,
-    actualizar(nuevos) { estados = nuevos || {}; aplicarEstados(); },
+    actualizar(nuevos) { estados = nuevos || {}; aplicarEstados(); pintarEtiquetas(); },
+    nombres(v) { conNombres = v; },
     resaltar(k) { resaltado = k; },
     vista(v) { auto = false; ang = { frente: 0, lado: -Math.PI / 2, atras: Math.PI, arriba: ang }[v] ?? ang; if (v === 'arriba') alt = 1.1; else alt = 0.32; },
     girar(v) { auto = v; },
-    destruir() { vivo = false; ro.disconnect(); renderer.dispose(); el.remove(); }
+    destruir() { vivo = false; ro.disconnect(); renderer.dispose(); el.remove(); capa.remove(); }
   };
 }
