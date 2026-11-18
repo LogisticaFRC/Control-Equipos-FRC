@@ -990,3 +990,13 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Taller (naves, tótem, celular): el refresco cada 45 s consulta primero si algo cambió (refrescarTallerSiCambio) y solo
   entonces recarga; recarga completa cada 10 min.
 - Horómetro desde la app de mecánicos: ya no vuelve a bajar todo el inventario.
+
+## 2026-11-18 · Indicadores (KPI)
+- Nuevo módulo Operaciones → Gestión operacional → **Indicadores (KPI)** (js/modules/indicadores/).
+- Filtros: período (este mes / 3 / 6 / 12 meses o fechas), empresa y tipo de equipo. Exportar a Excel (una hoja por indicador).
+- Tarjetas: disponibilidad, utilización, % preventivo, MTBF, días en taller, espera de repuestos, movimientos, estandarización.
+- Gráficos: estado de la flota y por tipo, disponibilidad histórica por mes (sql/estado_historico.sql), mantenciones por mes y tipo,
+  horas-hombre por mecánico, equipos con menor MTBF, OT por mes y estado, repuestos por antigüedad, gasto OC y costo por hora,
+  movimientos por mes y por cliente, camiones (km) y choferes, estandarización de la flota e ítems que más fallan.
+- Usa los datos que el sistema ya tiene; al abrir baja una vez historial de estados, estandarizaciones, check list y pedidos.
+- Usuarios con acceso por módulos: habilitar "Indicadores (KPI)" en Configuración.

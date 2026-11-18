@@ -34,6 +34,7 @@ export const AREAS = [
     // grupo → subtítulo dentro del área (ver GRUPOS)
     modulos: [
       { key: 'dashboard', grupo: 'gestion', label: 'Dashboard', icon: 'fa-chart-line' },
+      { key: 'indicadores', grupo: 'gestion', label: 'Indicadores (KPI)', icon: 'fa-chart-pie' },   // KPI por área (modules/indicadores) · 2026-11-18
       { key: 'progMantencion', grupo: 'gestion', label: 'Programas Mantención', icon: 'fa-oil-can' },
       { key: 'progReparacion', grupo: 'gestion', label: 'Programas Reparación', icon: 'fa-warehouse', alerta: () => hallazgosSinOT.value },   // alerta = fallas de inspección esperando OT   // Taller (naves) + programas/Gantt
       { key: 'progMotores', grupo: 'gestion', label: 'Programa Reparación Motores', icon: 'fa-gear' },     // motores a proveedores externos (modules/motores)

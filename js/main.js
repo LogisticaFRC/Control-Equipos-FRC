@@ -11,7 +11,8 @@ import ReparacionView from './modules/taller/reparacion.view.js';
 import TallerView from './modules/taller/taller.view.js';
 import { cargarProblemas } from './modules/taller/taller.service.js';
 import { cargarLugaresNuevos } from './modules/areas/lugares-nuevos.js';
-import PedidaRepuestosView from './modules/repuestos/pedida.view.js';   // Repuestos y compras → Pedida de repuestos
+import PedidaRepuestosView from './modules/repuestos/pedida.view.js';
+import IndicadoresView from './modules/indicadores/indicadores.view.js';   // Indicadores (KPI) · 2026-11-18   // Repuestos y compras → Pedida de repuestos
 import { cargarPedidos } from './modules/repuestos/pedida.service.js';
 import FirmaPad from './core/firma-pad.js';
 import MovimientosView from './modules/movimientos/movimientos.view.js';
@@ -177,6 +178,7 @@ const template = /* html */ `
       <minutas-view v-if="currentTab === 'minutas'"></minutas-view>
       <ot-view v-if="currentTab === 'ot'"></ot-view>
       <pedida-repuestos-view v-if="currentTab === 'pedidaRepuestos'"></pedida-repuestos-view>
+      <indicadores-view v-if="currentTab === 'indicadores'"></indicadores-view>
       <oc-view v-if="currentTab === 'oc'"></oc-view>
       <epp-view v-if="currentTab === 'epp'"></epp-view>
       <areas-view v-if="currentTab === 'areas'"></areas-view>
@@ -312,7 +314,8 @@ app.component('InstalarApp', InstalarApp);     // botón Instalar app / Descarga
 app.component('AvisoVersion', AvisoVersion);   // aviso de versión nueva después de un Push                   // app móvil de mecánicos
 app.component('MecanicosPanelView', MecanicosPanelView);
 app.component('ChoferesPanelView', ChoferesPanelView);
-app.component('PedidaRepuestosView', PedidaRepuestosView);     // Mecánicos → intervenciones y firmas (supervisor)                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
+app.component('PedidaRepuestosView', PedidaRepuestosView);
+app.component('IndicadoresView', IndicadoresView);     // Mecánicos → intervenciones y firmas (supervisor)                   // Programa Reparación Motores (proveedores externos)       // Mis Tareas (recordatorio personal)
 app.component('TareaItem', TareaItem);
 app.component('RecordatoriosCampana', RecordatoriosCampana); // campana del encabezado
 app.component('RecordatoriosAvisos', RecordatoriosAvisos);   // avisos + resumen al entrar + Nueva tarea         // Operaciones → Costos de Mantención
