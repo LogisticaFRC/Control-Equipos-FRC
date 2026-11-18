@@ -277,11 +277,10 @@ export default /* html */ `
           <div>
             <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-building text-blue-500"></i> Empresa Arrendada</label>
             <!-- Con locación elegida, la empresa sale de ella (módulo Áreas) -->
-            <input v-if="empresaDeSelPerfil && !esFueraDeServicio(perfilEquipo)" type="text" :value="empresaDeSelPerfil" disabled class="w-full p-2 border rounded-lg uppercase font-bold bg-blue-50 text-blue-800">
-            <input v-else type="text" list="dl-perfil-empresas" v-model="perfilEquipo.empresaArriendo" :disabled="!puedeEditar || esFueraDeServicio(perfilEquipo)" placeholder="Ej: CODELCO..."
-              :class="['w-full p-2 border rounded-lg uppercase font-bold', esFueraDeServicio(perfilEquipo) ? 'bg-slate-200 text-slate-700' : 'bg-slate-50 text-blue-800']">
-            <p v-if="esFueraDeServicio(perfilEquipo)" class="text-[10px] text-slate-500 mt-0.5"><i class="fa-solid fa-lock"></i> Fuera de Servicio → siempre TALLER FRC</p>
-            <p v-else-if="empresaDeSelPerfil" class="text-[10px] text-slate-500 mt-0.5"><i class="fa-solid fa-sitemap"></i> Según la locación elegida abajo</p>
+            <input v-if="empresaDeSelPerfil" type="text" :value="empresaDeSelPerfil" disabled class="w-full p-2 border rounded-lg uppercase font-bold bg-blue-50 text-blue-800">
+            <input v-else type="text" list="dl-perfil-empresas" v-model="perfilEquipo.empresaArriendo" :disabled="!puedeEditar" placeholder="Ej: CODELCO..."
+              :class="['w-full p-2 border rounded-lg uppercase font-bold', 'bg-slate-50 text-blue-800']">
+            <p v-if="empresaDeSelPerfil" class="text-[10px] text-slate-500 mt-0.5"><i class="fa-solid fa-sitemap"></i> Según la locación elegida abajo</p>
             <datalist id="dl-perfil-empresas"><option v-for="emp in listaEmpresas" :key="emp" :value="emp"></option></datalist>
           </div>
           <div>

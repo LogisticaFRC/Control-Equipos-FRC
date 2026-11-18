@@ -110,7 +110,7 @@ export const guardarPerfilEquipo = async () => {
     tipo: p.tipo, marca: p.marca, modelo: p.modelo,
     ubicacion: locId ? textoUbicacion(locId) : p.ubicacion,
     disponibilidad: p.disponibilidad, gps: p.gps, imei_gps: p.imei_gps,
-    empresa_arriendo: esFueraDeServicio(p) ? EMPRESA_TALLER : (empresaTxt || null),
+    empresa_arriendo: empresaTxt || null,   // 2026-11-18: Fuera de Servicio ya no fuerza TALLER FRC
     frecuencia_mantencion: Math.round(parseNum(p.frecuenciaMantencion)) || 250
   };
   // Horómetro manual: solo si el usuario lo modificó (así guardar la ubicación u otros datos no lo pisa)
@@ -206,9 +206,5 @@ export const guardarAsignacionDesdePerfil = async () => {
 
 // ---------- Empresa arrendada ----------
 export { listaEmpresas, EMPRESA_TALLER, esFueraDeServicio };
-/** Al cambiar la disponibilidad: Fuera de Servicio → TALLER FRC; al salir de Fuera de Servicio se limpia para escribir la nueva. */
-export const alCambiarDisponibilidadPerfil = () => {
-  const p = perfilEquipo.value;
-  if (esFueraDeServicio(p)) p.empresaArriendo = EMPRESA_TALLER;
-  else if (p.empresaArriendo === EMPRESA_TALLER) p.empresaArriendo = '';
-};
+/** Al cambiar la disponibilidad (2026-11-18): ya no cambia la empresa; Fuera de Servicio puede quedar en terreno. */
+export const alCambiarDisponibilidadPerfil = () => {};

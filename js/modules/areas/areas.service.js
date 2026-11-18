@@ -4,7 +4,7 @@
 // - Las locaciones se guardan en bd_locaciones (ver sql/areas.sql).
 // - Cada equipo guarda su locacion_id en BD_INVENTARIO y además, para que el
 //   resto del sistema siga igual: ubicacion = "ÁREA / SECTOR / LOCACIÓN" y
-//   empresa_arriendo = EMPRESA (Fuera de Servicio → siempre TALLER FRC).
+//   empresa_arriendo = EMPRESA (2026-11-18: Fuera de Servicio ya no fuerza TALLER FRC).
 // - Se usa desde: módulo Áreas, Perfil de Equipo y Registrar Movimiento.
 // =====================================================================
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
@@ -148,7 +148,7 @@ export const payloadLocacionEquipo = (equipo, locId) => {
   return {
     locacion_id: r.locacion ? r.locacion.id : null,
     ubicacion: r.locacion ? textoUbicacion(locId) : (equipo?.ubicacion || ''),
-    empresa_arriendo: esFueraDeServicio(equipo) ? EMPRESA_TALLER : (r.empresa?.nombre || equipo?.empresaArriendo || null)
+    empresa_arriendo: r.empresa?.nombre || equipo?.empresaArriendo || null   // 2026-11-18: Fuera de Servicio ya no fuerza TALLER FRC
   };
 };
 

@@ -41,12 +41,11 @@ export const normalizarPatente = (v) => {
 };
 
 // ---------- Empresa arrendada ----------
-/** Un equipo FUERA DE SERVICIO siempre está en "TALLER FRC". */
+/** 2026-11-18: un equipo FUERA DE SERVICIO ya NO pasa solo a "TALLER FRC" (puede repararse en terreno). */
 export const EMPRESA_TALLER = 'TALLER FRC';
 export const esFueraDeServicio = (e) => normalizarClave(e?.disponibilidad) === 'Fuera de Servicio';
-/** Empresa a mostrar: Taller si está fuera de servicio; si no, la del inventario o, si está vacía, la del último movimiento. */
+/** Empresa a mostrar: la del inventario o, si está vacía, la del último movimiento. */
 export const empresaDe = (e) => {
   if (!e) return '';
-  if (esFueraDeServicio(e)) return EMPRESA_TALLER;
   return e.empresaArriendo || e.empresaUltimoMov || '';
 };

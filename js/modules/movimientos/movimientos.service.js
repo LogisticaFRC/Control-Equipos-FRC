@@ -130,8 +130,7 @@ const actualizarEquipoDesdeMov = async (payload, locId) => {
   if (payload.ubicacion_actual) updateObj.ubicacion = payload.ubicacion_actual;
   if (locId) updateObj.locacion_id = locId;
   if (payload.estado) updateObj.disponibilidad = normalizarClave(payload.estado);
-  if (updateObj.disponibilidad === 'Fuera de Servicio') updateObj.empresa_arriendo = 'TALLER FRC';
-  else if (payload.empresa_arriendo) updateObj.empresa_arriendo = String(payload.empresa_arriendo).trim().toUpperCase();
+  if (payload.empresa_arriendo)   // 2026-11-18: Fuera de Servicio ya no fuerza TALLER FRC updateObj.empresa_arriendo = String(payload.empresa_arriendo).trim().toUpperCase();
   if (!Object.keys(updateObj).length) return avisoEquipo;
   try {
     try { await sb(supabaseClient.from(TABLA_INVENTARIO).update(updateObj).eq('id', eqRef.id)); }
