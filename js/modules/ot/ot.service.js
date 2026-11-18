@@ -269,6 +269,9 @@ export const eliminarOT = async (ot) => {
   if (!soloAdmin()) return;
   if (!confirm(`¿Eliminar definitivamente la OT N° ${ot.folio}?\nSi solo quieres dejarla sin efecto, usa "Anular".`)) return;
   try {
+    // 2026-11-18: si venía del taller, sus fallas vuelven a "Esperando OT" (igual que al eliminarla desde REPARAR)
+    try { await sb(supabaseClient.from('bd_taller_problemas').update({ estado: 'PENDIENTE', ot_id: null, respuesta: null }).eq('ot_id', ot.id)); } catch (_) { /* tabla opcional */ }
+    try { await sb(supabaseClient.from('bd_ot_enlaces').delete().eq('ot_id', ot.id)); } catch (_) { /* tabla opcional */ }
     await sb(supabaseClient.from(TABLA_OT).delete().eq('id', ot.id));
     dbOT.value = dbOT.value.filter(o => o.id !== ot.id);
     if (otActual.value && otActual.value.id === ot.id) otActual.value = null;

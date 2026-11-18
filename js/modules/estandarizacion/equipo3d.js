@@ -263,6 +263,28 @@ export async function montarEquipo3D(host, opciones = {}) {
   if (A.bandeja) reg('bandeja', A.bandeja);
   if (A.escape) { const e = A.escape; const w = cil(0.085, 0.085, 0.22, mat(0xc9ccc4, { metalness: 0.2, roughness: 0.9 }), e.position.x, e.position.y - 0.08, e.position.z, null, 20); reg('termoseal', w); }
 
+  // ---------- más elementos del estándar (2026-11-18): bloqueo, batería, guardas, barra Cooper, hoja de seguridad ----------
+  {
+    const h = A.huincha, cx = h.cx || 0, L = h.L, Wz = h.W, yb = h.y, zF = Wz / 2, xE = cx + L / 2, xO = cx - L / 2;
+    const cobre = mat(0xb87333, { metalness: 0.8, roughness: 0.3 }), gris = mat(0x8b949c, { roughness: 0.6 });
+    // punto de bloqueo: caja con manilla roja y candado amarillo
+    const bx = xE - 0.8, by = yb + 0.42;
+    { const g = grupo(bx, by, zF + 0.035); caja(0.2, 0.24, 0.06, gris, 0, 0, 0, g); caja(0.05, 0.12, 0.05, M.rojo, 0, 0.02, 0.05, g); const c = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.01, 8, 16, Math.PI), M.acero); c.position.set(0.06, -0.06, 0.05); g.add(c); caja(0.06, 0.06, 0.03, M.amarillo, 0.06, -0.11, 0.05, g); reg('bloqueo', g); }
+    // batería con espuma azul en los bornes
+    const tx = xE - 0.35, ty = yb + 0.08;
+    { const g = grupo(tx, ty, zF + 0.1); caja(0.32, 0.2, 0.16, M.goma, 0, 0, 0, g); [-0.09, 0.09].forEach((dx, i) => { cil(0.022, 0.022, 0.05, i ? M.rojo : M.goma, dx, 0.12, 0, null, 10, g); cil(0.04, 0.04, 0.04, mat(0x2b7bd6, { roughness: 0.95, metalness: 0 }), dx, 0.15, 0, null, 12, g); }); reg('bateria', g); }
+    // señaléticas de bloqueo y de batería junto a lo que señalan
+    const mover = (k, x, y, z, r) => (items[k] || []).forEach(o => { o.position.set(x, y, z); o.rotation.y = r; });
+    mover('sen_bloqueo', bx + 0.22, by + 0.02, zF + 0.009, 0);
+    mover('sen_bateria', tx, ty + 0.27, zF + 0.009, 0);
+    // guardas y protecciones de partes móviles: rejilla amarilla en el extremo
+    { const g = grupo(xO - 0.012, yb + 0.4, 0, Math.PI / 2); caja(0.55, 0.42, 0.02, M.amarillo, 0, 0, 0, g); for (let i = -2; i <= 2; i++) caja(0.012, 0.36, 0.03, M.oscuro, i * 0.1, 0, 0, g); for (let j = -1; j <= 1; j++) caja(0.48, 0.012, 0.03, M.oscuro, 0, j * 0.1, 0, g); reg('guardas', g); }
+    // barra Cooper (puesta a tierra): barra de cobre enterrada con su cable al chasis
+    { const g = grupo(xO + 0.25, 0, zF + 0.32); cil(0.025, 0.025, 0.45, cobre, 0, 0.12, 0, null, 12, g); caja(0.12, 0.03, 0.06, cobre, 0, 0.35, 0, g); const cab = cil(0.012, 0.012, 0.45, mat(0x4caf50, { roughness: 0.7 }), 0, 0.42, -0.16, [Math.PI / 3.2, 0, 0], 8, g); cab.userData.cable = true; reg('barra_cooper', g); }
+    // hoja de seguridad del combustible: porta-documento con hoja blanca
+    { const g = grupo(xE - 0.32, yb + 0.62, -zF - 0.03, Math.PI); caja(0.24, 0.3, 0.03, mat(0xd8e2e8, { transparent: true, opacity: 0.85, roughness: 0.2 }), 0, 0, 0, g); caja(0.19, 0.25, 0.005, M.blanco, 0, 0.0, 0.018, g); caja(0.12, 0.02, 0.006, M.rojo, 0, 0.09, 0.022, g); reg('hoja_comb', g); }
+  }
+
   // ---------- encuadre ----------
   const caj = new THREE.Box3().setFromObject(equipo), centro = caj.getCenter(new THREE.Vector3()), tam = caj.getSize(new THREE.Vector3());
   equipo.position.x -= centro.x; equipo.position.z -= centro.z;
@@ -321,8 +343,10 @@ export async function montarEquipo3D(host, opciones = {}) {
   // ---------- nombres sobre la figura (2026-11-18) ----------
   // Etiqueta por elemento, pegada a su posición en pantalla; se oculta si el elemento queda detrás del equipo.
   const NOMBRES = { baliza: 'Baliza', gps: 'GPS', extintor: 'Extintor', parada: 'Parada de emergencia', rotulo_frc: 'Rótulo FRC', afi: 'N° AFI',
-    rotulo_cap: 'Rótulo capacidades', rotulo_uso: 'Rótulo uso', rotulo_mant: 'Rótulo mantención', sen_energias: 'Señaléticas',
-    huincha: 'Huincha reflectante', bandeja: 'Bandeja antiderrame', termoseal: 'Termoseal escape' };
+    rotulo_cap: 'Rótulo capacidades', rotulo_uso: 'Rótulo uso', rotulo_mant: 'Rótulo mantención',
+    sen_bloqueo: 'Señalética bloqueo', sen_bateria: 'Señalética batería', sen_atrap: 'Señalética atrapamiento', sen_energias: 'Señalética energías', sen_comb: 'Señalética combustible',
+    huincha: 'Huincha reflectante', bandeja: 'Bandeja antiderrame', termoseal: 'Termoseal escape',
+    bloqueo: 'Punto de bloqueo', bateria: 'Batería', guardas: 'Guardas partes móviles', barra_cooper: 'Barra Cooper', hoja_comb: 'Hoja seguridad combustible' };
   if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
   const capa = document.createElement('div');
   capa.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;font-family:Inter,system-ui,sans-serif';
@@ -344,9 +368,8 @@ export async function montarEquipo3D(host, opciones = {}) {
     svgL.appendChild(linea); svgL.appendChild(punto); capa.appendChild(d);
     etiquetas.push({ k, local, d, linea, punto, col: '#2f8a4c' });
   }));
-  const SEN = ['sen_bloqueo', 'sen_bateria', 'sen_atrap', 'sen_energias', 'sen_comb'];
   const pintarEtiquetas = () => etiquetas.forEach(et => {
-    const e = et.k === 'sen_energias' ? (SEN.some(x => estados[x] === 'MALO') ? 'MALO' : estados[et.k]) : estados[et.k];
+    const e = estados[et.k];
     et.col = e === 'MALO' ? '#dc2626' : e === 'NA' ? '#94a3b8' : '#2f8a4c';
     et.d.style.borderColor = et.col; et.d.style.color = e === 'MALO' ? '#b91c1c' : '#1f2937';
     et.linea.setAttribute('stroke', et.col); et.punto.setAttribute('fill', et.col);
@@ -354,7 +377,7 @@ export async function montarEquipo3D(host, opciones = {}) {
   pintarEtiquetas();
   // Los nombres van en dos columnas (izquierda y derecha) con una línea hasta su punto: así no se tapan entre ellos
   const vW = new THREE.Vector3(), dirR = new THREE.Vector3(), rayoE = new THREE.Raycaster();
-  const ALTO = 22, MARGEN = 14, ARRIBA = 64, ABAJO = 40;
+  const ALTO = 22, MARGEN = 14, ARRIBA = 64, ABAJO = 54;
   const moverEtiquetas = () => {
     const w = host.clientWidth, h = host.clientHeight;
     const vis = [];

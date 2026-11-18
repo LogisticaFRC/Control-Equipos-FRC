@@ -42,7 +42,7 @@ export const login = async () => {
     }
     const perfil = await cargarPerfil(data.user.id);
     if (!perfil) {
-      await supabaseClient.auth.signOut().catch(() => {});
+      await supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {});
       authError.value = true;
       authMensaje.value = 'Tu cuenta no tiene perfil en el sistema. Contacta al Admin general.';
       return;

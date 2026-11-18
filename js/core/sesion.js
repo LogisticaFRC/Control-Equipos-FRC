@@ -33,7 +33,7 @@ export const avisoSesion = ref('');
 /** true → se muestra (obligatorio) el cuadro para cambiar la contraseña. */
 export const debeCambiarClave = ref(false);
 
-export const APP_VERSION = '2026-11-18 indicadores';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
+export const APP_VERSION = '2026-11-18 sesion-local';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
 
 // ---------- Pequeño almacenamiento tolerante a fallos ----------
 const get = (st, k) => { try { return st.getItem(k); } catch (e) { return null; } };
@@ -96,7 +96,9 @@ EVENTOS_ACTIVIDAD.forEach(ev => window.addEventListener(ev, registrarActividad, 
 setInterval(revisarInactividad, REVISAR_CADA_MS);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) revisarInactividad(); });
 
-// Sesión cerrada en otra pestaña, o token vencido / revocado (ej. el Admin restableció la clave)
+// Sesión cerrada en otra pestaña, o token vencido / revocado (ej. el Admin restableció la clave).
+// 2026-11-18: signOut({ scope: 'local' }) → "Salir" o la inactividad en un equipo ya NO cierran la sesión del mismo
+// usuario en los otros equipos (antes signOut() era global y botaba a todos con "Tu sesión terminó").
 let cerrando = false;
 supabaseClient.auth.onAuthStateChange((evento) => {
   if (evento === 'SIGNED_OUT' && usuarioActivo.value && !cerrando) {
@@ -126,7 +128,7 @@ export const cerrarSesion = async (mensaje = '') => {
   cerrando = true;
   del(localStorage, ACTIVIDAD_KEY);
   if (mensaje) set(sessionStorage, AVISO_KEY, mensaje);
-  try { await supabaseClient.auth.signOut(); } catch (e) { /* sin conexión: igual se borra la sesión local */ }
+  try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch (e) { /* sin conexión: igual se borra la sesión local */ }
   usuarioActivo.value = null;
   history.replaceState(null, '', location.pathname + location.search);
   location.reload();
@@ -139,13 +141,13 @@ export const restaurarSesion = async () => {
     const session = data && data.session;
     if (!session) return;
     if (Date.now() - leerActividad() >= INACTIVIDAD_MS) {
-      await supabaseClient.auth.signOut().catch(() => {});
+      await supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {});
       del(localStorage, ACTIVIDAD_KEY);
       avisoSesion.value = AVISO_INACTIVIDAD;
       return;
     }
     const perfil = await cargarPerfil(session.user.id);
-    if (!perfil) { await supabaseClient.auth.signOut().catch(() => {}); return; }   // usuario eliminado
+    if (!perfil) { await supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {}); return; }   // usuario eliminado
     usuarioActivo.value = perfil;
     debeCambiarClave.value = Boolean(perfil.debe_cambiar_clave);
     ultimaGuardada = Date.now();
