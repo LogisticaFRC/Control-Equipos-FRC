@@ -194,6 +194,7 @@ export default /* html */ `
           </div>
           <tabla-historial :registros="getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi)" :por-pagina="50"></tabla-historial>
         </div>
+        <tiempos-equipo :afi="perfilEquipo.afi"></tiempos-equipo>
       </div>
 
       <!-- ===== FALLAS (análisis automático del equipo) ===== -->

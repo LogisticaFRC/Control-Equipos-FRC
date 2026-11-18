@@ -21,12 +21,13 @@ import { costoModelo, proyeccionEquipo, horasProyeccion, cargarConfigCostos, con
 import EstandarEquipo from '../estandarizacion/estandar-perfil.view.js';   // pestaña Estandarización (2026-11-18)
 import OtsEquipo, { otsAbiertasDelEquipo } from './ots-equipo.view.js';   // pestaña OT asignadas (2026-11-17)
 import { fmtCLP, irAOC, ocsDelEquipo, totalOCEquipo, detalleOCsMantencion, totalOCMantencion, mantencionesDeOC } from '../oc/oc.service.js';
+import { TiemposEquipo } from '../indicadores/tiempos.view.js';   // tiempo promedio por actividad del equipo (2026-11-18)
 
 const { onMounted, onBeforeUnmount, watch, nextTick, computed, ref } = Vue;
 
 export default {
   name: 'PerfilEquipo',
-  components: { OtsEquipo, EstandarEquipo },
+  components: { OtsEquipo, EstandarEquipo, TiemposEquipo },
   template,
   setup() {
     let chartCausas = null, chartTipos = null;
