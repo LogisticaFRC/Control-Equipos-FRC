@@ -67,7 +67,7 @@ const bloqueNuevo = (r, elec) => {
     ${filas.length ? '' : `<tr><td colspan="5" style="border:1px solid #9ca3af;padding:6px;text-align:center;color:#64748b">Sin fallas encontradas</td></tr>`}
   </table>
   ${extra}
-  ${listo(r.terminado, 'LEVANTAMIENTO DE FALLAS TERMINADO')}`;
+`;
   }
   const causa = elec ? r.causa_intervencion : r.causa_falla, titulo = elec ? r.causa_falla : r.causa_intervencion;
   return `
@@ -100,6 +100,7 @@ export const hojaIntervencion = (r, logo) => {
   const lubs = [...(r.lubricantes || [])]; while (lubs.length < 4) lubs.push({ tipo: '', cantidad: '' });
   const lbl = (t) => `<b style="color:${V};font-size:10.5px">${t}</b>`;
   const nuevo = r.modo === 'INSPECCION' || r.modo === 'REPARACION';   // formato 2026-11-18
+  const lev = r.modo === 'INSPECCION';   // levantamiento: sin tiempos de trabajo ni firmas (las llevan sus reparaciones)
   return `
 <div style="width:${ANCHO_VERTICAL}px;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:26px 34px;box-sizing:border-box">
  <div style="border:2px solid #333;padding:14px 18px">
@@ -111,7 +112,11 @@ export const hojaIntervencion = (r, logo) => {
   <div style="display:flex;gap:10px;align-items:center;font-size:10.5px;margin-bottom:9px">
     ${lbl('TURNO:')} ${caja(r.turno, '50px')} ${lbl('LUGAR INTERVENCION:')} ${caja(r.lugar, '330px')}
   </div>
-  ${nuevo ? `
+  ${lev ? `
+  <table style="width:60%;border-collapse:collapse;font-size:10px;margin:0 auto 12px;text-align:center">
+    <tr><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">FECHA LEVANTAMIENTO</td><td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">HORA FALLA DEL EQUIPO</td></tr>
+    <tr><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:700;font-size:11px">${fecha(r.fecha)}</td><td style="border:1px solid #333;padding:2px 4px 6px;font-weight:900;font-size:12px">${esc(r.hora_falla) || '&nbsp;'}</td></tr>
+  </table>` : nuevo ? `
   <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;text-align:center">
     <tr>${['FECHA INICIO', 'HORA INICIO', 'FECHA TÉRMINO', 'HORA TÉRMINO', 'DURACIÓN', 'HORA FALLA'].map(t => `<td style="background:${V};color:#fff;font-weight:800;padding:2px 4px 5px;border:1px solid #333">${t}</td>`).join('')}</tr>
     <tr>${[fecha(r.fecha), r.hora_inicio, fecha(r.fecha_termino || r.fecha), r.hora_termino, durTxt(r.duracion_min), r.hora_falla].map((v, i) => `<td style="border:1px solid #333;padding:2px 4px 6px;font-weight:${i === 4 ? 900 : 700};font-size:${i === 4 ? 12 : 11}px">${esc(v) || '&nbsp;'}</td>`).join('')}</tr>
@@ -119,7 +124,7 @@ export const hojaIntervencion = (r, logo) => {
   <div style="display:flex;gap:10px;align-items:center;font-size:10.5px;margin-bottom:12px;justify-content:center">
     ${lbl('HORA FALLA:')} ${caja(r.hora_falla, '58px')} ${lbl('HORA INICIO:')} ${caja(r.hora_inicio, '58px')} ${lbl('HORA TERMINO:')} ${caja(r.hora_termino, '58px')}
   </div>`}
-  <table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:10px"><tr>
+  ${lev ? '' : `<table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:10px"><tr>
     <td style="width:180px;vertical-align:top;padding-top:16px">
       <div style="margin-bottom:12px">${lbl('USO DE ART:')} ${casilla(r.uso_art, !r.afi ? 'SI / NO' : r.uso_art ? 'SI' : 'NO')}</div>
       <div>${lbl('BLOQUEO DE EQUIPO:')} ${casilla(r.bloqueo, !r.afi ? 'SI / NO' : r.bloqueo ? 'SI' : 'NO')}</div>
@@ -129,7 +134,7 @@ export const hojaIntervencion = (r, logo) => {
         <tr><td style="text-align:center;font-weight:700;font-style:italic;color:${V};font-size:10px">${elec ? 'NOMBRE(S) ELECTRICISTA(S)' : 'NOMBRE MECANICO RESPONSABLE(S)'}</td><td style="width:110px;text-align:center;font-weight:700;font-style:italic;color:${V};font-size:10px">FIRMA</td></tr>
         ${mecs.map(m => `<tr><td style="border-bottom:1px solid #333;height:26px;padding:0 6px;font-weight:700">${esc(m.nombre)}</td><td style="border-bottom:1px solid #333;text-align:center">${firmaImg(m.firma, 24)}</td></tr>`).join('')}
       </table>
-    </td></tr></table>
+    </td></tr></table>`}
   ${nuevo ? bloqueNuevo(r, elec) : elec ? `
   <!-- ELÉCTRICA (2026-11-13): mismo orden que la mecánica -->
   ${banda('1', 'CAUSA')}
@@ -171,6 +176,7 @@ export const hojaIntervencion = (r, logo) => {
     <td style="vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:9.5px">
       ${[['Usuario arriendo', r.usuario_arriendo], ['N° vale de consumo (repuestos)', r.vale_consumo]].map(([l, v]) => `<tr><td style="font-weight:700;color:${V};padding:3px 6px 6px;border-bottom:1px solid #9ca3af;width:52%">${l}</td><td style="font-weight:800;padding:3px 6px 6px;border-bottom:1px solid #9ca3af">${esc(v) || '&nbsp;'}</td></tr>`).join('')}
     </table></td></tr></table>`}
+  ${lev ? `<div style="margin-top:16px;font-size:10px;color:#475569;border-top:1px solid #cbd5e1;padding-top:6px">Levantamiento creado por <b>${esc(resp.nombre || r.creado_por || '')}</b>${r.created_at ? ' · ' + fecha(String(r.created_at).slice(0, 10)) : ''}. Cada falla se repara en su propio report (con tiempos, ART, bloqueo y firmas).</div>` : `
   <table style="width:100%;border-collapse:collapse;margin-top:${elec ? 26 : 16}px;font-size:10px"><tr>
     <td style="width:44%;text-align:center;vertical-align:bottom">
       <div style="height:42px">${firmaImg(resp.firma, 40)}</div>
@@ -181,7 +187,7 @@ export const hojaIntervencion = (r, logo) => {
       <div style="height:42px">${firmaImg(sup.firma, 40)}</div>
       <div style="border-top:1px solid #333;padding-top:2px;font-weight:700">${esc(sup.nombre)}${sup.empresa ? ' · ' + esc(sup.empresa) : ''}</div>
       <div style="font-style:italic;color:${V}">Nombre y firma supervisor${sup.tipo === 'CLIENTE' ? ' (cliente)' : ''}</div></td>
-  </tr></table>
+  </tr></table>`}
   ${r.id ? `<div style="text-align:right;font-size:8px;color:#94a3b8;margin-top:8px">Registro N° ${esc(r.id)} · llenado en la app de mecánicos${r.created_at ? ' · ' + fecha(String(r.created_at).slice(0, 10)) : ''}</div>` : ''}
  </div>
 </div>`;

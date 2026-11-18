@@ -140,7 +140,7 @@ export const cargarMec = async () => {
 const yo = () => String(usuarioActivo.value?.usuario || '').toLowerCase();
 export const participa = (r, u = yo()) => Boolean(u) && (String(r.creado_por || '').toLowerCase() === u || (r.mecanicos || []).some(m => String(m.usuario || '').toLowerCase() === u));
 export const misRegistros = computed(() => dbMec.value.filter(r => participa(r)));
-export const esRealizado = (r) => r.estado === 'EN_HISTORIAL';
+export const esRealizado = (r) => r.estado === 'EN_HISTORIAL' || r.estado === 'LEVANTAMIENTO';   // el levantamiento no lleva firmas
 export const misSinFirma = computed(() => misRegistros.value.filter(r => !esRealizado(r)));
 export const misRealizados = computed(() => misRegistros.value.filter(esRealizado));
 export const carpetaApp = ref('SIN_FIRMA');   // 'SIN_FIRMA' | 'REALIZADOS'
@@ -163,6 +163,7 @@ export const carpetasPanel = computed(() => {
 });
 export const carpetaPanel = ref('');   // usuario elegido en el panel ('' = todas)
 export const ESTADOS_MEC = {
+  LEVANTAMIENTO: { t: 'Levantamiento creado', c: 'bg-amber-100 text-amber-800 border-amber-300', i: 'fa-list-ol' },
   PENDIENTE_FIRMA: { t: 'Falta firma supervisor', c: 'bg-amber-100 text-amber-800 border-amber-300', i: 'fa-hourglass-half' },
   FIRMADA: { t: 'Firmada (pasando al Historial)', c: 'bg-sky-100 text-sky-800 border-sky-300', i: 'fa-signature' },
   EN_HISTORIAL: { t: 'En el Historial', c: 'bg-emerald-100 text-emerald-800 border-emerald-300', i: 'fa-circle-check' },
@@ -184,7 +185,7 @@ export const nuevaIntervencion = (tipo, e) => ({
   causa_intervencion: '', descripcion: '', interferencia: '', causa_falla: '',
   // 2026-11-18: modo INSPECCION (observación + fallas enumeradas) | REPARACION (una falla abierta) · cada envío = un report
   modo: '', fallas: [itemFallaVacio()], falla_id: null, falla_texto: '', levantamiento_id: null,
-  art_fotos: [], bloqueo_foto: '', modoFijo: false,   // ART (2 hojas) y bloqueo (1 hoja) en fotos: el papel se llena físico fecha_termino: hoyISO(), terminado: false,
+  art_fotos: [], bloqueo_foto: '', modoFijo: false, fecha_termino: hoyISO(), terminado: false,   // ART (2 hojas) y bloqueo (1 hoja) en fotos: el papel se llena físico
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
   supervisor: { modo: 'DESPUES', nombre: '', empresa: '', tipo: 'CLIENTE', firma: '' }
@@ -287,6 +288,12 @@ export const activarBloqueo = (f) => {
 export const faltantes = (f) => {
   const x = [];
   if (!f.fecha) x.push('Fecha');
+  if (f.modo === 'INSPECCION') {   // 2026-11-18: el levantamiento solo lleva datos, observación y fallas (se crea en el paso 2)
+    if (!String(f.descripcion || '').trim()) x.push('Observación del equipo');
+    if (!(f.fallas || []).some(i => String(i.descripcion || '').trim())) x.push('Al menos una falla');
+    (f.fallas || []).forEach((i, k) => { if (String(i.descripcion || '').trim() && i.necesita_repuesto && !String(i.repuesto || '').trim()) x.push(`Falla ${k + 1}: qué repuesto`); });
+    return x;
+  }
   if (!f.hora_inicio) x.push('Hora inicio');
   if (!f.hora_termino) x.push('Hora término');
   if (f.modo != null) {   // formato nuevo (2026-11-18) · registros antiguos (modo null) siguen como antes
@@ -353,9 +360,11 @@ export const enviarIntervencion = async () => {
   enviando.value = true;
   try {
     const fila = filaDB(f);
-    const conFirma = f.supervisor?.modo === 'AHORA';
+    const esLev = f.modo === 'INSPECCION';   // el levantamiento se CREA sin firmas (las llevan las reparaciones)
+    const conFirma = !esLev && f.supervisor?.modo === 'AHORA';
+    if (esLev) { fila.hora_inicio = null; fila.hora_termino = null; fila.fecha_termino = null; fila.duracion_min = null; fila.lubricantes = []; fila.uso_art = false; fila.bloqueo = false; fila.art_fotos = []; fila.bloqueo_foto = null; fila.terminado = true; }
     fila.supervisor = conFirma ? { nombre: f.supervisor.nombre.trim(), empresa: String(f.supervisor.empresa || '').trim(), tipo: f.supervisor.tipo || 'CLIENTE', firma: f.supervisor.firma, fecha: new Date().toISOString() } : null;
-    fila.estado = conFirma ? 'FIRMADA' : 'PENDIENTE_FIRMA';
+    fila.estado = esLev ? 'LEVANTAMIENTO' : conFirma ? 'FIRMADA' : 'PENDIENTE_FIRMA';
     fila.motivo_rechazo = null;
     let reg;
     if (f.id) reg = (await sb(supabaseClient.from(TABLA_MEC).update(fila).eq('id', f.id).select()))[0];
@@ -375,7 +384,15 @@ export const enviarIntervencion = async () => {
       catch (err) { alert((/frc_falla_reparada|function|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero la falla no se marcó reparada: ' + errMsg(err)); }
     }
     try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
-    formInt.value = null; equipoSel.value = null; tabApp.value = 'registros';   // vuelve a "Mis documentos"
+    formInt.value = null;
+    if (esLev) {   // vuelve al equipo: ahí aparece la carpeta del levantamiento con sus fallas y el botón Reparar
+      if (reg && !dbMec.value.some(x => x.id === reg.id)) dbMec.value = [reg, ...dbMec.value];
+      tabApp.value = 'equipos';
+      avisoApp(`Levantamiento N° ${reg?.id || ''} creado ✔` + avisoFallas + ' Repáralas desde su carpeta.');
+      await cargarMec();
+      return;
+    }
+    equipoSel.value = null; tabApp.value = 'registros';   // vuelve a "Mis documentos"
     carpetaApp.value = fila.estado === 'FIRMADA' ? 'REALIZADOS' : 'SIN_FIRMA';
 
     if (conFirma && reg) {

@@ -30,7 +30,7 @@ export default {
         <button @click="S.vistaAppForzada.value = true" class="bg-[#1f4d3a] hover:bg-emerald-900 text-white font-bold px-4 py-2 rounded-xl shadow"><i class="fa-solid fa-mobile-screen mr-1"></i>Ver la app de técnicos</button>
       </div>
     </div>
-    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
+    <div class="grid grid-cols-2 sm:grid-cols-6 gap-3 mt-4">
       <button v-for="k in kpis" :key="k.e" @click="S.filtroPanel.value = k.e" :class="['rounded-xl border p-3 text-left', k.c, S.filtroPanel.value === k.e ? 'ring-2 ring-emerald-500' : '']">
         <p class="text-[10px] font-extrabold uppercase opacity-80">{{ k.t }}</p><p class="text-2xl font-extrabold">{{ k.n }}</p></button>
     </div>
@@ -146,6 +146,7 @@ export default {
           <span class="text-sky-900 font-semibold">Firmada por {{ r.supervisor?.nombre }} ({{ r.supervisor?.empresa }}), pero no alcanzó a pasar al Historial.</span>
           <button @click="S.reintentarHistorial(r)" :disabled="S.procesando.value" class="px-4 py-2 rounded-xl bg-sky-600 text-white font-bold"><i :class="['fa-solid mr-1', S.procesando.value ? 'fa-spinner fa-spin' : 'fa-arrow-right']"></i>Pasar al Historial</button>
         </div>
+        <div v-else-if="r.estado === 'LEVANTAMIENTO'" class="p-4 border-t bg-amber-50 text-amber-900 font-semibold"><i class="fa-solid fa-list-ol mr-1"></i>Levantamiento de fallas creado (no lleva firmas). Cada falla se repara en su propio report, con tiempos, ART, bloqueo y firmas.</div>
         <div v-else-if="r.estado === 'EN_HISTORIAL'" class="p-4 border-t bg-emerald-50 text-emerald-900 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>En el Historial del AFI {{ r.afi }} · firmó {{ r.supervisor?.nombre }} ({{ r.supervisor?.empresa }}).</div>
       </div>
     </div>
@@ -163,6 +164,7 @@ export default {
       { e: 'RECHAZADA', t: 'Rechazadas', n: S.conteoPanel.value.RECHAZADA, c: 'bg-rose-50 text-rose-800 border-rose-200' },
       { e: 'FIRMADA', t: 'Firmadas sin pasar', n: S.conteoPanel.value.FIRMADA, c: 'bg-sky-50 text-sky-800 border-sky-200' },
       { e: 'EN_HISTORIAL', t: 'En Historial', n: S.conteoPanel.value.EN_HISTORIAL, c: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+      { e: 'LEVANTAMIENTO', t: 'Levantamientos', n: S.conteoPanel.value.LEVANTAMIENTO || 0, c: 'bg-orange-50 text-orange-800 border-orange-200' },
       { e: '', t: 'Todas', n: S.dbMec.value.length, c: 'bg-white text-slate-700 border-slate-200' }
     ]);
     const mecanicos = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'subadmin' && !['chofer', 'totem'].includes(permisosDe(u).mec_modo)).map(u => u.usuario));

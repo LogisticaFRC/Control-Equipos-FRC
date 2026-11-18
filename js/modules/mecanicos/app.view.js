@@ -154,7 +154,7 @@ export default {
           <label class="block"><span class="lbl">Interferencia (opcional)</span><textarea v-model="f.interferencia" rows="2" class="inp" placeholder="Algo que impidió o atrasó el trabajo"></textarea></label>
         </div>
         <!-- Tiempo de trabajo (inicio / término y cuánto demoró) -->
-        <div v-if="f.modo" class="bg-white rounded-2xl p-4 shadow-sm space-y-2" data-int="tiempo">
+        <div v-if="f.modo === 'REPARACION'" class="bg-white rounded-2xl p-4 shadow-sm space-y-2" data-int="tiempo">
           <span class="lbl"><i class="fa-solid fa-stopwatch mr-1"></i>Tiempo de trabajo</span>
           <div class="grid grid-cols-2 gap-2">
             <label class="block"><span class="lbl">Fecha inicio</span><input type="date" v-model="f.fecha" class="inp px-2"></label>
@@ -162,11 +162,11 @@ export default {
             <label class="block"><span class="lbl">Fecha término</span><input type="date" v-model="f.fecha_termino" class="inp px-2"></label>
             <label class="block"><span class="lbl">Hora término</span><input type="time" v-model="f.hora_termino" class="inp px-2"><button @click="f.hora_termino = S.horaAhora(); f.fecha_termino = hoyISO()" class="text-[11px] font-bold text-emerald-700 mt-1">Ahora</button></label>
           </div>
-          <p v-if="f.modo === 'REPARACION' && f.levantamiento_id" class="text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2"><i class="fa-solid fa-link mr-1 text-emerald-700"></i>Viene del levantamiento de fallas N° {{ f.levantamiento_id }}<template v-if="f.hora_falla"> · hora de la falla <b>{{ f.hora_falla }}</b></template></p>
-          <label v-else-if="f.modo === 'REPARACION'" class="block"><span class="lbl">Hora de la falla (opcional)</span><input type="time" v-model="f.hora_falla" class="inp px-2 w-40"></label>
+          <label class="block"><span class="lbl">Hora de la falla</span><input type="time" v-model="f.hora_falla" class="inp px-2 w-40">
+            <span v-if="f.levantamiento_id" class="block text-[11px] text-slate-500"><i class="fa-solid fa-link mr-1 text-emerald-700"></i>Viene del levantamiento de fallas N° {{ f.levantamiento_id }}{{ f.hora_falla ? ' (se copió su hora de falla)' : '' }}</span></label>
           <p :class="['text-center font-black text-lg rounded-xl py-2', S.duracionMin(f) == null ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-800']" data-int="duracion"><i class="fa-regular fa-clock mr-1"></i>Duración: {{ S.textoDuracion(S.duracionMin(f)) }}</p>
         </div>
-        <div v-if="f.tipo === 'MECANICA'" class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+        <div v-if="f.tipo === 'MECANICA' && f.modo !== 'INSPECCION'" class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <div><span class="lbl">Lubricante utilizado</span>
             <div v-for="(l, i) in f.lubricantes" :key="i" class="flex gap-2 mt-1.5">
               <select v-model="l.key" @change="l.tipo = (ACEITES.find(a => a.key === l.key) || {}).label || ''" class="inp flex-1 font-bold"><option value="">— Lubricante —</option><option v-for="a in ACEITES" :key="a.key" :value="a.key">{{ a.label }}</option></select>
@@ -320,7 +320,7 @@ export default {
             <p class="text-[11px] text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>Con esta firma la intervención pasa sola al Historial del equipo.</p>
           </template>
         </div>
-        <label v-if="f.modo" :class="['flex items-start gap-3 rounded-2xl p-4 border-2 cursor-pointer', f.terminado ? 'bg-emerald-50 border-emerald-500' : 'bg-white border-slate-300']" data-int="terminado">
+        <label v-if="f.modo === 'REPARACION'" :class="['flex items-start gap-3 rounded-2xl p-4 border-2 cursor-pointer', f.terminado ? 'bg-emerald-50 border-emerald-500' : 'bg-white border-slate-300']" data-int="terminado">
           <input type="checkbox" v-model="f.terminado" class="w-7 h-7 mt-0.5 accent-emerald-600 shrink-0">
           <span><b class="block text-base">✓ {{ f.modo === 'INSPECCION' ? 'Levantamiento de fallas terminado' : 'Reparación terminada' }}</b>
             <span class="text-xs text-slate-600">{{ f.modo === 'INSPECCION' ? ((f.fallas || []).filter(x => String(x.descripcion || '').trim()).length + ' falla(s) quedarán abiertas en el equipo.') : (f.falla_id ? 'La falla queda REPARADA en el equipo al enviar.' : 'Queda registrada como reparación (falla nueva).') }}</span></span>
@@ -334,7 +334,7 @@ export default {
       <div class="fixed bottom-0 left-0 right-0 z-30 max-w-xl mx-auto bg-white border-t p-3 flex gap-2">
         <button v-if="S.pasoInt.value > 1" @click="S.pasoInt.value--" class="flex-1 py-3.5 rounded-2xl border-2 font-extrabold text-slate-600"><i class="fa-solid fa-chevron-left mr-1"></i>Atrás</button>
         <button v-if="S.pasoInt.value < pasos.length" @click="S.pasoInt.value++" class="flex-[2] py-3.5 rounded-2xl bg-emerald-600 text-white font-extrabold text-lg">Siguiente<i class="fa-solid fa-chevron-right ml-2"></i></button>
-        <button v-else @click="S.enviarIntervencion()" :disabled="S.enviando.value" class="flex-[2] py-3.5 rounded-2xl bg-emerald-600 text-white font-extrabold text-lg disabled:opacity-60"><i :class="['fa-solid mr-2', S.enviando.value ? 'fa-spinner fa-spin' : 'fa-paper-plane']"></i>{{ S.enviando.value ? 'Enviando…' : 'Enviar' }}</button>
+        <button v-else @click="S.enviarIntervencion()" :disabled="S.enviando.value" class="flex-[2] py-3.5 rounded-2xl bg-emerald-600 text-white font-extrabold text-lg disabled:opacity-60"><i :class="['fa-solid mr-2', S.enviando.value ? 'fa-spinner fa-spin' : 'fa-paper-plane']"></i>{{ S.enviando.value ? 'Enviando…' : f.modo === 'INSPECCION' ? 'Crear levantamiento' : 'Enviar' }}</button>
       </div>
     </template>
 
@@ -492,7 +492,8 @@ export default {
   setup() {
     const tab = S.tabApp;
     const limite = ref(40);
-    const pasos = ['Datos', 'Trabajo realizado', 'Seguridad', 'Firmas'];
+    // 2026-11-18: el LEVANTAMIENTO termina en el paso 2 (Crear); la REPARACIÓN de cada falla lleva tiempos, ART, bloqueo y firmas
+    const pasos = computed(() => (S.formInt.value?.modo === 'INSPECCION' ? ['Datos', 'Fallas encontradas'] : ['Datos', 'Trabajo realizado', 'Seguridad', 'Firmas']));
     const f = computed(() => S.formInt.value || {});
     const fallasEq = computed(() => (S.formInt.value ? F.fallasAbiertasDe(S.formInt.value.afi) : []));
     const b = computed(() => (S.formInt.value && S.formInt.value.registro_bloqueo) || {});
