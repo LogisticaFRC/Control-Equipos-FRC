@@ -8,7 +8,8 @@
 // Flujo de una intervención:
 //   1) El mecánico la llena en el celular (mecánica o eléctrica, + registro de bloqueo opcional) y firma.
 //   2) Firma del supervisor:
-//        · en terreno: el supervisor del CLIENTE firma ahí mismo en el celular, o
+//        · Supervisor FRC: firma ahí mismo, o se envía con la firma del mecánico y le llega a TODOS los supervisores FRC (botón "Por firmar").
+//        · Supervisor de otra empresa (cliente, solo terreno): firma obligatoria ahí mismo.
 //        · en taller: queda PENDIENTE y el supervisor FRC firma en su PC / celular (panel MECÁNICOS).
 //   3) Con las dos firmas pasa SOLA al Historial del equipo, con la hoja en PDF igual al formato oficial.
 // =====================================================================
@@ -308,7 +309,7 @@ export const faltantes = (f) => {
       if ((f.lubricantes || []).some(l => l.key && !(Number(String(l.cantidad).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
       if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
       if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
-      if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor');
+      if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo === 'AHORA' && f.supervisor.tipo === 'CLIENTE' && !String(f.supervisor.empresa || '').trim()) x.push('Empresa del supervisor (cliente)');
       if (!f.terminado) x.push('Marcar ✓ terminado');
       return x;
     }
@@ -323,7 +324,7 @@ export const faltantes = (f) => {
   if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
   if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
   if (f.modo == null && f.bloqueo && !f.registro_bloqueo) x.push('Registro de bloqueo');
-  if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor');
+  if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo === 'AHORA' && f.supervisor.tipo === 'CLIENTE' && !String(f.supervisor.empresa || '').trim()) x.push('Empresa del supervisor (cliente)');
   return x;
 };
 

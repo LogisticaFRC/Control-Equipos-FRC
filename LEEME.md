@@ -1064,3 +1064,15 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Al presionar "Salir" con reportes guardados sin enviar, aparece un aviso con la cantidad (y si no hay señal, advierte que no podrá volver a entrar hasta tener internet). Cancelar intenta enviarlos.
 - offline.js pide al navegador almacenamiento persistente (navigator.storage.persist) para que no borre los reportes guardados aunque falte espacio.
 - APP_VERSION '2026-11-19 salir-seguro'. Sin SQL.
+
+## 2026-11-19 (h) · Firmas: se envía con la firma del mecánico + "Por firmar" para supervisores FRC
+
+- Intervención (app técnicos), sección "Firma del supervisor": 3 opciones
+  · Supervisor FRC firma después → se envía con la firma del mecánico y queda PENDIENTE_FIRMA para TODOS los supervisores FRC.
+  · Supervisor FRC firma ahora (está ahí).
+  · Supervisor de otra empresa (cliente) → firma, nombre y empresa obligatorios para enviar (solo terreno; en taller no aparece).
+- Nuevo js/modules/mecanicos/por-firmar.view.js (montado en main.js): botón flotante "Por firmar (N)" para supervisores (permisos.mecanicos = 'admin') y Admin general:
+  · intervenciones PENDIENTE_FIRMA → "Ir a firmar" abre el panel MECÁNICOS;
+  · OT de taller con firma del mecánico y sin firma del supervisor → se firman ahí mismo (bd_ot.firmas.supervisor + nombre/fecha/usuario).
+  · Se actualiza cada 2 min y al volver a la pestaña. El primero que firma la saca de la lista de todos.
+- APP_VERSION '2026-11-19 por-firmar'. Sin SQL nuevo (usa la columna firmas de bd_ot de sql/taller_firmas_problemas.sql).

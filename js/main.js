@@ -40,6 +40,7 @@ import MecanicosPanelView from './modules/mecanicos/panel.view.js';
 import { ChoferesPanelView } from './modules/mecanicos/chofer-checklist.view.js';   // Personal Técnico → Choferes (2026-11-17)
 import { esModoMecanico, esSupervisorMec, vistaAppForzada } from './modules/mecanicos/mecanicos.service.js';
 import { TareaItem, RecordatoriosCampana, RecordatoriosAvisos } from './modules/recordatorios/avisos.view.js';
+import PorFirmar from './modules/mecanicos/por-firmar.view.js';   // supervisor FRC: intervenciones y OT de taller por firmar (2026-11-19)
 import { iniciarMotorAvisos, borrarCacheAvisos } from './modules/recordatorios/recordatorios.service.js';
 import CausasProbables from './modules/fallas/causas-probables.view.js';
 import TablaHistorial from './modules/historial/tabla-historial.view.js';
@@ -208,7 +209,8 @@ const template = /* html */ `
     <modal-asignar-equipo v-if="showModalAsignarEquipo"></modal-asignar-equipo>
     <baja-equipo></baja-equipo>
     <cambiar-clave></cambiar-clave>
-    <recordatorios-avisos></recordatorios-avisos>   <!-- Mis Tareas: avisos, resumen al entrar y ventana Nueva tarea -->
+    <recordatorios-avisos></recordatorios-avisos>
+    <por-firmar></por-firmar>   <!-- Supervisor FRC: botón "Por firmar" (intervenciones + OT de taller con firma del mecánico) -->   <!-- Mis Tareas: avisos, resumen al entrar y ventana Nueva tarea -->
     <!-- Vista previa de la app de mecánicos (panel MECÁNICOS → "Ver la app como mecánico") -->
     <div v-if="vistaAppForzada" class="fixed inset-0 z-[75] bg-slate-900/80 overflow-y-auto"><mecanico-app preview :salir="cerrarVistaApp"></mecanico-app></div>
   </template>
@@ -297,7 +299,8 @@ app.component('InventarioView', InventarioView);
 app.component('ProgramasView', ProgramasView);
 app.component('ReparacionView', ReparacionView);   // Programas Reparación: pestañas Taller (naves) | Programas y Gantt
 app.component('TallerView', TallerView);
-app.component('FirmaPad', FirmaPad);   // firma dibujada con mouse / touch (OT)
+app.component('FirmaPad', FirmaPad);
+app.component('PorFirmar', PorFirmar);   // firma dibujada con mouse / touch (OT)
 app.component('MovimientosView', MovimientosView);
 app.component('HistorialView', HistorialView);
 app.component('AceitesView', AceitesView);

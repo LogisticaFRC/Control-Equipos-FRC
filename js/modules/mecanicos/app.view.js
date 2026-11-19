@@ -315,14 +315,15 @@ export default {
         </div>
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <h4 class="sec">Firma del supervisor</h4>
-          <div class="grid grid-cols-1 gap-2">
-            <button @click="f.supervisor.modo = 'DESPUES'" :class="['chip-lg text-left', f.supervisor.modo === 'DESPUES' ? 'on' : '']"><i class="fa-solid fa-building mr-2"></i>En taller: firma después el supervisor FRC</button>
-            <button @click="f.supervisor.modo = 'AHORA'" :class="['chip-lg text-left', f.supervisor.modo === 'AHORA' ? 'on' : '']"><i class="fa-solid fa-signature mr-2"></i>Firma ahora (supervisor del cliente en terreno)</button>
+          <!-- 2026-11-19: se envía con la firma del mecánico. Supervisor FRC: firma ahora o le llega a su usuario. Supervisor de otra empresa: firma obligatoria aquí. -->
+          <div class="grid grid-cols-1 gap-2" data-int="sup-opciones">
+            <button @click="f.supervisor.modo = 'DESPUES'; f.supervisor.tipo = 'FRC'" :class="['chip-lg text-left', f.supervisor.modo === 'DESPUES' ? 'on' : '']"><i class="fa-solid fa-paper-plane mr-2"></i>Supervisor FRC firma después<span class="block text-[11px] font-normal opacity-80">Se envía ahora y le llega a los supervisores FRC para firmar</span></button>
+            <button @click="f.supervisor.modo = 'AHORA'; f.supervisor.tipo = 'FRC'; f.supervisor.empresa = 'FAST RENTAL CHILE'" :class="['chip-lg text-left', f.supervisor.modo === 'AHORA' && f.supervisor.tipo === 'FRC' ? 'on' : '']"><i class="fa-solid fa-signature mr-2"></i>Supervisor FRC firma ahora<span class="block text-[11px] font-normal opacity-80">Está aquí y firma en el equipo</span></button>
+            <button v-if="!S.esTaller.value" @click="f.supervisor.modo = 'AHORA'; f.supervisor.tipo = 'CLIENTE'; if (f.supervisor.empresa === 'FAST RENTAL CHILE') f.supervisor.empresa = ''" :class="['chip-lg text-left', f.supervisor.modo === 'AHORA' && f.supervisor.tipo === 'CLIENTE' ? 'on' : '']"><i class="fa-solid fa-handshake mr-2"></i>Supervisor de otra empresa (cliente)<span class="block text-[11px] font-normal opacity-80">Firma obligatoria aquí para poder enviar</span></button>
           </div>
           <template v-if="f.supervisor.modo === 'AHORA'">
-            <div class="grid grid-cols-2 gap-2"><button v-for="t in [['CLIENTE','Cliente'],['FRC','FRC']]" :key="t[0]" @click="f.supervisor.tipo = t[0]; if (t[0] === 'FRC') f.supervisor.empresa = 'FAST RENTAL CHILE'" :class="['chip', f.supervisor.tipo === t[0] ? 'on' : '']">Supervisor {{ t[1] }}</button></div>
             <input v-model="f.supervisor.nombre" class="inp" placeholder="Nombre del supervisor">
-            <input v-model="f.supervisor.empresa" class="inp uppercase" placeholder="Empresa">
+            <input v-model="f.supervisor.empresa" class="inp uppercase" :placeholder="f.supervisor.tipo === 'CLIENTE' ? 'Empresa del supervisor' : 'Empresa'">
             <firma-pad :firma="f.supervisor.firma" titulo="Firma del supervisor" @guardar="v => f.supervisor.firma = v"></firma-pad>
             <p class="text-[11px] text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>Con esta firma la intervención pasa sola al Historial del equipo.</p>
           </template>
