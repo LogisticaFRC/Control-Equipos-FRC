@@ -25,7 +25,7 @@ export default {
       { Metrica: "Trabajando / Operativo", Valor: countEstado('Operativo') },
       { Metrica: "Disponible", Valor: countEstado('Disponible') },
       { Metrica: "En Traslado", Valor: countEstado('En Traslado') },
-      { Metrica: "En Mantención", Valor: countEstado('En Mantencion') },
+      { Metrica: "En Reparación", Valor: countEstado('En Mantencion') },
       { Metrica: "Fuera de Servicio", Valor: countEstado('Fuera de Servicio') },
       { Metrica: "En Venta", Valor: countEstado('Venta') },
       { Metrica: "Equipos críticos (pasados/próximos)", Valor: equiposCriticosDashboard.value.length },
@@ -42,7 +42,7 @@ export default {
         if (ctx1) charts.estado = new Chart(ctx1, {
           type: 'doughnut',
           data: {
-            labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Mantención', 'Fuera de Servicio', 'Venta'],
+            labels: ['Trabajando', 'Disponibles', 'En Traslado', 'En Reparación', 'Fuera de Servicio', 'Venta'],
             datasets: [{
               data: [countEstado('Operativo'), countEstado('Disponible'), countEstado('En Traslado'), countEstado('En Mantencion'), countEstado('Fuera de Servicio'), countEstado('Venta')],
               backgroundColor: ['#10b981', '#0284c7', '#f59e0b', '#f43f5e', '#64748b', '#a855f7']

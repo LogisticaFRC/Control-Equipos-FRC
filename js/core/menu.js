@@ -63,7 +63,7 @@ export const AREAS = [
   },
   {
     key: 'seguridad', label: 'Seguridad', icon: 'fa-helmet-safety', color: 'text-orange-400',
-    modulos: [{ key: 'epp', label: 'Control Entrega EPP', icon: 'fa-vest' }, { key: 'riesgosEcf', label: 'Riesgos de fatalidad (Codelco)', icon: 'fa-skull-crossbones' }]
+    modulos: [{ key: 'epp', label: 'Control Entrega EPP', icon: 'fa-vest' }, { key: 'riesgosRf', label: 'Riesgos de fatalidad (31)', icon: 'fa-heart-pulse' }, { key: 'riesgosEcf', label: 'Estándares de control de fatalidad (ECF)', icon: 'fa-skull-crossbones' }]
   },
   {
     key: 'rrhh', label: 'RRHH', icon: 'fa-users', color: 'text-sky-400',

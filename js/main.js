@@ -26,7 +26,8 @@ import MinutasView from './modules/minutas/minutas.view.js';
 import OtView from './modules/ot/ot.view.js';
 import OcView from './modules/oc/oc.view.js';
 import EppView from './modules/epp/epp.view.js';
-import RiesgosFatalidad from './modules/seguridad/riesgos-fatalidad.view.js';   // Seguridad → Riesgos de fatalidad Codelco (2026-11-18)
+import RiesgosFatalidad from './modules/seguridad/riesgos-fatalidad.view.js';
+import RiesgosRf from './modules/seguridad/riesgos-rf.view.js';   // Seguridad → 31 Riesgos de Fatalidad Codelco (2026-11-18)   // Seguridad → Riesgos de fatalidad Codelco (2026-11-18)
 import VehiculosView from './modules/vehiculos/vehiculos.view.js';
 import FallasView from './modules/fallas/fallas.view.js';
 import CostosView from './modules/costos/costos.view.js';
@@ -182,6 +183,7 @@ const template = /* html */ `
       <indicadores-view v-if="currentTab === 'indicadores'"></indicadores-view>
       <oc-view v-if="currentTab === 'oc'"></oc-view>
       <epp-view v-if="currentTab === 'epp'"></epp-view>
+      <riesgos-rf v-if="currentTab === 'riesgosRf'"></riesgos-rf>
       <riesgos-fatalidad v-if="currentTab === 'riesgosEcf'"></riesgos-fatalidad>
       <areas-view v-if="currentTab === 'areas'"></areas-view>
       <movimientos-view v-if="currentTab === 'movimientos'"></movimientos-view>
@@ -325,7 +327,8 @@ app.component('CausasProbables', CausasProbables);   // causas probables por pie
 app.component('FallasView', FallasView);         // Operaciones → Análisis de Fallas
 app.component('TablaHistorial', TablaHistorial); // tabla compacta del Historial (módulo Historial y Perfil)   // Operaciones → Vehículos (AFI = patente XXXX-XX)
 app.component('EppView', EppView);   // Seguridad → Control Entrega EPP
-app.component('RiesgosFatalidad', RiesgosFatalidad);   // Seguridad → Riesgos de fatalidad (Codelco)
+app.component('RiesgosFatalidad', RiesgosFatalidad);
+app.component('RiesgosRf', RiesgosRf);   // Seguridad → 31 Riesgos de Fatalidad   // Seguridad → Riesgos de fatalidad (Codelco)
 app.component('AreasView', AreasView);
 app.component('SelectorLocacion', SelectorLocacion);   // Empresa → Área → Locación (Perfil, Movimientos, Áreas)
 app.component('InicioView', InicioView);                   // Bienvenida (primera pantalla)

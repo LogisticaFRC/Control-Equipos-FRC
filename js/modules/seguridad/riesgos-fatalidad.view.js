@@ -1,9 +1,8 @@
 // =====================================================================
-// SEGURIDAD · RIESGOS DE FATALIDAD CODELCO (ECF) · 2026-11-18
+// SEGURIDAD · ESTÁNDARES DE CONTROL DE FATALIDAD CODELCO (ECF) · 2026-11-18
 // Resumen de los Estándares de Control de Fatalidades (ECF) de Codelco, con dibujo,
 // riesgo, controles críticos y lo que está prohibido. Se ve en:
-//   · Web: Seguridad → Riesgos de fatalidad (Codelco)
-//   · App técnicos (taller, terreno, CRTG y chofer): tarjeta "Riesgos de fatalidad"
+//   · Web: Seguridad → Estándares de control de fatalidad (ECF)  (en la app de técnicos irán los 31 Riesgos de Fatalidad)
 // Fuente: Codelco · Estándares de Control de Fatalidades (ECF 1 al 12 y ECF 21).
 // Es material de difusión: el documento oficial vigente manda (SIGO-ECF de Codelco).
 // =====================================================================
@@ -92,7 +91,7 @@ export default {
   <div :class="['rounded-2xl text-white shadow-sm overflow-hidden', compacto ? 'p-4' : 'p-6']" style="background:linear-gradient(135deg,#7f1d1d,#b91c1c 55%,#ea580c)">
     <div class="flex items-center gap-3">
       <span class="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center text-2xl shrink-0"><i class="fa-solid fa-skull-crossbones"></i></span>
-      <div><h2 :class="['font-black leading-tight', compacto ? 'text-lg' : 'text-2xl']">Riesgos de fatalidad · Codelco</h2>
+      <div><h2 :class="['font-black leading-tight', compacto ? 'text-lg' : 'text-2xl']">Estándares de control de fatalidad · Codelco</h2>
         <p class="text-white/85 text-xs">Estándares de Control de Fatalidades (ECF). Conócelos y cúmplelos: <b>ninguna tarea es tan urgente que no se pueda hacer de forma segura.</b></p></div>
     </div>
     <div class="mt-3 flex flex-wrap gap-2">
@@ -139,7 +138,12 @@ export default {
     const buscar = ref(''), abierto = ref(null);
     const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const lista = computed(() => { const q = norm(buscar.value); return ECF.filter(e => !q || norm([e.n, e.nombre, e.riesgo, ...e.controles].join(' ')).includes(q)); });
-    const mover = (d) => { const i = ECF.indexOf(abierto.value); abierto.value = ECF[(i + d + ECF.length) % ECF.length]; };
+    // (2026-11-18) se busca por N° (abierto.value es un proxy de Vue: indexOf no lo encontraba y quedaba pegado)
+    const mover = (d) => {
+      const i = ECF.findIndex(e => e.n === abierto.value?.n);
+      abierto.value = ECF[((i < 0 ? 0 : i) + d + ECF.length) % ECF.length];
+      Vue.nextTick(() => { const el = document.querySelector('[data-ecf=detalle] > div'); if (el) el.scrollTop = 0; });
+    };
     return { buscar, abierto, lista, mover, dibujoECF };
   }
 };

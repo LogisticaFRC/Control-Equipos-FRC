@@ -68,7 +68,7 @@ export default /* html */ `
       <div class="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-moving"></i></div>
     </div>
     <div @click="filtrarYIrAInventario('En Mantencion')" class="bg-white p-3.5 rounded-xl shadow-sm border border-rose-200 flex items-center justify-between cursor-pointer hover:border-rose-500 transition">
-      <div><p class="text-[10px] text-slate-500 font-bold uppercase">En Mantención</p><h3 class="text-xl font-bold text-rose-600">{{ countEstado('En Mantencion') }}</h3></div>
+      <div><p class="text-[10px] text-slate-500 font-bold uppercase">En Reparación</p><h3 class="text-xl font-bold text-rose-600">{{ countEstado('En Mantencion') }}</h3></div>
       <div class="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-sm"><i class="fa-solid fa-wrench"></i></div>
     </div>
     <div @click="filtrarYIrAInventario('Fuera de Servicio')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-300 flex items-center justify-between cursor-pointer hover:border-slate-600 transition">
