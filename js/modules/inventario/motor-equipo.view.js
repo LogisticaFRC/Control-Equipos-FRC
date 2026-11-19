@@ -41,10 +41,10 @@ export default {
 
     <!-- Manuales -->
     <div v-if="fam.manuales.length" class="bg-white rounded-xl border shadow-sm p-4">
-      <p class="text-[10px] font-bold uppercase text-slate-500 mb-2"><i class="fa-solid fa-book mr-1"></i>Manual del fabricante</p>
+      <p class="text-[10px] font-bold uppercase text-slate-500 mb-2"><i class="fa-solid fa-book mr-1"></i>Manual del fabricante <span class="normal-case font-normal">· ES = español · EN = inglés</span></p>
       <div class="flex flex-wrap gap-2">
-        <template v-for="x in fam.manuales" :key="x.t">
-          <a v-if="x.u" :href="x.u" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-bold hover:bg-blue-100" data-motor="manual"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>{{ x.t }}</a>
+        <template v-for="x in manualesOrden" :key="x.t">
+          <a v-if="x.u" :href="x.u" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-bold hover:bg-blue-100" data-motor="manual"><span :class="['mr-1.5 px-1 rounded text-[9px] font-black', x.es ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700']">{{ x.es ? 'ES' : 'EN' }}</span>{{ x.t }}<i class="fa-solid fa-arrow-up-right-from-square ml-1.5 text-[10px]"></i></a>
           <span v-else class="px-3 py-2 rounded-lg bg-slate-50 border text-slate-600">{{ x.t }}</span>
         </template>
       </div>
@@ -118,11 +118,12 @@ export default {
       const h = Math.min(...ps.map(p => p.prox));
       return { h, faltan: Math.round(h - horas.value), incluye: ints.filter(i => h % i === 0).sort((a, b) => a - b) };
     });
+    const manualesOrden = computed(() => [...fam.value.manuales].sort((a, b) => (b.es ? 1 : 0) - (a.es ? 1 : 0)));
     const mismos = computed(() => (m.value ? equiposConMismoMotor(m.value.marca, m.value.modelo) : []));
     const colorConf = computed(() => COLOR_CONF[m.value?.confianza] || COLOR_CONF.Baja);
     const icono = (t) => ICONO_TIPO[t] || 'fa-wrench';
     const verbo = (t) => VERBO[t] || '';
     const colorTipo = (t) => COLOR_TIPO[t] || 'text-slate-400';
-    return { m, fam, horas, grupos, proxima, verbo, colorTipo, mismos, colorConf, icono, verTodos };
+    return { m, fam, manualesOrden, horas, grupos, proxima, verbo, colorTipo, mismos, colorConf, icono, verTodos };
   }
 };

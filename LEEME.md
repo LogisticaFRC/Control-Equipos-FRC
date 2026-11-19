@@ -1045,3 +1045,10 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Cada grupo muestra "próxima a las N h (faltan X h)" y arriba sale la **próxima mantención** y qué intervalos incluye (ej. 2.000 h = 500 + 1.000 + 2.000).
 - Datos en `js/core/motores-fabricante.js` (FAMILIAS → pauta). Intervalos referenciales; manda el OMM del motor. Sin SQL.
 - APP_VERSION '2026-11-19 pauta-horas'.
+
+## 2026-11-19 (e) · Manuales en español
+
+- Pestaña "Motor y fabricante": cada manual lleva etiqueta **ES** (español) o **EN** (inglés) y los de español salen primero.
+- En español: Perkins 1103/1104, Kubota D1005/D1105 (PDF), Kohler KDI 1903/2504 (PDF oficial), Kohler KDW (multilenguaje), JCB 3CX, Cat (portal con N° de serie), Cummins (QuickServe, idioma Español), Volvo Penta (se pide gratis), Perkins 1106/400/2500 (buscador manualslib.es).
+- Sin versión en español pública: Kubota V3800 y Yanmar TNV (queda el de inglés; pedir al distribuidor).
+- APP_VERSION '2026-11-19 manuales-es'. Sin SQL.

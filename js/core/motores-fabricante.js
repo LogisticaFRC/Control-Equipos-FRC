@@ -28,26 +28,26 @@ export const FAMILIAS = {
   perkins1100: {
     nombre: 'Perkins serie 1100 (1103 / 1104 A y C)', fabricante: 'Perkins',
     aceite: 'API CH-4 / CI-4 · SAE 15W-40 (según temperatura)',
-    manuales: [{ t: 'Manual de Operación y Mantenimiento 1103/1104', u: 'https://www.manualslib.com/p/perkins+1104.html' }],
+    manuales: [{ t: 'Manual de Operación y Mantenimiento 1103/1104 (español)', u: 'https://www.manualslib.es/products/Perkins-1104-9031.html', es: true }, { t: 'Manual de Operación y Mantenimiento 1103/1104', u: 'https://www.manualslib.com/p/perkins+1104.html' }],
     pauta: pautaPerkins(2000)
   },
   perkins1104d: {
     nombre: 'Perkins 1104D / 1104D-E44 (electrónico)', fabricante: 'Perkins',
     aceite: 'API CI-4 / CJ-4 · SAE 15W-40',
-    manuales: [{ t: 'OMM 1104D-E44T / E44TA (SEBU9066)', u: 'https://manualmachine.com/perkinsengine/1104de44t/4535590-service-manual' },
+    manuales: [{ t: 'Manual de Operación y Mantenimiento 1104 (español, referencia)', u: 'https://www.manualslib.es/products/Perkins-1104-9031.html', es: true }, { t: 'OMM 1104D-E44T / E44TA (SEBU9066)', u: 'https://manualmachine.com/perkinsengine/1104de44t/4535590-service-manual' },
       { t: 'OMM 1104D mecánico (PDF)', u: 'https://www.bbapumps.com/content/files/BBA-Pumps/Support/User_manuals/Perkins%20Operation%20and%20Maintenance%20Manual%20-%201104D.pdf' }],
     pauta: [...pautaPerkins(2000), R('Sensores y arnés del ECM (motor electrónico)', 2000)]
   },
   perkins1106: {
     nombre: 'Perkins serie 1106 (7.0 L)', fabricante: 'Perkins',
     aceite: 'API CH-4 / CI-4 · SAE 15W-40',
-    manuales: [{ t: 'OMM 1106A-70T / 70TA', u: 'https://manualmachine.com/perkinsengine/1106a70t/4535589-service-manual' },
+    manuales: [{ t: 'Manuales Perkins en español (buscar 1106)', u: 'https://www.manualslib.es/brand/perkins/', es: true }, { t: 'OMM 1106A-70T / 70TA', u: 'https://manualmachine.com/perkinsengine/1106a70t/4535589-service-manual' },
       { t: 'OMM 1106C / 1106D-70TA (SEBU8731)', u: 'https://manualshive.com/en/manual/perkins/1106c-70ta/1530299' }],
     pauta: [...pautaPerkins(2000), R('Amortiguador de vibraciones del cigüeñal', 2000)]
   },
   perkins400: {
     nombre: 'Perkins serie 400 (403 / 404)', fabricante: 'Perkins', aceite: 'API CH-4 · SAE 15W-40',
-    manuales: [{ t: 'OMM serie 400 (PDF, referencia 402D-404D)', u: 'https://www.polarpower.com/wp-content/uploads/2014/12/Perkins_Operational_Manual.pdf' }],
+    manuales: [{ t: 'Manuales Perkins en español (buscar 403 / 404)', u: 'https://www.manualslib.es/brand/perkins/', es: true }, { t: 'OMM serie 400 (PDF, referencia 402D-404D)', u: 'https://www.polarpower.com/wp-content/uploads/2014/12/Perkins_Operational_Manual.pdf' }],
     pauta: [...DIARIO(), L('Drenar agua del estanque de combustible', 50, 'o semanal', 'limpiar'), R('Batería', 50, 'o semanal'),
       LIMP('Filtro de aire (limpiar)', 250, 'en polvo, antes'), R('Correa de alternador / ventilador', 250),
       L('Aceite de motor', 500, 'o 1 año (250 h en uso severo)'), L('Filtro de aceite', 500, 'o 1 año'), L('Filtro de combustible', 500, 'o 1 año'),
@@ -57,7 +57,7 @@ export const FAMILIAS = {
   },
   perkins2506: {
     nombre: 'Perkins serie 2500 (15 L)', fabricante: 'Perkins', aceite: 'API CI-4 · SAE 15W-40',
-    manuales: [{ t: 'Pedir OMM al distribuidor Perkins con el N° de motor', u: 'https://www.perkins.com/en_GB/support/find-a-distributor.html' }],
+    manuales: [{ t: 'Manuales Perkins en español (buscar 2506)', u: 'https://www.manualslib.es/brand/perkins/', es: true }, { t: 'Pedir OMM al distribuidor Perkins con el N° de motor', u: 'https://www.perkins.com/en_GB/support/find-a-distributor.html' }],
     pauta: [...DIARIO([R('Panel / alarmas y medidores del grupo', 0, 'Diario')]), L('Drenar estanque de combustible', 50, 'o semanal', 'limpiar'),
       R('Batería', 50, 'o semanal'), L('Aceite de motor', 500, 'o 1 año'), L('Filtros de aceite', 500, 'o 1 año'),
       L('Filtros de combustible (primario y secundario)', 500), L('Filtro de aire', 500, 'o según indicador'), R('Correas', 500),
@@ -68,7 +68,7 @@ export const FAMILIAS = {
   },
   kubota05: {
     nombre: 'Kubota serie 05 (D1005 / D1105 / V2403)', fabricante: 'Kubota', aceite: 'API CF o superior · SAE 15W-40 (10W-30 en frío)',
-    manuales: [{ t: "Operator's Manual Kubota E3 (D1005/D1105/V2403)", u: 'https://manualmachine.com/kubota/d902e3/23974478-operators-manual' },
+    manuales: [{ t: 'Manual del Operador Kubota D1005 / D1105 (español, PDF)', u: 'https://www.nuvair.com/manuals/engines/D1105-E4-Spanish-OM.pdf', es: true }, { t: "Operator's Manual Kubota E3 (D1005/D1105/V2403)", u: 'https://manualmachine.com/kubota/d902e3/23974478-operators-manual' },
       { t: 'Workshop Manual 05-E3B (PDF, taller)', u: 'https://media.toro.com/servicemanuals/Kubota05-E3B.pdf' }],
     pauta: [R('Nivel de aceite de motor', 0, 'Diario'), R('Nivel de refrigerante', 0, 'Diario'), R('Nivel de combustible y fugas', 0, 'Diario'),
       R('Inspección visual: correa, mangueras, cables', 0, 'Diario'),
@@ -92,7 +92,7 @@ export const FAMILIAS = {
   },
   kohlerKDW: {
     nombre: 'Kohler KDW (702 / 1003 / 1404 / 1603)', fabricante: 'Kohler (Lombardini)', aceite: 'API CF-4 o superior · SAE 15W-40',
-    manuales: [{ t: 'Owner Manual KDW 502-1404 (PDF oficial Kohler)', u: 'https://resources.kohler.com/power/kohler/enginesUS/pdf/OM_KDW_K-HEM_502_702_1003_1404_R_00_EN.pdf' }],
+    manuales: [{ t: 'Uso y Mantenimiento KDW 702 / 1003 / 1404 (trae español: USO-MANUTENCION)', u: 'https://www.manualslib.mx/manual/124439/Kohler-Kdw702.html', es: true }, { t: 'Owner Manual KDW 502-1404 (PDF oficial Kohler)', u: 'https://resources.kohler.com/power/kohler/enginesUS/pdf/OM_KDW_K-HEM_502_702_1003_1404_R_00_EN.pdf' }],
     pauta: [R('Nivel de aceite de motor', 0, 'Diario'), R('Nivel de refrigerante', 0, 'Diario'), R('Filtro de aire en seco (estado)', 0, 'Diario'),
       R('Inspección visual: fugas, correa, cables', 0, 'Diario'),
       LIMP('Filtro de aire (limpiar)', 250, 'en polvo, cada 50-100 h'), L('Aceite de motor', 250, 'primer cambio a las 50 h'), L('Filtro de aceite', 250, 'primer cambio a las 50 h'),
@@ -104,7 +104,7 @@ export const FAMILIAS = {
   },
   kohlerKDI: {
     nombre: 'Kohler KDI (1903 / 2504)', fabricante: 'Kohler', aceite: 'API CJ-4 · SAE 15W-40',
-    manuales: [{ t: 'Owner Manual KDI 1903M / 2504M', u: 'https://manualmachine.com/kohler/kdi1903m/20998948-owners-manual' },
+    manuales: [{ t: 'Manual de Uso y Mantenimiento KDI 1903M / 2504M (español, PDF oficial Kohler)', u: 'https://resources.kohler.com/power/kohler/enginesUS/pdf/OM_KDI_1903_M_2504_M_ES.pdf', es: true }, { t: 'Owner Manual KDI 1903M / 2504M', u: 'https://manualmachine.com/kohler/kdi1903m/20998948-owners-manual' },
       { t: 'Oficial: iservice.lombardini.it → entrar como invitado', u: 'http://iservice.lombardini.it' }],
     pauta: [...DIARIO(), LIMP('Filtro de aire (limpiar prefiltro)', 250, 'en polvo, antes'), R('Correa poly-V: estado y tensión', 250), LIMP('Aletas del radiador', 250),
       L('Aceite de motor', 500, 'primer cambio a las 50 h'), L('Filtro de aceite', 500, 'primer cambio a las 50 h'), L('Filtro de combustible', 500),
@@ -125,7 +125,7 @@ export const FAMILIAS = {
   },
   volvoTAD16: {
     nombre: 'Volvo Penta TAD1641/1642GE (16 L)', fabricante: 'Volvo Penta', aceite: 'VDS-3 o superior · SAE 15W-40',
-    manuales: [{ t: "Operator's Manual 16 L generador (PDF)", u: 'https://www.wincogen.com/wp-content/uploads/PD/Engines/volvo_tad1641ge_opm.pdf' }],
+    manuales: [{ t: 'Volvo Penta entrega gratis la versión en español: pedirla al distribuidor o en volvopenta.com', u: 'https://www.volvopenta.com/es-es/', es: true }, { t: "Operator's Manual 16 L generador (PDF)", u: 'https://www.wincogen.com/wp-content/uploads/PD/Engines/volvo_tad1641ge_opm.pdf' }],
     pauta: [...DIARIO([R('Panel / alarmas y medidores del grupo', 0, 'Diario')]), R('Batería: nivel y bornes', 50, 'o semanal'),
       L('Aceite de motor', 500, 'o 12 meses'), L('Filtros de aceite (y bypass)', 500, 'o 12 meses'), L('Filtros de combustible', 500, 'o 12 meses'),
       L('Prefiltro de combustible (separador)', 500, 'o 12 meses'), R('Correas y tensor', 500), R('Mangueras y abrazaderas', 500),
@@ -135,7 +135,7 @@ export const FAMILIAS = {
   },
   cummins: {
     nombre: 'Cummins (modelo exacto según ESN)', fabricante: 'Cummins', aceite: 'CES 20081 (CI-4) / CES 20086 (CK-4) · SAE 15W-40',
-    manuales: [{ t: 'QuickServe Online: ingresar el ESN de 8 dígitos (cuenta gratis)', u: 'https://quickserve.cummins.com' }],
+    manuales: [{ t: 'QuickServe Online: ingresar ESN y elegir idioma Español', u: 'https://quickserve.cummins.com', es: true }, { t: 'Cuenta gratis en QuickServe; el modelo exacto sale con el ESN de 8 dígitos', u: '' }],
     pauta: [...DIARIO([R('Ventilador y cubrecorrea', 0, 'Diario')]), R('Batería: bornes y nivel', 50, 'o semanal'),
       L('Aceite de motor', 500, 'o 6 meses (250 h en uso severo)'), L('Filtro de aceite', 500, 'o 6 meses'), L('Filtros de combustible', 500, 'o 6 meses'),
       R('Concentración anticongelante / SCA', 500), R('Tubería de admisión y charge air cooler', 500), R('Mangueras y abrazaderas', 500),
@@ -145,7 +145,7 @@ export const FAMILIAS = {
   },
   cat: {
     nombre: 'Caterpillar', fabricante: 'Caterpillar', aceite: 'Cat DEO / API CK-4 · SAE 15W-40',
-    manuales: [{ t: 'Pedir OMM a Finning (distribuidor Cat) con el N° de serie de la máquina', u: 'https://parts.cat.com' }],
+    manuales: [{ t: 'Cat Parts → Manuales y recursos (OMM en español con el N° de serie)', u: 'https://parts.cat.com/es/catcorp', es: true }, { t: 'Pedir OMM a Finning (distribuidor Cat) con el N° de serie de la máquina', u: 'https://parts.cat.com' }],
     pauta: [...DIARIO([R('Cinturón de seguridad / alarmas (máquina)', 0, 'Diario')]), R('Batería', 50, 'o semanal'),
       L('Aceite de motor', 500, ''), L('Filtro de aceite', 500, ''), L('Filtro de combustible primario', 500, ''), L('Filtro de combustible secundario', 500, ''),
       R('Correas: estado y tensión', 500), R('Mangueras y abrazaderas', 500), LIMP('Radiador (exterior)', 500), L('Filtro de aire', 0, 'según indicador'),
@@ -155,7 +155,7 @@ export const FAMILIAS = {
   },
   jcb444: {
     nombre: 'JCB 444 DieselMax (4.4 L)', fabricante: 'JCB', aceite: 'JCB Engine Oil EP 15W-40 (API CI-4)',
-    manuales: [{ t: 'Pedir al distribuidor JCB con el N° 320/xxxxx del motor', u: 'https://www.jcb.com' }],
+    manuales: [{ t: 'Manual del Operador JCB 3CX (español, incluye mantención del motor 444)', u: 'https://www.manualslib.es/manual/365352/Jcb-3Cx.html', es: true }, { t: 'Pedir al distribuidor JCB con el N° 320/xxxxx del motor', u: 'https://www.jcb.com' }],
     pauta: [...DIARIO(), R('Batería y bornes', 50, 'o semanal'), LIMP('Prefiltro / filtro de aire exterior (limpiar)', 250, 'según polvo'),
       L('Aceite de motor', 500, 'o 1 año'), L('Filtro de aceite', 500, 'o 1 año'), L('Filtro de combustible', 500), L('Prefiltro / separador de agua', 500),
       L('Filtro de aire exterior', 500, 'o según indicador'), R('Correa poly-V y tensor', 500), R('Mangueras y abrazaderas', 500), LIMP('Radiador y enfriadores', 500),
