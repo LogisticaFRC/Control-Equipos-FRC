@@ -9,6 +9,8 @@ import { motorDeEquipo, FAMILIAS, equiposConMismoMotor, proximaPorHoras } from '
 const { computed, ref } = Vue;
 const COLOR_CONF = { Alta: 'bg-emerald-100 text-emerald-800 border-emerald-300', Media: 'bg-amber-100 text-amber-800 border-amber-300', Baja: 'bg-rose-100 text-rose-800 border-rose-300' };
 const ICONO_TIPO = { cambiar: 'fa-rotate', revisar: 'fa-magnifying-glass', limpiar: 'fa-broom' };
+const VERBO = { cambiar: 'Cambiar', revisar: 'Revisar', limpiar: 'Limpiar' };
+const COLOR_TIPO = { cambiar: 'text-emerald-600', revisar: 'text-blue-500', limpiar: 'text-amber-600' };
 
 export default {
   name: 'MotorEquipo',
@@ -54,23 +56,27 @@ export default {
         <p class="font-extrabold text-slate-800"><i class="fa-solid fa-list-check mr-1 text-emerald-700"></i>Pauta de mantención del fabricante · {{ fam.fabricante }}</p>
         <p class="text-[11px] text-slate-600">Horómetro aprox.: <b class="font-mono text-blue-700">{{ horas ? horas.toLocaleString('es-CL') + ' h' : 'sin dato' }}</b></p>
       </div>
-      <table class="w-full text-left">
-        <thead class="bg-slate-100 text-[10px] uppercase text-slate-500">
-          <tr><th class="p-2">Tarea</th><th class="p-2 whitespace-nowrap">Cada</th><th class="p-2">Nota</th><th class="p-2 whitespace-nowrap">Próxima según fabricante</th></tr>
-        </thead>
-        <tbody class="divide-y">
-          <tr v-for="t in filas" :key="t.tarea" :class="t.cerca ? 'bg-amber-50' : ''" data-motor="tarea">
-            <td class="p-2 font-bold text-slate-700"><i :class="['fa-solid mr-1.5 text-slate-400', icono(t.tipo)]"></i>{{ t.tarea }}</td>
-            <td class="p-2 font-mono whitespace-nowrap">{{ t.horas ? t.horas.toLocaleString('es-CL') + ' h' : '—' }}</td>
-            <td class="p-2 text-slate-600">{{ t.extra }}</td>
-            <td class="p-2 whitespace-nowrap">
-              <template v-if="t.prox"><b class="font-mono">{{ t.prox.prox.toLocaleString('es-CL') }} h</b> <span :class="['text-[10px] font-bold', t.cerca ? 'text-amber-700' : 'text-slate-500']">(faltan {{ t.prox.faltan.toLocaleString('es-CL') }} h)</span></template>
-              <span v-else class="text-slate-400">—</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p class="px-4 py-2 text-[10px] text-slate-500 border-t bg-slate-50">Intervalos principales <b>referenciales</b> del fabricante (uso normal). Manda el manual de la versión exacta del motor; en polvo, calor o uso severo, acortar. "Próxima" se calcula con el horómetro aproximado, no con el historial.</p>
+      <div v-if="proxima" class="px-4 py-3 border-b bg-blue-50 text-[12px]" data-motor="proxima">
+        <b class="text-blue-800"><i class="fa-solid fa-calendar-check mr-1"></i>Próxima mantención: {{ proxima.h.toLocaleString('es-CL') }} h</b>
+        <span class="text-slate-600"> (faltan {{ proxima.faltan.toLocaleString('es-CL') }} h) · incluye las tareas de: </span>
+        <span v-for="i in proxima.incluye" :key="i" class="inline-block ml-1 px-1.5 py-0.5 rounded bg-white border border-blue-200 font-mono text-[11px] text-blue-800">{{ i.toLocaleString('es-CL') }} h</span>
+      </div>
+      <div class="divide-y">
+        <div v-for="g in grupos" :key="g.k" data-motor="grupo">
+          <div :class="['px-4 py-2 flex flex-wrap items-center justify-between gap-2', g.cerca ? 'bg-amber-100' : 'bg-slate-100']">
+            <p class="font-extrabold text-slate-800 text-[13px]"><i :class="['fa-solid mr-1.5', g.icono]"></i>{{ g.titulo }} <span class="text-[10px] font-bold text-slate-500">({{ g.tareas.length }})</span></p>
+            <p v-if="g.prox" class="text-[11px]"><span class="text-slate-500">próxima a las</span> <b class="font-mono">{{ g.prox.prox.toLocaleString('es-CL') }} h</b> <span :class="['font-bold', g.cerca ? 'text-amber-700' : 'text-slate-500']">(faltan {{ g.prox.faltan.toLocaleString('es-CL') }} h)</span></p>
+          </div>
+          <ul class="px-4 py-1.5">
+            <li v-for="t in g.tareas" :key="t.tarea" class="py-1 flex flex-wrap items-baseline gap-x-2 text-[12px]" data-motor="tarea">
+              <i :class="['fa-solid w-4 text-center', icono(t.tipo), colorTipo(t.tipo)]"></i>
+              <span :class="['text-[9px] font-black uppercase w-14', colorTipo(t.tipo)]">{{ verbo(t.tipo) }}</span><span class="font-bold text-slate-700">{{ t.tarea }}</span>
+              <span v-if="t.extra && t.extra !== 'Diario'" class="text-[11px] text-slate-500">· {{ t.extra }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <p class="px-4 py-2 text-[10px] text-slate-500 border-t bg-slate-50">Intervalos principales <b>referenciales</b> del fabricante (uso normal). Manda el manual de la versión exacta del motor; en polvo, calor o uso severo, acortar. Cada mantención incluye también las de intervalos menores (ej. la de 1.000 h incluye las de 250 y 500 h). "Próxima" se calcula con el horómetro aproximado, no con el historial.</p>
     </div>
     <div v-else-if="m.familia === 'vehiculo'" class="bg-white rounded-xl border p-4 text-slate-600"><i class="fa-solid fa-truck mr-1"></i>Vehículo: la pauta es por kilometraje según el concesionario de la marca (módulo Vehículos).</div>
 
@@ -89,13 +95,34 @@ export default {
     const m = computed(() => motorDeEquipo(props.eq));
     const fam = computed(() => (m.value && FAMILIAS[m.value.familia]) || FAMILIAS.otro);
     const horas = computed(() => Number(props.eq?.horometros?.hAprox || props.eq?.horometros?.hTomado || props.eq?.horometroActual) || 0);
-    const filas = computed(() => fam.value.pauta.map(t => {
-      const prox = proximaPorHoras(horas.value, t.horas);
-      return { ...t, prox, cerca: Boolean(prox && prox.faltan <= Math.max(50, t.horas * 0.1)) };
-    }));
+    const grupos = computed(() => {
+      const mapa = new Map();
+      fam.value.pauta.forEach(t => {
+        const k = t.horas > 0 ? t.horas : (t.extra === 'Diario' ? -1 : 1e9);
+        if (!mapa.has(k)) mapa.set(k, []);
+        mapa.get(k).push(t);
+      });
+      return [...mapa.entries()].sort((a, b) => a[0] - b[0]).map(([k, tareas]) => {
+        const prox = k > 0 && k < 1e9 ? proximaPorHoras(horas.value, k) : null;
+        return {
+          k, tareas, prox, cerca: Boolean(prox && prox.faltan <= Math.max(10, k * 0.1)),
+          titulo: k === -1 ? 'Diario (antes de arrancar)' : k === 1e9 ? 'Por tiempo o según condición' : (k === 50 ? 'Cada 50 h (o semanal)' : 'Cada ' + k.toLocaleString('es-CL') + ' h'),
+          icono: k === -1 ? 'fa-sun text-amber-500' : k === 1e9 ? 'fa-clock text-slate-500' : 'fa-gauge-high text-emerald-700'
+        };
+      });
+    });
+    const proxima = computed(() => {
+      const ints = [...new Set(fam.value.pauta.map(t => t.horas).filter(h => h >= 100 && h < 1e9))];
+      const ps = ints.map(i => proximaPorHoras(horas.value, i)).filter(Boolean);
+      if (!ps.length) return null;
+      const h = Math.min(...ps.map(p => p.prox));
+      return { h, faltan: Math.round(h - horas.value), incluye: ints.filter(i => h % i === 0).sort((a, b) => a - b) };
+    });
     const mismos = computed(() => (m.value ? equiposConMismoMotor(m.value.marca, m.value.modelo) : []));
     const colorConf = computed(() => COLOR_CONF[m.value?.confianza] || COLOR_CONF.Baja);
     const icono = (t) => ICONO_TIPO[t] || 'fa-wrench';
-    return { m, fam, horas, filas, mismos, colorConf, icono, verTodos };
+    const verbo = (t) => VERBO[t] || '';
+    const colorTipo = (t) => COLOR_TIPO[t] || 'text-slate-400';
+    return { m, fam, horas, grupos, proxima, verbo, colorTipo, mismos, colorConf, icono, verTodos };
   }
 };

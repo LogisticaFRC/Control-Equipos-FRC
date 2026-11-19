@@ -1038,3 +1038,10 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   (Perkins 1100 / 1104D / 1106 / 400 / 2500, Kubota 05 / V3800, Kohler KDW / KDI, Yanmar TNV, Volvo Penta TAD16, Cummins,
   Caterpillar, JCB 444). Si el AFI no está, busca por número sin prefijo y luego por equipo de la misma marca y modelo.
 - Para corregir un motor: editar su fila en MOTOR_POR_AFI. Sin SQL.
+
+## 2026-11-19 (d) · Pauta del fabricante completa por horas
+
+- Pestaña "Motor y fabricante": la pauta ahora muestra **todas las tareas agrupadas por intervalo** (Diario · 50 h · 100/200/250 h · 500 h · 1.000 h · 2.000 h · 3.000 h · 6.000 h · Por tiempo), con etiqueta Cambiar / Revisar / Limpiar.
+- Cada grupo muestra "próxima a las N h (faltan X h)" y arriba sale la **próxima mantención** y qué intervalos incluye (ej. 2.000 h = 500 + 1.000 + 2.000).
+- Datos en `js/core/motores-fabricante.js` (FAMILIAS → pauta). Intervalos referenciales; manda el OMM del motor. Sin SQL.
+- APP_VERSION '2026-11-19 pauta-horas'.

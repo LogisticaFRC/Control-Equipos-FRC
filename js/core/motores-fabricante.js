@@ -5,112 +5,162 @@ export const MOTOR_POR_AFI = {"090":["Verificar","(Perkins 1104D-44 / Cummins QS
 // CORE · MOTOR DE CADA EQUIPO + PAUTA DEL FABRICANTE · 2026-11-19
 // ---------------------------------------------------------------------
 // MOTOR_POR_AFI: motor identificado por N° de motor / chasis / ficha del fabricante (Excel Motores_equipos_FRC.xlsx).
-// FAMILIAS: manual del fabricante + intervalos principales de mantención (REFERENCIALES: manda el manual de cada motor).
+// FAMILIAS: manual del fabricante + pauta por horas (diario, 50, 250, 500, 1000, 2000, 3000, 6000 h) de mantención (REFERENCIALES: manda el manual de cada motor).
 // Para corregir un motor: editar la fila de su AFI en MOTOR_POR_AFI (o volver a generar desde el Excel).
 // =====================================================================
-const L = (tarea, horas, extra = '', tipo = 'cambiar') => ({ tarea, horas, extra, tipo });   // horas = intervalo (0 = solo por tiempo / diario)
+const L = (tarea, horas, extra = '', tipo = 'cambiar') => ({ tarea, horas, extra, tipo });   // horas = intervalo · 0 = diario (extra 'Diario') o solo por tiempo/condición
+const R = (tarea, horas, extra = '') => L(tarea, horas, extra, 'revisar');
+const LIMP = (tarea, horas, extra = '') => L(tarea, horas, extra, 'limpiar');
+const DIARIO = (extra = []) => [R('Nivel de aceite de motor', 0, 'Diario'), R('Nivel de refrigerante', 0, 'Diario'), R('Indicador de restricción del filtro de aire', 0, 'Diario'),
+  L('Drenar agua del separador / prefiltro de combustible', 0, 'Diario', 'limpiar'), R('Inspección visual: fugas, mangueras, correas, cables', 0, 'Diario'), ...extra];
+// Pauta tipo Perkins 1100/1106 (OMM Perkins: diario · 50 h · 500 h · 1000 h · 2000 h · 3000 h · 6000 h)
+const pautaPerkins = (valv = 2000) => [...DIARIO([R('Panel / alarmas y medidores del grupo', 0, 'Diario')]),
+  L('Drenar agua y sedimento del estanque de combustible', 50, 'o semanal', 'limpiar'), R('Batería: bornes y nivel de electrolito', 50, 'o semanal'),
+  L('Aceite de motor', 500, 'o 1 año'), L('Filtro de aceite', 500, 'o 1 año'), L('Filtro de combustible primario (separador)', 500, 'o 1 año'),
+  L('Filtro de combustible secundario', 500, 'o 1 año'), L('Filtro de aire (elemento)', 500, 'o antes si marca el indicador'),
+  R('Correas de alternador y ventilador: estado y tensión', 500), R('Mangueras y abrazaderas', 500), LIMP('Radiador y aftercooler (exterior)', 500),
+  R('Aditivo del refrigerante (SCA) si es refrigerante comercial', 500), R('Tierra / conexiones eléctricas del motor', 500),
+  L('Respiradero del cárter', 1000, '', 'limpiar'), R('Turbocompresor (juego y fugas)', 1000),
+  R('Juego de válvulas: inspeccionar / ajustar', valv, 'ver OMM de la versión'), R('Alternador y motor de arranque', 2000), R('Bomba de agua', 2000),
+  R('Soportes del motor', 2000), R('Inyectores: probar / cambiar', 3000), L('Termostato', 3000, 'o 2 años'),
+  L('Refrigerante comercial', 3000, 'o 2 años'), L('Refrigerante ELC Perkins', 6000, 'o 3 años'), L('Correas', 0, 'cambiar si están agrietadas o según OMM')];
 export const FAMILIAS = {
   perkins1100: {
     nombre: 'Perkins serie 1100 (1103 / 1104 A y C)', fabricante: 'Perkins',
     aceite: 'API CH-4 / CI-4 · SAE 15W-40 (según temperatura)',
     manuales: [{ t: 'Manual de Operación y Mantenimiento 1103/1104', u: 'https://www.manualslib.com/p/perkins+1104.html' }],
-    pauta: [L('Nivel de aceite y refrigerante, drenar separador de agua, inspección visual', 0, 'Diario', 'revisar'),
-      L('Aceite de motor y filtro de aceite', 500, 'o 1 año'), L('Filtros de combustible (primario y secundario)', 500, 'o 1 año'),
-      L('Filtro de aire', 500, 'o antes si marca el indicador'), L('Correas: revisar / ajustar', 500, '', 'revisar'),
-      L('Juego de válvulas (luz de válvulas)', 2000, 'ver OMM de la versión', 'revisar'),
-      L('Refrigerante', 3000, 'o 2 años · ELC Perkins: 6000 h o 3 años')]
+    pauta: pautaPerkins(2000)
   },
   perkins1104d: {
     nombre: 'Perkins 1104D / 1104D-E44 (electrónico)', fabricante: 'Perkins',
     aceite: 'API CI-4 / CJ-4 · SAE 15W-40',
     manuales: [{ t: 'OMM 1104D-E44T / E44TA (SEBU9066)', u: 'https://manualmachine.com/perkinsengine/1104de44t/4535590-service-manual' },
       { t: 'OMM 1104D mecánico (PDF)', u: 'https://www.bbapumps.com/content/files/BBA-Pumps/Support/User_manuals/Perkins%20Operation%20and%20Maintenance%20Manual%20-%201104D.pdf' }],
-    pauta: [L('Nivel de aceite y refrigerante, drenar separador de agua', 0, 'Diario', 'revisar'),
-      L('Aceite de motor y filtro', 500, 'o 1 año'), L('Filtros de combustible', 500, 'o 1 año'), L('Filtro de aire', 500, 'o según indicador'),
-      L('Correas y tensor', 500, '', 'revisar'), L('Juego de válvulas', 2000, '', 'revisar'),
-      L('Refrigerante', 3000, 'o 2 años · ELC: 6000 h o 3 años')]
+    pauta: [...pautaPerkins(2000), R('Sensores y arnés del ECM (motor electrónico)', 2000)]
   },
   perkins1106: {
     nombre: 'Perkins serie 1106 (7.0 L)', fabricante: 'Perkins',
     aceite: 'API CH-4 / CI-4 · SAE 15W-40',
     manuales: [{ t: 'OMM 1106A-70T / 70TA', u: 'https://manualmachine.com/perkinsengine/1106a70t/4535589-service-manual' },
       { t: 'OMM 1106C / 1106D-70TA (SEBU8731)', u: 'https://manualshive.com/en/manual/perkins/1106c-70ta/1530299' }],
-    pauta: [L('Nivel de aceite y refrigerante, drenar separador de agua', 0, 'Diario', 'revisar'),
-      L('Aceite de motor y filtro', 500, 'o 1 año'), L('Filtros de combustible', 500, 'o 1 año'), L('Filtro de aire', 500, 'o según indicador'),
-      L('Correas', 500, '', 'revisar'), L('Juego de válvulas', 2000, '', 'revisar'), L('Refrigerante', 3000, 'o 2 años · ELC: 6000 h o 3 años')]
+    pauta: [...pautaPerkins(2000), R('Amortiguador de vibraciones del cigüeñal', 2000)]
   },
   perkins400: {
     nombre: 'Perkins serie 400 (403 / 404)', fabricante: 'Perkins', aceite: 'API CH-4 · SAE 15W-40',
     manuales: [{ t: 'OMM serie 400 (PDF, referencia 402D-404D)', u: 'https://www.polarpower.com/wp-content/uploads/2014/12/Perkins_Operational_Manual.pdf' }],
-    pauta: [L('Nivel de aceite y refrigerante', 0, 'Diario', 'revisar'), L('Aceite de motor y filtro', 500, 'o 1 año (250 h en uso severo)'),
-      L('Filtro de combustible', 500, 'o 1 año'), L('Filtro de aire', 500, 'o según indicador'), L('Juego de válvulas', 1000, '', 'revisar'), L('Refrigerante', 3000, 'o 2 años')]
+    pauta: [...DIARIO(), L('Drenar agua del estanque de combustible', 50, 'o semanal', 'limpiar'), R('Batería', 50, 'o semanal'),
+      LIMP('Filtro de aire (limpiar)', 250, 'en polvo, antes'), R('Correa de alternador / ventilador', 250),
+      L('Aceite de motor', 500, 'o 1 año (250 h en uso severo)'), L('Filtro de aceite', 500, 'o 1 año'), L('Filtro de combustible', 500, 'o 1 año'),
+      L('Filtro de aire (elemento)', 500, 'o según indicador'), R('Mangueras y abrazaderas', 500), LIMP('Radiador (exterior)', 500),
+      R('Juego de válvulas', 1000), R('Inyectores', 1500, 'probar'), R('Alternador y motor de arranque', 2000), R('Bomba de agua', 2000),
+      L('Refrigerante', 3000, 'o 2 años'), L('Termostato', 3000, 'o 2 años')]
   },
   perkins2506: {
     nombre: 'Perkins serie 2500 (15 L)', fabricante: 'Perkins', aceite: 'API CI-4 · SAE 15W-40',
     manuales: [{ t: 'Pedir OMM al distribuidor Perkins con el N° de motor', u: 'https://www.perkins.com/en_GB/support/find-a-distributor.html' }],
-    pauta: [L('Nivel de aceite y refrigerante, drenar separador', 0, 'Diario', 'revisar'), L('Aceite de motor y filtros', 500, 'o 1 año'),
-      L('Filtros de combustible', 500, ''), L('Filtro de aire', 500, 'o según indicador'), L('Juego de válvulas', 2000, '', 'revisar')]
+    pauta: [...DIARIO([R('Panel / alarmas y medidores del grupo', 0, 'Diario')]), L('Drenar estanque de combustible', 50, 'o semanal', 'limpiar'),
+      R('Batería', 50, 'o semanal'), L('Aceite de motor', 500, 'o 1 año'), L('Filtros de aceite', 500, 'o 1 año'),
+      L('Filtros de combustible (primario y secundario)', 500), L('Filtro de aire', 500, 'o según indicador'), R('Correas', 500),
+      R('Mangueras y abrazaderas', 500), LIMP('Radiador y aftercooler (exterior)', 500), R('Aditivo del refrigerante (SCA)', 500),
+      L('Respiradero del cárter', 1000, '', 'limpiar'), R('Turbocompresores', 1000), R('Juego de válvulas', 2000),
+      R('Alternador, arranque y bomba de agua', 2000), R('Amortiguador de vibraciones', 2000), R('Inyectores', 3000, 'probar / cambiar'),
+      L('Termostatos', 3000, 'o 2 años'), L('Refrigerante comercial', 3000, 'o 2 años'), L('Refrigerante ELC', 6000, 'o 3 años')]
   },
   kubota05: {
     nombre: 'Kubota serie 05 (D1005 / D1105 / V2403)', fabricante: 'Kubota', aceite: 'API CF o superior · SAE 15W-40 (10W-30 en frío)',
     manuales: [{ t: "Operator's Manual Kubota E3 (D1005/D1105/V2403)", u: 'https://manualmachine.com/kubota/d902e3/23974478-operators-manual' },
       { t: 'Workshop Manual 05-E3B (PDF, taller)', u: 'https://media.toro.com/servicemanuals/Kubota05-E3B.pdf' }],
-    pauta: [L('Nivel de aceite, refrigerante y combustible', 0, 'Diario', 'revisar'), L('Limpiar filtro de aire', 100, '', 'limpiar'),
+    pauta: [R('Nivel de aceite de motor', 0, 'Diario'), R('Nivel de refrigerante', 0, 'Diario'), R('Nivel de combustible y fugas', 0, 'Diario'),
+      R('Inspección visual: correa, mangueras, cables', 0, 'Diario'),
+      R('Cañerías de combustible y abrazaderas', 50), L('Drenar agua del filtro / estanque', 50, '', 'limpiar'),
+      LIMP('Filtro de aire (limpiar elemento)', 100, 'más seguido con polvo'), R('Tensión de la correa del ventilador', 100),
       L('Aceite de motor', 200, 'primer cambio a las 50 h'), L('Filtro de aceite', 200, 'primer cambio a las 50 h'),
-      L('Filtro de combustible', 400, ''), L('Filtro de aire (elemento)', 0, 'cada 1 año o 6 limpiezas'),
-      L('Juego de válvulas', 800, '', 'revisar'), L('Inyectores (presión)', 1500, '', 'revisar'), L('Refrigerante y mangueras', 0, 'cada 2 años')]
+      R('Mangueras del radiador y abrazaderas', 200), R('Cañería de admisión de aire', 200),
+      L('Filtro de combustible', 400), LIMP('Radiador (interior / camisas de agua)', 500),
+      R('Juego de válvulas', 800), R('Inyectores (presión de inyección)', 1500), R('Bomba de inyección', 3000), R('Turbo (si tiene)', 3000),
+      L('Filtro de aire (elemento)', 0, 'cada 1 año o 6 limpiezas'), L('Refrigerante', 0, 'cada 2 años'),
+      L('Mangueras del radiador y cañerías de combustible', 0, 'cada 2 años'), L('Correa del ventilador', 0, 'según estado')]
   },
   kubotaV3800: {
     nombre: 'Kubota V3800', fabricante: 'Kubota', aceite: 'API CF/CJ-4 · SAE 15W-40',
     manuales: [{ t: "Operator's Manual V2403 / V3800", u: 'https://issuu.com/hydralada/docs/v2403_e5_manual' }],
-    pauta: [L('Nivel de aceite y refrigerante', 0, 'Diario', 'revisar'), L('Aceite de motor y filtro', 500, 'primer cambio a las 50 h'),
-      L('Filtro de combustible', 500, ''), L('Filtro de aire', 500, 'o 1 año'), L('Juego de válvulas', 800, '', 'revisar'), L('Refrigerante', 0, 'cada 2 años')]
+    pauta: [...DIARIO(), R('Cañerías de combustible y abrazaderas', 50), LIMP('Filtro de aire (limpiar)', 250, 'más seguido con polvo'),
+      R('Tensión y estado de la correa', 250), L('Aceite de motor', 500, 'primer cambio a las 50 h'), L('Filtro de aceite', 500, 'primer cambio a las 50 h'),
+      L('Filtro de combustible', 500), L('Elemento separador de agua', 500), R('Mangueras del radiador y admisión', 500), LIMP('Radiador (exterior)', 500),
+      R('Juego de válvulas', 800), L('Filtro de aire (elemento)', 1000, 'o 1 año'), R('Inyectores', 1500), R('Turbocompresor', 3000), R('Bomba de inyección', 3000),
+      L('Refrigerante', 0, 'cada 2 años'), L('Mangueras y cañerías de combustible', 0, 'cada 2 años')]
   },
   kohlerKDW: {
     nombre: 'Kohler KDW (702 / 1003 / 1404 / 1603)', fabricante: 'Kohler (Lombardini)', aceite: 'API CF-4 o superior · SAE 15W-40',
     manuales: [{ t: 'Owner Manual KDW 502-1404 (PDF oficial Kohler)', u: 'https://resources.kohler.com/power/kohler/enginesUS/pdf/OM_KDW_K-HEM_502_702_1003_1404_R_00_EN.pdf' }],
-    pauta: [L('Nivel de aceite y refrigerante, limpiar filtro de aire', 0, 'Diario / según polvo', 'revisar'), L('Aceite de motor y filtro', 250, 'primer cambio a las 50 h'),
-      L('Filtro de combustible', 500, ''), L('Filtro de aire', 500, 'o antes en ambiente con polvo'), L('Correa alternador', 500, '', 'revisar'),
-      L('Juego de válvulas', 1000, '', 'revisar'), L('Refrigerante', 0, 'cada 2 años')]
+    pauta: [R('Nivel de aceite de motor', 0, 'Diario'), R('Nivel de refrigerante', 0, 'Diario'), R('Filtro de aire en seco (estado)', 0, 'Diario'),
+      R('Inspección visual: fugas, correa, cables', 0, 'Diario'),
+      LIMP('Filtro de aire (limpiar)', 250, 'en polvo, cada 50-100 h'), L('Aceite de motor', 250, 'primer cambio a las 50 h'), L('Filtro de aceite', 250, 'primer cambio a las 50 h'),
+      R('Correa del alternador: tensión', 250), LIMP('Aletas del radiador', 250),
+      L('Filtro de combustible', 500), L('Filtro de aire (cartucho)', 500, 'o antes en ambiente con polvo'), R('Mangueras de refrigerante y combustible', 500),
+      R('Juego de válvulas', 1000), R('Inyectores (limpiar / calibrar)', 1000), LIMP('Estanque de combustible', 1000),
+      L('Correa dentada de distribución', 3000, 'o 2 años · si el motor la tiene'), L('Correa del alternador', 0, 'según estado'),
+      L('Refrigerante', 0, 'cada 2 años'), L('Mangueras de combustible', 0, 'cada 2 años')]
   },
   kohlerKDI: {
     nombre: 'Kohler KDI (1903 / 2504)', fabricante: 'Kohler', aceite: 'API CJ-4 · SAE 15W-40',
     manuales: [{ t: 'Owner Manual KDI 1903M / 2504M', u: 'https://manualmachine.com/kohler/kdi1903m/20998948-owners-manual' },
       { t: 'Oficial: iservice.lombardini.it → entrar como invitado', u: 'http://iservice.lombardini.it' }],
-    pauta: [L('Nivel de aceite y refrigerante', 0, 'Diario', 'revisar'), L('Aceite de motor y filtro', 500, 'primer cambio a las 50 h'),
-      L('Filtro de combustible', 500, ''), L('Filtro de aire', 500, 'o según indicador'), L('Correa poly-V', 1000, '', 'revisar'), L('Refrigerante', 0, 'cada 2 años')]
+    pauta: [...DIARIO(), LIMP('Filtro de aire (limpiar prefiltro)', 250, 'en polvo, antes'), R('Correa poly-V: estado y tensión', 250), LIMP('Aletas del radiador', 250),
+      L('Aceite de motor', 500, 'primer cambio a las 50 h'), L('Filtro de aceite', 500, 'primer cambio a las 50 h'), L('Filtro de combustible', 500),
+      L('Prefiltro / separador de agua', 500), L('Filtro de aire (cartucho)', 500, 'o según indicador'), R('Mangueras y abrazaderas', 500),
+      R('Respiradero del cárter (blow-by)', 1000), L('Correa poly-V', 2000, 'o según estado'), R('Inyectores', 3000),
+      L('Refrigerante', 0, 'cada 2 años'), L('Mangueras de combustible', 0, 'cada 2 años')]
   },
   yanmarTNV: {
     nombre: 'Yanmar TNV (2TNV70)', fabricante: 'Yanmar', aceite: 'API CD/CF o superior · SAE 15W-40',
     manuales: [{ t: 'Operation Manual serie TNV (PDF)', u: 'https://auroragenerators.com/wp-content/uploads/yanmar-tnv-operation-manual.pdf' }],
-    pauta: [L('Nivel de aceite y refrigerante', 0, 'Diario', 'revisar'), L('Aceite de motor y filtro', 250, 'primer cambio a las 50 h'),
-      L('Filtro de combustible', 500, ''), L('Filtro de aire', 500, 'limpiar cada 250 h'), L('Juego de válvulas', 1000, '', 'revisar'), L('Refrigerante', 0, 'cada 1 año o 2000 h')]
+    pauta: [R('Nivel de aceite de motor', 0, 'Diario'), R('Nivel de refrigerante', 0, 'Diario'), R('Combustible y fugas', 0, 'Diario'), R('Correa y mangueras (visual)', 0, 'Diario'),
+      L('Drenar separador de agua y estanque', 50, '', 'limpiar'), R('Batería', 50),
+      L('Aceite de motor', 250, 'primer cambio a las 50 h'), L('Filtro de aceite', 250, 'primer cambio a las 50 h'), LIMP('Filtro de aire (limpiar)', 250),
+      R('Tensión de la correa del ventilador', 250), LIMP('Aletas del radiador', 250),
+      L('Filtro de combustible', 500), LIMP('Separador de agua (elemento)', 500), L('Filtro de aire (elemento)', 500), R('Mangueras de combustible y refrigerante', 500),
+      R('Juego de válvulas', 1000), R('Inyectores', 1500, 'limpiar / probar'), L('Refrigerante', 2000, 'o 1 año'),
+      L('Mangueras de combustible y refrigerante', 0, 'cada 2 años')]
   },
   volvoTAD16: {
     nombre: 'Volvo Penta TAD1641/1642GE (16 L)', fabricante: 'Volvo Penta', aceite: 'VDS-3 o superior · SAE 15W-40',
     manuales: [{ t: "Operator's Manual 16 L generador (PDF)", u: 'https://www.wincogen.com/wp-content/uploads/PD/Engines/volvo_tad1641ge_opm.pdf' }],
-    pauta: [L('Nivel de aceite y refrigerante, indicador filtro de aire', 0, 'Diario', 'revisar'), L('Aceite de motor y filtros de aceite', 500, 'o 12 meses'),
-      L('Filtros de combustible y prefiltro', 500, 'o 12 meses'), L('Filtro de aire', 0, 'según indicador / 12 meses'), L('Correas', 500, '', 'revisar'),
-      L('Juego de válvulas', 2000, '', 'revisar'), L('Refrigerante', 0, 'según manual (VCS: hasta 6000 h)')]
+    pauta: [...DIARIO([R('Panel / alarmas y medidores del grupo', 0, 'Diario')]), R('Batería: nivel y bornes', 50, 'o semanal'),
+      L('Aceite de motor', 500, 'o 12 meses'), L('Filtros de aceite (y bypass)', 500, 'o 12 meses'), L('Filtros de combustible', 500, 'o 12 meses'),
+      L('Prefiltro de combustible (separador)', 500, 'o 12 meses'), R('Correas y tensor', 500), R('Mangueras y abrazaderas', 500),
+      LIMP('Radiador e intercooler (exterior)', 500), R('Concentración del refrigerante', 500), L('Filtro de aire', 0, 'según indicador / 12 meses'),
+      R('Juego de válvulas y unidades inyectoras', 2000), R('Turbocompresor', 2000), L('Correas', 2000, 'o según estado'),
+      L('Refrigerante VCS', 6000, 'o 4 años · revisar manual')]
   },
   cummins: {
     nombre: 'Cummins (modelo exacto según ESN)', fabricante: 'Cummins', aceite: 'CES 20081 (CI-4) / CES 20086 (CK-4) · SAE 15W-40',
     manuales: [{ t: 'QuickServe Online: ingresar el ESN de 8 dígitos (cuenta gratis)', u: 'https://quickserve.cummins.com' }],
-    pauta: [L('Nivel de aceite y refrigerante, drenar separador de agua', 0, 'Diario', 'revisar'), L('Aceite de motor y filtro', 500, 'o 6 meses (250 h en uso severo)'),
-      L('Filtros de combustible', 500, ''), L('Filtro de aire', 0, 'según indicador de restricción'), L('Correas y tensor', 1000, '', 'revisar'),
-      L('Juego de válvulas', 2000, 'según modelo', 'revisar'), L('Refrigerante', 6000, 'o 2 años')]
+    pauta: [...DIARIO([R('Ventilador y cubrecorrea', 0, 'Diario')]), R('Batería: bornes y nivel', 50, 'o semanal'),
+      L('Aceite de motor', 500, 'o 6 meses (250 h en uso severo)'), L('Filtro de aceite', 500, 'o 6 meses'), L('Filtros de combustible', 500, 'o 6 meses'),
+      R('Concentración anticongelante / SCA', 500), R('Tubería de admisión y charge air cooler', 500), R('Mangueras y abrazaderas', 500),
+      LIMP('Radiador y CAC (exterior)', 500), L('Filtro de aire', 0, 'según indicador de restricción'),
+      R('Correas y tensor', 1000), R('Ventilador y maza', 1000), R('Juego de válvulas', 2000, 'según modelo (B: 2000 h; ISB/QSB: 5000 h)'),
+      R('Amortiguador de vibraciones', 2000), R('Turbocompresor', 2000), L('Refrigerante', 6000, 'o 2 años')]
   },
   cat: {
     nombre: 'Caterpillar', fabricante: 'Caterpillar', aceite: 'Cat DEO / API CK-4 · SAE 15W-40',
     manuales: [{ t: 'Pedir OMM a Finning (distribuidor Cat) con el N° de serie de la máquina', u: 'https://parts.cat.com' }],
-    pauta: [L('Nivel de aceite y refrigerante', 0, 'Diario', 'revisar'), L('Aceite de motor y filtro', 500, ''), L('Filtros de combustible', 500, ''),
-      L('Filtro de aire', 0, 'según indicador'), L('Juego de válvulas', 1000, 'C3.3B / C4.4: verificar OMM', 'revisar'), L('Refrigerante ELC', 6000, 'o 3 años')]
+    pauta: [...DIARIO([R('Cinturón de seguridad / alarmas (máquina)', 0, 'Diario')]), R('Batería', 50, 'o semanal'),
+      L('Aceite de motor', 500, ''), L('Filtro de aceite', 500, ''), L('Filtro de combustible primario', 500, ''), L('Filtro de combustible secundario', 500, ''),
+      R('Correas: estado y tensión', 500), R('Mangueras y abrazaderas', 500), LIMP('Radiador (exterior)', 500), L('Filtro de aire', 0, 'según indicador'),
+      R('Juego de válvulas', 1000, 'C3.3B / C4.4: verificar OMM'), R('Respiradero del cárter', 1000), R('Turbo', 2000),
+      R('Alternador, arranque y bomba de agua', 2000), R('Soportes del motor', 2000), R('Inyectores', 3000), L('Termostato', 3000),
+      L('Refrigerante ELC', 6000, 'o 3 años')]
   },
   jcb444: {
     nombre: 'JCB 444 DieselMax (4.4 L)', fabricante: 'JCB', aceite: 'JCB Engine Oil EP 15W-40 (API CI-4)',
     manuales: [{ t: 'Pedir al distribuidor JCB con el N° 320/xxxxx del motor', u: 'https://www.jcb.com' }],
-    pauta: [L('Nivel de aceite y refrigerante', 0, 'Diario', 'revisar'), L('Aceite de motor y filtro', 500, 'o 1 año'), L('Filtros de combustible', 500, ''),
-      L('Filtro de aire', 500, 'o según indicador'), L('Juego de válvulas', 1000, '', 'revisar'), L('Refrigerante', 0, 'cada 2 años')]
+    pauta: [...DIARIO(), R('Batería y bornes', 50, 'o semanal'), LIMP('Prefiltro / filtro de aire exterior (limpiar)', 250, 'según polvo'),
+      L('Aceite de motor', 500, 'o 1 año'), L('Filtro de aceite', 500, 'o 1 año'), L('Filtro de combustible', 500), L('Prefiltro / separador de agua', 500),
+      L('Filtro de aire exterior', 500, 'o según indicador'), R('Correa poly-V y tensor', 500), R('Mangueras y abrazaderas', 500), LIMP('Radiador y enfriadores', 500),
+      L('Filtro de aire interior (seguridad)', 1000, 'o cada 3 cambios del exterior'), R('Juego de válvulas', 1000), R('Turbo y respiradero', 1000),
+      L('Correa poly-V', 2000), R('Inyectores', 3000), L('Refrigerante', 0, 'cada 2 años')]
   },
   vehiculo: { nombre: 'Vehículo', fabricante: '', aceite: 'Según manual del vehículo', manuales: [{ t: 'Pauta y manual del concesionario de la marca (se mantiene por km)', u: '' }], pauta: [] },
   sinmotor: { nombre: 'Sin motor de combustión', fabricante: '', aceite: '', manuales: [], pauta: [] },
