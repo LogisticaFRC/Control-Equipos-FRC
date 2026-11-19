@@ -1,6 +1,7 @@
 // =====================================================================
 // CONFIG & USUARIOS · Lógica (login, usuarios, personalización, exportación total)
 // =====================================================================
+import * as OFF from '../../core/offline.js';   // aviso de reportes sin enviar al salir (2026-11-19)
 import { supabaseClient, emailDeUsuario } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
 import { exportarTodoExcel } from '../../core/exportar-todo.js';
@@ -59,7 +60,17 @@ export const login = async () => {
   }
 };
 
-export const logout = () => cerrarSesion();
+// 2026-11-19: no salir sin avisar si quedan reportes guardados en el equipo sin enviar
+export const logout = () => {
+  const n = OFF.pendientes.value || 0;
+  if (n > 0) {
+    const msg = OFF.sinSenal()
+      ? `Tienes ${n} reporte(s) guardado(s) en este equipo SIN ENVIAR y no hay señal.\n\nNo se borran, pero si sales NO podrás volver a entrar hasta tener internet.\n\n¿Salir igual?`
+      : `Tienes ${n} reporte(s) guardado(s) en este equipo que aún no se envían.\n\nEspera a que la barra de envíos llegue a 0 antes de salir.\n\n¿Salir igual?`;
+    if (!window.confirm(msg)) { OFF.sincronizar?.(); return; }
+  }
+  cerrarSesion();
+};
 
 // ---------- Cambio de contraseña (propia) ----------
 export const MIN_CLAVE = 10;

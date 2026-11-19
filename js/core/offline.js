@@ -345,6 +345,8 @@ export const descartarPendiente = async (id) => { await idbDel('cola', id); awai
 let iniciado = false;
 export const iniciarOffline = () => {
   if (iniciado) return; iniciado = true;
+  // pedir al navegador que NO borre los datos guardados (reportes sin enviar) aunque falte espacio
+  try { navigator.storage?.persist?.().catch(() => {}); } catch (_) { /* navegador antiguo */ }
   window.addEventListener('online', () => { marcarRed(true); programarSync(1500); });
   window.addEventListener('offline', () => { enLinea.value = false; });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && pendientes.value) programarSync(500); });

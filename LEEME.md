@@ -1058,3 +1058,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Se sacaron los enlaces a manualslib / manualmachine / manualshive / issuu (daban 403 o bloqueo). Ahora son PDF directos o portales oficiales.
 - Español: Perkins (manual Modasa de grupos con motores Perkins), Kubota D1005/D1105, Kohler KDW (PDF oficial multilenguaje) y KDI (PDF oficial), JCB 3CX y 533-105, Cat 427F2 (motor C4.4), Cummins QuickServe, Cat Parts.
 - Enlaces con rel="noreferrer". APP_VERSION '2026-11-19 manuales-pdf'. Sin SQL.
+
+## 2026-11-19 (g) · Que no se pierda nada sin señal
+
+- Al presionar "Salir" con reportes guardados sin enviar, aparece un aviso con la cantidad (y si no hay señal, advierte que no podrá volver a entrar hasta tener internet). Cancelar intenta enviarlos.
+- offline.js pide al navegador almacenamiento persistente (navigator.storage.persist) para que no borre los reportes guardados aunque falte espacio.
+- APP_VERSION '2026-11-19 salir-seguro'. Sin SQL.
