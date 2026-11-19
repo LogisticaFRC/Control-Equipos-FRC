@@ -22,6 +22,7 @@ import { listaCausas } from '../historial/historial.service.js';
 import { ACEITES } from '../historial/historial.mapper.js';
 import { naveDeAfi } from '../taller/taller.service.js';   // TALLER: solo equipos en nave (2026-11-17)
 import { crearFallasDeInspeccion, marcarFallaReparada, fallaPorId, textoFalla, asegurarFallas, SQL_FALLAS, dbProblemasRef } from './fallas-equipo.js';   // 2026-11-18
+import * as OFF from '../../core/offline.js';   // SIN INTERNET (2026-11-19)
 import { hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 
 const { ref, computed } = Vue;
@@ -163,7 +164,7 @@ export const carpetasPanel = computed(() => {
 });
 export const carpetaPanel = ref('');   // usuario elegido en el panel ('' = todas)
 export const ESTADOS_MEC = {
-  LEVANTAMIENTO: { t: 'OT de Fallas creada', c: 'bg-amber-100 text-amber-800 border-amber-300', i: 'fa-list-ol' },
+  LEVANTAMIENTO: { t: 'OT Terreno creada', c: 'bg-amber-100 text-amber-800 border-amber-300', i: 'fa-list-ol' },
   PENDIENTE_FIRMA: { t: 'Falta firma supervisor', c: 'bg-amber-100 text-amber-800 border-amber-300', i: 'fa-hourglass-half' },
   FIRMADA: { t: 'Firmada (pasando al Historial)', c: 'bg-sky-100 text-sky-800 border-sky-300', i: 'fa-signature' },
   EN_HISTORIAL: { t: 'En el Historial', c: 'bg-emerald-100 text-emerald-800 border-emerald-300', i: 'fa-circle-check' },
@@ -299,7 +300,7 @@ export const faltantes = (f) => {
   if (!f.hora_inicio) x.push('Hora inicio');
   if (!f.hora_termino) x.push('Hora término');
   if (f.modo != null) {   // formato nuevo (2026-11-18) · registros antiguos (modo null) siguen como antes
-    if (!f.modo) x.push('Elegir: OT de Fallas o Reparación');
+    if (!f.modo) x.push('Elegir: OT Terreno o Reparación');
     if (f.hora_inicio && f.hora_termino && duracionMin(f) == null) x.push('El término no puede ser antes del inicio');
     if (f.modo === 'INSPECCION') {
       if (!String(f.descripcion || '').trim()) x.push('Observación del equipo');
@@ -356,69 +357,122 @@ const filaDB = (f) => ({
 });
 
 export const enviando = ref(false);
+const etiquetaInt = (f) => `${f.modo === 'INSPECCION' ? 'OT Terreno' : f.modo === 'REPARACION' ? 'Reparación' : 'Intervención'} · AFI ${f.afi}`;
+/** SIN INTERNET (2026-11-19): el report completo queda guardado en el equipo y se envía solo al volver la señal. */
+const guardarSinSenal = async (f) => {
+  const datos = JSON.parse(JSON.stringify(f));
+  datos._usuario = usuarioActivo.value?.usuario || null;
+  await OFF.guardarTrabajo('intervencion', datos, etiquetaInt(f));
+  try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
+  formInt.value = null; equipoSel.value = null; tabApp.value = 'inicio';
+  avisoApp('Sin señal: el report quedó guardado en el equipo y se enviará solo al volver internet.');
+};
 /** Envía desde la app. Si el supervisor firmó ahí mismo, pasa directo al Historial. */
 export const enviarIntervencion = async () => {
   const f = formInt.value;
   const falta = faltantes(f);
   if (falta.length) return alert('Falta completar:\n• ' + falta.join('\n• '));
+  const offline = OFF.dispositivoOffline();
+  if (offline && OFF.sinSenal()) return guardarSinSenal(f);
   enviando.value = true;
   try {
-    const fila = filaDB(f);
-    const esLev = f.modo === 'INSPECCION';   // el levantamiento se CREA sin firmas (las llevan las reparaciones)
-    const conFirma = !esLev && f.supervisor?.modo === 'AHORA';
-    if (esLev) { fila.hora_inicio = null; fila.hora_termino = null; fila.fecha_termino = null; fila.duracion_min = null; fila.lubricantes = []; fila.uso_art = false; fila.bloqueo = false; fila.art_fotos = []; fila.bloqueo_foto = null; fila.terminado = true; }
-    fila.supervisor = conFirma ? { nombre: f.supervisor.nombre.trim(), empresa: String(f.supervisor.empresa || '').trim(), tipo: f.supervisor.tipo || 'CLIENTE', firma: f.supervisor.firma, fecha: new Date().toISOString() } : null;
-    fila.estado = esLev ? 'LEVANTAMIENTO' : conFirma ? 'FIRMADA' : 'PENDIENTE_FIRMA';
-    fila.motivo_rechazo = null;
-    let reg;
-    if (f.id) reg = (await sb(supabaseClient.from(TABLA_MEC).update(fila).eq('id', f.id).select()))[0];
-    else reg = (await sb(supabaseClient.from(TABLA_MEC).insert([{ ...fila, creado_por: usuarioActivo.value?.usuario || null }]).select()))[0];
-    // Fallas del equipo (2026-11-18): la inspección las deja abiertas · la reparación cierra la elegida
-    let avisoFallas = '';
-    if (reg && f.modo === 'INSPECCION' && fila.fallas.length) {
-      try {
-        const conId = await crearFallasDeInspeccion(reg, fila.fallas);
-        await sb(supabaseClient.from(TABLA_MEC).update({ fallas: conId }).eq('id', reg.id));
-        reg.fallas = conId;
-        avisoFallas = ` ${conId.length} falla(s) quedaron abiertas en el equipo.`;
-        // el equipo queda FUERA DE SERVICIO hasta reparar todas las fallas del levantamiento
-        try { const d = await sb(supabaseClient.rpc('frc_levantamiento_fs', { p_id: reg.id })); if (d) { reg.disp_anterior = reg.disp_anterior || 'SI'; dispLocal(reg.afi, d); avisoFallas += ' El equipo quedó FUERA DE SERVICIO.'; } }
-        catch (err) { console.warn('[Mecánicos] No se pudo dejar fuera de servicio:', errMsg(err)); }
-      } catch (err) { alert((/intervencion_id|tipo_intervencion|reparacion_id|null value|column|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero las fallas no quedaron en el equipo: ' + errMsg(err)); }
-    }
-    if (reg && f.modo === 'REPARACION' && f.falla_id && fallaPorId(f.falla_id)?.estado !== 'REPARADO') {
-      try {
-        const d = await marcarFallaReparada(f.falla_id, reg); avisoFallas = ' La falla quedó reparada en el equipo.';
-        if (d) { dispLocal(reg.afi, d); avisoFallas += ` OT de Fallas completa: el equipo volvió a "${d}".`; }
-      }
-      catch (err) { alert((/frc_falla_reparada|function|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero la falla no se marcó reparada: ' + errMsg(err)); }
-    }
-    try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
-    formInt.value = null;
-    if (esLev) {   // vuelve al equipo: ahí aparece la carpeta del levantamiento con sus fallas y el botón Reparar
-      if (reg && !dbMec.value.some(x => x.id === reg.id)) dbMec.value = [reg, ...dbMec.value];
-      tabApp.value = 'equipos';
-      avisoApp(`OT de Fallas N° ${reg ? folioOF(reg) : ''} creada ✔` + avisoFallas + ' Repáralas desde su carpeta.');
-      await cargarMec();
-      return;
-    }
-    equipoSel.value = null; tabApp.value = 'registros';   // vuelve a "Mis documentos"
-    carpetaApp.value = fila.estado === 'FIRMADA' ? 'REALIZADOS' : 'SIN_FIRMA';
-
-    if (conFirma && reg) {
-      const ok = await pasarAHistorial(reg);
-      avisoApp((ok ? '¡Enviada y guardada en el Historial! ✔' : 'Enviada. Quedó firmada; se pasará al Historial desde el panel.') + avisoFallas);
-    } else if (reg && f.modo === 'REPARACION') {   // 2026-11-18: la reparación queda en el Historial al enviarla
-      const ok = await pasarAHistorial(reg, { provisional: true });
-      avisoApp((ok ? '¡Enviada y registrada en el Historial! Falta la firma del supervisor.' : '¡Enviada! Queda pendiente la firma del supervisor.') + avisoFallas);
-    } else {
-      avisoApp('¡Enviada! Queda pendiente la firma del supervisor.' + avisoFallas);
-    }
-    await cargarMec();
+    await OFF.enDirecto(() => procesarIntervencion(f, { ui: true }));
   } catch (err) {
+    if (offline && err && err.antesDeGuardar && OFF.esErrorRed(err)) return guardarSinSenal(f);   // se cortó al enviar: queda guardado
     const m = errMsg(err);
     alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min|levantamiento_id|art_fotos|bloqueo_foto|codigo_repuesto|serie_motor|fecha_falla|disp_anterior|ot_fallas_folio|folio_falla)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
   } finally { enviando.value = false; }
+};
+/** Lo que hace el envío (se usa al enviar con señal y al subir un report guardado sin señal). ui=false: sin pantallas ni alertas. */
+const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) => {
+  const avisar = (t) => (ui ? alert(t) : console.warn('[Envío guardado]', t));
+  const fila = filaDB(f);
+  const esLev = f.modo === 'INSPECCION';   // el levantamiento se CREA sin firmas (las llevan las reparaciones)
+  const conFirma = !esLev && f.supervisor?.modo === 'AHORA';
+  if (esLev) { fila.hora_inicio = null; fila.hora_termino = null; fila.fecha_termino = null; fila.duracion_min = null; fila.lubricantes = []; fila.uso_art = false; fila.bloqueo = false; fila.art_fotos = []; fila.bloqueo_foto = null; fila.terminado = true; }
+  fila.supervisor = conFirma ? { nombre: f.supervisor.nombre.trim(), empresa: String(f.supervisor.empresa || '').trim(), tipo: f.supervisor.tipo || 'CLIENTE', firma: f.supervisor.firma, fecha: new Date().toISOString() } : null;
+  fila.estado = esLev ? 'LEVANTAMIENTO' : conFirma ? 'FIRMADA' : 'PENDIENTE_FIRMA';
+  fila.motivo_rechazo = null;
+  let reg;
+  try {
+    if (f.id) reg = (await sb(supabaseClient.from(TABLA_MEC).update(fila).eq('id', f.id).select()))[0];
+    else reg = (await sb(supabaseClient.from(TABLA_MEC).insert([{ ...fila, creado_por: f._usuario || usuarioActivo.value?.usuario || null }]).select()))[0];
+  } catch (err) { if (err && typeof err === 'object') err.antesDeGuardar = true; throw err; }
+  if (reg && alInsertar) await alInsertar(reg.id);
+  // Fallas del equipo (2026-11-18): la inspección las deja abiertas · la reparación cierra la elegida
+  let avisoFallas = '';
+  if (reg && f.modo === 'INSPECCION' && fila.fallas.length) {
+    try {
+      const conId = await crearFallasDeInspeccion(reg, fila.fallas);
+      await sb(supabaseClient.from(TABLA_MEC).update({ fallas: conId }).eq('id', reg.id));
+      reg.fallas = conId;
+      avisoFallas = ` ${conId.length} falla(s) quedaron abiertas en el equipo.`;
+      // el equipo queda FUERA DE SERVICIO hasta reparar todas las fallas del levantamiento
+      try { const d = await sb(supabaseClient.rpc('frc_levantamiento_fs', { p_id: reg.id })); if (d) { reg.disp_anterior = reg.disp_anterior || 'SI'; dispLocal(reg.afi, d); avisoFallas += ' El equipo quedó FUERA DE SERVICIO.'; } }
+      catch (err) { console.warn('[Mecánicos] No se pudo dejar fuera de servicio:', errMsg(err)); }
+    } catch (err) { avisar((/intervencion_id|tipo_intervencion|reparacion_id|null value|column|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero las fallas no quedaron en el equipo: ' + errMsg(err)); }
+  }
+  if (reg && f.modo === 'REPARACION' && f.falla_id && fallaPorId(f.falla_id)?.estado !== 'REPARADO') {
+    try {
+      const d = await marcarFallaReparada(f.falla_id, reg); avisoFallas = ' La falla quedó reparada en el equipo.';
+      if (d) { dispLocal(reg.afi, d); avisoFallas += ` OT Terreno completa: el equipo volvió a "${d}".`; }
+    }
+    catch (err) { avisar((/frc_falla_reparada|function|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero la falla no se marcó reparada: ' + errMsg(err)); }
+  }
+  if (!ui) {   // report guardado sin señal: solo los pasos al Historial
+    if (conFirma && reg) await pasarAHistorial(reg);
+    else if (reg && f.modo === 'REPARACION') await pasarAHistorial(reg, { provisional: true });
+    return reg;
+  }
+  try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
+  formInt.value = null;
+  if (esLev) {   // vuelve al equipo: ahí aparece la carpeta del levantamiento con sus fallas y el botón Reparar
+    if (reg && !dbMec.value.some(x => x.id === reg.id)) dbMec.value = [reg, ...dbMec.value];
+    tabApp.value = 'equipos';
+    avisoApp(`OT Terreno N° ${reg ? folioOF(reg) : ''} creada ✔` + avisoFallas + ' Repáralas desde su carpeta.');
+    await cargarMec();
+    return reg;
+  }
+  equipoSel.value = null; tabApp.value = 'registros';   // vuelve a "Mis documentos"
+  carpetaApp.value = fila.estado === 'FIRMADA' ? 'REALIZADOS' : 'SIN_FIRMA';
+
+  if (conFirma && reg) {
+    const ok = await pasarAHistorial(reg);
+    avisoApp((ok ? '¡Enviada y guardada en el Historial! ✔' : 'Enviada. Quedó firmada; se pasará al Historial desde el panel.') + avisoFallas);
+  } else if (reg && f.modo === 'REPARACION') {   // 2026-11-18: la reparación queda en el Historial al enviarla
+    const ok = await pasarAHistorial(reg, { provisional: true });
+    avisoApp((ok ? '¡Enviada y registrada en el Historial! Falta la firma del supervisor.' : '¡Enviada! Queda pendiente la firma del supervisor.') + avisoFallas);
+  } else {
+    avisoApp('¡Enviada! Queda pendiente la firma del supervisor.' + avisoFallas);
+  }
+  await cargarMec();
+  return reg;
+};
+// Report guardado sin señal → se envía completo al volver internet (core/offline.js)
+OFF.registrarTrabajo('intervencion', async (datos, progreso) => {
+  if (!dbProblemasRef().value.length) await asegurarFallas(true).catch(() => {});
+  await procesarIntervencion(datos, { ui: false, alInsertar: async (id) => { datos.id = id; await progreso(datos); } });
+});
+
+// ---------- OT TERRENO ABIERTAS en el menú de la app (2026-11-19) ----------
+/** OT Terreno con fallas sin reparar de los equipos que ve el técnico (las más nuevas primero). */
+export const otTerrenoAbiertas = computed(() => {
+  const visibles = new Set(dbEquipos.value.filter(e => !esCrtg.value || esEquipoCrtg(e)).map(e => limpiarAfi(e.afi)));
+  return dbMec.value
+    .filter(r => r.modo === 'INSPECCION' && (r.fallas || []).length && visibles.has(limpiarAfi(r.afi)))
+    .map(r => ({ r, av: avanceLevantamiento(r), eq: dbEquipos.value.find(e => mismoAfi(e.afi, r.afi)) || null }))
+    .filter(o => o.av.total > o.av.listas)
+    .sort((a, b) => String(b.r.fecha || '').localeCompare(String(a.r.fecha || '')) || b.r.id - a.r.id);
+});
+/** Carpeta (OT Terreno) que se abre al entrar desde el menú. */
+export const levAbrir = ref(null);
+export const abrirOTTerreno = (o) => {
+  const e = o.eq || dbEquipos.value.find(x => mismoAfi(x.afi, o.r.afi));
+  if (!e) return alert(`No se encontró el equipo AFI ${o.r.afi}.`);
+  tabApp.value = 'equipos';
+  abrirEquipo(e);
+  levAbrir.value = o.r.id;
+  window.scrollTo(0, 0);
 };
 
 // ---------- PDF con el formato oficial ----------
@@ -476,7 +530,7 @@ export const descargarPDF = async (r) => {
   try {
     const blob = await generarPDF(r);
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `${r.modo === 'INSPECCION' ? 'OT de Fallas ' + (r.tipo === 'ELECTRICA' ? 'electrico' : 'mecanico') : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
+    a.download = `${r.modo === 'INSPECCION' ? 'OT Terreno ' + (r.tipo === 'ELECTRICA' ? 'electrico' : 'mecanico') : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   } catch (err) { alert('No se pudo generar el PDF: ' + errMsg(err)); }
 };
@@ -519,16 +573,16 @@ export const pasarAHistorial = async (r, opciones = {}) => {
       mecanico_1: mecs[0] || '', mecanico_2: mecs[1] || '', mecanico_3: mecs[2] || '', mecanico_4: mecs[3] || '',
       bloqueo_de_equipo: r.bloqueo ? 'SI' : 'NO', hora_falla: r.hora_falla || '', hora_inicio: r.hora_inicio || '', hora_termino: r.hora_termino || '',
       hora_total: r.duracion_min != null ? String(Math.round(r.duracion_min / 6) / 10) : String(calcularRestaHoras(r.hora_inicio, r.hora_termino) || ''),
-      causa_intervencion: r.modo === 'INSPECCION' ? `OT DE FALLAS (${(r.fallas || []).length})` : (r.tipo === 'ELECTRICA' ? (r.causa_falla || r.causa_intervencion) : r.causa_intervencion) || '', descripcion: [r.modo === 'INSPECCION' ? 'OBSERVACIÓN: ' + (r.descripcion || '') : (r.descripcion || ''),
+      causa_intervencion: r.modo === 'INSPECCION' ? `OT TERRENO (${(r.fallas || []).length})` : (r.tipo === 'ELECTRICA' ? (r.causa_falla || r.causa_intervencion) : r.causa_intervencion) || '', descripcion: [r.modo === 'INSPECCION' ? 'OBSERVACIÓN: ' + (r.descripcion || '') : (r.descripcion || ''),
         ...(r.modo === 'INSPECCION' ? (r.fallas || []).map(i => `Falla ${i.n}: ${i.sistema ? i.sistema + ' · ' : ''}${i.descripcion}`) : []),
-        r.modo === 'REPARACION' && r.falla_texto ? 'Falla reparada: ' + r.falla_texto + (r.levantamiento_id ? ` (OT de Fallas N° ${r.ot_fallas_folio || r.levantamiento_id})` : '') : '',
+        r.modo === 'REPARACION' && r.falla_texto ? 'Falla reparada: ' + r.falla_texto + (r.levantamiento_id ? ` (OT Terreno N° ${r.ot_fallas_folio || r.levantamiento_id})` : '') : '',
         r.fecha_termino && r.fecha_termino !== r.fecha ? `Término: ${r.fecha_termino} ${r.hora_termino || ''}` : '', ...extras].filter(Boolean).join('\n'),
       interferencia: r.interferencia || '', empresa: r.usuario_arriendo || '', link: url,
       art: r.uso_art ? 'SI' : 'NO', numero_folio: `APP-${r.id}`,
       causa_falla: r.tipo === 'MECANICA' && ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'].includes(r.causa_falla) ? r.causa_falla : '',
       ...aceites
     };
-    if (r.modo === 'REPARACION' && r.ot_fallas_folio) payload.numero_ot = 'OTF-' + r.ot_fallas_folio;   // N° OT del Historial = OT de Fallas
+    if (r.modo === 'REPARACION' && r.ot_fallas_folio) payload.numero_ot = 'OTF-' + r.ot_fallas_folio;   // N° OT del Historial = OT Terreno
     let data;
     if (r.historial_id) {   // ya estaba en el Historial (enviada sin firma): solo se cambia el documento
       await sb(supabaseClient.rpc('frc_historial_doc_app', { p_hist: r.historial_id, p_link: url }));
@@ -630,7 +684,7 @@ export const exportarTiempos = () => {
     const min = r.duracion_min != null ? r.duracion_min : duracionMin({ ...r, fecha_termino: r.fecha_termino || r.fecha });
     return {
       'N° report': r.id, Tipo: r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica',
-      Trabajo: r.modo === 'INSPECCION' ? 'OT de Fallas' : r.modo === 'REPARACION' ? 'Reparación' : 'Intervención (formato antiguo)',
+      Trabajo: r.modo === 'INSPECCION' ? 'OT Terreno' : r.modo === 'REPARACION' ? 'Reparación' : 'Intervención (formato antiguo)',
       AFI: r.afi, Equipo: r.equipo || '', Lugar: r.lugar || '',
       'Falla / título': r.modo === 'INSPECCION' ? `${(r.fallas || []).length} falla(s) encontradas` : (r.tipo === 'ELECTRICA' ? r.causa_falla : r.causa_intervencion) || '',
       'Fallas encontradas': r.modo === 'INSPECCION' ? (r.fallas || []).map(i => `${i.n}. ${i.descripcion}`).join(' | ') : '',
@@ -667,15 +721,15 @@ export const avanceLevantamiento = (r) => { const l = fallasDeLevantamiento(r); 
 export const dispLocal = (afi, disp) => { const e = dbEquipos.value.find(x => mismoAfi(x.afi, afi)); if (e && disp) e.disponibilidad = disp; if (equipoSel.value && mismoAfi(equipoSel.value.afi, afi) && disp) equipoSel.value.disponibilidad = disp; };
 /** Admin: borra un levantamiento sin reparaciones (y sus fallas); devuelve la disponibilidad si lo había dejado fuera de servicio. */
 export const borrarLevantamiento = async (r) => {
-  if (!esSupervisorMec.value) return alert('Solo un Admin puede borrar una OT de Fallas.');
-  if (!confirm(`¿Borrar la OT de Fallas N° ${folioOF(r)} (AFI ${r.afi}) y sus ${(r.fallas || []).length} falla(s)?\nTambién se quitan de Repuestos pedidos.`)) return false;
+  if (!esSupervisorMec.value) return alert('Solo un Admin puede borrar una OT Terreno.');
+  if (!confirm(`¿Borrar la OT Terreno N° ${folioOF(r)} (AFI ${r.afi}) y sus ${(r.fallas || []).length} falla(s)?\nTambién se quitan de Repuestos pedidos.`)) return false;
   try {
     const d = await sb(supabaseClient.rpc('frc_levantamiento_borrar', { p_id: r.id }));
     dbMec.value = dbMec.value.filter(x => x.id !== r.id);
     dbProblemasRef().value = dbProblemasRef().value.filter(h => String(h.intervencion_id) !== String(r.id));
     if (d) dispLocal(r.afi, d);
     if (regPanel.value && regPanel.value.id === r.id) regPanel.value = null;
-    avisoApp(`OT de Fallas N° ${folioOF(r)} borrada.` + (d ? ` El equipo volvió a "${d}".` : ''));
+    avisoApp(`OT Terreno N° ${folioOF(r)} borrada.` + (d ? ` El equipo volvió a "${d}".` : ''));
     return true;
   } catch (err) {
     const m = errMsg(err);
@@ -684,12 +738,12 @@ export const borrarLevantamiento = async (r) => {
   }
 };
 
-// ---------- N° DE LA OT DE FALLAS (2026-11-18) ----------
-/** N° correlativo de una OT de Fallas (OF-1, OF-2…). Si aún no corre el SQL, usa el id. */
+// ---------- N° DE LA OT TERRENO (2026-11-18) ----------
+/** N° correlativo de una OT Terreno (OF-1, OF-2…). Si aún no corre el SQL, usa el id. */
 export const folioOF = (r) => (r ? (r.folio_falla || r.id) : '');
-/** Admin: cambia el N° de una OT de Fallas (no se puede repetir). */
+/** Admin: cambia el N° de una OT Terreno (no se puede repetir). */
 export const cambiarFolioOF = async (r) => {
-  const v = prompt(`N° de la OT de Fallas (ahora OTF-${folioOF(r)}):`, String(folioOF(r)));
+  const v = prompt(`N° de la OT Terreno (ahora OTF-${folioOF(r)}):`, String(folioOF(r)));
   if (v === null) return;
   const n = Number(String(v).replace(/\D/g, ''));
   if (!(n > 0)) return alert('Escribe un número.');

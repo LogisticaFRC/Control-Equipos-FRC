@@ -1,10 +1,10 @@
 // =====================================================================
-// OT · OT DE FALLAS (2026-11-18)
+// OT · OT TERRENO (2026-11-18)
 // Las OT se dividen en dos:
 //   · OT de Reparación: la OT de siempre (formato FRC-RE-OPE-006).
-//   · OT de Fallas: la que crea el técnico en la app (antes "levantamiento de fallas"):
+//   · OT Terreno: la que crea el técnico en la app (antes "levantamiento de fallas"):
 //     observación + fallas enumeradas. Cada falla se repara con su propio report de
-//     intervención (tiempos, ART, bloqueo y firmas) y queda enlazado a la OT de Fallas.
+//     intervención (tiempos, ART, bloqueo y firmas) y queda enlazado a la OT Terreno.
 // Datos: bd_mec_intervenciones (modo INSPECCION) + bd_taller_problemas (sus fallas).
 // =====================================================================
 import * as M from '../mecanicos/mecanicos.service.js';
@@ -28,7 +28,7 @@ export default {
     <div class="p-3 border-b flex flex-wrap gap-2 items-center">
       <input v-model="filtro.texto" type="text" placeholder="Buscar N°, AFI, equipo, falla, técnico..." class="p-2 border rounded-lg w-72">
       <button @click="recargar" class="w-9 h-9 rounded-lg border text-slate-500 hover:bg-slate-50" title="Actualizar"><i :class="['fa-solid fa-rotate', M.cargandoMec.value ? 'fa-spin' : '']"></i></button>
-      <span class="text-slate-500">Las crea el técnico en la app (equipo → <b>OT de Fallas</b>). Cada falla se cierra con su report de reparación.</span>
+      <span class="text-slate-500">Las crea el técnico en la app (equipo → <b>OT Terreno</b>). Cada falla se cierra con su report de reparación.</span>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full text-left">
@@ -50,7 +50,7 @@ export default {
                 <span v-if="!o.completa && o.r.disp_anterior" class="block text-[10px] text-rose-700 font-bold mt-0.5"><i class="fa-solid fa-ban mr-0.5"></i>Equipo fuera de servicio</span></td>
               <td class="p-2.5 whitespace-nowrap text-right" @click.stop>
                 <button @click="M.descargarPDF(o.r)" class="px-2 py-1 rounded-lg border font-bold" title="Hoja PDF"><i class="fa-solid fa-file-pdf text-rose-600"></i></button>
-                <button v-if="isAdmin && !o.items.some(i => ['REPARADO', 'AGREGADO'].includes(i.estado))" @click="M.borrarLevantamiento(o.r)" class="px-2 py-1 rounded-lg border border-rose-200 text-rose-600 font-bold ml-1" title="Borrar OT de Fallas (Admin)"><i class="fa-solid fa-trash"></i></button>
+                <button v-if="isAdmin && !o.items.some(i => ['REPARADO', 'AGREGADO'].includes(i.estado))" @click="M.borrarLevantamiento(o.r)" class="px-2 py-1 rounded-lg border border-rose-200 text-rose-600 font-bold ml-1" title="Borrar OT Terreno (Admin)"><i class="fa-solid fa-trash"></i></button>
               </td>
             </tr>
             <tr v-if="abierta === o.r.id" class="bg-amber-50/40">
@@ -70,7 +70,7 @@ export default {
               </td>
             </tr>
           </template>
-          <tr v-if="!lista.length"><td colspan="10" class="p-10 text-center text-slate-400 font-bold">No hay OT de Fallas{{ filtro.estado || filtro.texto ? ' con ese filtro' : '' }}.</td></tr>
+          <tr v-if="!lista.length"><td colspan="10" class="p-10 text-center text-slate-400 font-bold">No hay OT Terreno{{ filtro.estado || filtro.texto ? ' con ese filtro' : '' }}.</td></tr>
         </tbody>
       </table>
     </div>
@@ -81,7 +81,7 @@ export default {
     onMounted(recargar);
     const filtro = ref({ estado: 'ABIERTA', texto: '' });
     const abierta = ref(null);
-    // Desde el Historial (clic en OTF-n): se busca y se abre esa OT de Fallas
+    // Desde el Historial (clic en OTF-n): se busca y se abre esa OT Terreno
     const abrirPendiente = () => {
       if (!otfPorAbrir.value) return;
       const n = otfPorAbrir.value;
@@ -102,7 +102,7 @@ export default {
         && (!q || ['OTF-' + M.folioOF(o.r), 'OF-' + M.folioOF(o.r), o.r.afi, o.equipo, o.r.descripcion, (o.r.mecanicos || []).map(m => m.nombre).join(' '), o.items.map(i => i.descripcion).join(' ')].join(' ').toUpperCase().includes(q)));
     });
     const kpis = computed(() => [
-      { e: '', t: 'Total OT de Fallas', n: todas.value.length, c: 'bg-white text-slate-800' },
+      { e: '', t: 'Total OT Terreno', n: todas.value.length, c: 'bg-white text-slate-800' },
       { e: 'ABIERTA', t: 'Abiertas', n: todas.value.filter(o => !o.completa).length, c: 'bg-amber-100 text-amber-800 border-amber-300' },
       { e: 'COMPLETA', t: 'Completas', n: todas.value.filter(o => o.completa).length, c: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
       { e: 'FALLAS', t: 'Fallas abiertas', n: todas.value.reduce((s, o) => s + o.items.filter(i => ['PENDIENTE', 'AGREGADO'].includes(i.estado)).length, 0), c: 'bg-rose-50 text-rose-800 border-rose-200' }

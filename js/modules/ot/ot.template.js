@@ -4,10 +4,10 @@ export default /* html */ `
 
   <!-- ===================== LISTA ===================== -->
   <template v-if="!otActual">
-    <!-- 2026-11-18: las OT se dividen en dos: OT de Reparación (la de siempre) y OT de Fallas (la crea el técnico en la app) -->
+    <!-- 2026-11-18: las OT se dividen en dos: OT de Reparación (la de siempre) y OT Terreno (la crea el técnico en la app) -->
     <div class="flex gap-2" data-ot="tabs">
       <button @click="vistaOT = 'REPARACION'" :class="['flex-1 sm:flex-none px-5 py-3 rounded-2xl font-extrabold text-sm border-2 flex items-center justify-center gap-2', vistaOT === 'REPARACION' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50']"><i class="fa-solid fa-file-signature"></i>OT de Reparación</button>
-      <button @click="vistaOT = 'FALLAS'" :class="['flex-1 sm:flex-none px-5 py-3 rounded-2xl font-extrabold text-sm border-2 flex items-center justify-center gap-2', vistaOT === 'FALLAS' ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50']" data-ot="tab-fallas"><i class="fa-solid fa-list-ol"></i>OT de Fallas</button>
+      <button @click="vistaOT = 'FALLAS'" :class="['flex-1 sm:flex-none px-5 py-3 rounded-2xl font-extrabold text-sm border-2 flex items-center justify-center gap-2', vistaOT === 'FALLAS' ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50']" data-ot="tab-fallas"><i class="fa-solid fa-list-ol"></i>OT Terreno</button>
     </div>
     <ot-fallas v-if="vistaOT === 'FALLAS'"></ot-fallas>
     <template v-else>

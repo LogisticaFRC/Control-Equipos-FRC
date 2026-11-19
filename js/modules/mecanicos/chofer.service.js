@@ -18,7 +18,8 @@ import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supa
 import { usuarioActivo, dbEquipos, buscarEquipoPorAfi, cargarDatosDesdeSupabase } from '../../core/store.js';
 import { hoyISO, formatDateForDisplay, mismoAfi } from '../../core/utils.js';
 import { esVehiculo } from '../inventario/inventario.mapper.js';
-import { abrirPdfChecklist } from './chofer.pdf.js';   // PDF guardado en Supabase y abierto al enviar
+import { abrirPdfChecklist, generarPdfBlob, guardarPdf } from './chofer.pdf.js';   // PDF guardado en Supabase y abierto al enviar
+import * as OFF from '../../core/offline.js';   // SIN INTERNET (2026-11-19)
 import { avisoApp } from './mecanicos.service.js';
 import { dbLocaciones } from '../../core/store.js';
 import { TIPOS, textoUbicacion, rutaDe } from '../areas/areas.service.js';
@@ -213,6 +214,65 @@ export const quitarActividad = (a) => {
 
 // ---------- Guardar ----------
 export const enviandoCheck = ref(false);
+const armarDatosCheck = (f, u) => {
+  const datos = JSON.parse(JSON.stringify(f));
+  datos.patente = String(f.patente).trim().toUpperCase();
+  datos.chofer = u.nombre || u.usuario || '';
+  datos.actividades = actividadesLlenas(datos).map(a => {   // de la copia (sin objetos reactivos: se puede guardar en el equipo)
+    const e = buscarEquipoPorAfi(a.afi);
+    const loc = locDeTexto(a.hasta);
+    return { ...a, afi: String(a.afi || '').trim().toUpperCase(), tipo_equipo: a.subarrendado ? '' : (e ? e.tipo : ''),
+      hasta: loc ? loc.texto : String(a.hasta || '').trim().toUpperCase(), locacion_id: loc ? loc.id : null, empresa: loc ? loc.empresa : '',
+      lugar_nuevo: !loc && !valoresDestino.value.has(a.hasta) && Boolean(String(a.hasta || '').trim()) };
+  });
+  return datos;
+};
+/** SIN INTERNET (2026-11-19): el check list (con sus fotos) queda guardado en el equipo y se envía solo al volver la señal. */
+const guardarChecklistSinSenal = async (f, confirmar = true) => {
+  if (confirmar && vencidosDe(f).length && !confirm(`ATENCIÓN: documento vencido a la fecha del check list → ${vencidosDe(f).join(' y ')}.\n¿Enviar igual?`)) { pasoCheck.value = 1; return false; }
+  if (confirmar && faltantesCheck.value.length && !confirm(`Faltan ${faltantesCheck.value.length} ítem(s) del check list sin marcar. ¿Enviar igual?`)) { pasoCheck.value = 2; return false; }
+  enviandoCheck.value = true;
+  try {
+    const fotos = {};
+    for (const [k, lista] of Object.entries(fotosPend.value)) {
+      if (!lista.length) continue;
+      fotos[k] = [];
+      for (const x of lista) fotos[k].push(await comprimir(x.file));
+    }
+    const datos = armarDatosCheck(f, usuarioActivo.value || {});
+    await OFF.guardarTrabajo('checklist_chofer', { datos, fotos }, `Check list ${datos.patente} · ${formatDateForDisplay(datos.fecha)}`);
+    try { localStorage.removeItem(BORRADOR()); } catch (_) { /* */ }
+    formCheck.value = null; fotosPend.value = {};
+    avisoApp('Sin señal: el check list quedó guardado en el equipo y se enviará solo al volver internet (el PDF queda en Mis documentos).');
+    return true;
+  } catch (err) { alert('No se pudo guardar en el equipo: ' + errMsg(err)); return false; }
+  finally { enviandoCheck.value = false; }
+};
+// Check list guardado sin señal → fotos, registro y PDF al volver internet
+OFF.registrarTrabajo('checklist_chofer', async (job, progreso) => {
+  const { datos, fotos = {} } = job;
+  for (const [k, blobs] of Object.entries(fotos)) {
+    const a = datos.actividades.find(x => x.uid === k); if (!a) { delete fotos[k]; continue; }
+    a.fotos = a.fotos || [];
+    while (blobs.length) {
+      const nombre = `choferes/${String(datos.patente || 'CAMION').replace(/[^A-Z0-9-]/gi, '')}_${datos.fecha}_${String(a.afi || 'EQ').replace(/[^A-Z0-9-]/gi, '')}_${Date.now()}_${a.fotos.length + 1}.jpg`;
+      a.fotos.push(await subirArchivoStorage(nombre, blobs[0]));
+      blobs.shift(); await progreso(job);   // lo ya subido no se vuelve a subir
+    }
+    delete fotos[k];
+  }
+  if (!job.id) {
+    const { data, error } = await supabaseClient.rpc('frc_chofer_guardar', { p_datos: datos });
+    if (error) throw error;
+    job.id = data; await progreso(job);
+  }
+  try {
+    const reg = { id: job.id, ...datos, datos };
+    await guardarPdf(reg, await generarPdfBlob(reg));
+  } catch (err) { console.warn('[Chofer] Check list enviado; el PDF se generará al abrirlo:', errMsg(err)); }
+  cargarMisChecklist().catch(() => {});
+  cargarDatosDesdeSupabase(['movimientos', 'inventario']).catch(() => {});
+});
 const num = (v) => { const n = Number(String(v ?? '').replace(/\./g, '').replace(',', '.')); return isFinite(n) && n > 0 ? n : null; };
 export const enviarChecklist = async () => {
   const f = formCheck.value;
@@ -223,6 +283,7 @@ export const enviarChecklist = async () => {
   if (!f.firma) { pasoCheck.value = 4; alert('Falta tu firma (paso 4).'); return false; }
   if (f.sup_modo === 'AHORA' && (!String(f.sup_nombre || '').trim() || !f.sup_firma)) { pasoCheck.value = 4; alert('Falta el nombre y la firma del supervisor (o elige "Firma después").'); return false; }
   if (f.sup_modo !== 'AHORA') { f.sup_nombre = ''; f.sup_firma = ''; }
+  if (OFF.dispositivoOffline() && OFF.sinSenal()) return guardarChecklistSinSenal(f);
   // Pestaña para mostrar el PDF al terminar (se abre ahora, si no el navegador la bloquea)
   let ventanaPdf = null; try { ventanaPdf = window.open('', '_blank'); } catch (_) { ventanaPdf = null; }
   const cerrarVentana = () => { try { ventanaPdf && ventanaPdf.close(); } catch (_) { /* */ } };
@@ -230,21 +291,16 @@ export const enviarChecklist = async () => {
   if (faltantesCheck.value.length && !confirm(`Faltan ${faltantesCheck.value.length} ítem(s) del check list sin marcar. ¿Enviar igual?`)) { pasoCheck.value = 2; return false; }
   const u = usuarioActivo.value || {};
   enviandoCheck.value = true;
-  try { await subirFotosPend(f); }
-  catch (err) { cerrarVentana(); enviandoCheck.value = false; guardarBorradorCheck(); alert('No se pudieron subir las fotos: ' + errMsg(err) + '\nRevisa la señal e intenta de nuevo.'); return false; }
+  const offline = OFF.dispositivoOffline();
+  try { await OFF.enDirecto(() => subirFotosPend(f)); }
+  catch (err) {
+    cerrarVentana(); enviandoCheck.value = false;
+    if (offline && OFF.esErrorRed(err)) return guardarChecklistSinSenal(f, false);   // se cortó la señal: queda guardado
+    guardarBorradorCheck(); alert('No se pudieron subir las fotos: ' + errMsg(err) + '\nRevisa la señal e intenta de nuevo.'); return false; }
   guardarBorradorCheck();
-  const datos = JSON.parse(JSON.stringify(f));
-  datos.patente = String(f.patente).trim().toUpperCase();
-  datos.chofer = u.nombre || u.usuario || '';
-  datos.actividades = actividadesLlenas(f).map(a => {
-    const e = buscarEquipoPorAfi(a.afi);
-    const loc = locDeTexto(a.hasta);
-    return { ...a, afi: String(a.afi || '').trim().toUpperCase(), tipo_equipo: a.subarrendado ? '' : (e ? e.tipo : ''),
-      hasta: loc ? loc.texto : String(a.hasta || '').trim().toUpperCase(), locacion_id: loc ? loc.id : null, empresa: loc ? loc.empresa : '',
-      lugar_nuevo: !loc && !valoresDestino.value.has(a.hasta) && Boolean(String(a.hasta || '').trim()) };
-  });
+  const datos = armarDatosCheck(f, u);
   try {
-    const { data, error } = await supabaseClient.rpc('frc_chofer_guardar', { p_datos: datos });
+    const { data, error } = await OFF.enDirecto(() => supabaseClient.rpc('frc_chofer_guardar', { p_datos: datos }));
     if (error) throw error;
     try { localStorage.removeItem(BORRADOR()); } catch (_) { /* */ }
     formCheck.value = null;
@@ -256,6 +312,7 @@ export const enviarChecklist = async () => {
     return true;
   } catch (err) {
     cerrarVentana();
+    if (offline && OFF.esErrorRed(err) && formCheck.value) { enviandoCheck.value = false; return guardarChecklistSinSenal(f, false); }
     alert(/frc_chofer_guardar|bd_checklist_chofer|function|schema cache/i.test(errMsg(err)) ? SQL_CHOFER : 'No se pudo enviar: ' + errMsg(err));
     return false;
   } finally { enviandoCheck.value = false; }

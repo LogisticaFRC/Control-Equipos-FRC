@@ -13,7 +13,7 @@ import { claseMantencion } from '../../core/horometros.js';
 import { totalOCMantencion, totalOCEquipo, ocsDelEquipo } from '../oc/oc.service.js';
 import { errMsg } from '../../core/supabase.js';
 import { corregirTexto as ok } from '../../core/ortografia.js';   // tipeo y tildes (diccionario técnico)
-/** N° OT con su tipo (2026-11-18): OTR-130 (OT de Reparación) · OTF-2 (OT de Fallas). */
+/** N° OT con su tipo (2026-11-18): OTR-130 (OT de Reparación) · OTF-2 (OT Terreno). */
 const etOT = (v) => { const n = (String(v || '').match(/\d+/) || [])[0]; if (!n) return String(v || ''); return (/F/i.test(String(v).replace(/\d.*$/, '')) ? 'OTF-' : 'OTR-') + n; };
 
 const { ref } = Vue;

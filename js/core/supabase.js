@@ -1,14 +1,27 @@
 // =====================================================================
 // CORE · Conexión a Supabase y helpers de acceso a datos
+// 2026-11-19: fetch con MODO SIN INTERNET para técnicos (ver core/offline.js)
 // =====================================================================
+import { crearFetch, configurarSesion, sinSenal, sesionGuardada } from './offline.js';
 const SUPABASE_URL = "https://dxpfaweuiijumvfrykvl.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4cGZhd2V1aWlqdW12ZnJ5a3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODE5NDcsImV4cCI6MjEwODE1Nzk0N30.du61QLSaevcDVDd0GmlM2xTYmE_c4envzjmneocnHgc";
 
 // La llave "anon" es pública por diseño: la seguridad real la dan Supabase Auth (login)
 // y las reglas RLS de la base de datos (ver sql/seguridad_paso1_auth_rls.sql).
 export const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'frc_auth' }
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'frc_auth' },
+  global: { fetch: crearFetch((...a) => fetch(...a)) }   // sin señal: lecturas guardadas + cola de envíos (solo técnicos)
 });
+// Sin señal no se intenta renovar el token (demoraría cada consulta ~30 s): se usa la sesión guardada.
+// Con señal, getSession renueva el token como siempre. El envío pendiente usa siempre el getSession real.
+{
+  const real = supabaseClient.auth.getSession.bind(supabaseClient.auth);
+  configurarSesion(real);
+  supabaseClient.auth.getSession = async () => {
+    if (sinSenal()) { const s = sesionGuardada(); if (s && s.access_token) return { data: { session: s }, error: null }; }
+    return real();
+  };
+}
 
 /** Dominio de los correos internos de Supabase Auth (no se envían correos a estas direcciones). */
 export const DOMINIO_USUARIOS = 'usuarios.frchile.cl';

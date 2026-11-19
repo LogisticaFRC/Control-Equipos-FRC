@@ -2,7 +2,7 @@
 // INDICADORES · TIEMPO PROMEDIO POR ACTIVIDAD (2026-11-18)
 // Compara cuánto se demoran las actividades (inspeccionar, cambiar correa, reparar fuga…)
 // en general, por TIPO de equipo y por EQUIPO. Usa el Historial con horas de inicio / término
-// (incluye los reports de reparación de las OT de Fallas, que entran al Historial al enviarlos).
+// (incluye los reports de reparación de las OT Terreno, que entran al Historial al enviarlos).
 // Respeta el periodo, tipo de equipo y empresa de los filtros de arriba.
 // =====================================================================
 import * as K from './indicadores.service.js';
@@ -20,7 +20,7 @@ export const actividadDe = (r, modo = 'AUTO') => {
   const c = claseMantencion(r);
   if (c || /MANTENCION/.test(up(r.causa))) return 'Mantención' + (c === 'INTERMEDIA' ? ' intermedia' : r.tipoHorasMant ? ' ' + String(r.tipoHorasMant).toUpperCase() : '');
   if (/INSPECCION/.test(up(r.causa))) return 'Inspección';
-  if (/LEVANTAMIENTO|OT DE FALLAS/.test(up(r.causaDetallada))) return 'OT de Fallas (levantamiento)';
+  if (/LEVANTAMIENTO|OT DE FALLAS|OT TERRENO/.test(up(r.causaDetallada))) return 'OT Terreno (levantamiento)';
   if (detectarPiezas(r).length) {
     const t = piezaMotivoTexto(r);
     return detectarMotivo(r) === 'SIN_MOTIVO' ? t.split(' · ')[0] + ' · trabajo' : t;

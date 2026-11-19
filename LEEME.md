@@ -1000,3 +1000,22 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   movimientos por mes y por cliente, camiones (km) y choferes, estandarización de la flota e ítems que más fallan.
 - Usa los datos que el sistema ya tiene; al abrir baja una vez historial de estados, estandarizaciones, check list y pedidos.
 - Usuarios con acceso por módulos: habilitar "Indicadores (KPI)" en Configuración.
+
+## 2026-11-19 · Dashboard "En Reparación" · Riesgos de fatalidad informativos · OT Terreno · App técnicos sin internet
+- Dashboard: el estado "En Mantención" se muestra como **"En Reparación"** (el valor guardado no cambia).
+- 31 Riesgos de Fatalidad: solo informativo (sin botones Sí/No).
+- **"OT de Fallas" pasa a llamarse "OT Terreno"** en toda la app y el sistema. El N° sigue siendo OTF-n (no cambia lo ya guardado).
+  El Historial nuevo dice "OT TERRENO (n)"; Indicadores reconoce el texto antiguo y el nuevo.
+- App técnicos (terreno y CRTG): en el menú aparece **"OT Terreno abiertas"** (las que tienen fallas por reparar, con avance);
+  al tocar una se abre el equipo con esa carpeta desplegada para reparar.
+- **Sin internet (js/core/offline.js)**, solo en equipos donde entra un técnico (taller, terreno, chofer, CRTG, tótem):
+  - Lo que se consulta queda guardado en el teléfono/tablet (IndexedDB) y sin señal se muestra lo último que se vio.
+  - Lo que se envía sin señal queda en una cola en el equipo y se sube solo, en orden, al volver internet
+    (al volver la señal, cada 30 s y al abrir la app). Barra arriba: "Sin internet" / "N envíos guardados" / Ver / Enviar.
+  - Intervención / OT Terreno / reparación y check list del chofer se guardan completos (con fotos) y al volver la señal
+    se envían enteros: registro, fallas, Historial y PDF con su N° real.
+  - Hallazgos, inspección del taller, actividades de la OT, horómetro, programa y ubicación CRTG, pedido de repuestos y
+    fotos: se encolan tal cual; si algo se crea sin señal recibe un id provisorio que se cambia por el real al subir.
+  - Sin señal no se cierra la sesión por inactividad (ni con envíos pendientes). El login sí necesita internet:
+    el técnico debe haber entrado antes con señal.
+  - sw.js guarda también las librerías (Vue, Tailwind, íconos, Supabase…) para que la app abra sin internet.

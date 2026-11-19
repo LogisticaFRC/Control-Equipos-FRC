@@ -8,10 +8,11 @@
 // - Si se cierra sesión en una pestaña del navegador, se cierra en todas.
 // - El perfil (rol y permisos) se lee siempre desde la tabla `usuarios`.
 // =====================================================================
-import { usuarioActivo, currentTab, esTotemDe } from './store.js';
+import { usuarioActivo, currentTab, esTotemDe, modoTecnicoDe } from './store.js';
 import { TABS_VALIDAS, TAB_INICIO } from './menu.js';
 import { supabaseClient } from './supabase.js';
 import { TABLAS } from './tablas.js';
+import { activarDispositivo, sinSenal, pendientes, perfilGuardado } from './offline.js';   // modo sin internet (2026-11-19)
 
 const { ref, watch } = Vue;
 
@@ -33,7 +34,7 @@ export const avisoSesion = ref('');
 /** true → se muestra (obligatorio) el cuadro para cambiar la contraseña. */
 export const debeCambiarClave = ref(false);
 
-export const APP_VERSION = '2026-11-18 riesgos-rf';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
+export const APP_VERSION = '2026-11-19 sin-internet';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
 
 // ---------- Pequeño almacenamiento tolerante a fallos ----------
 const get = (st, k) => { try { return st.getItem(k); } catch (e) { return null; } };
@@ -87,6 +88,8 @@ const revisarInactividad = () => {
   if (!usuarioActivo.value) return;
   // TÓTEM del taller: pantalla fija, nunca se cierra por inactividad (se mantiene "activa")
   if (esTotemDe(usuarioActivo.value)) { escribirActividad(Date.now()); return; }
+  // SIN INTERNET (2026-11-19): no se cierra la sesión sin señal ni con envíos guardados (sin señal no se puede volver a entrar)
+  if (sinSenal() || pendientes.value > 0) { escribirActividad(Date.now()); return; }
   if (Date.now() - leerActividad() >= INACTIVIDAD_MS) {
     cerrarSesion(AVISO_INACTIVIDAD);
   }
@@ -111,6 +114,7 @@ supabaseClient.auth.onAuthStateChange((evento) => {
 export const iniciarSesion = (perfil) => {
   usuarioActivo.value = perfil;
   debeCambiarClave.value = Boolean(perfil.debe_cambiar_clave);
+  activarDispositivo(perfil, Boolean(modoTecnicoDe(perfil)));   // técnicos: modo sin internet en este equipo
   avisoSesion.value = '';
   ultimaGuardada = Date.now();
   escribirActividad(ultimaGuardada);
@@ -140,15 +144,19 @@ export const restaurarSesion = async () => {
     const { data } = await supabaseClient.auth.getSession();
     const session = data && data.session;
     if (!session) return;
-    if (Date.now() - leerActividad() >= INACTIVIDAD_MS) {
+    const offline = sinSenal() || pendientes.value > 0;
+    if (!offline && Date.now() - leerActividad() >= INACTIVIDAD_MS) {
       await supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {});
       del(localStorage, ACTIVIDAD_KEY);
       avisoSesion.value = AVISO_INACTIVIDAD;
       return;
     }
-    const perfil = await cargarPerfil(session.user.id);
+    let perfil = null;
+    try { perfil = await cargarPerfil(session.user.id); }
+    catch (err) { perfil = perfilGuardado(session.user.id); if (!perfil) throw err; }   // sin señal: perfil guardado en el equipo
     if (!perfil) { await supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {}); return; }   // usuario eliminado
     usuarioActivo.value = perfil;
+    activarDispositivo(perfil, Boolean(modoTecnicoDe(perfil)));
     debeCambiarClave.value = Boolean(perfil.debe_cambiar_clave);
     ultimaGuardada = Date.now();
     escribirActividad(ultimaGuardada);

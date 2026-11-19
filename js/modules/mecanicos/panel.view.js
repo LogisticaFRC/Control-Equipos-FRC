@@ -55,7 +55,7 @@ export default {
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-fit">
       <div v-for="r in S.listaPanel.value" :key="r.id" @click="S.abrirRegPanel(r)" :class="['p-3 border-b cursor-pointer hover:bg-slate-50', S.regPanel.value && S.regPanel.value.id === r.id ? 'bg-emerald-50' : '']">
         <div class="flex items-start justify-between gap-2">
-          <div><b class="text-amber-700">AFI {{ r.afi }}</b> <span class="font-bold text-slate-700">· {{ r.modo === 'INSPECCION' ? 'OT de Fallas · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span>
+          <div><b class="text-amber-700">AFI {{ r.afi }}</b> <span class="font-bold text-slate-700">· {{ r.modo === 'INSPECCION' ? 'OT Terreno · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span>
             <div class="text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }} · {{ (r.mecanicos || []).map(m => m.nombre).join(', ') }}</div></div>
           <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]">{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
         </div>
@@ -64,7 +64,7 @@ export default {
         <div v-if="r.bloqueo" class="text-[10px] font-bold text-violet-700 mt-0.5"><i class="fa-solid fa-lock mr-0.5"></i>Con registro de bloqueo</div>
         <div v-if="r.historial_id && r.estado !== 'EN_HISTORIAL'" class="text-[10px] font-bold text-emerald-700 mt-0.5"><i class="fa-solid fa-book mr-0.5"></i>Ya está en el Historial · al firmar se cambia su PDF por el firmado</div>
         <div v-if="r.modo === 'INSPECCION' && (r.fallas || []).length" class="text-[10px] font-bold text-amber-700 mt-0.5"><i class="fa-solid fa-list-ol mr-0.5"></i>{{ S.avanceLevantamiento(r).listas }} de {{ S.avanceLevantamiento(r).total }} fallas reparadas</div>
-        <div v-else-if="r.modo === 'REPARACION' && S.levantamientoDe(r)" class="text-[10px] font-bold text-emerald-700 mt-0.5"><i class="fa-solid fa-link mr-0.5"></i>De la OT de Fallas N° {{ r.ot_fallas_folio || S.folioOF(S.levantamientoDe(r)) }}</div>
+        <div v-else-if="r.modo === 'REPARACION' && S.levantamientoDe(r)" class="text-[10px] font-bold text-emerald-700 mt-0.5"><i class="fa-solid fa-link mr-0.5"></i>De la OT Terreno N° {{ r.ot_fallas_folio || S.folioOF(S.levantamientoDe(r)) }}</div>
       </div>
       <div v-if="!S.listaPanel.value.length" class="p-10 text-center text-slate-400 font-bold">No hay intervenciones en este estado.</div>
     </div>
@@ -75,7 +75,7 @@ export default {
       <div v-if="!r" class="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-400 font-bold">Elige una intervención de la lista.</div>
       <div v-else class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b bg-slate-50">
-          <div class="font-extrabold text-slate-800">{{ r.modo === 'INSPECCION' ? 'OTF-' + S.folioOF(r) : 'N° ' + r.id }} · AFI {{ r.afi }} · {{ r.modo === 'INSPECCION' ? 'OT de Fallas' + (r.tipo === 'ELECTRICA' ? ' (eléctrico)' : ' (mecánico)') : r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
+          <div class="font-extrabold text-slate-800">{{ r.modo === 'INSPECCION' ? 'OTF-' + S.folioOF(r) : 'N° ' + r.id }} · AFI {{ r.afi }} · {{ r.modo === 'INSPECCION' ? 'OT Terreno' + (r.tipo === 'ELECTRICA' ? ' (eléctrico)' : ' (mecánico)') : r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
           <div class="flex gap-2">
             <button @click="S.descargarPDF(r)" class="px-3 py-1.5 rounded-lg border font-bold"><i class="fa-solid fa-file-pdf text-rose-600 mr-1"></i>PDF</button>
             <a v-if="r.documento_url" :href="r.documento_url" target="_blank" class="px-3 py-1.5 rounded-lg border font-bold text-emerald-700"><i class="fa-solid fa-link mr-1"></i>Doc. Historial</a>
@@ -83,7 +83,7 @@ export default {
             <button @click="S.eliminarReg(r)" class="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold"><i class="fa-solid fa-trash"></i></button>
           </div>
         </div>
-        <!-- Enlaces (2026-11-18): OT de Fallas ↔ reports de reparación -->
+        <!-- Enlaces (2026-11-18): OT Terreno ↔ reports de reparación -->
         <div v-if="r.modo === 'INSPECCION'" class="px-4 py-3 border-b bg-amber-50/40" data-panel="enlaces">
           <div class="flex items-center justify-between gap-2 mb-2">
             <span class="font-extrabold text-slate-800"><i class="fa-solid fa-list-ol mr-1 text-amber-600"></i>Fallas de esta OT</span>
@@ -101,8 +101,8 @@ export default {
         </div>
         <div v-else-if="r.modo === 'REPARACION' && lev" class="px-4 py-2.5 border-b bg-slate-50 flex flex-wrap items-center gap-2" data-panel="enlace-lev">
           <i class="fa-solid fa-link text-emerald-700"></i><span>Esta reparación viene de la</span>
-          <button v-if="!lev.noCargado" @click="S.abrirRegPanel(lev)" class="font-bold text-emerald-700 underline">OT de Fallas N° {{ S.folioOF(lev) }} · {{ formatDateForDisplay(lev.fecha) }}</button>
-          <b v-else>OT de Fallas N° {{ r.ot_fallas_folio || lev.id }}</b>
+          <button v-if="!lev.noCargado" @click="S.abrirRegPanel(lev)" class="font-bold text-emerald-700 underline">OT Terreno N° {{ S.folioOF(lev) }} · {{ formatDateForDisplay(lev.fecha) }}</button>
+          <b v-else>OT Terreno N° {{ r.ot_fallas_folio || lev.id }}</b>
           <span v-if="!lev.noCargado" class="text-slate-500">({{ S.avanceLevantamiento(lev).listas }} de {{ S.avanceLevantamiento(lev).total }} fallas reparadas)</span>
         </div>
         <!-- Corregir datos -->
@@ -147,7 +147,7 @@ export default {
           <span class="text-sky-900 font-semibold">Firmada por {{ r.supervisor?.nombre }} ({{ r.supervisor?.empresa }}), pero no alcanzó a pasar al Historial.</span>
           <button @click="S.reintentarHistorial(r)" :disabled="S.procesando.value" class="px-4 py-2 rounded-xl bg-sky-600 text-white font-bold"><i :class="['fa-solid mr-1', S.procesando.value ? 'fa-spinner fa-spin' : 'fa-arrow-right']"></i>Pasar al Historial</button>
         </div>
-        <div v-else-if="r.estado === 'LEVANTAMIENTO'" class="p-4 border-t bg-amber-50 text-amber-900 font-semibold"><i class="fa-solid fa-list-ol mr-1"></i>OT de Fallas creada (no lleva firmas). Cada falla se repara en su propio report, con tiempos, ART, bloqueo y firmas.</div>
+        <div v-else-if="r.estado === 'LEVANTAMIENTO'" class="p-4 border-t bg-amber-50 text-amber-900 font-semibold"><i class="fa-solid fa-list-ol mr-1"></i>OT Terreno creada (no lleva firmas). Cada falla se repara en su propio report, con tiempos, ART, bloqueo y firmas.</div>
         <div v-else-if="r.estado === 'EN_HISTORIAL'" class="p-4 border-t bg-emerald-50 text-emerald-900 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>En el Historial del AFI {{ r.afi }} · firmó {{ r.supervisor?.nombre }} ({{ r.supervisor?.empresa }}).</div>
       </div>
     </div>
@@ -165,7 +165,7 @@ export default {
       { e: 'RECHAZADA', t: 'Rechazadas', n: S.conteoPanel.value.RECHAZADA, c: 'bg-rose-50 text-rose-800 border-rose-200' },
       { e: 'FIRMADA', t: 'Firmadas sin pasar', n: S.conteoPanel.value.FIRMADA, c: 'bg-sky-50 text-sky-800 border-sky-200' },
       { e: 'EN_HISTORIAL', t: 'En Historial', n: S.conteoPanel.value.EN_HISTORIAL, c: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-      { e: 'LEVANTAMIENTO', t: 'OT de Fallas', n: S.conteoPanel.value.LEVANTAMIENTO || 0, c: 'bg-orange-50 text-orange-800 border-orange-200' },
+      { e: 'LEVANTAMIENTO', t: 'OT Terreno', n: S.conteoPanel.value.LEVANTAMIENTO || 0, c: 'bg-orange-50 text-orange-800 border-orange-200' },
       { e: '', t: 'Todas', n: S.dbMec.value.length, c: 'bg-white text-slate-700 border-slate-200' }
     ]);
     const mecanicos = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'subadmin' && !['chofer', 'totem'].includes(permisosDe(u).mec_modo)).map(u => u.usuario));

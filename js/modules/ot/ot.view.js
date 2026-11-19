@@ -8,10 +8,10 @@ import { FORMATO_OT } from './ot.formato.js';
 import { editarMantencion } from '../historial/historial.service.js';
 import { cargarReparaciones, opcionesEnlaceOT, valorEnlaceOT, enlazarOT, etiquetaTallerOT, repPorId, progresoRep, ubicacionRep, faltaTablaTaller, vistaReparacion, sugerenciaEnlaceOT } from '../taller/taller.service.js';
 import { currentTab } from '../../core/store.js';
-import OtFallas from './ot-fallas.view.js';   // OT de Fallas (2026-11-18)
+import OtFallas from './ot-fallas.view.js';   // OT Terreno (2026-11-18)
 
 const { onMounted } = Vue;
-const vistaOT = S.vistaOT;   // pestaña OT de Reparación | OT de Fallas (en ot.service: el Historial la puede cambiar)
+const vistaOT = S.vistaOT;   // pestaña OT de Reparación | OT Terreno (en ot.service: el Historial la puede cambiar)
 
 /** Escala del editor en pantalla (la impresión usa el tamaño real). */
 const E = 1.8;
