@@ -77,11 +77,15 @@ export const cargarOT = async () => {
 
 // ---------- Relación con el Historial ----------
 const numeroDe = (v) => { const m = String(v || '').match(/\d+/); return m ? Number(m[0]) : null; };
-// ---------- OTR / OTF (2026-11-18): el N° OT del Historial puede ser una OT de Reparación (130) o de Fallas (OTF-2) ----------
-/** ¿El N° OT es de una OT Terreno? ("OTF-2", "OF-2"). */
-export const esOTF = (v) => /^\s*O?T?F\s*-?\s*\d+/i.test(String(v || '')) && /F/i.test(String(v || '').replace(/\d.*$/, ''));
-/** Etiqueta para mostrar: { tipo: 'OTR' | 'OTF', num, texto: 'OTR-130' | 'OTF-2' } (null si no hay N°). */
-export const tipoNumeroOT = (v) => { const n = numeroDe(v); if (!n) return null; const tipo = esOTF(v) ? 'OTF' : 'OTR'; return { tipo, num: n, texto: `${tipo}-${n}` }; };
+// ---------- OTR / OTT (2026-11-18 · OTT desde 2026-11-19): el N° OT del Historial puede ser una OT de Reparación (130) o una OT Terreno (OTT-2; antes OTF-2) ----------
+/** ¿El N° OT es de una OT Terreno? ("OTT-2" desde 2026-11-19 · antes "OTF-2" / "OF-2"). */
+export const esOTF = (v) => {
+  const s = String(v || ''); if (!/\d/.test(s)) return false;
+  const pref = s.replace(/\d.*$/, '').toUpperCase().replace(/[^A-Z]/g, '');
+  return /F/.test(pref) || pref === 'OTT' || pref === 'TT';
+};
+/** Etiqueta para mostrar: { tipo: 'OTR' | 'OTT', num, texto: 'OTR-130' | 'OTT-2' } (null si no hay N°). OTF antiguas se muestran OTT. */
+export const tipoNumeroOT = (v) => { const n = numeroDe(v); if (!n) return null; const tipo = esOTF(v) ? 'OTT' : 'OTR'; return { tipo, num: n, texto: `${tipo}-${n}` }; };
 /** Pestaña del módulo OT y OT Terreno por abrir (clic desde el Historial). */
 export const vistaOT = ref('REPARACION');
 export const otfPorAbrir = ref(null);

@@ -12,7 +12,7 @@ import { usuarioActivo, currentTab, esTotemDe, modoTecnicoDe } from './store.js'
 import { TABS_VALIDAS, TAB_INICIO } from './menu.js';
 import { supabaseClient } from './supabase.js';
 import { TABLAS } from './tablas.js';
-import { activarDispositivo, sinSenal, pendientes, perfilGuardado } from './offline.js';   // modo sin internet (2026-11-19)
+import { activarDispositivo, sinSenal, pendientes, perfilGuardado, dispositivoOffline } from './offline.js';   // modo sin internet (2026-11-19)
 
 const { ref, watch } = Vue;
 
@@ -34,7 +34,7 @@ export const avisoSesion = ref('');
 /** true → se muestra (obligatorio) el cuadro para cambiar la contraseña. */
 export const debeCambiarClave = ref(false);
 
-export const APP_VERSION = '2026-11-19 sin-internet';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
+export const APP_VERSION = '2026-11-19 ott-sin-senal';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
 
 // ---------- Pequeño almacenamiento tolerante a fallos ----------
 const get = (st, k) => { try { return st.getItem(k); } catch (e) { return null; } };
@@ -86,8 +86,9 @@ const registrarActividad = () => {
 
 const revisarInactividad = () => {
   if (!usuarioActivo.value) return;
-  // TÓTEM del taller: pantalla fija, nunca se cierra por inactividad (se mantiene "activa")
-  if (esTotemDe(usuarioActivo.value)) { escribirActividad(Date.now()); return; }
+  // TÉCNICOS (app del celular/tablet y tótem): NUNCA se cierra por inactividad (2026-11-19, decisión usuario:
+  // en terreno pueden estar horas sin señal y el login necesita internet). Solo salen con el botón "Salir".
+  if (modoTecnicoDe(usuarioActivo.value)) { escribirActividad(Date.now()); return; }
   // SIN INTERNET (2026-11-19): no se cierra la sesión sin señal ni con envíos guardados (sin señal no se puede volver a entrar)
   if (sinSenal() || pendientes.value > 0) { escribirActividad(Date.now()); return; }
   if (Date.now() - leerActividad() >= INACTIVIDAD_MS) {
@@ -144,7 +145,7 @@ export const restaurarSesion = async () => {
     const { data } = await supabaseClient.auth.getSession();
     const session = data && data.session;
     if (!session) return;
-    const offline = sinSenal() || pendientes.value > 0;
+    const offline = sinSenal() || pendientes.value > 0 || dispositivoOffline();   // técnico: no se cierra por inactividad
     if (!offline && Date.now() - leerActividad() >= INACTIVIDAD_MS) {
       await supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {});
       del(localStorage, ACTIVIDAD_KEY);

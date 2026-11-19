@@ -127,7 +127,26 @@ const etiquetaDe = (url, method) => {
 
 // ---------- Ids provisorios ----------
 let cont = 0;
-const nuevoTempId = () => String(-(Date.now() * 100 + (cont++ % 100)));
+export const nuevoTempId = () => String(-(Date.now() * 100 + (cont++ % 100)));
+/** Id provisorio → id real (lo registra quien crea el registro al subirlo; lo usan los envíos siguientes). */
+let mapaActual = null;
+export const registrarId = async (tmp, real) => {
+  if (tmp == null || real == null) return;
+  await idbPut('ids', real, String(tmp));
+  if (mapaActual) mapaActual.set(String(tmp), real);
+};
+/** Cambia en un objeto los ids provisorios que ya tienen id real. */
+export const resolverIds = async (obj) => {
+  const mapa = new Map(await idbEntradas('ids'));
+  if (mapaActual) for (const [k, v] of mapaActual) mapa.set(k, v);
+  if (!mapa.size) return obj;
+  return JSON.parse(aplicarMapa(JSON.stringify(obj), mapa));
+};
+/** Datos de los trabajos guardados (aún no subidos) de un tipo. */
+export const trabajosPendientes = async (nombre) => {
+  try { return (await idbAll('cola')).filter(i => i.tipo === 'trabajo' && i.nombre === nombre).sort((a, b) => a.id - b.id).map(i => i.datos); }
+  catch (_) { return []; }
+};
 /** ¿Es un id creado sin señal (aún no subido)? */
 export const esIdProvisorio = (id) => /^-\d{14,}$/.test(String(id ?? ''));
 
@@ -291,6 +310,7 @@ export const sincronizar = () => corriendo || (corriendo = (async () => {
     if (!token) return;   // sin sesión válida aún (o sin red para renovarla): se reintenta después
     sincronizando.value = true;
     const mapa = new Map(await idbEntradas('ids'));
+    mapaActual = mapa;
     for (const it of items) {
       try {
         if (it.tipo === 'http') await enviarHttp(it, token, mapa);
@@ -308,7 +328,7 @@ export const sincronizar = () => corriendo || (corriendo = (async () => {
   } catch (err) {
     console.warn('[Sin internet] No se pudo sincronizar:', err);
   } finally {
-    sincronizando.value = false; corriendo = null;
+    sincronizando.value = false; corriendo = null; mapaActual = null;
     await refrescarConteo();
     if (ok) window.dispatchEvent(new CustomEvent('frc-sync', { detail: { ok } }));
   }

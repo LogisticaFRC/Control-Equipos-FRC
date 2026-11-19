@@ -11,7 +11,7 @@ import { detalleOCsMantencion, totalOCMantencion, fmtCLP, irAOC } from '../oc/oc
 import { categorizar, minutosTrabajo, fmtMin, piezaMotivoTexto, detectarPiezas, detectarMotivo, esNoFalla } from '../../core/analisis-fallas.js';
 import { tieneConocimiento } from '../../core/conocimiento-fallas.js';
 import { claseMantencion } from '../../core/horometros.js';
-import { tipoNumeroOT, irAOT } from '../ot/ot.service.js';   // OTR / OTF (2026-11-18)
+import { tipoNumeroOT, irAOT } from '../ot/ot.service.js';   // OTR / OTT (2026-11-18)
 
 const { ref, computed, watch } = Vue;
 
@@ -40,7 +40,7 @@ const template = /* html */ `
           <td class="p-2">
             <span :class="['font-bold block truncate', claseMantencion(i) === 'COMPLETA' ? 'text-emerald-700' : claseMantencion(i) === 'INTERMEDIA' ? 'text-sky-700' : 'text-slate-800']" :title="i.causa">{{ i.causa || '-' }}</span>
             <span class="text-[9px] text-blue-600 font-semibold block truncate">{{ i.tipoMant || '' }}{{ i.tipoHorasMant ? ' · ' + i.tipoHorasMant : '' }}</span>
-            <button v-if="tipoNumeroOT(i.numeroOT)" @click.stop="irAOT(i.numeroOT)" :class="['mt-0.5 inline-flex items-center gap-1 text-[9px] font-black font-mono px-1.5 py-0.5 rounded border', tipoNumeroOT(i.numeroOT).tipo === 'OTF' ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100' : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200']" :title="tipoNumeroOT(i.numeroOT).tipo === 'OTF' ? 'OT Terreno · abrir' : 'OT de Reparación · abrir'" data-hist-ot><i :class="['fa-solid', tipoNumeroOT(i.numeroOT).tipo === 'OTF' ? 'fa-list-ol' : 'fa-file-signature']"></i>{{ tipoNumeroOT(i.numeroOT).texto }}</button>
+            <button v-if="tipoNumeroOT(i.numeroOT)" @click.stop="irAOT(i.numeroOT)" :class="['mt-0.5 inline-flex items-center gap-1 text-[9px] font-black font-mono px-1.5 py-0.5 rounded border', tipoNumeroOT(i.numeroOT).tipo === 'OTT' ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100' : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200']" :title="tipoNumeroOT(i.numeroOT).tipo === 'OTT' ? 'OT Terreno · abrir' : 'OT de Reparación · abrir'" data-hist-ot><i :class="['fa-solid', tipoNumeroOT(i.numeroOT).tipo === 'OTT' ? 'fa-list-ol' : 'fa-file-signature']"></i>{{ tipoNumeroOT(i.numeroOT).texto }}</button>
           </td>
           <td class="p-2"><span class="line-clamp-2 break-words" :title="i.causaDetallada">{{ i.causaDetallada || i.descripcion || '-' }}</span></td>
           <td class="p-2 hidden md:table-cell"><span class="inline-flex items-center gap-1 font-semibold truncate max-w-full"><span class="w-2 h-2 rounded-full shrink-0" :style="{ background: cat(i).color }"></span><span class="truncate">{{ cat(i).label }}</span></span></td>

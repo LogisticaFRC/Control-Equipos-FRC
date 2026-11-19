@@ -25,7 +25,7 @@ import { crearFallasDeInspeccion, marcarFallaReparada, fallaPorId, textoFalla, a
 import * as OFF from '../../core/offline.js';   // SIN INTERNET (2026-11-19)
 import { hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 
-const { ref, computed } = Vue;
+const { ref, computed, watch } = Vue;
 export const TABLA_MEC = TABLAS.MEC_INTERVENCIONES;
 
 // ---------- Quién es quién ----------
@@ -362,10 +362,55 @@ const etiquetaInt = (f) => `${f.modo === 'INSPECCION' ? 'OT Terreno' : f.modo ==
 const guardarSinSenal = async (f) => {
   const datos = JSON.parse(JSON.stringify(f));
   datos._usuario = usuarioActivo.value?.usuario || null;
+  datos._creado = Date.now();
+  const esLev = datos.modo === 'INSPECCION' && !datos.id;
+  if (esLev) {   // OT Terreno sin señal: id provisorio para ella y sus fallas → se pueden REPARAR sin señal
+    datos._tmp_id = OFF.nuevoTempId();
+    (datos.fallas || []).forEach(i => { if (String(i.descripcion || '').trim() && !i.id && !i.tmp_id) i.tmp_id = OFF.nuevoTempId(); });
+  }
   await OFF.guardarTrabajo('intervencion', datos, etiquetaInt(f));
   try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
-  formInt.value = null; equipoSel.value = null; tabApp.value = 'inicio';
-  avisoApp('Sin señal: el report quedó guardado en el equipo y se enviará solo al volver internet.');
+  formInt.value = null;
+  await aplicarPendientesLocales();
+  if (esLev) { tabApp.value = 'equipos'; levAbrir.value = datos._tmp_id; }   // queda en el equipo con su carpeta
+  else { equipoSel.value = null; tabApp.value = 'inicio'; }
+  avisoApp(esLev ? 'Sin señal: la OT Terreno quedó guardada en el equipo. Ya puedes reparar sus fallas; todo se enviará solo al volver internet.'
+    : 'Sin señal: el report quedó guardado en el equipo y se enviará solo al volver internet.');
+};
+/** Reports guardados sin señal → se ven en la app como provisorios (OT Terreno con sus fallas, fallas reparadas). */
+let aplicando = false;
+export const aplicarPendientesLocales = async () => {
+  if (aplicando || !OFF.dispositivoOffline()) return;
+  aplicando = true;
+  try {
+    const jobs = await OFF.trabajosPendientes('intervencion');
+    const problemas = dbProblemasRef().value;
+    for (const d of jobs) {
+      if (d.modo === 'INSPECCION' && d._tmp_id && !d.id) {
+        const items = (d.fallas || []).filter(i => String(i.descripcion || '').trim());
+        if (!dbMec.value.some(x => String(x.id) === String(d._tmp_id))) {
+          dbMec.value.unshift({
+            id: Number(d._tmp_id), tipo: d.tipo, afi: limpiarAfi(d.afi), equipo: d.equipo || null, fecha: normalizarFecha(d.fecha) || hoyISO(),
+            modo: 'INSPECCION', estado: 'LEVANTAMIENTO', creado_por: d._usuario, mecanicos: d.mecanicos || [], descripcion: d.descripcion || '',
+            hora_falla: d.hora_falla || null, fecha_falla: d.fecha_falla || null, folio_falla: null, _provisorio: true,
+            fallas: items.map((i, k) => ({ n: k + 1, id: i.tmp_id ? Number(i.tmp_id) : i.id || null, descripcion: String(i.descripcion).trim(), sistema: i.sistema || '',
+              necesita_repuesto: Boolean(i.necesita_repuesto), repuesto: i.repuesto || '', cantidad: i.cantidad || '', codigo_repuesto: i.codigo_repuesto || '', serie_motor: i.serie_motor || '', fotos: (i.fotos || []).filter(Boolean) }))
+          });
+        }
+        items.forEach((i, k) => {
+          if (!i.tmp_id || problemas.some(h => String(h.id) === String(i.tmp_id))) return;
+          problemas.push({ id: Number(i.tmp_id), afi: limpiarAfi(d.afi), intervencion_id: Number(d._tmp_id), item_n: k + 1, descripcion: String(i.descripcion).trim(), sistema: i.sistema || null,
+            necesita_repuesto: Boolean(i.necesita_repuesto), repuesto: i.repuesto || null, cantidad: i.cantidad || null, fotos: (i.fotos || []).filter(Boolean), foto_url: (i.fotos || [])[0] || null,
+            estado: 'PENDIENTE', reportado_por: (d.mecanicos || [])[0]?.nombre || d._usuario || '', created_at: new Date(d._creado || Date.now()).toISOString(), _provisorio: true });
+        });
+      }
+      if (d.modo === 'REPARACION' && d.falla_id) {
+        const h = problemas.find(x => String(x.id) === String(d.falla_id));
+        if (h && h.estado !== 'REPARADO') Object.assign(h, { estado: 'REPARADO', reparado_por: (d.mecanicos || [])[0]?.nombre || '', reparado_at: new Date(d._creado || Date.now()).toISOString(), _reparadoSinSenal: true });
+      }
+    }
+  } catch (err) { console.warn('[Sin internet] vista local:', err); }
+  finally { aplicando = false; }
 };
 /** Envía desde la app. Si el supervisor firmó ahí mismo, pasa directo al Historial. */
 export const enviarIntervencion = async () => {
@@ -412,7 +457,7 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
       catch (err) { console.warn('[Mecánicos] No se pudo dejar fuera de servicio:', errMsg(err)); }
     } catch (err) { avisar((/intervencion_id|tipo_intervencion|reparacion_id|null value|column|schema cache/i.test(errMsg(err)) ? SQL_FALLAS + '\n\n' : '') + 'El report se envió, pero las fallas no quedaron en el equipo: ' + errMsg(err)); }
   }
-  if (reg && f.modo === 'REPARACION' && f.falla_id && fallaPorId(f.falla_id)?.estado !== 'REPARADO') {
+  if (reg && f.modo === 'REPARACION' && f.falla_id && (!ui || fallaPorId(f.falla_id)?.estado !== 'REPARADO')) {   // sin señal la falla ya se ve reparada en el equipo
     try {
       const d = await marcarFallaReparada(f.falla_id, reg); avisoFallas = ' La falla quedó reparada en el equipo.';
       if (d) { dispLocal(reg.afi, d); avisoFallas += ` OT Terreno completa: el equipo volvió a "${d}".`; }
@@ -449,10 +494,25 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
   return reg;
 };
 // Report guardado sin señal → se envía completo al volver internet (core/offline.js)
-OFF.registrarTrabajo('intervencion', async (datos, progreso) => {
+OFF.registrarTrabajo('intervencion', async (guardado, progreso) => {
+  const datos = await OFF.resolverIds(guardado);   // falla / OT Terreno creadas sin señal → su id real
   if (!dbProblemasRef().value.length) await asegurarFallas(true).catch(() => {});
-  await procesarIntervencion(datos, { ui: false, alInsertar: async (id) => { datos.id = id; await progreso(datos); } });
+  if (datos.modo === 'REPARACION' && datos.levantamiento_id && !datos.ot_fallas_folio && !OFF.esIdProvisorio(datos.levantamiento_id)) {
+    try { const l = await sb(supabaseClient.from(TABLA_MEC).select('folio_falla').eq('id', datos.levantamiento_id).maybeSingle()); if (l && l.folio_falla) datos.ot_fallas_folio = l.folio_falla; } catch (_) { /* sin N°: queda el id */ }
+  }
+  const reg = await procesarIntervencion(datos, { ui: false, alInsertar: async (id) => {
+    datos.id = id;
+    if (datos._tmp_id) await OFF.registrarId(datos._tmp_id, id);
+    await progreso(datos);
+  } });
+  if (reg && datos.modo === 'INSPECCION') {   // fallas creadas: id provisorio → id real (para las reparaciones guardadas después)
+    const items = (datos.fallas || []).filter(i => String(i.descripcion || '').trim());
+    for (const [k, i] of items.entries()) if (i.tmp_id && reg.fallas?.[k]?.id) await OFF.registrarId(i.tmp_id, reg.fallas[k].id);
+  }
 });
+// Al cargar registros o fallas se vuelven a mostrar los reports guardados sin señal
+watch(() => dbMec.value, () => { aplicarPendientesLocales(); });
+watch(() => dbProblemasRef().value, () => { aplicarPendientesLocales(); });
 
 // ---------- OT TERRENO ABIERTAS en el menú de la app (2026-11-19) ----------
 /** OT Terreno con fallas sin reparar de los equipos que ve el técnico (las más nuevas primero). */
@@ -582,7 +642,7 @@ export const pasarAHistorial = async (r, opciones = {}) => {
       causa_falla: r.tipo === 'MECANICA' && ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'].includes(r.causa_falla) ? r.causa_falla : '',
       ...aceites
     };
-    if (r.modo === 'REPARACION' && r.ot_fallas_folio) payload.numero_ot = 'OTF-' + r.ot_fallas_folio;   // N° OT del Historial = OT Terreno
+    if (r.modo === 'REPARACION' && r.ot_fallas_folio) payload.numero_ot = 'OTT-' + r.ot_fallas_folio;   // N° OT del Historial = OT Terreno
     let data;
     if (r.historial_id) {   // ya estaba en el Historial (enviada sin firma): solo se cambia el documento
       await sb(supabaseClient.rpc('frc_historial_doc_app', { p_hist: r.historial_id, p_link: url }));
@@ -739,11 +799,11 @@ export const borrarLevantamiento = async (r) => {
 };
 
 // ---------- N° DE LA OT TERRENO (2026-11-18) ----------
-/** N° correlativo de una OT Terreno (OF-1, OF-2…). Si aún no corre el SQL, usa el id. */
-export const folioOF = (r) => (r ? (r.folio_falla || r.id) : '');
+/** N° correlativo de una OT Terreno (OTT-1, OTT-2…). Si aún no corre el SQL, usa el id. */
+export const folioOF = (r) => (r ? (r.folio_falla || (OFF.esIdProvisorio(r.id) ? 'S/N' : r.id)) : '');   // S/N = creada sin señal, aún sin número
 /** Admin: cambia el N° de una OT Terreno (no se puede repetir). */
 export const cambiarFolioOF = async (r) => {
-  const v = prompt(`N° de la OT Terreno (ahora OTF-${folioOF(r)}):`, String(folioOF(r)));
+  const v = prompt(`N° de la OT Terreno (ahora OTT-${folioOF(r)}):`, String(folioOF(r)));
   if (v === null) return;
   const n = Number(String(v).replace(/\D/g, ''));
   if (!(n > 0)) return alert('Escribe un número.');

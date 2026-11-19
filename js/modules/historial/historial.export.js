@@ -13,8 +13,8 @@ import { claseMantencion } from '../../core/horometros.js';
 import { totalOCMantencion, totalOCEquipo, ocsDelEquipo } from '../oc/oc.service.js';
 import { errMsg } from '../../core/supabase.js';
 import { corregirTexto as ok } from '../../core/ortografia.js';   // tipeo y tildes (diccionario técnico)
-/** N° OT con su tipo (2026-11-18): OTR-130 (OT de Reparación) · OTF-2 (OT Terreno). */
-const etOT = (v) => { const n = (String(v || '').match(/\d+/) || [])[0]; if (!n) return String(v || ''); return (/F/i.test(String(v).replace(/\d.*$/, '')) ? 'OTF-' : 'OTR-') + n; };
+/** N° OT con su tipo (2026-11-18): OTR-130 (OT de Reparación) · OTT-2 (OT Terreno; antes OTF-2). */
+const etOT = (v) => { const n = (String(v || '').match(/\d+/) || [])[0]; if (!n) return String(v || ''); const pref = String(v).replace(/\d.*$/, '').toUpperCase().replace(/[^A-Z]/g, ''); return (/F/.test(pref) || pref === 'OTT' || pref === 'TT' ? 'OTT-' : 'OTR-') + n; };
 
 const { ref } = Vue;
 export const exportandoHistorial = ref(false);

@@ -75,7 +75,7 @@ export default {
       <div v-if="!r" class="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-400 font-bold">Elige una intervención de la lista.</div>
       <div v-else class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b bg-slate-50">
-          <div class="font-extrabold text-slate-800">{{ r.modo === 'INSPECCION' ? 'OTF-' + S.folioOF(r) : 'N° ' + r.id }} · AFI {{ r.afi }} · {{ r.modo === 'INSPECCION' ? 'OT Terreno' + (r.tipo === 'ELECTRICA' ? ' (eléctrico)' : ' (mecánico)') : r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
+          <div class="font-extrabold text-slate-800">{{ r.modo === 'INSPECCION' ? 'OTT-' + S.folioOF(r) : 'N° ' + r.id }} · AFI {{ r.afi }} · {{ r.modo === 'INSPECCION' ? 'OT Terreno' + (r.tipo === 'ELECTRICA' ? ' (eléctrico)' : ' (mecánico)') : r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
           <div class="flex gap-2">
             <button @click="S.descargarPDF(r)" class="px-3 py-1.5 rounded-lg border font-bold"><i class="fa-solid fa-file-pdf text-rose-600 mr-1"></i>PDF</button>
             <a v-if="r.documento_url" :href="r.documento_url" target="_blank" class="px-3 py-1.5 rounded-lg border font-bold text-emerald-700"><i class="fa-solid fa-link mr-1"></i>Doc. Historial</a>

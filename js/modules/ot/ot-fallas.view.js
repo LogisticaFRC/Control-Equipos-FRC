@@ -38,7 +38,7 @@ export default {
         <tbody>
           <template v-for="o in lista" :key="o.r.id">
             <tr :class="['border-t cursor-pointer hover:bg-amber-50/50', abierta === o.r.id ? 'bg-amber-50' : '']" @click="abierta = abierta === o.r.id ? null : o.r.id" :data-ot="'fila-' + o.r.id">
-              <td class="p-2.5 font-black text-amber-700 whitespace-nowrap" @click.stop>OTF-{{ M.folioOF(o.r) }}<button v-if="isAdmin" @click="cambiarFolio(o.r)" class="ml-1 text-slate-400 hover:text-amber-700" title="Cambiar N° (Admin)" :data-ot="'folio-' + o.r.id"><i class="fa-solid fa-pen text-[10px]"></i></button></td>
+              <td class="p-2.5 font-black text-amber-700 whitespace-nowrap" @click.stop>OTT-{{ M.folioOF(o.r) }}<button v-if="isAdmin" @click="cambiarFolio(o.r)" class="ml-1 text-slate-400 hover:text-amber-700" title="Cambiar N° (Admin)" :data-ot="'folio-' + o.r.id"><i class="fa-solid fa-pen text-[10px]"></i></button></td>
               <td class="p-2.5 font-mono">{{ formatDateForDisplay(o.r.fecha) }}</td>
               <td class="p-2.5 font-mono">{{ o.r.hora_falla || o.r.fecha_falla ? [formatDateForDisplay(o.r.fecha_falla || o.r.fecha), o.r.hora_falla].filter(Boolean).join(' ') : '—' }}</td>
               <td class="p-2.5 font-bold">{{ o.r.afi }}</td>
@@ -81,13 +81,13 @@ export default {
     onMounted(recargar);
     const filtro = ref({ estado: 'ABIERTA', texto: '' });
     const abierta = ref(null);
-    // Desde el Historial (clic en OTF-n): se busca y se abre esa OT Terreno
+    // Desde el Historial (clic en OTT-n / OTF-n antiguo): se busca y se abre esa OT Terreno
     const abrirPendiente = () => {
       if (!otfPorAbrir.value) return;
       const n = otfPorAbrir.value;
       const o = todasRef().find(x => Number(M.folioOF(x.r)) === Number(n));
       if (!o) return;
-      otfPorAbrir.value = null; filtro.value = { estado: '', texto: 'OTF-' + n }; abierta.value = o.r.id;
+      otfPorAbrir.value = null; filtro.value = { estado: '', texto: 'OTT-' + n }; abierta.value = o.r.id;
     };
     const todas = computed(() => M.dbMec.value.filter(r => r.modo === 'INSPECCION').sort((a, b) => b.id - a.id).map(r => {
       const items = M.fallasDeLevantamiento(r), av = M.avanceLevantamiento(r);
@@ -99,7 +99,7 @@ export default {
     const lista = computed(() => {
       const q = String(filtro.value.texto || '').trim().toUpperCase();
       return todas.value.filter(o => (!filtro.value.estado || (['ABIERTA', 'FALLAS'].includes(filtro.value.estado) ? !o.completa : o.completa))
-        && (!q || ['OTF-' + M.folioOF(o.r), 'OF-' + M.folioOF(o.r), o.r.afi, o.equipo, o.r.descripcion, (o.r.mecanicos || []).map(m => m.nombre).join(' '), o.items.map(i => i.descripcion).join(' ')].join(' ').toUpperCase().includes(q)));
+        && (!q || ['OTT-' + M.folioOF(o.r), 'OTF-' + M.folioOF(o.r), 'OF-' + M.folioOF(o.r), o.r.afi, o.equipo, o.r.descripcion, (o.r.mecanicos || []).map(m => m.nombre).join(' '), o.items.map(i => i.descripcion).join(' ')].join(' ').toUpperCase().includes(q)));
     });
     const kpis = computed(() => [
       { e: '', t: 'Total OT Terreno', n: todas.value.length, c: 'bg-white text-slate-800' },

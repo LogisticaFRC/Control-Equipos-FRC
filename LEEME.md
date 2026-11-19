@@ -1019,3 +1019,13 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   - Sin señal no se cierra la sesión por inactividad (ni con envíos pendientes). El login sí necesita internet:
     el técnico debe haber entrado antes con señal.
   - sw.js guarda también las librerías (Vue, Tailwind, íconos, Supabase…) para que la app abra sin internet.
+
+## 2026-11-19 (b) · OTT · OT Terreno sin señal · técnicos sin cierre por inactividad
+- El N° de la OT Terreno pasa de **OTF-n a OTT-n** (pantallas, PDF, Historial nuevo y exportación). Los registros antiguos
+  OTF-n / OF-n se reconocen y se muestran como OTT-n. Opcional: sql/ott_renombrar.sql cambia también los ya guardados.
+- Sin señal ahora se puede **crear una OT Terreno y reparar sus fallas** en el mismo momento: la OT queda "N° S/N"
+  (provisoria) con sus fallas y botón Reparar; al volver internet se sube primero la OT (recibe su N° real), luego sus
+  fallas y después las reparaciones, enlazadas con los ids reales (offline.js: registrarId / resolverIds).
+- Las reparaciones guardadas sin señal ya marcan la falla como reparada en la app (avance de la OT al día).
+- **Técnicos (taller, terreno, chofer, CRTG, tótem): la sesión NO se cierra por inactividad** (solo con "Salir").
+  El resto de los usuarios sigue con el cierre a los 10 minutos.
