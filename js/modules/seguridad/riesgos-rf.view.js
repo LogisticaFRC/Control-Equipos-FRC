@@ -5,11 +5,11 @@
 // Se ve en:
 //   · Web: Seguridad → Riesgos de fatalidad (31)
 //   · App técnicos (todos los perfiles): tarjeta "Riesgos de fatalidad"
-// Trae una verificación rápida Sí / No (solo en pantalla, no se guarda): si alguna es NO → detener la actividad.
+// Solo INFORMATIVO (2026-11-19, decisión usuario): se muestran las preguntas de verificación, sin responder Sí / No.
 // Es material de difusión: manda siempre el documento oficial vigente de Codelco.
 // =====================================================================
 import { RF } from './riesgos-rf.data.js';
-const { ref, computed, watch } = Vue;
+const { ref, computed } = Vue;
 
 const NARANJO = '#E8622A';
 export const iconoRF = (n) => `img/rf/rf${String(n).padStart(2, '0')}.webp`;
@@ -34,7 +34,7 @@ export default {
       <div class="min-w-0">
         <p class="text-[11px] font-black tracking-widest uppercase" style="color:#fed7aa">Codelco · Controles críticos que salvan vidas</p>
         <h2 :class="['font-black leading-tight', compacto ? 'text-xl' : 'text-3xl']">31 Riesgos de Fatalidad</h2>
-        <p class="text-xs" style="color:rgba(255,255,255,.85)">Antes de empezar, revisa el riesgo de tu tarea y responde las preguntas. <b>Si alguna es NO, detén la actividad.</b></p>
+        <p class="text-xs" style="color:rgba(255,255,255,.85)">Antes de empezar, revisa el riesgo de tu tarea y sus controles críticos. <b>Si algún control no está, detén la actividad.</b></p>
       </div>
     </div>
     <div class="relative mt-4 flex flex-wrap gap-2 items-center">
@@ -88,38 +88,25 @@ export default {
         </div>
 
         <div class="p-4 sm:p-5 space-y-4 text-sm">
-          <!-- Estado de la verificación -->
-          <div v-if="hayNo" class="rounded-2xl p-3 text-white flex gap-3 items-start" style="background:#b91c1c" data-rf="alerta-no">
-            <i class="fa-solid fa-hand text-2xl mt-0.5"></i>
-            <div><p class="font-black uppercase text-sm">¡Detén la actividad!</p><p class="text-xs" style="color:#fecaca">{{ rol === 'T' ? 'Aplica tarjeta verde y notifica a tu supervisor para asegurar la implementación del control crítico en terreno.' : 'Gestiona y asegura la implementación del control crítico en terreno antes de continuar.' }}</p></div>
-          </div>
-          <div v-else-if="todoSi" class="rounded-2xl p-3 flex gap-3 items-center bg-emerald-50 border border-emerald-200 text-emerald-800" data-rf="ok">
-            <i class="fa-solid fa-circle-check text-2xl"></i><p class="font-bold">Todos los controles críticos verificados. ¡Trabaja seguro!</p>
-          </div>
-
           <div v-for="g in grupos" :key="g.k">
             <p :class="['text-[11px] font-black uppercase mb-2 flex items-center gap-1.5', g.k === 'CCP' ? 'text-emerald-700' : 'text-sky-700']">
               <i :class="['fa-solid', g.k === 'CCP' ? 'fa-shield-halved' : 'fa-kit-medical']"></i>{{ g.titulo }}
             </p>
             <div class="space-y-2.5">
-              <div v-for="c in g.items" :key="c.c" :class="['rounded-2xl border-2 overflow-hidden transition', resp[c.c] === 'NO' ? 'border-red-400' : resp[c.c] === 'SI' ? 'border-emerald-300' : 'border-slate-100']" :data-rf="'ctrl-' + c.c">
+              <div v-for="c in g.items" :key="c.c" class="rounded-2xl border-2 border-slate-100 overflow-hidden" :data-rf="'ctrl-' + c.c">
                 <div :class="['px-3 py-2 flex items-center gap-2', g.k === 'CCP' ? 'bg-emerald-50' : 'bg-sky-50']">
                   <span :class="['text-[11px] font-black px-2 py-0.5 rounded-lg text-white shrink-0', g.k === 'CCP' ? 'bg-emerald-600' : 'bg-sky-600']">{{ c.c }}</span>
                   <span class="font-extrabold text-slate-800 leading-snug">{{ c.nombre }}</span>
                 </div>
                 <div class="px-3 py-2.5">
                   <p class="text-slate-700 leading-relaxed"><b v-if="partir(c.p).rol" class="text-orange-800">{{ partir(c.p).rol }}: </b>{{ partir(c.p).texto }}</p>
-                  <div class="mt-2 flex gap-2 justify-end">
-                    <button @click="marcar(c.c, 'SI')" :class="['px-4 py-1.5 rounded-xl text-xs font-black border-2 transition', resp[c.c] === 'SI' ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-emerald-200 text-emerald-700']"><i class="fa-solid fa-check mr-1"></i>Sí</button>
-                    <button @click="marcar(c.c, 'NO')" :class="['px-4 py-1.5 rounded-xl text-xs font-black border-2 transition', resp[c.c] === 'NO' ? 'bg-red-600 border-red-600 text-white' : 'border-red-200 text-red-700']"><i class="fa-solid fa-xmark mr-1"></i>No</button>
-                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="rounded-2xl p-3 text-xs border" style="background:#fff7ed;border-color:#fdba74;color:#7c2d12">
-            <p><b class="text-red-700">Si alguna de las preguntas tiene como respuesta "NO", detenga la actividad.</b></p>
+            <p><b class="text-red-700">Si algún control crítico no está implementado, detenga la actividad.</b></p>
             <p v-if="rol === 'T'">Luego, aplique <b class="text-emerald-700">tarjeta verde</b> y notifique al supervisor para asegurar la implementación del control crítico en terreno.</p>
             <p v-else>Luego, gestione y asegure la implementación del control crítico en terreno.</p>
           </div>
@@ -135,7 +122,7 @@ export default {
 </section>`,
   setup() {
     const ROLES = [{ k: 'T', label: 'Trabajador/a', icon: 'fa-helmet-safety' }, { k: 'S', label: 'Supervisor/a', icon: 'fa-user-tie' }];
-    const buscar = ref(''), abierto = ref(null), rol = ref('T'), resp = ref({});
+    const buscar = ref(''), abierto = ref(null), rol = ref('T');
     const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const textoRF = (r) => norm([r.n, 'rf' + r.n, 'rf' + pad(r.n), r.nombre, ...r.trabajador.map(c => c.nombre + ' ' + c.p), ...r.supervisor.map(c => c.p)].join(' '));
     const lista = computed(() => { const q = norm(buscar.value).trim(); return RF.filter(r => !q || textoRF(r).includes(q)); });
@@ -145,16 +132,12 @@ export default {
       { k: 'CCP', titulo: 'Controles críticos preventivos · evitan que ocurra', items: controles.value.filter(c => c.c.startsWith('CCP')) },
       { k: 'CCM', titulo: 'Controles críticos mitigadores · reducen las consecuencias', items: controles.value.filter(c => c.c.startsWith('CCM')) }
     ].filter(g => g.items.length));
-    const hayNo = computed(() => controles.value.some(c => resp.value[c.c] === 'NO'));
-    const todoSi = computed(() => controles.value.length > 0 && controles.value.every(c => resp.value[c.c] === 'SI'));
-    const marcar = (c, v) => { resp.value = { ...resp.value, [c]: resp.value[c] === v ? undefined : v }; };
-    watch(rol, () => { resp.value = {}; });
     const arriba = () => Vue.nextTick(() => { const el = document.querySelector('[data-rf=panel]'); if (el) el.scrollTop = 0; });
-    const abrir = (r) => { abierto.value = r; resp.value = {}; arriba(); };
-    const cerrar = () => { abierto.value = null; resp.value = {}; };
+    const abrir = (r) => { abierto.value = r; arriba(); };
+    const cerrar = () => { abierto.value = null; };
     const idx = () => { const i = RF.findIndex(r => r.n === abierto.value?.n); return i < 0 ? 0 : i; };
     const vecino = (d) => RF[(idx() + d + RF.length) % RF.length];
     const mover = (d) => abrir(vecino(d));
-    return { ROLES, NARANJO, buscar, abierto, rol, resp, lista, cuenta, grupos, hayNo, todoSi, marcar, abrir, cerrar, mover, vecino, iconoRF, pad, partir: partirPregunta };
+    return { ROLES, NARANJO, buscar, abierto, rol, lista, cuenta, grupos, abrir, cerrar, mover, vecino, iconoRF, pad, partir: partirPregunta };
   }
 };
