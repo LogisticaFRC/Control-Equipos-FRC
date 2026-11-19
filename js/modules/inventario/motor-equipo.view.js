@@ -44,7 +44,7 @@ export default {
       <p class="text-[10px] font-bold uppercase text-slate-500 mb-2"><i class="fa-solid fa-book mr-1"></i>Manual del fabricante <span class="normal-case font-normal">· ES = español · EN = inglés</span></p>
       <div class="flex flex-wrap gap-2">
         <template v-for="x in manualesOrden" :key="x.t">
-          <a v-if="x.u" :href="x.u" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-bold hover:bg-blue-100" data-motor="manual"><span :class="['mr-1.5 px-1 rounded text-[9px] font-black', x.es ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700']">{{ x.es ? 'ES' : 'EN' }}</span>{{ x.t }}<i class="fa-solid fa-arrow-up-right-from-square ml-1.5 text-[10px]"></i></a>
+          <a v-if="x.u" :href="x.u" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-bold hover:bg-blue-100" data-motor="manual"><span :class="['mr-1.5 px-1 rounded text-[9px] font-black', x.es ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700']">{{ x.es ? 'ES' : 'EN' }}</span>{{ x.t }}<i class="fa-solid fa-arrow-up-right-from-square ml-1.5 text-[10px]"></i></a>
           <span v-else class="px-3 py-2 rounded-lg bg-slate-50 border text-slate-600">{{ x.t }}</span>
         </template>
       </div>

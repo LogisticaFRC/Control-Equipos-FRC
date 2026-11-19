@@ -1052,3 +1052,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - En español: Perkins 1103/1104, Kubota D1005/D1105 (PDF), Kohler KDI 1903/2504 (PDF oficial), Kohler KDW (multilenguaje), JCB 3CX, Cat (portal con N° de serie), Cummins (QuickServe, idioma Español), Volvo Penta (se pide gratis), Perkins 1106/400/2500 (buscador manualslib.es).
 - Sin versión en español pública: Kubota V3800 y Yanmar TNV (queda el de inglés; pedir al distribuidor).
 - APP_VERSION '2026-11-19 manuales-es'. Sin SQL.
+
+## 2026-11-19 (f) · Manuales que abren directo
+
+- Se sacaron los enlaces a manualslib / manualmachine / manualshive / issuu (daban 403 o bloqueo). Ahora son PDF directos o portales oficiales.
+- Español: Perkins (manual Modasa de grupos con motores Perkins), Kubota D1005/D1105, Kohler KDW (PDF oficial multilenguaje) y KDI (PDF oficial), JCB 3CX y 533-105, Cat 427F2 (motor C4.4), Cummins QuickServe, Cat Parts.
+- Enlaces con rel="noreferrer". APP_VERSION '2026-11-19 manuales-pdf'. Sin SQL.
