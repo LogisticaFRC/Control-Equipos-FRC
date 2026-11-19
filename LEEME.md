@@ -1029,3 +1029,12 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Las reparaciones guardadas sin señal ya marcan la falla como reparada en la app (avance de la OT al día).
 - **Técnicos (taller, terreno, chofer, CRTG, tótem): la sesión NO se cierra por inactividad** (solo con "Salir").
   El resto de los usuarios sigue con el cierre a los 10 minutos.
+
+## 2026-11-19 (c) · Perfil del equipo: pestaña "Motor y fabricante"
+- Nueva pestaña en el Perfil del equipo (inventario/motor-equipo.view.js): motor identificado (marca, modelo, confianza y cómo se
+  identificó), aceite recomendado, link al manual del fabricante, pauta de mantención del fabricante (intervalos principales,
+  referenciales) con la próxima vez que toca según el horómetro aproximado, y los otros equipos con el mismo motor.
+- Datos en js/core/motores-fabricante.js: MOTOR_POR_AFI (generado desde Claude outputs/Motores_equipos_FRC.xlsx) y FAMILIAS
+  (Perkins 1100 / 1104D / 1106 / 400 / 2500, Kubota 05 / V3800, Kohler KDW / KDI, Yanmar TNV, Volvo Penta TAD16, Cummins,
+  Caterpillar, JCB 444). Si el AFI no está, busca por número sin prefijo y luego por equipo de la misma marca y modelo.
+- Para corregir un motor: editar su fila en MOTOR_POR_AFI. Sin SQL.

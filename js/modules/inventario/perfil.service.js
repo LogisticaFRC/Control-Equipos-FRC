@@ -25,6 +25,7 @@ export const TABS_PERFIL = [
   { k: 'estandar', l: 'Estandarización', i: 'fa-shield-halved' },   // check list de estandarización + figura 3D (2026-11-18)
   { k: 'fallas', l: 'Fallas', i: 'fa-magnifying-glass-chart' },
   { k: 'datos', l: 'Datos y ubicación', i: 'fa-truck-monster' },
+  { k: 'motor', l: 'Motor y fabricante', i: 'fa-gears' },   // motor, manual y pauta del fabricante (2026-11-19)
   { k: 'ficha', l: 'Filtros y ficha', i: 'fa-filter' },
   { k: 'costos', l: 'Costo mantención', i: 'fa-sack-dollar' },
   { k: 'oc', l: 'OC y traslados', i: 'fa-file-invoice-dollar' }
