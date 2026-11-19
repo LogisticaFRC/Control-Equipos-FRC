@@ -597,6 +597,16 @@ export const guardarEjecutante = async (ot) => {
 };
 
 // ---------- Lo que completa el mecánico en la OT ----------
+/** Firmas / personal / nombres de responsables de la OT: RPC frc_ot_responsables (sql/ot_firmas.sql);
+ *  si aún no se ejecuta ese SQL, se guarda directo (solo funciona para usuarios de Operaciones). */
+export const guardarResponsablesOT = async (otId, cambios) => {
+  const r = await supabaseClient.rpc('frc_ot_responsables', { p_ot_id: otId, p_cambios: cambios });
+  if (!r.error) return r.data;
+  if (/frc_ot_responsables|PGRST202|function/i.test(String(r.error.message || r.error.code || ''))) {
+    return sb(supabaseClient.from(TABLA_OT).update({ ...cambios, updated_at: new Date().toISOString() }).eq('id', otId));
+  }
+  throw r.error;
+};
 /** Último guardado de la OT en el taller (para mostrar "Guardado ✓"). */
 export const guardadoOT = ref({ id: null, hora: '', error: '' });
 const SQL_FIRMAS = 'Falta ejecutar sql/taller_firmas_problemas.sql en Supabase (columna firmas de bd_ot y tabla de problemas).';
@@ -605,10 +615,13 @@ const SQL_FIRMAS = 'Falta ejecutar sql/taller_firmas_problemas.sql en Supabase (
  * (Se guarda al cambiar cada dato: no hay botón "Guardar").
  */
 export const guardarOTTaller = async (ot, ...grupos) => {
-  if (!soloEditor()) return false;
+  // firmas y nombres de mecánico/supervisor: también los guarda el mecánico de taller / tótem (2026-11-19); el resto solo editores
+  const soloFirmas = grupos.length && grupos.every(g => ['firmas', 'personal', 'mecanico', 'supervisor'].includes(g));
+  if (!(soloFirmas ? editorTaller() : soloEditor())) return false;
   const cambios = Object.fromEntries(grupos.map(g => [g, ot[g] ?? null]));
   try {
-    await sb(supabaseClient.from(TABLA_OT).update({ ...cambios, updated_at: new Date().toISOString() }).eq('id', ot.id));
+    if (soloFirmas) await guardarResponsablesOT(ot.id, cambios);   // RPC: también para mecánico / tótem (sql/ot_firmas.sql)
+    else await sb(supabaseClient.from(TABLA_OT).update({ ...cambios, updated_at: new Date().toISOString() }).eq('id', ot.id));
     guardadoOT.value = { id: ot.id, hora: ahoraHHMM(), error: '' };
     return true;
   } catch (err) {

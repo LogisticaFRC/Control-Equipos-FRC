@@ -1076,3 +1076,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   · OT de taller con firma del mecánico y sin firma del supervisor → se firman ahí mismo (bd_ot.firmas.supervisor + nombre/fecha/usuario).
   · Se actualiza cada 2 min y al volver a la pestaña. El primero que firma la saca de la lista de todos.
 - APP_VERSION '2026-11-19 por-firmar'. Sin SQL nuevo (usa la columna firmas de bd_ot de sql/taller_firmas_problemas.sql).
+
+## 2026-11-19 (i) · Tablet de taller (tótem): firmas de la OT
+
+- En la vista de taller / tótem el mecánico ahora puede firmar la OT (mecánico responsable, personal asignado) y escribir los nombres de mecánico y supervisor; el supervisor FRC que esté ahí puede firmar en la misma tablet. El resto de la OT sigue solo para Operaciones.
+- Se guarda con el RPC frc_ot_responsables (sql/ot_firmas.sql, EJECUTAR). El botón "Por firmar" del supervisor también lo usa. Sin ese SQL solo funciona para usuarios de Operaciones.
+- APP_VERSION '2026-11-19 tablet-firmas'.

@@ -10,6 +10,7 @@ import { TABLAS } from '../../core/tablas.js';
 import { usuarioActivo, currentTab, modoTecnicoDe } from '../../core/store.js';
 import { esSupervisorMec, filtroPanel, cargarMec } from './mecanicos.service.js';
 import FirmaPad from '../../core/firma-pad.js';
+import { guardarResponsablesOT } from '../taller/taller.service.js';
 
 const { ref, computed, onMounted, onUnmounted, watch } = Vue;
 
@@ -72,9 +73,9 @@ export default {
       if (!nombre) { alert('Escribe el nombre del supervisor.'); return; }
       try {
         const firmas = { ...(o.firmas || {}), supervisor: url, supervisor_nombre: nombre, supervisor_fecha: new Date().toISOString(), supervisor_usuario: usuarioActivo.value?.usuario || '' };
-        const cambios = { firmas, updated_at: new Date().toISOString() };
+        const cambios = { firmas };
         if (!String(o.supervisor || '').trim()) cambios.supervisor = nombre;
-        await sb(supabaseClient.from(TABLAS.OT).update(cambios).eq('id', o.id));
+        await guardarResponsablesOT(o.id, cambios);   // RPC frc_ot_responsables (sql/ot_firmas.sql)
         ots.value = ots.value.filter(x => x.id !== o.id);
         alert(`OT N° ${o.folio || o.id} firmada ✔`);
       } catch (e) { alert('No se pudo firmar la OT: ' + errMsg(e)); }

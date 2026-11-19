@@ -499,7 +499,7 @@ export default /* html */ `
               <div v-for="(p, i) in otSel.personal" :key="'p' + i" class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center">
                 <input v-model="p.nombre" @change="guardarOTTaller(otSel, 'personal')" :disabled="!puedeEditar" :placeholder="'Nombre ' + (i + 1)" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
                 <input v-model="p.cargo" @change="guardarOTTaller(otSel, 'personal')" :disabled="!puedeEditar" placeholder="Cargo" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
-                <firma-pad compacto :firma="p.firma || ''" :titulo="'Firma de ' + (p.nombre || 'personal ' + (i + 1))" :disabled="!puedeEditar || !p.nombre" @guardar="u => fijarFirma(otSel, 'per.' + i, u)"></firma-pad>
+                <firma-pad compacto :firma="p.firma || ''" :titulo="'Firma de ' + (p.nombre || 'personal ' + (i + 1))" :disabled="!editaTaller || !p.nombre" @guardar="u => fijarFirma(otSel, 'per.' + i, u)"></firma-pad>
               </div>
               <p class="text-[11px] text-slate-400">Escribe el nombre para poder firmar.</p>
             </section>
@@ -517,13 +517,13 @@ export default /* html */ `
             <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="rounded-2xl border-2 p-4 space-y-2">
                 <h4 class="text-sm font-black uppercase text-slate-700">Mecánico responsable</h4>
-                <input v-model="otSel.mecanico" @change="guardarOTTaller(otSel, 'mecanico')" :disabled="!puedeEditar" placeholder="Nombre" class="w-full p-2.5 border-2 rounded-lg text-base font-bold">
-                <firma-pad :firma="firmaDe(otSel, 'mecanico')" :titulo="'Firma mecánico responsable · OT ' + otSel.folio" :disabled="!puedeEditar" @guardar="u => fijarFirma(otSel, 'mecanico', u)"></firma-pad>
+                <input v-model="otSel.mecanico" @change="guardarOTTaller(otSel, 'mecanico')" :disabled="!editaTaller" placeholder="Nombre" class="w-full p-2.5 border-2 rounded-lg text-base font-bold">
+                <firma-pad :firma="firmaDe(otSel, 'mecanico')" :titulo="'Firma mecánico responsable · OT ' + otSel.folio" :disabled="!editaTaller" @guardar="u => fijarFirma(otSel, 'mecanico', u)"></firma-pad>
               </div>
               <div class="rounded-2xl border-2 p-4 space-y-2">
                 <h4 class="text-sm font-black uppercase text-slate-700">Supervisor responsable</h4>
-                <input v-model="otSel.supervisor" @change="guardarOTTaller(otSel, 'supervisor')" :disabled="!puedeEditar" placeholder="Nombre" class="w-full p-2.5 border-2 rounded-lg text-base font-bold">
-                <firma-pad :firma="firmaDe(otSel, 'supervisor')" :titulo="'Firma supervisor responsable · OT ' + otSel.folio" :disabled="!puedeEditar" @guardar="u => fijarFirma(otSel, 'supervisor', u)"></firma-pad>
+                <input v-model="otSel.supervisor" @change="guardarOTTaller(otSel, 'supervisor')" :disabled="!editaTaller" placeholder="Nombre" class="w-full p-2.5 border-2 rounded-lg text-base font-bold">
+                <firma-pad :firma="firmaDe(otSel, 'supervisor')" :titulo="'Firma supervisor responsable · OT ' + otSel.folio" :disabled="!editaTaller" @guardar="u => fijarFirma(otSel, 'supervisor', u)"></firma-pad>
               </div>
             </section>
           </template>
