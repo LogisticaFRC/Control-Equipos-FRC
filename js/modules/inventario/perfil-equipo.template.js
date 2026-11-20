@@ -93,6 +93,7 @@ export default /* html */ `
             <span class="block text-[10px] uppercase font-bold opacity-70 mb-1">{{ esVehPerfil ? 'Kilometraje Actual Aprox.' : 'Horómetro Actual Aprox.' }}</span>
             <strong class="font-mono text-base text-sky-300 block">{{ perfilEquipo.horometros?.hAprox || 0 }} {{ uH }}</strong>
             <span class="text-[9px] opacity-60 block mt-0.5">{{ perfilEquipo.horometros?.rateHrsDia > 0 ? perfilEquipo.horometros.rateHrsDia.toFixed(2) + ' ' + uH + '/día' : 'Sin uso diario' }}</span>
+            <span v-if="perfilEquipo.horometros?.topeDia" class="text-[9px] text-amber-300 font-bold block mt-0.5 leading-tight" title="El cálculo daba más de 24 h por día: se usa el máximo posible. Revisa si alguna lectura del horómetro quedó mal anotada.">⚠ El cálculo daba {{ perfilEquipo.horometros.calc ? (perfilEquipo.horometros.calc.horas / perfilEquipo.horometros.calc.dias).toFixed(2) : '' }} h/día: se usa el máximo (24)</span>
             <span v-if="perfilEquipo.horometros?.calc" class="text-[9px] opacity-70 block mt-0.5 leading-tight" :title="perfilEquipo.horometros.metodoCalculo">
               ({{ perfilEquipo.horometros.calc.hHasta }} − {{ perfilEquipo.horometros.calc.hDesde }}) / {{ perfilEquipo.horometros.calc.dias }} días<br>
               {{ formatDateForDisplay(perfilEquipo.horometros.calc.fDesde) }} → {{ formatDateForDisplay(perfilEquipo.horometros.calc.fHasta) }}

@@ -1111,3 +1111,8 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - App técnicos: tarjeta "Programa mantención" (CRTG siempre; Terreno y Taller solo si tienen alguno visible). Cada equipo: Realizado / No realizado (RPC frc_crtg_programa). Si hay varios, se elige; el vigente primero.
 - Compatibilidad: programa sin nada marcado y con "CRTG" en el nombre sigue visible para CRTG; el SQL los deja marcados CRTG.
 - EJECUTAR sql/programa_visible_app.sql. APP_VERSION '2026-11-20 programas-app'.
+
+## 2026-11-20 (e) · Uso diario con tope de 24 h
+
+- horometros.js: si el uso calculado da más de 24 h/día (lecturas a distinta hora en equipos que trabajan continuo, o un horómetro mal anotado) se usa 24 h/día (topeDia = true). El Perfil muestra "⚠ El cálculo daba X h/día: se usa el máximo (24)". Vehículos (km) sin tope.
+- APP_VERSION '2026-11-20 tope-24h'. Sin SQL.

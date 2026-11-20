@@ -128,6 +128,10 @@ export const calcularHorometrosEquipo = (eq, histFull) => {
     }
   }
   if (!(rateHrsDia > 0)) { rateHrsDia = esVeh ? VEH_USO_KM_DIA : USO_POR_DEFECTO_HRS_DIA; metodoCalculo = 'POR DEFECTO'; calc = null; }
+  // 2026-11-20: un equipo no trabaja más de 24 h al día. Si da más (lecturas a distinta hora del día en equipos
+  // que trabajan continuo, o un horómetro mal anotado), se usa 24 h/día y se avisa.
+  let topeDia = false;
+  if (!esVeh && rateHrsDia > 24) { rateHrsDia = 24; topeDia = true; if (calc) calc.tope = true; }
 
   // Si no hay fecha válida del último horómetro, no se proyecta (antes daba NaN)
   const diasDesdeUltimo = Math.max(0, diasEntre(hoy, fechaUltimoHorometro) ?? 0);
@@ -153,7 +157,7 @@ export const calcularHorometrosEquipo = (eq, histFull) => {
   return {
     hTomado: hUltimoTomado, fechaUltimoHorometro, hUltimaMant, ultimaMantFecha,
     hAprox, hTarget, horasFaltantes: Math.round(faltan * 10) / 10,
-    estadoTexto, rateHrsDia, fechaEstimada, metodoCalculo, calc, esVehiculo: esVeh, unidad: esVeh ? 'km' : 'h', umbralProximo,
+    estadoTexto, rateHrsDia, topeDia, fechaEstimada, metodoCalculo, calc, esVehiculo: esVeh, unidad: esVeh ? 'km' : 'h', umbralProximo,
     hPenultimaMant: penultimaMant ? Number(penultimaMant.horometro) : 0,
     penultimaMantFecha: penultimaMant ? penultimaMant.fecha : '-',
     fechaBaseAnual: baseAnual, ...anual
