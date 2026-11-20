@@ -190,7 +190,7 @@ export const nuevaIntervencion = (tipo, e) => ({
   art_fotos: [], bloqueo_foto: '', modoFijo: false, fecha_termino: hoyISO(), terminado: false, fecha_falla: hoyISO(),   // ART (2 hojas) y bloqueo (1 hoja) en fotos: el papel se llena físico
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
-  supervisor: { modo: 'DESPUES', nombre: '', empresa: '', tipo: 'CLIENTE', firma: '' }
+  supervisor: { modo: 'DESPUES', nombre: '', empresa: '', correo: '', tipo: 'FRC', firma: '' }
 });
 export const formInt = ref(null);       // intervención en edición (app)
 export const pasoInt = ref(1);
@@ -263,7 +263,7 @@ export const subirFotoDoc = async (f, cual, i, file) => {
   finally { subiendoFoto.value = ''; }
 };
 export const editarRegistro = (r) => {
-  formInt.value = { ...JSON.parse(JSON.stringify(r)), horometro: r.horometro ? String(r.horometro) : '', supervisor: { modo: 'DESPUES', nombre: '', empresa: '', tipo: 'CLIENTE', firma: '' } };
+  formInt.value = { ...JSON.parse(JSON.stringify(r)), horometro: r.horometro ? String(r.horometro) : '', supervisor: r.supervisor && !r.supervisor.firma ? { modo: 'DESPUES', nombre: '', empresa: '', correo: '', tipo: 'FRC', ...r.supervisor, firma: '' } : { modo: 'DESPUES', nombre: '', empresa: '', correo: '', tipo: 'FRC', firma: '' } };
   if (formInt.value.modo) {   // formato 2026-11-18
     if (!formInt.value.fecha_termino) formInt.value.fecha_termino = formInt.value.fecha;
     if (!(formInt.value.fallas || []).length) formInt.value.fallas = [itemFallaVacio()];
@@ -309,7 +309,7 @@ export const faltantes = (f) => {
       if ((f.lubricantes || []).some(l => l.key && !(Number(String(l.cantidad).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
       if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
       if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
-      if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo === 'AHORA' && f.supervisor.tipo === 'CLIENTE' && !String(f.supervisor.empresa || '').trim()) x.push('Empresa del supervisor (cliente)');
+      if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo !== 'AHORA' && f.supervisor?.tipo === 'CLIENTE') { if (!String(f.supervisor.nombre || '').trim()) x.push('Nombre del supervisor (cliente)'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(f.supervisor.correo || '').trim())) x.push('Correo de empresa del supervisor (cliente)'); }
       if (!f.terminado) x.push('Marcar ✓ terminado');
       return x;
     }
@@ -324,7 +324,7 @@ export const faltantes = (f) => {
   if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
   if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
   if (f.modo == null && f.bloqueo && !f.registro_bloqueo) x.push('Registro de bloqueo');
-  if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo === 'AHORA' && f.supervisor.tipo === 'CLIENTE' && !String(f.supervisor.empresa || '').trim()) x.push('Empresa del supervisor (cliente)');
+  if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo !== 'AHORA' && f.supervisor?.tipo === 'CLIENTE') { if (!String(f.supervisor.nombre || '').trim()) x.push('Nombre del supervisor (cliente)'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(f.supervisor.correo || '').trim())) x.push('Correo de empresa del supervisor (cliente)'); }
   return x;
 };
 
@@ -437,6 +437,10 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
   const conFirma = !esLev && f.supervisor?.modo === 'AHORA';
   if (esLev) { fila.hora_inicio = null; fila.hora_termino = null; fila.fecha_termino = null; fila.duracion_min = null; fila.lubricantes = []; fila.uso_art = false; fila.bloqueo = false; fila.art_fotos = []; fila.bloqueo_foto = null; fila.terminado = true; }
   fila.supervisor = conFirma ? { nombre: f.supervisor.nombre.trim(), empresa: String(f.supervisor.empresa || '').trim(), tipo: f.supervisor.tipo || 'CLIENTE', firma: f.supervisor.firma, fecha: new Date().toISOString() } : null;
+  // 2026-11-20: sin firma → queda quién debe firmar (FRC o cliente con su correo); el mecánico ya no firma por el supervisor
+  if (!conFirma && !esLev) fila.supervisor = f.supervisor?.tipo === 'CLIENTE'
+    ? { tipo: 'CLIENTE', nombre: String(f.supervisor.nombre || '').trim(), empresa: String(f.supervisor.empresa || '').trim(), correo: String(f.supervisor.correo || '').trim().toLowerCase(), firma: '', pendiente: true }
+    : { tipo: 'FRC', nombre: '', empresa: 'FAST RENTAL CHILE', firma: '', pendiente: true };
   fila.estado = esLev ? 'LEVANTAMIENTO' : conFirma ? 'FIRMADA' : 'PENDIENTE_FIRMA';
   fila.motivo_rechazo = null;
   let reg;
@@ -467,7 +471,7 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
   }
   if (!ui) {   // report guardado sin señal: solo los pasos al Historial
     if (conFirma && reg) await pasarAHistorial(reg);
-    else if (reg && f.modo === 'REPARACION') await pasarAHistorial(reg, { provisional: true });
+    else if (reg && !esLev) await pasarAHistorial(reg, { provisional: true });
     return reg;
   }
   try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
@@ -485,9 +489,10 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
   if (conFirma && reg) {
     const ok = await pasarAHistorial(reg);
     avisoApp((ok ? '¡Enviada y guardada en el Historial! ✔' : 'Enviada. Quedó firmada; se pasará al Historial desde el panel.') + avisoFallas);
-  } else if (reg && f.modo === 'REPARACION') {   // 2026-11-18: la reparación queda en el Historial al enviarla
+  } else if (reg) {   // 2026-11-20: todo report queda en el Historial al enviarlo, marcado FALTA FIRMA
     const ok = await pasarAHistorial(reg, { provisional: true });
-    avisoApp((ok ? '¡Enviada y registrada en el Historial! Falta la firma del supervisor.' : '¡Enviada! Queda pendiente la firma del supervisor.') + avisoFallas);
+    const quien = fila.supervisor?.tipo === 'CLIENTE' ? 'del supervisor del cliente (' + (fila.supervisor.correo || '') + ')' : 'de un supervisor FRC';
+    avisoApp((ok ? '¡Enviada y registrada en el Historial! ⚠ Falta la firma ' : '¡Enviada! ⚠ Queda pendiente la firma ') + quien + '.' + avisoFallas);
   } else {
     avisoApp('¡Enviada! Queda pendiente la firma del supervisor.' + avisoFallas);
   }
@@ -641,17 +646,20 @@ export const pasarAHistorial = async (r, opciones = {}) => {
       interferencia: r.interferencia || '', empresa: r.usuario_arriendo || '', link: url,
       art: r.uso_art ? 'SI' : 'NO', numero_folio: `APP-${r.id}`,
       causa_falla: r.tipo === 'MECANICA' && ['ACCIDENTE', 'FALLA OPERACIONAL', 'CONDICION DE LA OPERACION', 'FALLA MECANICA'].includes(r.causa_falla) ? r.causa_falla : '',
-      ...aceites
+      ...aceites,
+      falta_firma: provisional   // 2026-11-20: marca notoria en el Historial (sql/firma_pendiente.sql)
     };
     if (r.modo === 'REPARACION' && r.ot_fallas_folio) payload.numero_ot = 'OTT-' + r.ot_fallas_folio;   // N° OT del Historial = OT Terreno
     let data;
     if (r.historial_id) {   // ya estaba en el Historial (enviada sin firma): solo se cambia el documento
-      await sb(supabaseClient.rpc('frc_historial_doc_app', { p_hist: r.historial_id, p_link: url }));
+      // 2026-11-20: además deja/quita la marca FALTA FIRMA (sql/firma_pendiente.sql); sin ese SQL, solo el documento
+      const rf = await supabaseClient.rpc('frc_historial_doc_firma', { p_hist: r.historial_id, p_link: url, p_falta_firma: provisional });
+      if (rf.error) await sb(supabaseClient.rpc('frc_historial_doc_app', { p_hist: r.historial_id, p_link: url }));
       data = [{ id: r.historial_id }];
     } else try { data = await sb(supabaseClient.from(TABLAS.HISTORIAL).insert([payload]).select('id')); }
     catch (err) {
-      if (!/'(art|numero_folio|causa_falla|numero_ot)'|column/i.test(errMsg(err))) throw err;
-      const p = { ...payload }; delete p.art; delete p.numero_folio; delete p.causa_falla; delete p.numero_ot;
+      if (!/'(art|numero_folio|causa_falla|numero_ot|falta_firma)'|column/i.test(errMsg(err))) throw err;
+      const p = { ...payload }; delete p.art; delete p.numero_folio; delete p.causa_falla; delete p.numero_ot; delete p.falta_firma;
       data = await sb(supabaseClient.from(TABLAS.HISTORIAL).insert([p]).select('id'));
     }
     const cambios = { historial_id: data?.[0]?.id || null, documento_url: url, ...(provisional ? {} : { estado: 'EN_HISTORIAL' }) };

@@ -99,6 +99,7 @@ export const mapIntervencion = (item) => {
     bloqueo: String(item.bloqueo_de_equipo || ''),
     horaFalla: String(item.hora_falla || ''),
     numeroFolio: String(item.numero_folio || ''),
+    faltaFirma: item.falta_firma === true,   // report de la app en el Historial sin firma del supervisor (sql/firma_pendiente.sql)
     causaFalla: String(item.causa_falla || ''),
     reparacionTerminada: item.reparacion_terminada === true,   // programa de REPARACIÓN: este reporte cierra la reparación
     filtrosLista,

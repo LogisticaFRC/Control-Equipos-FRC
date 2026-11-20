@@ -16,6 +16,10 @@ import { tipoNumeroOT, irAOT } from '../ot/ot.service.js';   // OTR / OTT (2026-
 const { ref, computed, watch } = Vue;
 
 const template = /* html */ `
+<div v-if="sinFirma" class="mb-2 rounded-xl border-2 border-rose-500 bg-rose-50 px-4 py-3 flex flex-wrap items-center gap-3 animate-pulse" data-hist="falta-firma">
+  <i class="fa-solid fa-triangle-exclamation text-2xl text-rose-600"></i>
+  <p class="flex-1 min-w-[200px] text-rose-900 font-extrabold">{{ sinFirma }} report(s) en el Historial SIN FIRMA del supervisor <span class="block text-[11px] font-semibold">Quedan registrados, pero falta que el supervisor los firme (botón "Por firmar").</span></p>
+</div>
 <div class="border rounded-lg overflow-hidden bg-white">
   <table class="w-full text-left text-[11px] table-fixed">
     <thead class="bg-slate-800 text-white uppercase text-[9px]">
@@ -33,8 +37,9 @@ const template = /* html */ `
     </thead>
     <tbody class="divide-y">
       <template v-for="i in visibles" :key="i.id">
-        <tr @click="toggle(i.id)" :class="['cursor-pointer align-top', abierto === i.id ? 'bg-amber-50' : 'hover:bg-slate-50']">
-          <td class="p-2 font-mono font-bold">{{ formatDateForDisplay(i.fecha) }}</td>
+        <tr @click="toggle(i.id)" :class="['cursor-pointer align-top', abierto === i.id ? 'bg-amber-50' : i.faltaFirma ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-slate-50']">
+          <td :class="['p-2 font-mono font-bold', i.faltaFirma ? 'border-l-4 border-rose-600' : '']">{{ formatDateForDisplay(i.fecha) }}
+            <span v-if="i.faltaFirma" class="mt-1 block w-fit text-[9px] font-black font-sans bg-rose-600 text-white px-1.5 py-0.5 rounded animate-pulse" title="Falta la firma del supervisor"><i class="fa-solid fa-signature mr-0.5"></i>FALTA FIRMA</span></td>
           <td v-if="mostrarAfi" class="p-2"><button @click.stop="verDetallePorAfiString(i.afi)" class="font-mono font-bold text-amber-700 bg-amber-50 px-1.5 rounded hover:underline">{{ i.afi }}</button>
             <span class="block text-[9px] text-slate-400 truncate">{{ i.equipo }}</span></td>
           <td class="p-2">
@@ -104,6 +109,7 @@ export default {
     const limite = ref(props.porPagina);
     watch(() => props.registros, () => { limite.value = props.porPagina; });
     const visibles = computed(() => props.registros.slice(0, limite.value));
+    const sinFirma = computed(() => props.registros.filter(r => r.faltaFirma).length);
     const toggle = (id) => { abierto.value = abierto.value === id ? null : id; };
     const cacheCat = new WeakMap();
     const cat = (i) => { if (!cacheCat.has(i)) cacheCat.set(i, categorizar(i)); return cacheCat.get(i); };
@@ -130,7 +136,7 @@ export default {
     ];
     // Pieza con causas conocidas (solo fallas, no mantenciones)
     const piezaDe = (i) => esNoFalla(i) ? '' : (detectarPiezas(i).find(tieneConocimiento) || '');
-    return { tipoNumeroOT, irAOT, ...c, piezaDe, detectarMotivo, abierto, limite, visibles, toggle, cat, min, fmtMin, detalle, claseMantencion,
+    return { sinFirma, tipoNumeroOT, irAOT, ...c, piezaDe, detectarMotivo, abierto, limite, visibles, toggle, cat, min, fmtMin, detalle, claseMantencion,
       editarMantencion, eliminarMantencion, detalleOCsMantencion, totalOCMantencion, fmtCLP, irAOC };
   }
 };

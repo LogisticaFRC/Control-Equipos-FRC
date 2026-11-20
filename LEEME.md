@@ -1082,3 +1082,11 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - En la vista de taller / tótem el mecánico ahora puede firmar la OT (mecánico responsable, personal asignado) y escribir los nombres de mecánico y supervisor; el supervisor FRC que esté ahí puede firmar en la misma tablet. El resto de la OT sigue solo para Operaciones.
 - Se guarda con el RPC frc_ot_responsables (sql/ot_firmas.sql, EJECUTAR). El botón "Por firmar" del supervisor también lo usa. Sin ese SQL solo funciona para usuarios de Operaciones.
 - APP_VERSION '2026-11-19 tablet-firmas'.
+
+## 2026-11-20 · Report sin firma en el Historial + firma del supervisor FRC en el celular
+
+- App mecánico: ya no firma por el supervisor. Elige "Supervisor FRC" o "Supervisor de otra empresa (cliente)" (nombre, empresa y CORREO obligatorios; solo terreno). Queda guardado en bd_mec_intervenciones.supervisor = { tipo, nombre, empresa, correo, firma: '', pendiente: true }.
+- Todo report (no solo reparaciones) entra al Historial al enviarlo con BD_HISTORIAL.falta_firma = true. En la tabla del Historial y del Perfil: fila roja, etiqueta "FALTA FIRMA" y aviso arriba con la cantidad.
+- Botón "Por firmar" (supervisor FRC): lista de reports; "Ver y firmar" abre la hoja (formato del PDF) y al lado / abajo la firma. Al firmar se reemplaza el PDF del Historial por el firmado y se quita la marca (RPC frc_historial_doc_firma).
+- Los de cliente aparecen como "esperando firma del cliente por correo" (envío por correo: próxima etapa, desde reportes@frchile.cl; copia firmada a reportes@frchile.cl).
+- EJECUTAR sql/firma_pendiente.sql. APP_VERSION '2026-11-20 falta-firma'.

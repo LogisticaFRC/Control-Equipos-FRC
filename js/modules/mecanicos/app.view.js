@@ -314,19 +314,18 @@ export default {
           <button v-if="f.mecanicos.length < 4" @click="f.mecanicos.push({ nombre: '', usuario: '', firma: '' })" class="text-sm font-bold text-emerald-700"><i class="fa-solid fa-user-plus mr-1"></i>Agregar otro</button>
         </div>
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-          <h4 class="sec">Firma del supervisor</h4>
-          <!-- 2026-11-19: se envía con la firma del mecánico. Supervisor FRC: firma ahora o le llega a su usuario. Supervisor de otra empresa: firma obligatoria aquí. -->
+          <h4 class="sec">¿Quién firma como supervisor?</h4>
+          <!-- 2026-11-20: el mecánico NO firma por el supervisor. Se envía con su firma y queda en el Historial marcado FALTA FIRMA. -->
           <div class="grid grid-cols-1 gap-2" data-int="sup-opciones">
-            <button @click="f.supervisor.modo = 'DESPUES'; f.supervisor.tipo = 'FRC'" :class="['chip-lg text-left', f.supervisor.modo === 'DESPUES' ? 'on' : '']"><i class="fa-solid fa-paper-plane mr-2"></i>Supervisor FRC firma después<span class="block text-[11px] font-normal opacity-80">Se envía ahora y le llega a los supervisores FRC para firmar</span></button>
-            <button @click="f.supervisor.modo = 'AHORA'; f.supervisor.tipo = 'FRC'; f.supervisor.empresa = 'FAST RENTAL CHILE'" :class="['chip-lg text-left', f.supervisor.modo === 'AHORA' && f.supervisor.tipo === 'FRC' ? 'on' : '']"><i class="fa-solid fa-signature mr-2"></i>Supervisor FRC firma ahora<span class="block text-[11px] font-normal opacity-80">Está aquí y firma en el equipo</span></button>
-            <button v-if="!S.esTaller.value" @click="f.supervisor.modo = 'AHORA'; f.supervisor.tipo = 'CLIENTE'; if (f.supervisor.empresa === 'FAST RENTAL CHILE') f.supervisor.empresa = ''" :class="['chip-lg text-left', f.supervisor.modo === 'AHORA' && f.supervisor.tipo === 'CLIENTE' ? 'on' : '']"><i class="fa-solid fa-handshake mr-2"></i>Supervisor de otra empresa (cliente)<span class="block text-[11px] font-normal opacity-80">Firma obligatoria aquí para poder enviar</span></button>
+            <button @click="f.supervisor.modo = 'DESPUES'; f.supervisor.tipo = 'FRC'" :class="['chip-lg text-left', f.supervisor.tipo !== 'CLIENTE' ? 'on' : '']"><i class="fa-solid fa-user-tie mr-2"></i>Supervisor FRC<span class="block text-[11px] font-normal opacity-80">Le llega a los supervisores FRC para firmar en su celular</span></button>
+            <button v-if="!S.esTaller.value" @click="f.supervisor.modo = 'DESPUES'; f.supervisor.tipo = 'CLIENTE'; if (f.supervisor.empresa === 'FAST RENTAL CHILE') f.supervisor.empresa = ''" :class="['chip-lg text-left', f.supervisor.tipo === 'CLIENTE' ? 'on' : '']"><i class="fa-solid fa-handshake mr-2"></i>Supervisor de otra empresa (cliente)<span class="block text-[11px] font-normal opacity-80">Se le envía por correo para que firme</span></button>
           </div>
-          <template v-if="f.supervisor.modo === 'AHORA'">
+          <template v-if="f.supervisor.tipo === 'CLIENTE' && !S.esTaller.value">
             <input v-model="f.supervisor.nombre" class="inp" placeholder="Nombre del supervisor">
-            <input v-model="f.supervisor.empresa" class="inp uppercase" :placeholder="f.supervisor.tipo === 'CLIENTE' ? 'Empresa del supervisor' : 'Empresa'">
-            <firma-pad :firma="f.supervisor.firma" titulo="Firma del supervisor" @guardar="v => f.supervisor.firma = v"></firma-pad>
-            <p class="text-[11px] text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>Con esta firma la intervención pasa sola al Historial del equipo.</p>
+            <input v-model="f.supervisor.empresa" class="inp uppercase" placeholder="Empresa">
+            <input v-model.trim="f.supervisor.correo" type="email" inputmode="email" autocomplete="off" class="inp" placeholder="Correo de la empresa (ej. nombre@empresa.cl)" data-int="sup-correo">
           </template>
+          <p class="text-[11px] text-amber-800 bg-amber-50 rounded-lg p-2"><i class="fa-solid fa-circle-info mr-1"></i>Al enviar queda en el Historial del equipo marcado <b>FALTA FIRMA</b> hasta que el supervisor firme.</p>
         </div>
         <label v-if="f.modo === 'REPARACION'" :class="['flex items-start gap-3 rounded-2xl p-4 border-2 cursor-pointer', f.terminado ? 'bg-emerald-50 border-emerald-500' : 'bg-white border-slate-300']" data-int="terminado">
           <input type="checkbox" v-model="f.terminado" class="w-7 h-7 mt-0.5 accent-emerald-600 shrink-0">
@@ -482,7 +481,7 @@ export default {
             <span v-if="String(r.creado_por || '').toLowerCase() !== String(usuarioActivo && usuarioActivo.usuario || '').toLowerCase()" class="ml-1 font-bold text-indigo-600"><i class="fa-solid fa-share-nodes mr-0.5"></i>compartido por {{ S.nombreDeCuenta(r.creado_por) || r.creado_por }}</span></div>
           <div v-if="r.estado === 'RECHAZADA'" class="mt-2 text-sm bg-rose-50 text-rose-800 rounded-lg p-2"><b>Corregir:</b> {{ r.motivo_rechazo }}</div>
           <div class="flex gap-2 mt-3">
-            <button v-if="['PENDIENTE_FIRMA','RECHAZADA'].includes(r.estado)" @click="S.editarRegistro(r)" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm"><i class="fa-solid fa-pen mr-1"></i>{{ r.estado === 'RECHAZADA' ? 'Corregir y reenviar' : 'Editar / firma supervisor' }}</button>
+            <button v-if="['PENDIENTE_FIRMA','RECHAZADA'].includes(r.estado)" @click="S.editarRegistro(r)" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm"><i class="fa-solid fa-pen mr-1"></i>{{ r.estado === 'RECHAZADA' ? 'Corregir y reenviar' : 'Editar' }}</button>
             <button @click="S.descargarPDF(r)" class="flex-1 py-2.5 rounded-xl border font-bold text-sm text-slate-700"><i class="fa-solid fa-file-pdf mr-1 text-rose-600"></i>Ver hoja</button>
           </div>
         </div>
