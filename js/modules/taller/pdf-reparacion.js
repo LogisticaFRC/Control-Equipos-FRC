@@ -9,6 +9,7 @@ import { supabaseClient, sb } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
 import { logoDataURL } from '../../core/excel.js';
 import { formatDateForDisplay } from '../../core/utils.js';
+import { dbEquipos, dbProgramasCalendarios, cargarDatosDesdeSupabase } from '../../core/store.js';
 import { libsPDF, renderHTML } from '../mecanicos/mecanicos.service.js';
 import * as T from './taller.service.js';
 
@@ -22,7 +23,7 @@ const cabecera = (logo, rep, prog, otros) => `
   <div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid ${V};padding-bottom:10px">
     ${logo ? `<img src="${logo}" style="height:54px">` : ''}
     <div style="flex:1"><div style="font-size:20px;font-weight:900;color:${V}">INFORME DE INTERVENCIONES · TALLER</div>
-      <div style="font-size:12px;color:#475569">${esc(T.descEquipo(rep.afi))}</div></div>
+      <div style="font-size:12px;color:#475569">${esc(otros.desc)}</div></div>
     <div style="text-align:right"><div style="font-size:26px;font-weight:900;color:${V}">AFI ${esc(rep.afi)}</div>
       <div style="font-size:12px">Avance <b style="font-size:16px">${otros.pct}%</b> · ${otros.done}/${otros.total} ítems</div></div>
   </div>
@@ -67,6 +68,9 @@ const tablaApp = (regs) => !regs.length ? '' : `
 /** Arma el PDF de las intervenciones hechas de una reparación (equipo en taller). */
 export const generarPDFReparacion = async (repId) => {
   if (!T.repPorId(repId)) await T.recargarTaller();
+  // abierto desde un enlace (Excel / pestaña nueva): el inventario puede no haber terminado de cargar
+  const faltan = [!dbEquipos.value.length && 'inventario', !dbProgramasCalendarios.value.length && 'programas'].filter(Boolean);
+  if (faltan.length) { try { await cargarDatosDesdeSupabase(faltan); } catch (_) { /* */ } }
   const rep = T.repPorId(repId);
   if (!rep) throw new Error('No se encontró el equipo en el taller (reparación ' + repId + ').');
   const hechas = T.actividadesRep(rep).filter(x => T.actividadHecha(x.a));
@@ -92,7 +96,10 @@ export const generarPDFReparacion = async (repId) => {
     pdf.addImage(c.toDataURL('image/jpeg', 0.85), 'JPEG', 0, y, W, h);
     y += h; primera = false;
   };
-  await poner(cabecera(logo, rep, prog, { ...pr, folios: T.otsDeRep(rep).map(o => o.folio).join(', ') }));
+  // descripción del equipo: inventario; si no está, lo que dice la OT (equipo, marca, modelo)
+  const ot0 = T.otsDeRep(rep)[0] || {};
+  const desc = T.equipoDe(rep.afi) ? T.descEquipo(rep.afi) : ([ot0.equipo, ot0.marca, ot0.modelo].filter(Boolean).join(' · ') || 'Equipo sin datos en el inventario');
+  await poner(cabecera(logo, rep, prog, { ...pr, desc, folios: T.otsDeRep(rep).map(o => o.folio).join(', ') }));
   if (!hechas.length) await poner(`<div style="width:${ANCHO}px;padding:20px 34px;font-family:Arial;font-size:13px;color:#64748b;background:#fff">Todavía no hay ítems terminados en la OT.</div>`);
   for (let k = 0; k < hechas.length; k++) await poner(bloqueItem(k + 1, hechas[k]));
   await poner(tablaApp(app));

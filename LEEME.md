@@ -1153,3 +1153,13 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - aceites.service: registrosAceitesOT = una fila por OT de taller con aceites elegidos de la lista + litros (insumos[].aceite_key / litros), con etiqueta "OT TALLER". Se suman al total y a los filtros junto al Historial.
 - Para no sumar doble: si la OT ya tiene un registro en el Historial (N° OT) con aceites, la OT no se cuenta. Los "OTRO (escribir)" salen en el detalle pero no suman a una columna de aceite.
 - APP_VERSION '2026-11-20 aceites-ot'. Sin SQL.
+
+## 2026-11-20 (l) · PDF de intervenciones: datos del equipo
+
+- pdf-reparacion.js: si el PDF se abre desde un enlace (Excel / pestaña nueva) espera a cargar inventario y programas antes de armarlo (antes salía "No está en el inventario" y Programa "-"). Si el AFI de verdad no está en el inventario, usa equipo / marca / modelo de la OT.
+- APP_VERSION '2026-11-20 pdf-equipo'. Sin SQL.
+
+## 2026-11-20 (m) · Taller: AFI sin prefijo
+
+- taller.service equipoDe: si el AFI del taller viene sin prefijo ("739") y en el inventario está con prefijo ("COM 739"), se busca por el número cuando hay un solo equipo con ese número. Arregla "No está en el inventario" en cartas, OT y PDF de intervenciones.
+- APP_VERSION '2026-11-20 afi-sin-prefijo'. Sin SQL.

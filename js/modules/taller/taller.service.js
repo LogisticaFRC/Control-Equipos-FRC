@@ -15,7 +15,7 @@
 // =====================================================================
 import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
-import { usuarioActivo, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPorAfi, soloEditor, soloAdmin, permisosDe, nivelEnArea, isAdmin, isSubadmin } from '../../core/store.js';
+import { usuarioActivo, dbEquipos, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPorAfi, soloEditor, soloAdmin, permisosDe, nivelEnArea, isAdmin, isSubadmin } from '../../core/store.js';
 import { hallazgosSinOT } from '../../core/avisos-taller.js';
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, formatDateForDisplay, placeholderImg } from '../../core/utils.js';
 import { NAVES, carpetaDe, obtenerItemsPrograma, obtenerProgObj } from '../programas/programas.service.js';
@@ -146,7 +146,15 @@ export const navesLibres = computed(() => NAVES.filter(n => cuposNave(n) > 0));
 export const naveDeAfi = (afi) => (dbReparaciones.value.find(r => r.estado === ESTADO_REP.EN_NAVE && mismoAfi(r.afi, afi)) || {}).nave || null;
 
 /** Equipo del inventario, foto y datos para mostrar. */
-export const equipoDe = (afi) => buscarEquipoPorAfi(afi) || buscarEquipoPorAfi(limpiarAfi(afi)) || null;
+/** 2026-11-20: si el AFI viene sin prefijo ("739" vs "COM 739"), se busca por el número cuando hay uno solo con ese número. */
+const soloNum = (a) => String(a || '').replace(/\D/g, '');
+export const equipoDe = (afi) => {
+  const e = buscarEquipoPorAfi(afi) || buscarEquipoPorAfi(limpiarAfi(afi));
+  if (e) return e;
+  const n = soloNum(afi); if (!n) return null;
+  const l = dbEquipos.value.filter(x => soloNum(x.afi) === n);
+  return l.length === 1 ? l[0] : null;
+};
 export const fotoDe = (afi) => { const e = equipoDe(afi) || {}; return e.foto || placeholderImg(String(e.tipo || 'SIN FOTO').slice(0, 22), 600, 360); };
 export const descEquipo = (afi) => { const e = equipoDe(afi); return e ? [e.tipo, e.marca, e.modelo].filter(Boolean).join(' · ') : 'No está en el inventario'; };
 
