@@ -1142,3 +1142,8 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - taller.template: se quitó la fila Ejecutante / F. inicio / F. término / H. inicio / H. término de cada ítem: todo se llena en el report del ítem (que completa esas columnas de la OT). El resumen del report muestra ejecutante y fechas también en ítems antiguos sin report.
 - El report toma como Personal los ejecutantes que ya tenía el ítem (antes ponía al usuario conectado).
 - APP_VERSION '2026-11-20 sin-duplicados'. Sin SQL.
+
+## 2026-11-20 (j) · OT de taller: aceite de la lista + litros aparte
+
+- "Aceites utilizados": selector con la lista de aceites del Historial (ACEITES) + "OTRO (escribir)" y columna Litros aparte. Se guarda insumos[i].aceite_key / aceite_otro / litros y se arma insumos[i].aceites = "15W40 CI4 · 12 lts" (lo que sale en la OT impresa). Filas antiguas muestran "Antes escrito: …".
+- APP_VERSION '2026-11-20 aceite-litros'. Sin SQL.

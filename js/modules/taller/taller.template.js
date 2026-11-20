@@ -458,10 +458,20 @@ export default /* html */ `
             <!-- 3. ACEITES (filas 1-4 del formato) -->
             <section class="space-y-2">
               <h4 class="text-sm font-black uppercase text-slate-700 bg-slate-100 rounded-lg px-3 py-2"><i class="fa-solid fa-oil-can mr-1"></i>Aceites utilizados</h4>
-              <div class="hidden md:grid grid-cols-[2rem_minmax(0,2fr)_9.5rem_minmax(0,1fr)] gap-2 px-1 text-[10px] font-bold uppercase text-slate-500"><span>#</span><span>Aceite / Lts</span><span>Fecha</span><span>Retira</span></div>
-              <div v-for="(x, i) in filasAceites(otSel)" :key="'ac' + i" class="grid grid-cols-2 md:grid-cols-[2rem_minmax(0,2fr)_9.5rem_minmax(0,1fr)] gap-2 items-center">
+              <div class="hidden md:grid grid-cols-[2rem_minmax(0,2fr)_7rem_9.5rem_minmax(0,1fr)] gap-2 px-1 text-[10px] font-bold uppercase text-slate-500"><span>#</span><span>Aceite</span><span>Litros</span><span>Fecha</span><span>Retira</span></div>
+              <div v-for="(x, i) in filasAceites(otSel)" :key="'ac' + i" class="grid grid-cols-2 md:grid-cols-[2rem_minmax(0,2fr)_7rem_9.5rem_minmax(0,1fr)] gap-2 items-center">
                 <span class="hidden md:block text-sm font-bold text-slate-400 text-center">{{ i + 1 }}</span>
-                <input v-model="x.aceites" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Ej: 15W40 · 12 lts" class="col-span-2 md:col-span-1 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
+                <!-- 2026-11-20: aceite de la lista + litros aparte (se arma el texto "15W40 CI4 · 12 lts" para la OT impresa) -->
+                <div class="min-w-0 space-y-1">
+                  <select :value="claveAceite(x)" @change="elegirAceite(otSel, x, $event.target.value)" :disabled="!puedeEditar" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold bg-white">
+                    <option value="">— Elegir aceite —</option>
+                    <option v-for="a in ACEITES_OT" :key="a.key" :value="a.key">{{ a.label }}</option>
+                    <option value="OTRO">OTRO (escribir)</option>
+                  </select>
+                  <input v-if="claveAceite(x) === 'OTRO'" v-model="x.aceite_otro" @change="componerAceite(otSel, x)" :disabled="!puedeEditar" placeholder="Nombre del aceite" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold uppercase">
+                  <p v-if="!x.aceite_key && x.aceites" class="text-[11px] text-slate-500">Antes escrito: {{ x.aceites }}</p>
+                </div>
+                <div class="relative"><input v-model="x.litros" @change="componerAceite(otSel, x)" :disabled="!puedeEditar || !claveAceite(x)" inputmode="decimal" placeholder="Litros" class="w-full min-w-0 p-2 pr-8 border-2 rounded-lg text-sm font-bold font-mono"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">lts</span></div>
                 <input type="date" v-model="x.fecha" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
                 <input v-model="x.retira" @change="guardarOTTaller(otSel, 'insumos')" :disabled="!puedeEditar" placeholder="Retira" class="w-full min-w-0 p-2 border-2 rounded-lg text-sm font-semibold">
                 <p v-if="x.repuestos" class="col-span-2 md:col-start-2 md:col-span-3 text-[11px] text-slate-500 -mt-1">Repuesto en esta fila (OT antigua): {{ x.repuestos }}</p>

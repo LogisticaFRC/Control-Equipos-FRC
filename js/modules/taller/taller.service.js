@@ -20,6 +20,7 @@ import { hallazgosSinOT } from '../../core/avisos-taller.js';
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, formatDateForDisplay, placeholderImg } from '../../core/utils.js';
 import { NAVES, carpetaDe, obtenerItemsPrograma, obtenerProgObj } from '../programas/programas.service.js';
 import { TABLA_INVENTARIO } from '../inventario/inventario.mapper.js';
+import { ACEITES as ACEITES_HIST } from '../historial/historial.mapper.js';   // lista de aceites (2026-11-20)
 import { dbOT, cargarOT, otVacia, mapOT, payloadOT, folioSugerido, N_ACTIVIDADES, N_ACEITES, TABLA_OT, estadoOT, cerrarOTs } from '../ot/ot.service.js';
 
 const { ref, computed } = Vue;
@@ -648,6 +649,24 @@ export const fijarFirma = async (ot, clave, dataUrl) => {
 export const alternarPautaOT = (ot, p) => { ot.pauta = ot.pauta === p ? '' : p; return guardarOTTaller(ot, 'pauta'); };
 
 // ---------- Insumos: ACEITES (filas 1-4 del formato) y REPUESTOS (filas 5 en adelante, se pueden agregar más) ----------
+// 2026-11-20: aceite elegido de la lista (ACEITES del Historial) + litros aparte. Se guarda aceite_key / aceite_otro / litros
+// y se arma el texto "15W40 CI4 · 12 lts" en x.aceites (lo que sale en la OT impresa).
+export const ACEITES_OT = ACEITES_HIST;
+export const claveAceite = (x) => x.aceite_key || '';
+export const componerAceite = (ot, x) => {
+  const k = x.aceite_key || '';
+  const nombre = k === 'OTRO' ? String(x.aceite_otro || '').trim().toUpperCase() : ((ACEITES_HIST.find(a => a.key === k) || {}).label || '');
+  const lts = String(x.litros ?? '').replace(',', '.').trim();
+  x.litros = lts;
+  x.aceites = nombre ? (lts ? `${nombre} · ${lts} lts` : nombre) : '';
+  return guardarOTTaller(ot, 'insumos');
+};
+export const elegirAceite = (ot, x, k) => {
+  x.aceite_key = k || '';
+  if (k !== 'OTRO') x.aceite_otro = '';
+  if (!k) x.litros = '';
+  return componerAceite(ot, x);
+};
 const filaInsumoVacia = () => ({ aceites: '', repuestos: '', fecha: '', retira: '' });
 export const filasAceites = (ot) => (ot?.insumos || []).slice(0, N_ACEITES);
 /** Repuestos: [{ x, i }] con i = índice real en ot.insumos (desde la fila 5). */
