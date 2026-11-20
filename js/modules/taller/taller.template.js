@@ -444,13 +444,7 @@ export default /* html */ `
                     <p v-else :class="['flex-1 min-w-0 text-lg font-bold leading-snug', actividadHecha(a) ? 'text-emerald-800' : 'text-slate-800']">{{ i + 1 }}. {{ a.descripcion }}</p>
                     <button v-if="isAdmin" @click="quitarActividad(otSel, i)" class="text-slate-300 hover:text-rose-600 text-lg px-1" title="Quitar actividad (Admin)"><i class="fa-solid fa-trash"></i></button>
                   </div>
-                  <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 md:pl-[68px]">
-                    <div class="text-[10px] font-bold uppercase text-slate-500 col-span-2 md:col-span-1">Ejecutante(s)<ejecutantes-input v-model="a.ejecutante" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar"></ejecutantes-input></div>
-                    <label class="text-[10px] font-bold uppercase text-slate-500">F. inicio<input type="date" v-model="a.f_inicio" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
-                    <label class="text-[10px] font-bold uppercase text-slate-500">F. término<input type="date" v-model="a.f_term" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
-                    <label class="text-[10px] font-bold uppercase text-slate-500">H. inicio<input type="time" v-model="a.h_inicio" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
-                    <label class="text-[10px] font-bold uppercase text-slate-500">H. término<input type="time" v-model="a.h_term" @change="guardarOTTaller(otSel, 'actividades')" :disabled="!puedeEditar" class="mt-0.5 w-full min-w-0 p-2 border-2 rounded-lg text-sm font-bold"></label>
-                  </div>
+                  <!-- 2026-11-20: ejecutante(s), fechas y horas del ítem se llenan en su report (abajo): no se repiten aquí -->
                   <reporte-item :ot="otSel" :idx="i" :puede="editaTaller && !['CERRADA', 'ANULADA'].includes(otSel.estado)" class="md:pl-[68px]"></reporte-item>
                 </div>
               </template>

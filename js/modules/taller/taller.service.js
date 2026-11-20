@@ -937,7 +937,9 @@ export const reporteItemVacio = (ot, a) => {
   const r = a?.reporte || {};
   const eq = buscarEquipoPorAfi(ot?.afi) || {};
   return {
-    personal: Array.isArray(r.personal) && r.personal.length ? [...r.personal] : [String(quien() || '').toUpperCase()],
+    personal: Array.isArray(r.personal) && r.personal.length ? [...r.personal]
+      : String(a?.ejecutante || '').split(',').map(x => x.trim()).filter(Boolean).length ? String(a.ejecutante).split(',').map(x => x.trim().toUpperCase()).filter(Boolean)
+      : [String(quien() || '').toUpperCase()],
     fecha_inicio: r.fecha_inicio || a?.f_inicio || hoyISO(), hora_inicio: r.hora_inicio || a?.h_inicio || '',
     fecha_termino: r.fecha_termino || a?.f_term || hoyISO(), hora_termino: r.hora_termino || a?.h_term || '',
     horometro: r.horometro ?? (eq.horometroActual ? String(eq.horometroActual) : ''),

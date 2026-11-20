@@ -1136,3 +1136,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 
 - taller.template: "Ejecutante(s)" ahora es js/modules/taller/ejecutantes-input.view.js: nombres como etiquetas, "+ Agregar otro" (Enter, coma o botón) y X para quitar. Se guarda en el mismo campo ejecutante separado por coma (sale igual en la OT impresa). Ojo: no envolver en <label> (el clic activaría la X del primero).
 - APP_VERSION '2026-11-20 ejecutantes'. Sin SQL.
+
+## 2026-11-20 (i) · OT de taller sin campos duplicados
+
+- taller.template: se quitó la fila Ejecutante / F. inicio / F. término / H. inicio / H. término de cada ítem: todo se llena en el report del ítem (que completa esas columnas de la OT). El resumen del report muestra ejecutante y fechas también en ítems antiguos sin report.
+- El report toma como Personal los ejecutantes que ya tenía el ítem (antes ponía al usuario conectado).
+- APP_VERSION '2026-11-20 sin-duplicados'. Sin SQL.

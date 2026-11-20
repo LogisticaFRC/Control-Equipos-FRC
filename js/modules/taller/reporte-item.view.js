@@ -15,7 +15,7 @@ export default {
   template: /* html */ `
 <div class="mt-1" data-reporte-item>
   <!-- Resumen -->
-  <div v-if="!abierto && (r || a.detalle_mec)" class="text-xs bg-sky-50 border border-sky-200 rounded-xl px-3 py-2 text-slate-700 space-y-1">
+  <div v-if="!abierto && (r || a.detalle_mec || a.ejecutante || a.f_inicio || a.f_term)" class="text-xs bg-sky-50 border border-sky-200 rounded-xl px-3 py-2 text-slate-700 space-y-1">
     <template v-if="r">
       <div class="flex flex-wrap gap-x-3 gap-y-0.5">
         <span><i class="fa-solid fa-users mr-1 text-sky-700"></i>{{ (r.personal || []).join(', ') || '—' }}</span>
@@ -27,7 +27,13 @@ export default {
       <p class="whitespace-pre-line">{{ r.descripcion }}</p>
       <div v-if="fotos.length" class="flex gap-1.5 flex-wrap"><a v-for="u in fotos" :key="u" :href="u" target="_blank" rel="noopener"><img :src="u" class="h-12 w-12 object-cover rounded border"></a></div>
     </template>
-    <p v-else class="whitespace-pre-line"><b class="text-sky-800">Trabajo realizado:</b> {{ a.detalle_mec }}</p>
+    <template v-else>
+      <div class="flex flex-wrap gap-x-3 gap-y-0.5">
+        <span v-if="a.ejecutante"><i class="fa-solid fa-users mr-1 text-sky-700"></i>{{ a.ejecutante }}</span>
+        <span v-if="a.f_inicio || a.f_term"><i class="fa-solid fa-clock mr-1 text-sky-700"></i>{{ formatDateForDisplay(a.f_inicio) }} {{ a.h_inicio }} → {{ formatDateForDisplay(a.f_term) }} {{ a.h_term }}</span>
+      </div>
+      <p v-if="a.detalle_mec" class="whitespace-pre-line"><b class="text-sky-800">Trabajo realizado:</b> {{ a.detalle_mec }}</p>
+    </template>
     <button v-if="puede" @click="abrir" class="text-[11px] font-bold text-sky-700 underline">Editar report</button>
   </div>
   <button v-else-if="!abierto && puede" @click="abrir" class="w-full py-2.5 rounded-xl border-2 border-dashed border-sky-400 text-sky-800 font-bold text-sm bg-white" data-reporte="abrir"><i class="fa-solid fa-file-pen mr-1"></i>Llenar report de este ítem</button>
