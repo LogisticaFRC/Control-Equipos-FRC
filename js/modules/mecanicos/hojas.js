@@ -4,6 +4,9 @@
 //   hojaBloqueo(r, logo)       → REGISTRO DE BLOQUEO (FRC-RE-OP-015)                           · A4 horizontal
 // Todo con estilos en línea (sirve para html2canvas y para imprimir).
 // =====================================================================
+/** Versión del formato de la hoja (2026-11-20). Si cambia el diseño: subir la versión y conservar la anterior
+ *  para que los reports antiguos (columna plantilla) se sigan armando igual que cuando se firmaron. */
+export const PLANTILLA_INT = '2026-11-18';
 export const ANCHO_VERTICAL = 794;     // A4 a 96 dpi
 export const ANCHO_HORIZONTAL = 1123;
 

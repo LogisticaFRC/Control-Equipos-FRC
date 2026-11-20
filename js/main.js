@@ -40,7 +40,9 @@ import MecanicosPanelView from './modules/mecanicos/panel.view.js';
 import { ChoferesPanelView } from './modules/mecanicos/chofer-checklist.view.js';   // Personal Técnico → Choferes (2026-11-17)
 import { esModoMecanico, esSupervisorMec, vistaAppForzada } from './modules/mecanicos/mecanicos.service.js';
 import { TareaItem, RecordatoriosCampana, RecordatoriosAvisos } from './modules/recordatorios/avisos.view.js';
-import PorFirmar from './modules/mecanicos/por-firmar.view.js';   // supervisor FRC: intervenciones y OT de taller por firmar (2026-11-19)
+import PorFirmar from './modules/mecanicos/por-firmar.view.js';
+import { recordarDocPedido, abrirDocPedido, generandoDoc } from './modules/mecanicos/doc-app.js';   // PDF al momento: enlaces ?doc=APP-<id> (2026-11-20)
+recordarDocPedido();   // supervisor FRC: intervenciones y OT de taller por firmar (2026-11-19)
 import { iniciarMotorAvisos, borrarCacheAvisos } from './modules/recordatorios/recordatorios.service.js';
 import CausasProbables from './modules/fallas/causas-probables.view.js';
 import TablaHistorial from './modules/historial/tabla-historial.view.js';
@@ -209,8 +211,9 @@ const template = /* html */ `
     <modal-asignar-equipo v-if="showModalAsignarEquipo"></modal-asignar-equipo>
     <baja-equipo></baja-equipo>
     <cambiar-clave></cambiar-clave>
-    <recordatorios-avisos></recordatorios-avisos>
-    <por-firmar></por-firmar>   <!-- Supervisor FRC: botón "Por firmar" (intervenciones + OT de taller con firma del mecánico) -->   <!-- Mis Tareas: avisos, resumen al entrar y ventana Nueva tarea -->
+    <recordatorios-avisos></recordatorios-avisos>   <!-- Mis Tareas: avisos, resumen al entrar y ventana Nueva tarea -->
+    <por-firmar></por-firmar>   <!-- Supervisor FRC: botón "Por firmar" (intervenciones + OT de taller con firma del mecánico) -->
+    <div v-if="generandoDoc" class="fixed inset-0 z-[90] bg-slate-900/40 flex items-center justify-center"><div class="bg-white rounded-2xl px-6 py-4 font-bold shadow-xl"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Armando el PDF…</div></div>
     <!-- Vista previa de la app de mecánicos (panel MECÁNICOS → "Ver la app como mecánico") -->
     <div v-if="vistaAppForzada" class="fixed inset-0 z-[75] bg-slate-900/80 overflow-y-auto"><mecanico-app preview :salir="cerrarVistaApp"></mecanico-app></div>
   </template>
@@ -280,6 +283,7 @@ const app = createApp({
       }
     });
 
+    watch(usuarioActivo, (u) => { if (u) abrirDocPedido(); }, { immediate: true });
     onMounted(async () => {
       cargarConfiguracionGuardada();
       await restaurarSesion();   // si se actualizó la página con sesión vigente, se mantiene y vuelve a la misma pestaña
@@ -287,7 +291,7 @@ const app = createApp({
 
     return {
       gruposDeArea, cargoDe, usuarioActivo, restaurandoSesion, isAdmin, isSubadmin, esAdminGeneral, puedeEditar, currentTab, config, areas: areasVisibles, switchTab,
-      menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, salir, esTotem, headerStyle, esModoMecanico, esSupervisorMec, vistaAppForzada, cerrarVistaApp, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
+      generandoDoc, menuAbierto, areaActual, moduloActual, enOperaciones, areasAbiertas, logout, salir, esTotem, headerStyle, esModoMecanico, esSupervisorMec, vistaAppForzada, cerrarVistaApp, logoSrc, onLogoError, abrirFormularioNuevaMantencion,
       abrirCambioClave, showPerfilEquipoModal, showModalNuevoEquipo, showFormMantencionModal, showModalMovimiento, showModalPrograma, showModalAsignarEquipo
     };
   }

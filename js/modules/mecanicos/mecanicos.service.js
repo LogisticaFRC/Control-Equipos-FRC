@@ -24,7 +24,7 @@ import { ACEITES } from '../historial/historial.mapper.js';
 import { naveDeAfi } from '../taller/taller.service.js';   // TALLER: solo equipos en nave (2026-11-17)
 import { crearFallasDeInspeccion, marcarFallaReparada, fallaPorId, textoFalla, asegurarFallas, SQL_FALLAS, dbProblemasRef } from './fallas-equipo.js';   // 2026-11-18
 import * as OFF from '../../core/offline.js';   // SIN INTERNET (2026-11-19)
-import { hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
+import { PLANTILLA_INT, hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 
 const { ref, computed, watch } = Vue;
 export const TABLA_MEC = TABLAS.MEC_INTERVENCIONES;
@@ -476,9 +476,12 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
   fila.estado = esLev ? 'LEVANTAMIENTO' : conFirma ? 'FIRMADA' : 'PENDIENTE_FIRMA';
   fila.motivo_rechazo = null;
   let reg;
+  fila.plantilla = PLANTILLA_INT;   // 2026-11-20: versión del formato (sql/pdf_al_momento.sql)
+  const guardar = () => f.id ? sb(supabaseClient.from(TABLA_MEC).update(fila).eq('id', f.id).select())
+    : sb(supabaseClient.from(TABLA_MEC).insert([{ ...fila, creado_por: f._usuario || usuarioActivo.value?.usuario || null }]).select());
   try {
-    if (f.id) reg = (await sb(supabaseClient.from(TABLA_MEC).update(fila).eq('id', f.id).select()))[0];
-    else reg = (await sb(supabaseClient.from(TABLA_MEC).insert([{ ...fila, creado_por: f._usuario || usuarioActivo.value?.usuario || null }]).select()))[0];
+    try { reg = (await guardar())[0]; }
+    catch (e1) { if (!/plantilla/i.test(errMsg(e1))) throw e1; delete fila.plantilla; reg = (await guardar())[0]; }   // sin el SQL nuevo
   } catch (err) { if (err && typeof err === 'object') err.antesDeGuardar = true; throw err; }
   if (reg && alInsertar) await alInsertar(reg.id);
   if (reg && fila.supervisor?.tipo === 'CLIENTE') await guardarContacto(fila.supervisor);   // 2026-11-20: agenda de supervisores de otras empresas
@@ -648,13 +651,8 @@ export const pasarAHistorial = async (r, opciones = {}) => {
   // al firmar, el mismo registro del Historial cambia su PDF por el firmado.
   const provisional = Boolean(opciones.provisional);
   try {
-    // 1) PDF con el formato y se sube al almacenamiento
-    let url = r.historial_id ? '' : (r.documento_url || '');
-    if (!url) {
-      const blob = await generarPDF(r);
-      const nombre = `intervenciones_app/${String(r.afi).replace(/[^\w-]/g, '')}_${r.fecha || hoyISO()}_${r.tipo}_${r.id}${provisional ? '_sin_firma_' + Date.now() : r.historial_id ? '_firmado_' + Date.now() : ''}.pdf`;
-      url = await subirArchivoStorage(nombre, new File([blob], nombre.split('/').pop(), { type: 'application/pdf' }));
-    }
+    // 1) 2026-11-20: el PDF ya NO se guarda como archivo; se arma al momento con este enlace (modules/mecanicos/doc-app.js)
+    const url = `${location.origin}${location.pathname}?doc=APP-${r.id}`;
     // 2) Registro en el Historial
     const mecs = (r.mecanicos || []).map(m => m.nombre);
     // Lubricantes de la lista → columnas de aceites del Historial (litros); otros → al texto

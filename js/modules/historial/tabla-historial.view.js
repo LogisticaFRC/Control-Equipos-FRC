@@ -11,7 +11,8 @@ import { detalleOCsMantencion, totalOCMantencion, fmtCLP, irAOC } from '../oc/oc
 import { categorizar, minutosTrabajo, fmtMin, piezaMotivoTexto, detectarPiezas, detectarMotivo, esNoFalla } from '../../core/analisis-fallas.js';
 import { tieneConocimiento } from '../../core/conocimiento-fallas.js';
 import { claseMantencion } from '../../core/horometros.js';
-import { tipoNumeroOT, irAOT } from '../ot/ot.service.js';   // OTR / OTT (2026-11-18)
+import { tipoNumeroOT, irAOT } from '../ot/ot.service.js';
+import { abrirDocumento, idDocApp } from '../mecanicos/doc-app.js';   // PDF al momento (2026-11-20)   // OTR / OTT (2026-11-18)
 
 const { ref, computed, watch } = Vue;
 
@@ -52,7 +53,7 @@ const template = /* html */ `
           <td class="p-2 text-center hidden sm:table-cell"><span v-if="min(i)" class="font-mono font-bold text-sky-800">{{ fmtMin(min(i)) }}</span><span v-else class="text-slate-300">-</span>
             <span v-if="i.horaInicio && i.horaInicio !== '-'" class="block text-[9px] text-slate-400 font-mono">{{ i.horaInicio }}–{{ i.horaTermino }}</span></td>
           <td class="p-2 text-right font-mono font-bold text-amber-900 hidden sm:table-cell">{{ i.horometro ? Number(i.horometro).toLocaleString('es-CL') + (esPatente(i.afi) ? ' km' : ' h') : '-' }}</td>
-          <td class="p-2 text-center"><a v-if="i.linkDrive" @click.stop :href="i.linkDrive" target="_blank" rel="noopener" class="inline-flex items-center gap-1 bg-rose-100 hover:bg-rose-200 text-rose-800 px-1.5 py-0.5 rounded font-bold text-[10px]" title="Abrir documento"><i class="fa-solid fa-file-pdf"></i> Ver</a><span v-else class="text-slate-300">—</span></td>
+          <td class="p-2 text-center"><a v-if="i.linkDrive" @click.stop.prevent="abrirDocumento(i.linkDrive)" :href="i.linkDrive" target="_blank" rel="noopener" class="inline-flex items-center gap-1 bg-rose-100 hover:bg-rose-200 text-rose-800 px-1.5 py-0.5 rounded font-bold text-[10px]" :title="idDocApp(i.linkDrive) ? 'Report de la app: el PDF se arma al momento' : 'Abrir documento'"><i class="fa-solid fa-file-pdf"></i> Ver</a><span v-else class="text-slate-300">—</span></td>
           <td class="p-2 text-center whitespace-nowrap">
             <button v-if="puedeEditar" @click.stop="editarMantencion(i)" class="text-amber-700 hover:text-amber-900 px-1" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
             <button v-if="isAdmin" @click.stop="eliminarMantencion(i.id)" class="text-rose-500 hover:text-rose-700 px-1" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
@@ -136,7 +137,7 @@ export default {
     ];
     // Pieza con causas conocidas (solo fallas, no mantenciones)
     const piezaDe = (i) => esNoFalla(i) ? '' : (detectarPiezas(i).find(tieneConocimiento) || '');
-    return { sinFirma, tipoNumeroOT, irAOT, ...c, piezaDe, detectarMotivo, abierto, limite, visibles, toggle, cat, min, fmtMin, detalle, claseMantencion,
+    return { abrirDocumento, idDocApp, sinFirma, tipoNumeroOT, irAOT, ...c, piezaDe, detectarMotivo, abierto, limite, visibles, toggle, cat, min, fmtMin, detalle, claseMantencion,
       editarMantencion, eliminarMantencion, detalleOCsMantencion, totalOCMantencion, fmtCLP, irAOC };
   }
 };

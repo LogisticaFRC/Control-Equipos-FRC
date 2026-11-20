@@ -1096,3 +1096,11 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - App mecánico, "Supervisor de otra empresa": Nombre + Apellido (obligatorios), Empresa, Correo. Al escribir el nombre aparecen los guardados ("Guardados · toca para completar") y se rellena apellido, empresa y correo; todo sigue editable.
 - Al enviar se guarda/corrige el contacto (RPC frc_contacto_guardar): si se eligió uno de la lista y se le cambió el correo, se corrige ese mismo contacto.
 - Tabla bd_contactos_clientes (TABLAS.CONTACTOS_CLIENTES). EJECUTAR sql/contactos_clientes.sql. APP_VERSION '2026-11-20 contactos'.
+
+## 2026-11-20 (c) · PDF al momento + bloqueo al firmar
+
+- Los reports de la app YA NO se suben como PDF: el Historial guarda el enlace permanente https://<página>/?doc=APP-<id> y el PDF se arma al pedirlo (modules/mecanicos/doc-app.js). Sirve desde el Historial, el Perfil, el Excel exportado y los correos (si no hay sesión, se abre al iniciarla). Los escaneados siguen guardándose como PDF.
+- bd_mec_intervenciones.plantilla = versión del formato (hojas.js PLANTILLA_INT). Si se cambia el diseño: subir la versión y conservar la anterior.
+- Bloqueo: trigger frc_mec_bloqueo_firmado → un report FIRMADO / EN_HISTORIAL no se modifica, solo se elimina. Urgencia: en SQL Editor `set local frc.desbloqueo = 'si';` + update en la misma ejecución.
+- EJECUTAR sql/pdf_al_momento.sql. APP_VERSION '2026-11-20 pdf-al-momento'.
+- Pendiente: check list chofer y OT de taller al momento; limpiar PDF antiguos de archivos_frc/intervenciones_app.
