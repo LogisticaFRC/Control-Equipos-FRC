@@ -73,7 +73,7 @@ export default /* html */ `
             <td class="p-2.5 font-bold text-amber-700"><button @click="verDetallePorAfiString(item.afi)" class="bg-amber-50 px-2 py-0.5 rounded border border-amber-200 hover:underline">{{ item.afi }}</button></td>
             <td class="p-2.5 font-semibold">{{ item.equipo || '-' }}</td>
             <td class="p-2.5 text-slate-600">{{ item.lugar || '-' }}</td>
-            <td class="p-2.5"><span class="font-bold block text-slate-800">{{ item.causa }}</span><span class="text-[10px] text-blue-600">{{ item.tipoMant }}</span></td>
+            <td class="p-2.5"><span class="font-bold block text-slate-800">{{ item.causa }}</span><span class="text-[10px] text-blue-600">{{ item.tipoMant }}</span><span v-if="item.deOT" class="ml-1 text-[9px] font-black bg-amber-100 text-amber-800 rounded px-1">OT TALLER</span></td>
             <td class="p-2.5 font-bold text-amber-900 bg-amber-50/50">{{ item.aceites }}</td>
             <td class="p-2.5 font-bold text-emerald-700 text-right">\${{ Number(item.costo || 0).toLocaleString('es-CL') }}</td>
           </tr>

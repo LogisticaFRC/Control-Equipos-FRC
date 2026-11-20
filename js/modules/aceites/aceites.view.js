@@ -9,6 +9,7 @@ export default {
   name: 'AceitesView',
   template,
   setup() {
+    Vue.onMounted(() => S.cargarAceitesOT());   // 2026-11-20: suma también los aceites de las OT de taller
     return { ...comunes(), ...S };
   }
 };

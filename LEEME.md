@@ -1147,3 +1147,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 
 - "Aceites utilizados": selector con la lista de aceites del Historial (ACEITES) + "OTRO (escribir)" y columna Litros aparte. Se guarda insumos[i].aceite_key / aceite_otro / litros y se arma insumos[i].aceites = "15W40 CI4 · 12 lts" (lo que sale en la OT impresa). Filas antiguas muestran "Antes escrito: …".
 - APP_VERSION '2026-11-20 aceite-litros'. Sin SQL.
+
+## 2026-11-20 (k) · Control de Aceites suma los aceites de las OT de taller
+
+- aceites.service: registrosAceitesOT = una fila por OT de taller con aceites elegidos de la lista + litros (insumos[].aceite_key / litros), con etiqueta "OT TALLER". Se suman al total y a los filtros junto al Historial.
+- Para no sumar doble: si la OT ya tiene un registro en el Historial (N° OT) con aceites, la OT no se cuenta. Los "OTRO (escribir)" salen en el detalle pero no suman a una columna de aceite.
+- APP_VERSION '2026-11-20 aceites-ot'. Sin SQL.
