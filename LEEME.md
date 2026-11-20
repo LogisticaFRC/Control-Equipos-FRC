@@ -1124,3 +1124,10 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Nuevo js/modules/taller/reporte-item.view.js (reemplaza DetalleActividad en taller-mecanico y taller.template).
 - EJECUTAR sql/taller_reporte_item.sql. APP_VERSION '2026-11-20 report-item'.
 - Pendiente (cuando se pida): firmas por ítem.
+
+## 2026-11-20 (g) · % de avance en Programa de Reparación + PDF de intervenciones hechas
+
+- Programas Reparación: en la columna Taller de cada equipo, barra y % de avance de su OT de taller (ítems terminados / total) + ícono PDF.
+- Excel del programa (hojas por nave): columnas "% AVANCE" y "INTERVENCIONES" (enlace "Ver PDF").
+- PDF al momento (js/modules/taller/pdf-reparacion.js): ítems TERMINADOS de las OT de la reparación con su report (personal, horas, horómetro, ART, bloqueo, descripción, fotos) + reports de la app del AFI desde el ingreso. Enlace permanente ?rep=<id reparación> (doc-app.js lo abre al iniciar sesión).
+- mecanicos.service: libsPDF y renderHTML exportados. APP_VERSION '2026-11-20 avance-pdf'. Sin SQL.

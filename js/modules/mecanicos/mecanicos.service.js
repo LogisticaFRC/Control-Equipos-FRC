@@ -581,12 +581,12 @@ export const abrirOTTerreno = (o) => {
 const cargarScript = (url, global) => (window[global] ? Promise.resolve(window[global]) : new Promise((ok, mal) => {
   const s = document.createElement('script'); s.src = url; s.onload = () => ok(window[global]); s.onerror = () => mal(new Error('No se pudo cargar ' + url)); document.head.appendChild(s);
 }));
-const libsPDF = async () => {
+export const libsPDF = async () => {
   await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas');
   await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'jspdf');
   return { html2canvas: window.html2canvas, jsPDF: window.jspdf.jsPDF };
 };
-const renderHTML = async (html, ancho, html2canvas) => {
+export const renderHTML = async (html, ancho, html2canvas) => {
   const box = document.createElement('div');
   box.style.cssText = `position:fixed;left:-${ancho + 200}px;top:0;width:${ancho}px;background:#fff;z-index:-1`;
   box.innerHTML = html;

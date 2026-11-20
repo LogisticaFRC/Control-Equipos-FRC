@@ -48,12 +48,20 @@ export const abrirDocumento = (link) => {
 /** Al entrar con ?doc=APP-<id> (desde Excel o un correo): se recuerda hasta iniciar sesión y se abre. */
 export const recordarDocPedido = () => {
   const m = location.search.match(/[?&]doc=APP-(\d+)/);
-  if (!m) return;
-  try { sessionStorage.setItem(CLAVE, m[1]); } catch (_) { /* */ }
+  const r = location.search.match(/[?&]rep=(\d+)/);   // 2026-11-20: intervenciones hechas de un equipo del taller
+  if (!m && !r) return;
+  try { sessionStorage.setItem(CLAVE, m ? m[1] : 'rep:' + r[1]); } catch (_) { /* */ }
   history.replaceState(null, '', location.pathname + location.hash);
 };
 export const abrirDocPedido = async () => {
   let id = null;
   try { id = sessionStorage.getItem(CLAVE); sessionStorage.removeItem(CLAVE); } catch (_) { /* */ }
-  if (id) await abrirDocApp(Number(id));
+  if (!id) return;
+  if (String(id).startsWith('rep:')) {
+    generandoDoc.value = true;
+    try { const P = await import('../taller/pdf-reparacion.js'); await P.abrirPDFReparacion(Number(id.slice(4))); }
+    finally { generandoDoc.value = false; }
+    return;
+  }
+  await abrirDocApp(Number(id));
 };

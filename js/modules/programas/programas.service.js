@@ -835,6 +835,11 @@ export const exportarProgramaGanttExcel = async (prog) => {
       }
     } else {
       let hay = false;
+      // 2026-11-20: % de avance de la OT de taller + enlace al PDF de las intervenciones hechas de cada equipo
+      const T = await import('../taller/taller.service.js');
+      try { await T.recargarTaller(); } catch (_) { /* sin taller: columnas vacías */ }
+      const avanceItem = (item) => { const r = T.repDeItem(item); return r ? T.progresoRep(r) : null; };
+      const enlaceItem = (item) => { const r = T.repDeItem(item); return r ? { text: 'Ver PDF', hyperlink: `${location.origin}${location.pathname}?rep=${r.id}` } : '-'; };
       const todos = obtenerItemsPrograma(prog.id);
       const fueraRango = obtenerItemsFueraDeRangoPrograma(prog.id);
       // Hoja "Inicio" con dashboard (va primera, antes de las naves)
@@ -847,17 +852,20 @@ export const exportarProgramaGanttExcel = async (prog) => {
           det(item.afi, 'tipo'), `AFI ${item.afi}`, `${det(item.afi, 'marca')} ${det(item.afi, 'modelo')}`, ubicacionActualAfi(item.afi),
           item.condicion || 'Arriendo', fechaExcel(normalizarFecha(item.fecha_inicio)) || '-', fechaExcel(normalizarFecha(item.fecha_fin)) || '-',
           item.realizado ? 'REPARADO (ON)' : 'PENDIENTE (OFF)',
+          avanceItem(item) ? (item.realizado ? 1 : avanceItem(item).pct / 100) : (item.realizado ? 1 : '-'), enlaceItem(item),
           ...dias.map(d => (esFechaEnRango(d.fechaStr, item.fecha_inicio, item.fecha_fin) ? '●' : ''))
         ]);
         const ws = hojaTabla(wb, logo, {
           nombre: nave, titulo: `PROGRAMA DE REPARACIÓN · ${nombre}`, subtitulo: `${nave} · ${vigencia}`,
           columnas: [
             { t: 'TIPO EQUIPO', w: 18 }, { t: 'AFI', w: 10, bold: true }, { t: 'MARCA / MODELO', w: 22 }, { t: 'UBICACIÓN ACTUAL', w: 18 },
-            { t: 'CONDICIÓN', w: 11 }, { t: 'INICIO', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'FIN', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'ESTADO', w: 15, bold: true }, ...colsDias
+            { t: 'CONDICIÓN', w: 11 }, { t: 'INICIO', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'FIN', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'ESTADO', w: 15, bold: true },
+            { t: '% AVANCE', w: 9, fmt: '0%', bold: true }, { t: 'INTERVENCIONES', w: 13 }, ...colsDias
           ],
           filas, estiloFila: (f) => estiloEstado(f[7] === 'REPARADO (ON)')
         });
-        pintarGantt(ws, filas.length, 9, v => (v === '●' ? 'prog' : ''));
+        filas.forEach((f, i) => { const c = ws.getCell(7 + i, 10); if (c.value && c.value.hyperlink) c.font = { size: 9, color: { argb: 'FF1D4ED8' }, underline: true, bold: true }; });
+        pintarGantt(ws, filas.length, 11, v => (v === '●' ? 'prog' : ''));
       });
       if (fueraRango.length) {
         hay = true;

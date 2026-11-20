@@ -10,7 +10,7 @@ import * as S from './programas.service.js';
 import { filtrosRequeridosAfi, kitsEnBodegaAfi, sePuedeArmarAfi, kitConsumidoItem, resumenKitsPrograma, abrirArmarKitParaAfi } from '../bodega/bodega.service.js';
 import { dbProgramasItems } from '../../core/store.js';
 import { hoyISO, normalizarFecha } from '../../core/utils.js';
-import { estadoItemTaller, repDeItem, progresoRep, ETIQUETA_ESTADO, ESTILO_ESTADO, cargarReparaciones } from '../taller/taller.service.js';
+import { estadoItemTaller, repDeItem, progresoRep, ETIQUETA_ESTADO, ESTILO_ESTADO, cargarReparaciones, recargarTaller, colorAvance, textoAvance } from '../taller/taller.service.js';
 
 const { computed, onMounted, watch } = Vue;
 
@@ -39,9 +39,17 @@ export default {
       const p = vigente || reciente;
       if (p) S.seleccionarProgramaObj(p);
     };
-    onMounted(() => { S.cargarCarpetasProgramas(); elegirPorDefecto(); if (tipo.value === 'REPARACION') cargarReparaciones(); });
+    onMounted(() => { S.cargarCarpetasProgramas(); elegirPorDefecto(); if (tipo.value === 'REPARACION') recargarTaller().catch(() => cargarReparaciones()); });
     /** Texto de la columna TALLER (programas de reparación). */
     const tallerDeItem = (item) => { const e = estadoItemTaller(item); const r = repDeItem(item); return e === 'EN_NAVE' ? `${r.nave} · ${progresoRep(r).pct}%` : ETIQUETA_ESTADO[e]; };
+    /** 2026-11-20: avance de la OT de taller del equipo (ítems terminados / total) y PDF de lo hecho. */
+    const avanceDeItem = (item) => { const r = repDeItem(item); if (!r) return null; const p = progresoRep(r); return p.total || p.pct ? p : null; };
+    const abrirPDFItem = async (item) => {
+      const r = repDeItem(item); if (!r) return;
+      const w = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) ? null : window.open('', '_blank');
+      if (w) w.document.write('<p style="font-family:Arial;padding:30px">Armando el PDF…</p>');
+      const P = await import('../taller/pdf-reparacion.js'); await P.abrirPDFReparacion(r.id, w);
+    };
     watch(() => S.obtenerProgramasDeCarpeta(tipo.value).length, elegirPorDefecto);
 
     /** Cumplimiento de todos los programas de este tipo. */
@@ -52,7 +60,7 @@ export default {
     });
 
     return {
-      ...comunes(), ...S, tipoProg: tipo, carpetasVisibles, progDelTipo, cumplimientoTipo, estadoItemTaller, tallerDeItem, ESTILO_ESTADO,
+      ...comunes(), ...S, tipoProg: tipo, carpetasVisibles, progDelTipo, cumplimientoTipo, estadoItemTaller, tallerDeItem, ESTILO_ESTADO, avanceDeItem, abrirPDFItem, colorAvance, textoAvance,
       abrirModalAsignarEquipo: () => S.abrirModalAsignarEquipo(tipo.value),
       filtrosRequeridosAfi, kitsEnBodegaAfi, sePuedeArmarAfi, kitConsumidoItem, abrirArmarKitParaAfi,
       // la mantención INTERMEDIA (solo filtro de aire) no usa KIT
