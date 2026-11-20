@@ -1116,3 +1116,11 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 
 - horometros.js: si el uso calculado da más de 24 h/día (lecturas a distinta hora en equipos que trabajan continuo, o un horómetro mal anotado) se usa 24 h/día (topeDia = true). El Perfil muestra "⚠ El cálculo daba X h/día: se usa el máximo (24)". Vehículos (km) sin tope.
 - APP_VERSION '2026-11-20 tope-24h'. Sin SQL.
+
+## 2026-11-20 (f) · Taller: report por ítem de la OT
+
+- Cada ítem de la OT de taller (app Taller y vista de taller / tótem) tiene "Llenar report de este ítem": personal, fecha/hora de inicio y término, horómetro, uso ART (fotos de las 2 hojas), bloqueo (foto), descripción y "Ítem terminado" (ahí se marca terminado; exige lo obligatorio). Sin firmas por ahora.
+- Se guarda en bd_ot.actividades[i].reporte y completa ejecutante, f_inicio, h_inicio, f_term, h_term y detalle_mec (salen en la OT impresa). Fotos en archivos_frc/taller_items/. RPC frc_mec_actividad_reporte.
+- Nuevo js/modules/taller/reporte-item.view.js (reemplaza DetalleActividad en taller-mecanico y taller.template).
+- EJECUTAR sql/taller_reporte_item.sql. APP_VERSION '2026-11-20 report-item'.
+- Pendiente (cuando se pida): firmas por ítem.

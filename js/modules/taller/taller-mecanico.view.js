@@ -11,7 +11,8 @@
 // =====================================================================
 import * as S from './taller.service.js';
 import InspeccionEquipo from './inspeccion-equipo.view.js';
-import HallazgoEditar, { DetalleActividad } from './hallazgo-editar.view.js';
+import HallazgoEditar from './hallazgo-editar.view.js';
+import ReporteItem from './reporte-item.view.js';   // report por ítem de la OT (2026-11-20)
 import ActividadesEquipo from '../mecanicos/actividades-equipo.view.js';
 import { formatDateForDisplay, hoyISO } from '../../core/utils.js';
 
@@ -22,7 +23,7 @@ const selKey = ref(null);
 
 export default {
   name: 'TallerMecanico',
-  components: { InspeccionEquipo, ActividadesEquipo, HallazgoEditar, DetalleActividad },
+  components: { InspeccionEquipo, ActividadesEquipo, HallazgoEditar, ReporteItem },
   template: /* html */ `
 <div class="p-4 space-y-3">
   <div v-if="S.faltaTablaTaller.value" class="bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-3 text-sm">Falta ejecutar <b>sql/taller.sql</b> en Supabase.</div>
@@ -60,15 +61,16 @@ export default {
           <div class="font-black text-rose-700 text-lg">OT N° {{ ot.folio }}</div>
           <div class="text-right"><div :class="['text-2xl font-black leading-none', S.textoAvance(prog(ot).pct)]">{{ prog(ot).pct }}%</div><div class="text-[10px] text-slate-500">{{ prog(ot).done }}/{{ prog(ot).total }} listas</div></div>
         </div>
-        <p class="text-[11px] text-slate-500">Toca el cuadro para marcar la actividad terminada.</p>
+        <p class="text-[11px] text-slate-500">Por cada ítem llena su report (personal, horas, horómetro, ART y bloqueo) y márcalo terminado ahí.</p>
         <template v-for="(a, i) in ot.actividades" :key="i">
-          <button v-if="a.descripcion && a.descripcion.trim()" @click="marcar(ot, i)" :disabled="!abierta(ot)"
+          <div v-if="a.descripcion && a.descripcion.trim()"
             :class="['w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left', S.actividadHecha(a) ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200']">
             <span :class="['w-10 h-10 shrink-0 rounded-lg border-4 flex items-center justify-center text-xl', S.actividadHecha(a) ? 'bg-emerald-500 border-emerald-600 text-white' : 'border-slate-300 text-transparent']"><i class="fa-solid fa-check"></i></span>
             <span class="flex-1 min-w-0"><span :class="['block font-bold leading-snug', S.actividadHecha(a) ? 'text-emerald-800' : 'text-slate-800']">{{ a.descripcion }}</span>
-              <span v-if="S.actividadHecha(a)" class="text-[10px] text-emerald-700">Terminada {{ formatDateForDisplay(a.f_term) }} {{ a.h_term }}{{ a.ejecutante ? ' · ' + a.ejecutante : '' }}</span></span>
-          </button>
-          <detalle-actividad v-if="a.descripcion && a.descripcion.trim()" :ot="ot" :idx="i" :puede="abierta(ot)" class="pl-2"></detalle-actividad>
+              <span v-if="S.actividadHecha(a)" class="text-[10px] text-emerald-700">Terminada {{ formatDateForDisplay(a.f_term) }} {{ a.h_term }}{{ a.ejecutante ? ' · ' + a.ejecutante : '' }}</span>
+              <span v-else class="text-[10px] text-slate-500">{{ a.reporte ? 'Report guardado · pendiente' : 'Sin report' }}</span></span>
+          </div>
+          <reporte-item v-if="a.descripcion && a.descripcion.trim()" :ot="ot" :idx="i" :puede="abierta(ot)" class="pl-2"></reporte-item>
         </template>
         <p v-if="!prog(ot).total" class="text-sm text-slate-400 italic">La OT todavía no tiene actividades.</p>
         <div v-if="S.filasRepuestos(ot).length" class="text-xs bg-slate-50 rounded-lg p-2"><b>Repuestos:</b> {{ S.filasRepuestos(ot).map(r => r.x.repuestos).join(' · ') }}</div>

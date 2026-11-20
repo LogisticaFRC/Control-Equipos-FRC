@@ -929,6 +929,62 @@ export const guardarDetalleActividad = async (ot, i, texto) => {
   }
 };
 
+// ---------- Report por ítem de la OT (2026-11-20 · sql/taller_reporte_item.sql) ----------
+// Igual que el report de terreno, por cada ítem: personal, fechas/horas, horómetro, ART y bloqueo con fotos, descripción.
+// Firmas: todavía no (se agregan cuando se implementen).
+const SQL_REPORTE_ITEM = 'Falta ejecutar sql/taller_reporte_item.sql en Supabase (SQL Editor → Run).';
+export const reporteItemVacio = (ot, a) => {
+  const r = a?.reporte || {};
+  const eq = buscarEquipoPorAfi(ot?.afi) || {};
+  return {
+    personal: Array.isArray(r.personal) && r.personal.length ? [...r.personal] : [String(quien() || '').toUpperCase()],
+    fecha_inicio: r.fecha_inicio || a?.f_inicio || hoyISO(), hora_inicio: r.hora_inicio || a?.h_inicio || '',
+    fecha_termino: r.fecha_termino || a?.f_term || hoyISO(), hora_termino: r.hora_termino || a?.h_term || '',
+    horometro: r.horometro ?? (eq.horometroActual ? String(eq.horometroActual) : ''),
+    uso_art: Boolean(r.uso_art), art_fotos: [...(r.art_fotos || [])],
+    bloqueo: Boolean(r.bloqueo), bloqueo_foto: r.bloqueo_foto || '',
+    descripcion: r.descripcion || a?.detalle_mec || '',
+    terminada: actividadHecha(a)
+  };
+};
+/** Qué falta para dar el ítem por terminado. */
+export const faltaReporteItem = (f) => {
+  const x = [];
+  if (!(f.personal || []).some(p => String(p).trim())) x.push('Personal');
+  if (!f.fecha_inicio || !f.hora_inicio) x.push('Fecha y hora de inicio');
+  if (!f.fecha_termino || !f.hora_termino) x.push('Fecha y hora de término');
+  if (f.fecha_inicio && f.hora_inicio && f.fecha_termino && f.hora_termino && `${f.fecha_termino}T${f.hora_termino}` < `${f.fecha_inicio}T${f.hora_inicio}`) x.push('El término no puede ser antes del inicio');
+  if (!String(f.descripcion || '').trim()) x.push('Descripción del trabajo');
+  if (f.uso_art && (f.art_fotos || []).filter(Boolean).length < 2) x.push('Fotos de las 2 hojas del ART');
+  if (f.bloqueo && !f.bloqueo_foto) x.push('Foto del registro de bloqueo');
+  return x;
+};
+export const subirFotoItem = async (ot, file, cual) => {
+  const { comprimirImagen } = await import('../inventario/fotos-equipo.js');
+  const blob = await comprimirImagen(file, 1600, 0.82);
+  const nombre = `taller_items/${limpiarAfi(ot.afi).replace(/[^\w-]/g, '')}_OT${ot.folio || ot.id}_${cual}_${Date.now()}.jpg`;
+  return subirArchivoStorage(nombre, new File([blob], nombre.split('/').pop(), { type: 'image/jpeg' }));
+};
+export const guardarReporteItem = async (ot, i, f) => {
+  if (f.terminada) { const falta = faltaReporteItem(f); if (falta.length) { alert('Para dar el ítem por terminado falta:\n• ' + falta.join('\n• ')); return false; } }
+  const reporte = {
+    personal: (f.personal || []).map(p => String(p).trim().toUpperCase()).filter(Boolean),
+    fecha_inicio: f.fecha_inicio || '', hora_inicio: f.hora_inicio || '', fecha_termino: f.fecha_termino || '', hora_termino: f.hora_termino || '',
+    horometro: String(f.horometro || '').trim(), uso_art: Boolean(f.uso_art), art_fotos: f.uso_art ? (f.art_fotos || []).filter(Boolean) : [],
+    bloqueo: Boolean(f.bloqueo), bloqueo_foto: f.bloqueo ? (f.bloqueo_foto || '') : '', descripcion: String(f.descripcion || '').trim()
+  };
+  try {
+    const act = await sb(supabaseClient.rpc('frc_mec_actividad_reporte', { p_ot_id: ot.id, p_idx: i, p_reporte: reporte, p_terminada: Boolean(f.terminada), p_quien: quien() }));
+    if (act && typeof act === 'object') Object.assign(ot.actividades[i], act);
+    else Object.assign(ot.actividades[i], { reporte, f_term: f.terminada ? reporte.fecha_termino : '', h_term: f.terminada ? reporte.hora_termino : '' });   // sin señal: queda en la cola
+    return true;
+  } catch (err) {
+    const m = errMsg(err);
+    alert(/frc_mec_actividad_reporte|function|schema cache/i.test(m) ? SQL_REPORTE_ITEM : 'No se pudo guardar el report: ' + m);
+    return false;
+  }
+};
+
 /** El mecánico marca / desmarca una actividad de la OT (función frc_mec_actividad de sql/taller_hallazgos.sql). */
 const alternarActividadMecanico = async (ot, i) => {
   const a = ot.actividades[i];
