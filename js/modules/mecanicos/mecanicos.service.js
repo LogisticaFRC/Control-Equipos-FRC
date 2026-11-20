@@ -136,6 +136,38 @@ export const cargarMec = async () => {
     else console.warn('[Mecánicos]', errMsg(err));
   } finally { cargandoMec.value = false; }
 };
+// ---------- Contactos de supervisores de otras empresas (2026-11-20 · sql/contactos_clientes.sql) ----------
+// Se guardan al enviar; al escribir el nombre en la app aparecen y autocompletan apellido, empresa y correo (editables).
+export const contactos = ref([]);
+let contactosCargados = false;
+export const cargarContactos = async (forzar = false) => {
+  if (contactosCargados && !forzar) return;
+  try {
+    const { data, error } = await supabaseClient.from(TABLAS.CONTACTOS_CLIENTES).select('*').order('actualizado_at', { ascending: false }).limit(1000);
+    if (!error) { contactos.value = data || []; contactosCargados = true; }
+  } catch (_) { /* sin la tabla o sin señal: sin sugerencias */ }
+};
+const sinTilde = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+export const sugerirContactos = (sup) => {
+  const q = sinTilde(`${sup?.nombre_pila || ''} ${sup?.apellido || ''}`).trim();
+  if (q.length < 2) return [];
+  const partes = q.split(/\s+/);
+  return contactos.value.filter(c => {
+    const t = sinTilde(`${c.nombre} ${c.apellido} ${c.empresa} ${c.correo}`);
+    return partes.every(p => t.includes(p));
+  }).filter(c => c.id !== sup.contacto_id || sinTilde(c.correo) !== sinTilde(sup.correo)).slice(0, 5);
+};
+export const elegirContacto = (sup, c) => {
+  Object.assign(sup, { nombre_pila: c.nombre, apellido: c.apellido || '', empresa: c.empresa || sup.empresa || '', correo: c.correo, contacto_id: c.id });
+};
+const guardarContacto = async (sup) => {
+  try {
+    const { data, error } = await supabaseClient.rpc('frc_contacto_guardar', { p_id: sup.contacto_id || null, p_nombre: sup.nombre_pila || sup.nombre, p_apellido: sup.apellido || '', p_empresa: sup.empresa || '', p_correo: sup.correo, p_quien: usuarioActivo.value?.usuario || '' });
+    if (error) throw error;
+    const c = { id: data, nombre: sup.nombre_pila, apellido: sup.apellido, empresa: sup.empresa, correo: sup.correo };
+    contactos.value = [c, ...contactos.value.filter(x => x.id !== data && sinTilde(x.correo) !== sinTilde(sup.correo))];
+  } catch (err) { console.warn('[Mecánicos] No se guardó el contacto:', errMsg(err)); }
+};
 // ---------- Carpetas por cuenta (2026-11-13) ----------
 // Cada intervención queda en la carpeta de quien la creó Y de los compañeros agregados con su cuenta
 // (mecanicos[].usuario). Todos ven el PDF aunque falte la firma; pasa a "Realizados" con la firma del supervisor.
@@ -190,7 +222,7 @@ export const nuevaIntervencion = (tipo, e) => ({
   art_fotos: [], bloqueo_foto: '', modoFijo: false, fecha_termino: hoyISO(), terminado: false, fecha_falla: hoyISO(),   // ART (2 hojas) y bloqueo (1 hoja) en fotos: el papel se llena físico
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
-  supervisor: { modo: 'DESPUES', nombre: '', empresa: '', correo: '', tipo: 'FRC', firma: '' }
+  supervisor: { modo: 'DESPUES', nombre: '', nombre_pila: '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', firma: '' }
 });
 export const formInt = ref(null);       // intervención en edición (app)
 export const pasoInt = ref(1);
@@ -263,7 +295,7 @@ export const subirFotoDoc = async (f, cual, i, file) => {
   finally { subiendoFoto.value = ''; }
 };
 export const editarRegistro = (r) => {
-  formInt.value = { ...JSON.parse(JSON.stringify(r)), horometro: r.horometro ? String(r.horometro) : '', supervisor: r.supervisor && !r.supervisor.firma ? { modo: 'DESPUES', nombre: '', empresa: '', correo: '', tipo: 'FRC', ...r.supervisor, firma: '' } : { modo: 'DESPUES', nombre: '', empresa: '', correo: '', tipo: 'FRC', firma: '' } };
+  formInt.value = { ...JSON.parse(JSON.stringify(r)), horometro: r.horometro ? String(r.horometro) : '', supervisor: r.supervisor && !r.supervisor.firma ? { modo: 'DESPUES', nombre: '', nombre_pila: r.supervisor.nombre_pila ?? r.supervisor.nombre ?? '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', ...r.supervisor, firma: '' } : { modo: 'DESPUES', nombre: '', nombre_pila: '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', firma: '' } };
   if (formInt.value.modo) {   // formato 2026-11-18
     if (!formInt.value.fecha_termino) formInt.value.fecha_termino = formInt.value.fecha;
     if (!(formInt.value.fallas || []).length) formInt.value.fallas = [itemFallaVacio()];
@@ -309,7 +341,7 @@ export const faltantes = (f) => {
       if ((f.lubricantes || []).some(l => l.key && !(Number(String(l.cantidad).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
       if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
       if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
-      if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo !== 'AHORA' && f.supervisor?.tipo === 'CLIENTE') { if (!String(f.supervisor.nombre || '').trim()) x.push('Nombre del supervisor (cliente)'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(f.supervisor.correo || '').trim())) x.push('Correo de empresa del supervisor (cliente)'); }
+      if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo !== 'AHORA' && f.supervisor?.tipo === 'CLIENTE') { if (!String(f.supervisor.nombre_pila || '').trim()) x.push('Nombre del supervisor (cliente)'); if (!String(f.supervisor.apellido || '').trim()) x.push('Apellido del supervisor (cliente)'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(f.supervisor.correo || '').trim())) x.push('Correo de empresa del supervisor (cliente)'); }
       if (!f.terminado) x.push('Marcar ✓ terminado');
       return x;
     }
@@ -324,7 +356,7 @@ export const faltantes = (f) => {
   if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
   if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
   if (f.modo == null && f.bloqueo && !f.registro_bloqueo) x.push('Registro de bloqueo');
-  if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo !== 'AHORA' && f.supervisor?.tipo === 'CLIENTE') { if (!String(f.supervisor.nombre || '').trim()) x.push('Nombre del supervisor (cliente)'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(f.supervisor.correo || '').trim())) x.push('Correo de empresa del supervisor (cliente)'); }
+  if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo !== 'AHORA' && f.supervisor?.tipo === 'CLIENTE') { if (!String(f.supervisor.nombre_pila || '').trim()) x.push('Nombre del supervisor (cliente)'); if (!String(f.supervisor.apellido || '').trim()) x.push('Apellido del supervisor (cliente)'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(f.supervisor.correo || '').trim())) x.push('Correo de empresa del supervisor (cliente)'); }
   return x;
 };
 
@@ -439,7 +471,7 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
   fila.supervisor = conFirma ? { nombre: f.supervisor.nombre.trim(), empresa: String(f.supervisor.empresa || '').trim(), tipo: f.supervisor.tipo || 'CLIENTE', firma: f.supervisor.firma, fecha: new Date().toISOString() } : null;
   // 2026-11-20: sin firma → queda quién debe firmar (FRC o cliente con su correo); el mecánico ya no firma por el supervisor
   if (!conFirma && !esLev) fila.supervisor = f.supervisor?.tipo === 'CLIENTE'
-    ? { tipo: 'CLIENTE', nombre: String(f.supervisor.nombre || '').trim(), empresa: String(f.supervisor.empresa || '').trim(), correo: String(f.supervisor.correo || '').trim().toLowerCase(), firma: '', pendiente: true }
+    ? { tipo: 'CLIENTE', nombre_pila: String(f.supervisor.nombre_pila || '').trim(), apellido: String(f.supervisor.apellido || '').trim(), nombre: (String(f.supervisor.nombre_pila || '').trim() + ' ' + String(f.supervisor.apellido || '').trim()).trim(), empresa: String(f.supervisor.empresa || '').trim().toUpperCase(), correo: String(f.supervisor.correo || '').trim().toLowerCase(), contacto_id: f.supervisor.contacto_id || null, firma: '', pendiente: true }
     : { tipo: 'FRC', nombre: '', empresa: 'FAST RENTAL CHILE', firma: '', pendiente: true };
   fila.estado = esLev ? 'LEVANTAMIENTO' : conFirma ? 'FIRMADA' : 'PENDIENTE_FIRMA';
   fila.motivo_rechazo = null;
@@ -449,6 +481,7 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
     else reg = (await sb(supabaseClient.from(TABLA_MEC).insert([{ ...fila, creado_por: f._usuario || usuarioActivo.value?.usuario || null }]).select()))[0];
   } catch (err) { if (err && typeof err === 'object') err.antesDeGuardar = true; throw err; }
   if (reg && alInsertar) await alInsertar(reg.id);
+  if (reg && fila.supervisor?.tipo === 'CLIENTE') await guardarContacto(fila.supervisor);   // 2026-11-20: agenda de supervisores de otras empresas
   // Fallas del equipo (2026-11-18): la inspección las deja abiertas · la reparación cierra la elegida
   let avisoFallas = '';
   if (reg && f.modo === 'INSPECCION' && fila.fallas.length) {

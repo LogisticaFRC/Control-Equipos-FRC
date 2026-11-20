@@ -321,9 +321,20 @@ export default {
             <button v-if="!S.esTaller.value" @click="f.supervisor.modo = 'DESPUES'; f.supervisor.tipo = 'CLIENTE'; if (f.supervisor.empresa === 'FAST RENTAL CHILE') f.supervisor.empresa = ''" :class="['chip-lg text-left', f.supervisor.tipo === 'CLIENTE' ? 'on' : '']"><i class="fa-solid fa-handshake mr-2"></i>Supervisor de otra empresa (cliente)<span class="block text-[11px] font-normal opacity-80">Se le envía por correo para que firme</span></button>
           </div>
           <template v-if="f.supervisor.tipo === 'CLIENTE' && !S.esTaller.value">
-            <input v-model="f.supervisor.nombre" class="inp" placeholder="Nombre del supervisor">
+            <div class="grid grid-cols-2 gap-2">
+              <input v-model="f.supervisor.nombre_pila" @focus="S.cargarContactos()" autocomplete="off" class="inp" placeholder="Nombre" data-int="sup-nombre">
+              <input v-model="f.supervisor.apellido" @focus="S.cargarContactos()" autocomplete="off" class="inp" placeholder="Apellido" data-int="sup-apellido">
+            </div>
+            <div v-if="S.sugerirContactos(f.supervisor).length" class="rounded-xl border-2 border-emerald-300 bg-emerald-50 divide-y overflow-hidden" data-int="sup-sugerencias">
+              <p class="px-3 py-1.5 text-[11px] font-bold text-emerald-800"><i class="fa-solid fa-address-book mr-1"></i>Guardados · toca para completar</p>
+              <button v-for="c in S.sugerirContactos(f.supervisor)" :key="c.id" type="button" @click="S.elegirContacto(f.supervisor, c)" class="w-full text-left px-3 py-2.5 hover:bg-emerald-100">
+                <b>{{ c.nombre }} {{ c.apellido }}</b> <span class="text-xs text-slate-600">{{ c.empresa }}</span>
+                <span class="block text-xs text-slate-500">{{ c.correo }}</span>
+              </button>
+            </div>
             <input v-model="f.supervisor.empresa" class="inp uppercase" placeholder="Empresa">
             <input v-model.trim="f.supervisor.correo" type="email" inputmode="email" autocomplete="off" class="inp" placeholder="Correo de la empresa (ej. nombre@empresa.cl)" data-int="sup-correo">
+            <p v-if="f.supervisor.contacto_id" class="text-[11px] text-slate-500"><i class="fa-solid fa-pen mr-1"></i>Si algún dato quedó mal guardado, corrígelo aquí: se actualiza al enviar.</p>
           </template>
           <p class="text-[11px] text-amber-800 bg-amber-50 rounded-lg p-2"><i class="fa-solid fa-circle-info mr-1"></i>Al enviar queda en el Historial del equipo marcado <b>FALTA FIRMA</b> hasta que el supervisor firme.</p>
         </div>

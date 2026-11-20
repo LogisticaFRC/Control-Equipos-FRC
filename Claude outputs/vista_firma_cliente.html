@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vista firma supervisor cliente · FRC</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#e8edf2;color:#0f172a}
+  h1{font-size:18px;margin:18px 20px 4px} .sub{margin:0 20px 16px;color:#475569;font-size:13px}
+  .fila{display:flex;flex-wrap:wrap;gap:22px;padding:0 20px 30px;align-items:flex-start}
+  .paso{flex:1 1 330px;max-width:380px}
+  .tag{display:inline-block;background:#0f172a;color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:4px 10px;margin-bottom:8px}
+  .tel{background:#fff;border-radius:28px;border:10px solid #111827;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.18);min-height:640px}
+  /* correo */
+  .mailbar{background:#f1f5f9;padding:10px 14px;font-size:12px;border-bottom:1px solid #e2e8f0}
+  .mailbar b{display:block;font-size:13px}
+  .mail{padding:18px 16px;font-size:14px;line-height:1.45}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:900;color:#0f7a3c;font-size:18px;margin-bottom:12px}
+  .logo span{background:#0f7a3c;color:#fff;border-radius:8px;padding:4px 7px;font-size:13px}
+  .caja{border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin:12px 0;background:#f8fafc;font-size:13px}
+  .caja div{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #e2e8f0} .caja div:last-child{border:0}
+  .btn{display:block;text-align:center;background:#0f7a3c;color:#fff;font-weight:800;border-radius:12px;padding:14px;text-decoration:none;font-size:16px;margin:16px 0 8px}
+  .peq{font-size:11px;color:#64748b}
+  /* pagina firma */
+  .top{background:#0f172a;color:#fff;padding:12px 14px;font-weight:800;font-size:14px}
+  .top small{display:block;font-weight:400;color:#94a3b8;font-size:11px}
+  .hoja{margin:10px;border:1px solid #cbd5e1;border-radius:8px;padding:10px;font-size:9px;background:#fff}
+  .hoja h4{margin:0 0 6px;color:#0f7a3c;text-align:center;font-size:11px}
+  .bar{background:#0f7a3c;color:#fff;font-weight:700;padding:3px 6px;margin-top:6px}
+  .lin{border:1px solid #94a3b8;padding:4px 6px;min-height:16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px}
+  .zoom{font-size:11px;color:#0f7a3c;font-weight:700;text-align:center;margin:-2px 0 6px}
+  .firma{margin:10px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:12px}
+  .firma p{margin:0 0 8px;font-weight:800}
+  .inp{border:2px solid #cbd5e1;border-radius:10px;padding:10px;font-size:14px;margin-bottom:8px;color:#0f172a}
+  .pad{border:2px dashed #94a3b8;border-radius:10px;height:110px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-style:italic;position:relative}
+  .pad svg{position:absolute;inset:0}
+  .chk{display:flex;gap:8px;font-size:12px;margin:10px 0;align-items:flex-start}
+  .chk i{width:16px;height:16px;border:2px solid #0f7a3c;border-radius:4px;background:#0f7a3c;flex-shrink:0;margin-top:1px}
+  .verde{background:#0f7a3c;color:#fff;text-align:center;font-weight:900;border-radius:12px;padding:14px;font-size:16px}
+  .link{text-align:center;font-size:12px;color:#b91c1c;margin-top:8px}
+  /* listo */
+  .ok{padding:40px 20px;text-align:center}
+  .circ{width:84px;height:84px;border-radius:50%;background:#dcfce7;color:#0f7a3c;font-size:46px;line-height:84px;margin:0 auto 14px;font-weight:900}
+  .ok h2{margin:0 0 8px;font-size:20px} .ok p{color:#475569;font-size:14px;margin:6px 0}
+  .descarga{display:flex;gap:10px;align-items:center;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:18px 0;text-align:left;background:#f8fafc}
+  .pdf{background:#dc2626;color:#fff;font-weight:900;border-radius:6px;padding:8px 6px;font-size:11px}
+  .nota{background:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;color:#334155;margin-top:12px;line-height:1.45;border:1px solid #e2e8f0}
+</style>
+</head>
+<body>
+<h1>Firma del supervisor de otra empresa · cómo lo vería</h1>
+<p class="sub">Maqueta con datos de ejemplo. Paso 1 llega al correo · Paso 2 abre la página para firmar · Paso 3 se descarga el PDF y a FRC le llega copia a reportes@frchile.cl.</p>
+<div class="fila">
+
+  <!-- PASO 1: CORREO -->
+  <div class="paso">
+    <span class="tag">1 · Correo que le llega</span>
+    <div class="tel">
+      <div class="mailbar"><b>Firma pendiente · Intervención AFI GEN 402</b>De: Reportes FRC &lt;reportes@frchile.cl&gt;<br>Para: jperez@minera.cl</div>
+      <div class="mail">
+        <div class="logo"><span>FRC</span>Fast Rental Chile</div>
+        Hola <b>Juan Pérez</b>,<br><br>
+        Nuestro técnico terminó un trabajo en un equipo de su faena y necesitamos su firma como supervisor.
+        <div class="caja">
+          <div><span>Equipo</span><b>Generador FG Wilson · AFI GEN 402</b></div>
+          <div><span>Trabajo</span><b>Reparación: cambio de batería</b></div>
+          <div><span>Fecha</span><b>20-11-2026 · 10:00 a 11:00</b></div>
+          <div><span>Técnico FRC</span><b>Pedro Soto</b></div>
+          <div><span>Lugar</span><b>Faena Norte</b></div>
+        </div>
+        <a class="btn" href="#">Revisar y firmar</a>
+        <p class="peq">El enlace es solo para usted y vence el <b>27-11-2026</b>. No necesita usuario ni contraseña.<br>Si no corresponde, responda este correo.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 2: PAGINA DE FIRMA -->
+  <div class="paso">
+    <span class="tag">2 · Página para firmar (celular)</span>
+    <div class="tel">
+      <div class="top">Firma de intervención · FRC<small>AFI GEN 402 · 20-11-2026 · Pedro Soto</small></div>
+      <div class="hoja">
+        <h4>INTERVENCIÓN MECÁNICA · FRC-RE-OPE-017</h4>
+        <div class="grid"><div class="lin">Fecha: 20-11-2026</div><div class="lin">AFI: GEN 402</div></div>
+        <div class="grid"><div class="lin">Inicio 10:00 · Término 11:00</div><div class="lin">Horómetro: 1.830</div></div>
+        <div class="bar">FALLA REPARADA</div><div class="lin">Batería descargada</div>
+        <div class="bar">DESCRIPCIÓN DE LO REALIZADO</div><div class="lin">Se cambió batería 12V y se revisaron bornes. Equipo opera normal.</div>
+        <div class="grid" style="margin-top:6px"><div class="lin">Mecánico: Pedro Soto ✔ firmado</div><div class="lin" style="color:#b91c1c">Supervisor: pendiente</div></div>
+      </div>
+      <div class="zoom">Toque la hoja para verla en grande ⤢</div>
+      <div class="firma">
+        <p>Firma del supervisor</p>
+        <div class="inp">Juan Pérez</div>
+        <div class="inp">MINERA DEL NORTE</div>
+        <div class="pad">
+          <svg viewBox="0 0 300 110"><path d="M30 75 C55 30, 70 95, 95 60 S140 30, 150 70 S195 90, 210 45 S250 70, 270 55" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round"/></svg>
+        </div>
+        <div class="chk"><i></i><span>Revisé la hoja y confirmo el trabajo realizado.</span></div>
+        <div class="verde">FIRMAR</div>
+        <div class="link">¿No está de acuerdo? Escribir observación</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 3: LISTO -->
+  <div class="paso">
+    <span class="tag">3 · Después de firmar</span>
+    <div class="tel">
+      <div class="top">Firma de intervención · FRC<small>AFI GEN 402</small></div>
+      <div class="ok">
+        <div class="circ">✓</div>
+        <h2>¡Firmado, gracias!</h2>
+        <p>Firmó el 20-11-2026 a las 15:42.</p>
+        <div class="descarga"><span class="pdf">PDF</span><div><b>Intervencion_GEN402_20-11-2026.pdf</b><br><span class="peq">Se descargó en su equipo · también le llega por correo</span></div></div>
+        <p class="peq">Este enlace ya no se puede volver a usar.</p>
+      </div>
+    </div>
+    <div class="nota">
+      <b>En FRC, en ese momento:</b><br>
+      • Llega correo a <b>reportes@frchile.cl</b> con el PDF firmado.<br>
+      • En el Historial se quita la marca roja <b>FALTA FIRMA</b> y el PDF queda reemplazado por el firmado.<br>
+      • Si escribe una observación en vez de firmar, llega como aviso y el report vuelve al técnico para corregir.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

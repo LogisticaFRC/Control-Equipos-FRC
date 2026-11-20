@@ -1090,3 +1090,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Botón "Por firmar" (supervisor FRC): lista de reports; "Ver y firmar" abre la hoja (formato del PDF) y al lado / abajo la firma. Al firmar se reemplaza el PDF del Historial por el firmado y se quita la marca (RPC frc_historial_doc_firma).
 - Los de cliente aparecen como "esperando firma del cliente por correo" (envío por correo: próxima etapa, desde reportes@frchile.cl; copia firmada a reportes@frchile.cl).
 - EJECUTAR sql/firma_pendiente.sql. APP_VERSION '2026-11-20 falta-firma'.
+
+## 2026-11-20 (b) · Agenda de supervisores de otras empresas
+
+- App mecánico, "Supervisor de otra empresa": Nombre + Apellido (obligatorios), Empresa, Correo. Al escribir el nombre aparecen los guardados ("Guardados · toca para completar") y se rellena apellido, empresa y correo; todo sigue editable.
+- Al enviar se guarda/corrige el contacto (RPC frc_contacto_guardar): si se eligió uno de la lista y se le cambió el correo, se corrige ese mismo contacto.
+- Tabla bd_contactos_clientes (TABLAS.CONTACTOS_CLIENTES). EJECUTAR sql/contactos_clientes.sql. APP_VERSION '2026-11-20 contactos'.
