@@ -1131,3 +1131,8 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Excel del programa (hojas por nave): columnas "% AVANCE" y "INTERVENCIONES" (enlace "Ver PDF").
 - PDF al momento (js/modules/taller/pdf-reparacion.js): ítems TERMINADOS de las OT de la reparación con su report (personal, horas, horómetro, ART, bloqueo, descripción, fotos) + reports de la app del AFI desde el ingreso. Enlace permanente ?rep=<id reparación> (doc-app.js lo abre al iniciar sesión).
 - mecanicos.service: libsPDF y renderHTML exportados. APP_VERSION '2026-11-20 avance-pdf'. Sin SQL.
+
+## 2026-11-20 (h) · Varios ejecutantes por ítem de la OT de taller
+
+- taller.template: "Ejecutante(s)" ahora es js/modules/taller/ejecutantes-input.view.js: nombres como etiquetas, "+ Agregar otro" (Enter, coma o botón) y X para quitar. Se guarda en el mismo campo ejecutante separado por coma (sale igual en la OT impresa). Ojo: no envolver en <label> (el clic activaría la X del primero).
+- APP_VERSION '2026-11-20 ejecutantes'. Sin SQL.
