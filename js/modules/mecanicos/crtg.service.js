@@ -7,7 +7,7 @@
 //   · Pedir repuestos: equipo, fecha, descripción y hasta 5 fotos → bd_pedidos_repuestos
 // =====================================================================
 import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
-import { usuarioActivo, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPorAfi, cargarDatosDesdeSupabase } from '../../core/store.js';
+import { usuarioActivo, modoTecnicoDe, dbProgramasCalendarios, dbProgramasItems, buscarEquipoPorAfi, cargarDatosDesdeSupabase } from '../../core/store.js';
 import { hoyISO, mismoAfi, limpiarAfi } from '../../core/utils.js';
 import { carpetaDe } from '../programas/programas.service.js';
 import { textoUbicacion } from '../areas/areas.service.js';
@@ -19,11 +19,19 @@ export const LOGO_CRTG = 'icons/logo-crtg.png';
 
 // ---------- Programa de mantención CRTG ----------
 const textoProg = (p) => [p.nombre_programa, p.mes, p.subcarpeta, p.carpeta].join(' ');
-/** Programas de mantención de CRTG (nombre / subcarpeta con "CRTG"), el vigente primero. */
+/** 2026-11-20: programas que Operaciones eligió mostrar en la app de este técnico (columna visible_app:
+ *  'crtg' | 'terreno' | 'taller'). Compatibilidad: para CRTG, si el programa no tiene elegido nada, vale "CRTG" en el nombre. */
+export const visibleEnApp = (p, modo) => {
+  const v = Array.isArray(p.visible_app) ? p.visible_app : [];
+  if (v.length) return v.includes(modo);
+  return modo === 'crtg' && carpetaDe(p) === 'MANTENCION' && /CRTG/i.test(textoProg(p));
+};
+/** Programas visibles para el técnico conectado, el vigente primero. */
 export const programasCrtg = computed(() => {
   const h = hoyISO();
+  const modo = modoTecnicoDe(usuarioActivo.value) || 'terreno';
   return dbProgramasCalendarios.value
-    .filter(p => carpetaDe(p) === 'MANTENCION' && /CRTG/i.test(textoProg(p)))
+    .filter(p => visibleEnApp(p, modo))
     .map(p => ({ ...p, vigente: String(p.fecha_inicio_programa || '') <= h && h <= String(p.fecha_termino_programa || '9999') }))
     .sort((a, b) => (b.vigente - a.vigente) || String(b.fecha_termino_programa || '').localeCompare(String(a.fecha_termino_programa || '')));
 });

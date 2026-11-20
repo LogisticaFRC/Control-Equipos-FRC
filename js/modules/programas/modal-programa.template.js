@@ -22,6 +22,13 @@ export default /* html */ `
           <option v-for="sc in subcarpetasDe(formProgMes.carpeta)" :key="sc" :value="sc">{{ sc }}</option>
         </select>
       </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]"><i class="fa-solid fa-mobile-screen mr-1"></i>Mostrar en la app de técnicos</label>
+        <div class="flex flex-wrap gap-2">
+          <button v-for="m in [['crtg','CRTG'],['terreno','Terreno'],['taller','Taller']]" :key="m[0]" type="button" @click="alternarVisibleApp(m[0])" :class="['px-3 py-2 rounded-lg border-2 font-bold', (formProgMes.visible_app || []).includes(m[0]) ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-300 text-slate-600']"><i :class="['fa-solid mr-1', (formProgMes.visible_app || []).includes(m[0]) ? 'fa-eye' : 'fa-eye-slash']"></i>{{ m[1] }}</button>
+        </div>
+        <p class="mt-1 text-[10px] text-slate-500">Los técnicos marcados verán este programa en su app y podrán marcar cada equipo como realizado / no realizado. Sin marcar: no lo ve nadie.</p>
+      </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Fecha Inicio Programa</label>

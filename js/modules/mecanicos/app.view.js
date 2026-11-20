@@ -505,7 +505,7 @@ export default {
       <section v-if="tab === 'riesgos'" class="p-3"><riesgos-rf compacto></riesgos-rf></section>
 
       <!-- TERRENO CRTG (2026-11-17) -->
-      <crtg-programa v-if="tab === 'progcrtg' && S.esCrtg.value"></crtg-programa>
+      <crtg-programa v-if="tab === 'progcrtg'"></crtg-programa>
       <crtg-pedido v-if="tab === 'repuestos' && S.esCrtg.value"></crtg-pedido>
 
       <!-- CHOFER (2026-11-17) -->
@@ -570,7 +570,7 @@ export default {
     // TERRENO no tiene Taller: si quedó en esa pantalla, vuelve al menú
     watch(() => S.esTaller.value, (t) => { if (!t && tab.value === 'taller') tab.value = 'inicio'; if (t) recargarTaller(); }, { immediate: true });
     // Menú en tarjetas
-    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas', checklist: 'Check list / Report', progcrtg: 'Programa CRTG', repuestos: 'Pedir repuestos', docschofer: 'Mis documentos', riesgos: 'Riesgos de fatalidad' };
+    const TITULOS = { equipos: 'Equipos', taller: 'Taller · Naves', registros: 'Mis documentos', tareas: 'Mis tareas', checklist: 'Check list / Report', progcrtg: 'Programa mantención', repuestos: 'Pedir repuestos', docschofer: 'Mis documentos', riesgos: 'Riesgos de fatalidad' };
     const irA = (t) => { tab.value = t; if (t === 'registros') S.cargarMec(); if (t === 'taller') recargarTaller(); window.scrollTo(0, 0); };
     const tarjetas = computed(() => S.esCrtg.value ? [
       { tab: 'equipos', titulo: 'Equipos CRTG', sub: S.equiposApp.value.length + ' equipos · horómetro, ubicación e intervenciones', icon: 'fa-truck-monster', color: 'bg-blue-100 text-blue-700', ancha: true },
@@ -587,12 +587,14 @@ export default {
       { tab: 'riesgos', titulo: 'Riesgos de fatalidad', sub: '31 RF Codelco · controles críticos que salvan vidas', icon: 'fa-heart-pulse', color: 'bg-orange-100 text-orange-700', ancha: true }
     ] : S.esTaller.value ? [
       { tab: 'taller', titulo: 'Taller · Naves', sub: equiposEnNaves.value + ' equipo(s) en naves · inspección, OT, intervenciones', icon: 'fa-warehouse', color: 'bg-amber-100 text-amber-700', ancha: true },
+      ...(K.programasCrtg.value.length ? [{ tab: 'progcrtg', titulo: 'Programa mantención', sub: K.programasCrtg.value[0].nombre_programa || 'Marcar realizado / no realizado', icon: 'fa-calendar-check', color: 'bg-emerald-100 text-emerald-700', ancha: true }] : []),
       { tab: 'equipos', titulo: 'Equipos', sub: 'Agregar a nave un equipo no programado', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700' },
       { tab: 'registros', titulo: 'Mis documentos', sub: 'Sin firma y realizados', icon: 'fa-folder-open', color: 'bg-sky-100 text-sky-700', badge: pendientesMios.value },
       { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700', ancha: true },
       { tab: 'riesgos', titulo: 'Riesgos de fatalidad', sub: '31 RF Codelco · controles críticos que salvan vidas', icon: 'fa-heart-pulse', color: 'bg-orange-100 text-orange-700', ancha: true }
     ] : [
       { tab: 'equipos', titulo: 'Equipos', sub: 'Horómetro e intervenciones', icon: 'fa-truck-monster', color: 'bg-emerald-100 text-emerald-700', ancha: true },
+      ...(K.programasCrtg.value.length ? [{ tab: 'progcrtg', titulo: 'Programa mantención', sub: K.programasCrtg.value[0].nombre_programa || 'Marcar realizado / no realizado', icon: 'fa-calendar-check', color: 'bg-emerald-100 text-emerald-700', ancha: true }] : []),
       { tab: 'registros', titulo: 'Mis documentos', sub: 'Sin firma y realizados', icon: 'fa-folder-open', color: 'bg-sky-100 text-sky-700', badge: pendientesMios.value },
       { tab: 'tareas', titulo: 'Mis tareas', sub: 'Recordatorios', icon: 'fa-calendar-check', color: 'bg-violet-100 text-violet-700' },
       { tab: 'riesgos', titulo: 'Riesgos de fatalidad', sub: '31 RF Codelco · controles críticos que salvan vidas', icon: 'fa-heart-pulse', color: 'bg-orange-100 text-orange-700' }

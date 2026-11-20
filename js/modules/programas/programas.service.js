@@ -270,12 +270,19 @@ export const cambiarDescuentoBodega = async (programaId, valor) => {
 
 // ---------- Crear / eliminar programa ----------
 export const showModalPrograma = ref(false);
-export const formProgMes = ref({ carpeta: 'REPARACION', subcarpeta: '', nombre_programa: '', fecha_inicio_programa: '', fecha_termino_programa: '' });
+export const formProgMes = ref({ carpeta: 'REPARACION', subcarpeta: '', nombre_programa: '', fecha_inicio_programa: '', fecha_termino_programa: '', visible_app: [] });
+/** 2026-11-20: qué técnicos ven el programa en su app ('crtg' | 'terreno' | 'taller') · sql/programa_visible_app.sql */
+export const alternarVisibleApp = (m) => {
+  const v = new Set(formProgMes.value.visible_app || []);
+  v.has(m) ? v.delete(m) : v.add(m);
+  formProgMes.value.visible_app = [...v];
+};
+const SQL_VISIBLE = 'Para mostrar programas en la app de técnicos falta ejecutar sql/programa_visible_app.sql en Supabase.';
 
 export const abrirModalCrearPrograma = (tipoCarpeta) => {
   const actual = obtenerProgObj(progSelect.value.id);
   const subActual = actual && carpetaDe(actual) === tipoCarpeta ? subDe(actual) : '';
-  formProgMes.value = { carpeta: tipoCarpeta, subcarpeta: subActual, nombre_programa: '', fecha_inicio_programa: '2026-08-01', fecha_termino_programa: '2026-09-30' };
+  formProgMes.value = { carpeta: tipoCarpeta, subcarpeta: subActual, nombre_programa: '', fecha_inicio_programa: '2026-08-01', fecha_termino_programa: '2026-09-30', visible_app: [] };
   showModalPrograma.value = true;
 };
 
@@ -285,7 +292,8 @@ export const abrirModalEditarPrograma = (prog) => {
   formProgMes.value = {
     id: prog.id, nombreAnterior: nombreDePrograma(prog), carpeta: carpetaDe(prog) || 'REPARACION', subcarpeta: subDe(prog),
     nombre_programa: nombreDePrograma(prog), fecha_inicio_programa: normalizarFecha(prog.fecha_inicio_programa) || '',
-    fecha_termino_programa: normalizarFecha(prog.fecha_termino_programa) || ''
+    fecha_termino_programa: normalizarFecha(prog.fecha_termino_programa) || '',
+    visible_app: Array.isArray(prog.visible_app) ? [...prog.visible_app] : []
   };
   showModalPrograma.value = true;
 };
@@ -295,9 +303,10 @@ const guardarEdicionPrograma = async () => {
   const nom = String(f.nombre_programa || '').trim().toUpperCase();
   if (!nom || !f.fecha_inicio_programa || !f.fecha_termino_programa) return;
   if (f.fecha_termino_programa < f.fecha_inicio_programa) return alert('La fecha de término no puede ser anterior a la de inicio.');
-  const payload = { nombre_programa: nom, mes: nom, fecha_inicio_programa: f.fecha_inicio_programa, fecha_termino_programa: f.fecha_termino_programa, subcarpeta: String(f.subcarpeta || '').trim().toUpperCase() || null };
+  const payload = { nombre_programa: nom, mes: nom, fecha_inicio_programa: f.fecha_inicio_programa, fecha_termino_programa: f.fecha_termino_programa, subcarpeta: String(f.subcarpeta || '').trim().toUpperCase() || null, visible_app: f.visible_app || [] };
   try {
-    await sb(supabaseClient.from(TABLA_PROGRAMAS).update(payload).eq('id', f.id));
+    try { await sb(supabaseClient.from(TABLA_PROGRAMAS).update(payload).eq('id', f.id)); }
+    catch (e0) { if (!/visible_app/i.test(errMsg(e0))) throw e0; delete payload.visible_app; if ((f.visible_app || []).length) alert(SQL_VISIBLE); await sb(supabaseClient.from(TABLA_PROGRAMAS).update(payload).eq('id', f.id)); }
   } catch (err) {
     if (!/subcarpeta/i.test(errMsg(err))) return alert('No se pudo guardar el programa: ' + errMsg(err));
     delete payload.subcarpeta;   // BD sin columna subcarpeta: guarda igual nombre y fechas
@@ -323,8 +332,11 @@ export const guardarNuevoProgramaMes = async () => {
   const payload = { tipo: cp, carpeta: cp, nombre_programa: nom, mes: nom, fecha_inicio_programa: f_ini, fecha_termino_programa: f_fin };
   const sub = String(formProgMes.value.subcarpeta || '').trim().toUpperCase();
   if (sub) payload.subcarpeta = sub;
+  if ((formProgMes.value.visible_app || []).length) payload.visible_app = formProgMes.value.visible_app;
   try {
-    const data = await sb(supabaseClient.from(TABLA_PROGRAMAS).insert([payload]).select());
+    let data;
+    try { data = await sb(supabaseClient.from(TABLA_PROGRAMAS).insert([payload]).select()); }
+    catch (e0) { if (!/visible_app/i.test(errMsg(e0))) throw e0; delete payload.visible_app; alert(SQL_VISIBLE); data = await sb(supabaseClient.from(TABLA_PROGRAMAS).insert([payload]).select()); }
     await cargarDatosDesdeSupabase(['programas']);
     showModalPrograma.value = false;
     if (data && data[0]) seleccionarProgramaObj(data[0]);

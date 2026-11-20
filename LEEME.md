@@ -1104,3 +1104,10 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Bloqueo: trigger frc_mec_bloqueo_firmado → un report FIRMADO / EN_HISTORIAL no se modifica, solo se elimina. Urgencia: en SQL Editor `set local frc.desbloqueo = 'si';` + update en la misma ejecución.
 - EJECUTAR sql/pdf_al_momento.sql. APP_VERSION '2026-11-20 pdf-al-momento'.
 - Pendiente: check list chofer y OT de taller al momento; limpiar PDF antiguos de archivos_frc/intervenciones_app.
+
+## 2026-11-20 (d) · Programas visibles en la app de técnicos
+
+- Programas → lápiz (o Crear programa) → "Mostrar en la app de técnicos": CRTG / Terreno / Taller (columna bd_programas_calendarios.visible_app).
+- App técnicos: tarjeta "Programa mantención" (CRTG siempre; Terreno y Taller solo si tienen alguno visible). Cada equipo: Realizado / No realizado (RPC frc_crtg_programa). Si hay varios, se elige; el vigente primero.
+- Compatibilidad: programa sin nada marcado y con "CRTG" en el nombre sigue visible para CRTG; el SQL los deja marcados CRTG.
+- EJECUTAR sql/programa_visible_app.sql. APP_VERSION '2026-11-20 programas-app'.

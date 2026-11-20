@@ -5,7 +5,7 @@ import * as K from './crtg.service.js';
 import * as S from './mecanicos.service.js';
 import * as CH from './chofer.service.js';
 import { LugarSelect } from './chofer-checklist.view.js';
-import { buscarEquipoPorAfi } from '../../core/store.js';
+import { buscarEquipoPorAfi, usuarioActivo, modoTecnicoDe } from '../../core/store.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 
 const { ref, computed, onMounted, watch } = Vue;
@@ -16,14 +16,14 @@ export const CrtgPrograma = {
   template: /* html */ `
 <section class="p-4 space-y-3">
   <div v-if="!K.programasCrtg.value.length" class="bg-white rounded-2xl shadow-sm p-5 text-center text-slate-500 text-sm">
-    <img :src="K.LOGO_CRTG" class="h-10 mx-auto mb-2 opacity-70">No hay un programa de mantención de CRTG cargado.<br><span class="text-xs">(Operaciones lo crea en Programas Mantención con "CRTG" en el nombre.)</span>
+    <img v-if="esCrtg" :src="K.LOGO_CRTG" class="h-10 mx-auto mb-2 opacity-70"><i v-else class="fa-solid fa-calendar-xmark text-3xl text-slate-300 block mb-2"></i>No hay programas para mostrar.<br><span class="text-xs">(Operaciones elige en Programas → lápiz del programa → "Mostrar en la app de técnicos".)</span>
   </div>
   <template v-else>
     <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
       <div class="flex items-center gap-3">
-        <img :src="K.LOGO_CRTG" class="h-9 w-9 object-contain">
+        <img v-if="esCrtg" :src="K.LOGO_CRTG" class="h-9 w-9 object-contain"><span v-else class="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><i class="fa-solid fa-calendar-check"></i></span>
         <div class="flex-1 min-w-0">
-          <p class="font-black text-slate-800 leading-tight">Programa de mantención CRTG</p>
+          <p class="font-black text-slate-800 leading-tight">{{ esCrtg ? 'Programa de mantención CRTG' : 'Programa de mantención' }}</p>
           <select v-if="K.programasCrtg.value.length > 1" :value="K.programaCrtg.value.id" @change="K.progCrtgSel.value = Number($event.target.value)" class="text-xs font-bold border rounded-lg px-2 py-1 mt-0.5">
             <option v-for="p in K.programasCrtg.value" :key="p.id" :value="p.id">{{ p.nombre_programa || p.mes }}{{ p.vigente ? ' · vigente' : '' }}</option>
           </select>
@@ -59,13 +59,14 @@ export const CrtgPrograma = {
   </template>
 </section>`,
   setup() {
+    const esCrtg = Vue.computed(() => modoTecnicoDe(usuarioActivo.value) === 'crtg');
     const eq = (afi) => buscarEquipoPorAfi(afi) || {};
     const marcar = async (i, estado) => {
       if (i.crtg_estado === estado) { if (confirm('¿Quitar lo marcado?')) await K.reportarItemCrtg(i, null); return; }
       const obs = estado === 'NO_REALIZADO' ? (prompt('¿Por qué no se realizó? (opcional)') || '') : '';
       await K.reportarItemCrtg(i, estado, obs);
     };
-    return { K, eq, marcar, formatDateForDisplay };
+    return { K, eq, marcar, formatDateForDisplay, esCrtg };
   }
 };
 
