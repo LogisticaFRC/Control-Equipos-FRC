@@ -39,9 +39,10 @@ const fuenteAceites = computed(() => [...dbIntervenciones.value, ...registrosAce
 export const cargarAceitesOT = () => { if (!dbOT.value.length) cargarOT().catch(() => {}); };
 
 
-/** Tipos de aceite que aparecen en el historial (para el selector). */
+/** Tipos de aceite para el selector: TODO el catálogo (aunque no tenga consumo aún, ej. HYDRA 68)
+ *  + cualquier otro nombre que aparezca en el historial. (2026-11-23) */
 export const listaTiposAceitesDisponibles = computed(() => {
-  const setAceites = new Set();
+  const setAceites = new Set(ACEITES.map(a => a.label));
   fuenteAceites.value.forEach(i => {
     if (tieneConsumo(i)) i.aceites.split('; ').forEach(a => setAceites.add(a.split(':')[0].trim()));
   });
