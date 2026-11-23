@@ -23,7 +23,7 @@ export const getEstadoText = (est) => {
   if (norm === 'Operativo') return 'Trabajando / Operativo';
   if (norm === 'Disponible') return 'Disponible';
   if (norm === 'En Traslado') return 'En Traslado';
-  if (norm === 'En Mantencion') return 'En Mantención';
+  if (norm === 'En Mantencion') return 'En Reparación';   // 2026-11-23
   return est || '-';
 };
 

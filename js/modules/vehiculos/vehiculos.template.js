@@ -57,7 +57,7 @@ export default /* html */ `
     <div><label class="block text-[10px] font-bold text-slate-500">Estado</label>
       <select v-model="filtroVeh.estado" class="p-2 border rounded-lg font-bold">
         <option value="ALL">Todos</option><option value="Operativo">Trabajando / Operativo</option><option value="Disponible">Disponible</option>
-        <option value="En Traslado">En Traslado</option><option value="En Mantencion">En Mantención</option><option value="Fuera de Servicio">Fuera de Servicio</option><option value="Venta">En Venta</option>
+        <option value="En Traslado">En Traslado</option><option value="En Mantencion">En Reparación</option><option value="Fuera de Servicio">Fuera de Servicio</option><option value="Venta">En Venta</option>
       </select></div>
     <div><label class="block text-[10px] font-bold text-slate-500">Orden</label>
       <select v-model="filtroVeh.orden" class="p-2 border rounded-lg font-bold"><option value="asc">Patente A→Z</option><option value="desc">Patente Z→A</option><option value="alerta">Más urgentes primero</option></select></div>
@@ -437,7 +437,7 @@ export default /* html */ `
         <div class="grid grid-cols-2 gap-3">
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Ubicación</label><input v-model="formNuevoVeh.ubicacion" type="text" class="w-full p-2.5 border rounded-lg bg-white"></div>
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Estado</label>
-            <select v-model="formNuevoVeh.disponibilidad" class="w-full p-2.5 border rounded-lg bg-white font-bold"><option>Operativo</option><option>Disponible</option><option>En Traslado</option><option>En Mantencion</option><option>Fuera de Servicio</option></select></div>
+            <select v-model="formNuevoVeh.disponibilidad" class="w-full p-2.5 border rounded-lg bg-white font-bold"><option>Operativo</option><option>Disponible</option><option>En Traslado</option><option value="En Mantencion">En Reparación</option><option>Fuera de Servicio</option></select></div>
         </div>
         <div class="grid grid-cols-3 gap-3">
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Kilometraje actual</label><input v-model="formNuevoVeh.km" type="number" min="0" class="w-full p-2.5 border rounded-lg bg-white font-mono"></div>

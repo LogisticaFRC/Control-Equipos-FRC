@@ -9,10 +9,13 @@ import { abrirPerfilEquipo, verDetallePorAfiString } from '../modules/inventario
 import { abrirFormularioNuevaMantencion, listaCausas } from '../modules/historial/historial.service.js';
 import { esPatente } from '../modules/inventario/inventario.mapper.js';   // vehículos: AFI = patente → horómetro en km
 
+/** 2026-11-23: texto visible del estado ("En Mantencion" se muestra como "En Reparación"; el valor guardado no cambia). */
+export const textoEstado = (est) => (String(est || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === 'en mantencion' ? 'En Reparación' : (est || '-'));
+
 export const comunes = () => ({
   isAdmin, isSubadmin, puedeEditar, dbEquipos, dbMovimientos, dbIntervenciones, dbProgramasCalendarios,
   obtenerDetalleEquipoPorAfi, formatDateForDisplay, getMecanicosText, calcularRestaHoras, exportarCSV, placeholderImg,
   getHorometroCardBgClass, getPrediccionStatusBadge,
   getAnualStatusBadge, getAnualTextoDias, esAnualVencida, esAnualProxima, tieneAlertaAnual, esAlertaRoja,
-  abrirPerfilEquipo, verDetallePorAfiString, abrirFormularioNuevaMantencion, listaCausas, esPatente
+  abrirPerfilEquipo, verDetallePorAfiString, abrirFormularioNuevaMantencion, listaCausas, esPatente, textoEstado
 });

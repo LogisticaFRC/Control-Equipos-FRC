@@ -10,6 +10,7 @@ import { usuarioActivo, config } from '../../core/store.js';
 import { listaCausas } from '../historial/historial.service.js';
 import { ACEITES } from '../historial/historial.mapper.js';
 import { formatDateForDisplay, hoyISO } from '../../core/utils.js';
+import { textoEstado } from '../../core/comunes.js';   // 2026-11-23: "En Mantencion" → "En Reparación"
 import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js';
 import TallerMecanico from '../taller/taller-mecanico.view.js';
 import ActividadesEquipo from './actividades-equipo.view.js';
@@ -367,7 +368,7 @@ export default {
             <div class="flex items-start justify-between gap-2">
               <img v-if="eq.foto" :src="eq.foto" alt="" class="w-20 h-20 rounded-xl object-cover flex-shrink-0 border" data-foto-ficha>
               <div class="flex-1 min-w-0"><div class="text-2xl font-black text-[#1f4d3a]">AFI {{ eq.afi }}</div><div class="font-bold text-slate-700">{{ eq.tipo }}</div><div class="text-sm text-slate-500">{{ eq.marca }} {{ eq.modelo }}</div></div>
-              <span :class="['text-[11px] font-bold px-2 py-1 rounded-full', S.enTaller(eq) ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800']">{{ eq.disponibilidad }}</span>
+              <span :class="['text-[11px] font-bold px-2 py-1 rounded-full', S.enTaller(eq) ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800']">{{ textoEstado(eq.disponibilidad) }}</span>
             </div>
             <div class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>{{ eq.ubicacion || '—' }}</div>
           </div>
@@ -611,7 +612,7 @@ export default {
       try { if (await ingresarANave(nave, { afi: e.afi })) S.avisoApp(`AFI ${e.afi} ingresado a la ${nave} ✔`); }
       finally { ocupado.value = false; }
     };
-    return { verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, logoSrc, onLogoError, config,
+    return { verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, textoEstado, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };

@@ -211,7 +211,7 @@ export default /* html */ `
                     <span v-if="nodoAbierto === 'SIN'" class="text-slate-500 italic">{{ e.ubicacion || '—' }} <span v-if="e.empresaArriendo" class="not-italic text-blue-700 font-semibold">· {{ e.empresaArriendo }}</span></span>
                     <button v-else @click="abrirNodo(e.locacionId)" class="font-bold text-emerald-700 hover:underline">{{ textoUbicacion(e.locacionId) }}</button>
                   </td>
-                  <td class="p-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700">{{ e.disponibilidad }}</span></td>
+                  <td class="p-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700">{{ textoEstado(e.disponibilidad) }}</span></td>
                   <td class="p-2 text-right font-mono">{{ Math.round(e.horometroActual || 0).toLocaleString('es-CL') }}</td>
                   <td class="p-2 text-right space-x-1">
                     <button v-if="puedeEditar" @click="abrirAsignacionRapida(e)" class="px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold" title="Cambiar locación">

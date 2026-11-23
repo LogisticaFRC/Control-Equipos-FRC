@@ -1171,3 +1171,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Excel del programa: nueva hoja "Interferencias" (después de las naves) con el detalle por fecha + total de horas + resumen por tipo (cantidad, %, horas). Solo aparece si el programa tiene interferencias.
 - Archivos: js/modules/programas/interferencias.service.js y interferencias.view.js; TABLAS.PROGRAMAS_INTERFERENCIAS.
 - SQL: sql/programa_interferencias.sql (tabla bd_programas_interferencias). APP_VERSION '2026-11-23 interferencias'.
+
+## 2026-11-23 · "En Mantención" se muestra como "En Reparación"
+- El estado guardado sigue siendo "En Mantencion" (no cambia la base de datos); solo cambia el texto visible.
+- Nuevo helper textoEstado() en js/core/comunes.js. Perfil del equipo (encabezado), Áreas, app de terreno, tarjetas de Inventario/Vehículos y selectores de estado (Inventario, Perfil, Movimientos, Nuevo equipo, Vehículos) dicen "En Reparación".
+- Control Aceites: el filtro de tipo muestra todo el catálogo de aceites (ej. HYDRA 68), aunque no tenga consumo.
+- APP_VERSION '2026-11-23 en reparacion'. Sin SQL.

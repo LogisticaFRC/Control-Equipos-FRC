@@ -9,7 +9,7 @@ export default /* html */ `
         <div class="min-w-0">
           <h3 class="text-base font-extrabold tracking-wide uppercase truncate">{{ perfilEquipo.tipo || 'Equipo' }} <span class="font-semibold text-slate-300 normal-case">{{ perfilEquipo.marca }} {{ perfilEquipo.modelo }}</span></h3>
           <p class="text-[11px] text-slate-300 truncate">
-            <span :class="['px-1.5 py-0.5 rounded font-bold mr-1', getBadgeEstadoPerfil(perfilEquipo.disponibilidad)]">{{ perfilEquipo.disponibilidad }}</span>
+            <span :class="['px-1.5 py-0.5 rounded font-bold mr-1', getBadgeEstadoPerfil(perfilEquipo.disponibilidad)]">{{ textoEstado(perfilEquipo.disponibilidad) }}</span>
             <i class="fa-solid fa-location-dot mr-0.5"></i>{{ rutaTexto(perfilEquipo.locacionId) || perfilEquipo.ubicacion || 'Sin ubicación' }}
             <template v-if="perfilEquipo.empresaArriendo"> · <i class="fa-solid fa-building mr-0.5"></i>{{ perfilEquipo.empresaArriendo }}</template>
           </p>
@@ -274,7 +274,7 @@ export default /* html */ `
             <label class="block font-bold text-slate-700 mb-1">Disponibilidad</label>
             <select v-model="perfilEquipo.disponibilidad" @change="alCambiarDisponibilidadPerfil" :disabled="!puedeEditar" class="w-full p-2 border rounded-lg bg-slate-50 font-bold">
               <option value="Operativo">Trabajando / Operativo</option><option value="Disponible">Disponible</option><option value="En Traslado">En Traslado</option>
-              <option value="En Mantencion">En Mantención</option><option value="Fuera de Servicio">Fuera de Servicio</option><option value="Venta">En Venta</option>
+              <option value="En Mantencion">En Reparación</option><option value="Fuera de Servicio">Fuera de Servicio</option><option value="Venta">En Venta</option>
             </select>
           </div>
           <div>

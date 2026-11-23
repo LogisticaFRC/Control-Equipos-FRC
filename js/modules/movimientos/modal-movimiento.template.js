@@ -65,7 +65,7 @@ export default /* html */ `
             <option value="Operativo">Trabajando / Operativo</option>
             <option value="Disponible">Disponible</option>
             <option value="En Traslado">En Traslado</option>
-            <option value="En Mantencion">En Mantención</option>
+            <option value="En Mantencion">En Reparación</option>
             <option value="Fuera de Servicio">Fuera de Servicio</option>
             <option value="Venta">En Venta</option>
             <option v-if="formMov.estado && !['Operativo','Disponible','En Traslado','En Mantencion','Fuera de Servicio','Venta'].includes(formMov.estado)" :value="formMov.estado">{{ formMov.estado }}</option>
