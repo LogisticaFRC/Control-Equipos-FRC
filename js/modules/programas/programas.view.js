@@ -5,6 +5,7 @@
 //   <programas-view tipo="REPARACION">  → Programas Reparación (pestaña "Programas y Gantt", junto al Taller)
 // =====================================================================
 import template from './programas.template.js';
+import InterferenciasPrograma from './interferencias.view.js';   // 2026-11-23: interferencias diarias (programas de reparación)
 import { comunes } from '../../core/comunes.js';
 import * as S from './programas.service.js';
 import { filtrosRequeridosAfi, kitsEnBodegaAfi, sePuedeArmarAfi, kitConsumidoItem, resumenKitsPrograma, abrirArmarKitParaAfi } from '../bodega/bodega.service.js';
@@ -21,6 +22,7 @@ const CARPETAS = {
 
 export default {
   name: 'ProgramasView',
+  components: { InterferenciasPrograma },
   props: { tipo: { type: String, default: 'MANTENCION' } },
   template,
   setup(props) {
@@ -51,6 +53,8 @@ export default {
       const P = await import('../taller/pdf-reparacion.js'); await P.abrirPDFReparacion(r.id, w);
     };
     watch(() => S.obtenerProgramasDeCarpeta(tipo.value).length, elegirPorDefecto);
+    // la pestaña Interferencias existe solo en programas de reparación
+    watch(() => [S.progSelect.value.carpeta, tipo.value], () => { if (S.vistaProgramaMode.value === 'interferencias' && String(S.progSelect.value.carpeta || '').toUpperCase() !== 'REPARACION') S.vistaProgramaMode.value = 'tabla'; }, { immediate: true });
 
     /** Cumplimiento de todos los programas de este tipo. */
     const cumplimientoTipo = computed(() => {

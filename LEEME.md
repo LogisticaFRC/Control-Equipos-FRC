@@ -1163,3 +1163,11 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 
 - taller.service equipoDe: si el AFI del taller viene sin prefijo ("739") y en el inventario está con prefijo ("COM 739"), se busca por el número cuando hay un solo equipo con ese número. Arregla "No está en el inventario" en cartas, OT y PDF de intervenciones.
 - APP_VERSION '2026-11-20 afi-sin-prefijo'. Sin SQL.
+
+## 2026-11-23 · Interferencias diarias en el Programa de Reparación
+
+- Programas Reparación → programa → botón "Interferencias diarias": se registra por día qué demoró las reparaciones (fecha, equipo del programa o GENERAL, tipo de interferencia, descripción y horas perdidas opcionales). Lista agrupada por día, resumen por tipo (clic = filtrar), filtro por equipo, editar y eliminar.
+- Tipos: falta de repuestos, espera de aprobación / OC, espera de proveedor externo, falta de personal, falta de herramientas / insumos, falla adicional encontrada, prioridad de otro trabajo / urgencia, corte de energía / instalaciones, clima / condiciones, otro (lista en interferencias.service.js CATEGORIAS_INTERFERENCIA).
+- Excel del programa: nueva hoja "Interferencias" (después de las naves) con el detalle por fecha + total de horas + resumen por tipo (cantidad, %, horas). Solo aparece si el programa tiene interferencias.
+- Archivos: js/modules/programas/interferencias.service.js y interferencias.view.js; TABLAS.PROGRAMAS_INTERFERENCIAS.
+- SQL: sql/programa_interferencias.sql (tabla bd_programas_interferencias). APP_VERSION '2026-11-23 interferencias'.

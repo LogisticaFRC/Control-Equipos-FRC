@@ -159,6 +159,9 @@ export default /* html */ `
           <button @click="vistaProgramaMode = 'calendario'" :class="['px-3 py-1 rounded text-xs font-bold transition flex items-center gap-1.5', vistaProgramaMode === 'calendario' ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200']">
             <i class="fa-solid fa-calendar-week"></i> {{ progSelect.carpeta === 'REPARACION' ? 'Vista Calendario / Gantt por Naves' : 'Vista Calendario / Carta Gantt' }}
           </button>
+          <button v-if="progSelect.carpeta === 'REPARACION'" @click="vistaProgramaMode = 'interferencias'" :class="['px-3 py-1 rounded text-xs font-bold transition flex items-center gap-1.5', vistaProgramaMode === 'interferencias' ? 'bg-amber-600 text-white shadow' : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100']" title="Razones y problemas de cada día que demoraron las reparaciones (salen en el Excel)">
+            <i class="fa-solid fa-triangle-exclamation"></i> Interferencias diarias
+          </button>
           <button v-if="progSelect.carpeta === 'REPARACION' && isAdmin && duplicadosReparacion(progSelect.id).length" @click="unirDuplicadosReparacion(progSelect.id)"
             class="px-3 py-1 rounded text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 flex items-center gap-1.5" title="Equipos que aparecen más de una vez (antes cada reporte creaba otra fila)">
             <i class="fa-solid fa-object-group"></i> Unir equipos repetidos ({{ duplicadosReparacion(progSelect.id).length }})
@@ -395,6 +398,9 @@ export default /* html */ `
             </div>
           </template>
         </div>
+
+        <!-- INTERFERENCIAS DIARIAS (REPARACIÓN) · 2026-11-23 -->
+        <interferencias-programa v-else-if="progSelect.carpeta === 'REPARACION' && vistaProgramaMode === 'interferencias'" :prog="progSelect"></interferencias-programa>
 
         <!-- CONTENIDO VISTA CALENDARIO / GANTT (REPARACIÓN) -->
         <div v-else-if="progSelect.carpeta === 'REPARACION' && vistaProgramaMode === 'calendario'" class="flex-grow overflow-auto p-3 bg-slate-50 border rounded-xl space-y-6">

@@ -10,6 +10,7 @@ import { claseMantencion } from '../../core/horometros.js';
 import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel, fill, COLOR, bloqueFirmas, FIRMAS_PROGRAMA } from '../../core/excel.js';
 import { isAdmin } from '../../core/store.js';
 import { hojaInicioReparacion, hojaInicioMantencion } from './programas.dashboard.js';
+import { hojaInterferencias } from './interferencias.service.js';
 import { kitsEnBodegaAfi, kitConsumidoItem, consumirKitParaItem, devolverKitDeItem, filtrosRequeridosAfi } from '../bodega/bodega.service.js';
 
 const { ref, computed } = Vue;
@@ -876,6 +877,8 @@ export const exportarProgramaGanttExcel = async (prog) => {
         });
       }
       if (!hay) return alert("El programa no tiene equipos asignados.");
+      // 2026-11-23: hoja "Interferencias" (razones diarias de atraso), si el programa tiene registradas
+      await hojaInterferencias(wb, logo, { prog, nombre, vigencia });
     }
     await descargarLibro(wb, `Programa_${nombre}.xlsx`);
   } catch (err) {
