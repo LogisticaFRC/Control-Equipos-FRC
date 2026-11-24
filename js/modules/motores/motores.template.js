@@ -15,7 +15,7 @@ export default /* html */ `
       </div>
       <div class="flex flex-wrap gap-2">
         <button @click="cargarMotores" title="Actualizar" class="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50"><i :class="['fa-solid fa-rotate', cargandoMotores ? 'fa-spin' : '']"></i></button>
-        <button @click="exportarMotoresExcel" :disabled="exportandoMotores || !dbMotores.length" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl shadow disabled:opacity-50"><i :class="['fa-solid mr-1', exportandoMotores ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
+        <button v-if="$adminGeneral" @click="exportarMotoresExcel" :disabled="exportandoMotores || !dbMotores.length" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl shadow disabled:opacity-50"><i :class="['fa-solid mr-1', exportandoMotores ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
         <button v-if="puedeEditar" @click="abrirNuevoMotor" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl shadow"><i class="fa-solid fa-truck-arrow-right mr-1"></i> Enviar equipo</button>
       </div>
     </div>

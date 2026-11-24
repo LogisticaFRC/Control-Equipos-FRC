@@ -149,7 +149,7 @@ export default /* html */ `
               </select>
             </div>
             <button @click="resetFiltrosPerfil" class="text-xs text-slate-500 hover:text-slate-800 underline mt-4">Limpiar</button>
-            <button @click="exportarHojaVida" :disabled="exportandoHistorial" class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow disabled:opacity-50" title="Excel con logo: resumen, gráficos, ficha, detalle completo y filtros (respeta los filtros)"><i :class="['fa-solid', exportandoHistorial ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar hoja de vida</button>
+            <button v-if="$adminGeneral" @click="exportarHojaVida" :disabled="exportandoHistorial" class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow disabled:opacity-50" title="Excel con logo: resumen, gráficos, ficha, detalle completo y filtros (respeta los filtros)"><i :class="['fa-solid', exportandoHistorial ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar hoja de vida</button>
           </div>
         </div>
 
@@ -192,7 +192,7 @@ export default /* html */ `
         <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2"><i class="fa-solid fa-wrench text-blue-600"></i> Historial de mantenciones e intervenciones <span class="font-normal normal-case text-slate-400">· clic en una fila para ver todo</span></h4>
-            <button @click="exportarHojaVida" :disabled="exportandoHistorial" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow disabled:opacity-50" title="Excel con logo: resumen, gráficos, ficha, detalle completo y filtros (respeta los filtros de arriba)"><i :class="['fa-solid', exportandoHistorial ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar hoja de vida</button>
+            <button v-if="$adminGeneral" @click="exportarHojaVida" :disabled="exportandoHistorial" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow disabled:opacity-50" title="Excel con logo: resumen, gráficos, ficha, detalle completo y filtros (respeta los filtros de arriba)"><i :class="['fa-solid', exportandoHistorial ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar hoja de vida</button>
           </div>
           <tabla-historial :registros="getHistorialIntervencionesFiltradoAFI(perfilEquipo.afi)" :por-pagina="50"></tabla-historial>
         </div>
@@ -383,7 +383,7 @@ export default /* html */ `
             <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2"><i class="fa-solid fa-sack-dollar text-indigo-600"></i> Valor estimado de cada mantención <span class="normal-case font-semibold text-slate-500">({{ perfilEquipo.marca || 'sin marca' }} · {{ perfilEquipo.modelo || 'sin modelo' }})</span></h4>
             <div class="flex gap-2">
               <button @click="verFiltrosDelPerfil" class="border border-emerald-300 text-emerald-800 font-bold px-3 py-1.5 rounded-lg hover:bg-emerald-50"><i class="fa-solid fa-filter"></i> Filtros del modelo</button>
-              <button @click="exportarCostosExcel(perfilEquipo)" :disabled="exportandoCostos" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow disabled:opacity-50"><i class="fa-solid fa-file-excel"></i> Excel</button>
+              <button v-if="$adminGeneral" @click="exportarCostosExcel(perfilEquipo)" :disabled="exportandoCostos" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow disabled:opacity-50"><i class="fa-solid fa-file-excel"></i> Excel</button>
             </div>
           </div>
           <div v-if="!costoPerfil.tieneFiltros" class="bg-amber-50 border border-amber-300 rounded-lg p-3 text-amber-800 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> Este modelo aún no tiene filtros cargados en el módulo Filtros, así que su costo sale en $0. Cárgalos (planilla con "SIRVE PARA") y aparecerá solo.</div>

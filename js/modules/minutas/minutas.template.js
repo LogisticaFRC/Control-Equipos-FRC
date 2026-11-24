@@ -18,10 +18,10 @@ export default /* html */ `
         <i class="fa-solid fa-file-import text-sm"></i> Importar (Word / Excel)
         <input type="file" multiple accept=".docx,.doc,.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden" @change="elegirArchivosImportar">
       </label>
-      <button v-if="minutaSel" @click="exportarMinutaExcel()" :disabled="exportando" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2 disabled:opacity-60" title="Minuta seleccionada: logo, resumen con %, tabla y dashboard">
+      <button v-if="minutaSel && $adminGeneral" @click="exportarMinutaExcel()" :disabled="exportando" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2 disabled:opacity-60" title="Minuta seleccionada: logo, resumen con %, tabla y dashboard">
         <i :class="['fa-solid text-sm', exportando ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Minuta
       </button>
-      <button @click="exportarTodasExcel" :disabled="exportando || !dbMinutas.length" class="bg-white hover:bg-slate-50 text-emerald-700 border border-emerald-300 text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60" title="Todas las minutas en un solo Excel: resumen general, dashboard, histórico y una hoja por minuta">
+      <button v-if="$adminGeneral" @click="exportarTodasExcel" :disabled="exportando || !dbMinutas.length" class="bg-white hover:bg-slate-50 text-emerald-700 border border-emerald-300 text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60" title="Todas las minutas en un solo Excel: resumen general, dashboard, histórico y una hoja por minuta">
         <i :class="['fa-solid text-sm', exportando ? 'fa-spinner fa-spin' : 'fa-file-zipper']"></i> Exportar Todas (un archivo)
       </button>
       <button @click="descargarPlantillaMinuta" class="text-slate-500 hover:text-slate-800 text-[11px] font-bold px-2 py-2 underline" title="Excel con las columnas para importar">Plantilla</button>
@@ -90,7 +90,7 @@ export default /* html */ `
               <select v-model="filtroGeneral.seccion" class="p-1.5 border rounded-lg font-bold max-w-[160px]"><option value="">Todas</option><option v-for="sc in seccionesGeneral" :key="sc" :value="sc">{{ sc }}</option></select></label>
             <label class="space-y-0.5"><span class="block text-[10px] font-bold text-slate-500 uppercase">Encargado</span>
               <select v-model="filtroGeneral.personal" class="p-1.5 border rounded-lg font-bold max-w-[160px]"><option value="">Todos</option><option v-for="pp in personasGeneral" :key="pp" :value="pp">{{ pp }}</option></select></label>
-            <button @click="exportarGeneralExcel" :disabled="exportando || !tareasUnicas.length" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5 disabled:opacity-60">
+            <button v-if="$adminGeneral" @click="exportarGeneralExcel" :disabled="exportando || !tareasUnicas.length" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5 disabled:opacity-60">
               <i :class="['fa-solid', exportando ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar General</button>
           </div>
         </div>

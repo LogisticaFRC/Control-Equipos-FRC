@@ -12,7 +12,7 @@ export default /* html */ `
         <button v-if="puedeEditar" @click="abrirCrearNodo('EMPRESA', null)" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-building"></i> Nueva Empresa</button>
         <button @click="vistaMapa = !vistaMapa" :class="['text-xs font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5', vistaMapa ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-800 hover:bg-slate-50']">
           <i :class="['fa-solid', vistaMapa ? 'fa-folder-tree' : 'fa-map-location-dot']"></i> {{ vistaMapa ? 'Ver carpetas' : 'Ver mapa de equipos' }}</button>
-        <button @click="exportarAreasExcel" :disabled="exportandoAreas" class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5">
+        <button v-if="$adminGeneral" @click="exportarAreasExcel" :disabled="exportandoAreas" class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5">
           <i :class="['fa-solid', exportandoAreas ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
       </div>
     </div>

@@ -10,7 +10,7 @@ export default /* html */ `
       <button v-if="progDelTipo && puedeEditar" @click="sincronizarProgramaSeleccionado(progSelect)" :disabled="sincronizandoPrograma" title="Marca como realizados los equipos que ya tienen su mantención en el Historial con este programa" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2 disabled:opacity-60">
         <i :class="['fa-solid text-sm', sincronizandoPrograma ? 'fa-spinner fa-spin' : 'fa-arrows-rotate']"></i> Sincronizar con Historial
       </button>
-      <button v-if="progDelTipo" @click="exportarProgramaGanttExcel(progSelect)" :disabled="exportandoPrograma" class="disabled:opacity-60 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+      <button v-if="progDelTipo && $adminGeneral" @click="exportarProgramaGanttExcel(progSelect)" :disabled="exportandoPrograma" class="disabled:opacity-60 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow flex items-center gap-2">
         <i :class="['fa-solid text-sm', exportandoPrograma ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Programa (Excel)
       </button>
       <template v-if="isAdmin">

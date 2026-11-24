@@ -1197,3 +1197,12 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - NO cuenta en: Indicadores (KPI), Dashboard (Total Flota y estados), contador del menú Inventario AFI ni equipos críticos. Helper esEquipoOtros() en inventario.mapper.js. (Distinto de AFI "OTRO" de Movimientos = subarrendados.)
 - El módulo "Documentos generales" del área General se mantiene (para otro uso más adelante).
 - APP_VERSION '2026-11-24 afi otros'. Sin SQL.
+
+## 2026-11-24 · Exportar Excel solo Admin general + Calculadora de arriendo (prueba)
+- EXPORTAR: todos los botones de exportar a Excel/CSV solo los ve el Admin general (decisión usuario). Propiedad global $adminGeneral registrada en main.js (Object.defineProperty sobre app.config.globalProperties) → <button v-if="$adminGeneral">. Módulos: Inventario, Perfil (hoja de vida y costos), Vehículos, Áreas, Movimientos, Historial, Fallas, Costos, Aceites, Filtros, Bodega, OC, OT, Minutas, Programas, Motores, Indicadores, Dashboard, EPP, Mecánicos (tiempos), Config (exportar todo), Equipos eliminados. Se mantienen visibles: importar, plantilla de minutas y el documento del check list del chofer (app del chofer).
+- CALCULADORA DE ARRIENDO · CAMIONES: nueva área "Pruebas (Admin)" (soloAdminGeneral en menu.js; no aparece en permisos) con el módulo calcArriendo (js/modules/ventas/calculadora.*). Pasará a Ventas cuando se libere.
+  - Calcula: diésel en ruta y de pluma, peajes por categoría (2 ejes / +2 ejes) y TAG, chofer (día, horas extra, viático, alojamiento, bono), rigger, neumáticos y mantención por km, depreciación + seguro/permisos/GPS por día, faena (acreditación, exámenes, inducción, EPP), otros (permisos especiales, escolta, lavado, estacionamiento), imprevistos %, gastos generales %, margen % e IVA. Muestra precio neto, total, por día, por km y por viaje.
+  - Modalidades: flete, por días, mensual; con/sin chofer, con/sin rigger; camión de la flota (Vehículos) sugiere el tipo.
+  - Parámetros (todos referenciales, editables) en bd_config clave 'calc_arriendo'. Peajes con tarifa de camión "ESTIMADA" (auto × 1,8 / × 3,2) hasta confirmarla.
+  - Cotizaciones guardadas: sql/cotizaciones_arriendo.sql (tabla bd_cotizaciones_arriendo, RLS solo Admin general). Exportar Excel con formato FRC e Imprimir/PDF.
+- APP_VERSION '2026-11-24 calculadora'. SQL: sql/cotizaciones_arriendo.sql.

@@ -46,7 +46,7 @@ export default /* html */ `
     </div>
     <div class="flex items-center gap-2">
       <button @click="renderCharts" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-rotate-right"></i> Recargar Gráficos</button>
-      <button @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-file-excel"></i> Exportar KPIs (CSV)</button>
+      <button v-if="$adminGeneral" @click="exportarCSV(resumenKPIs, 'Resumen_KPIs_AFI')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-file-excel"></i> Exportar KPIs (CSV)</button>
     </div>
   </div>
 

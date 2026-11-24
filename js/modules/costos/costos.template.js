@@ -10,7 +10,7 @@ export default /* html */ `
       </div>
       <div class="flex flex-wrap gap-2">
         <button v-if="isAdmin" @click="verConfig = !verConfig" class="bg-white/10 hover:bg-white/20 border border-white/20 font-bold px-3 py-1.5 rounded-lg"><i class="fa-solid fa-sliders"></i> Qué incluye cada mantención</button>
-        <button @click="exportarCostosExcel()" :disabled="exportandoCostos" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg shadow disabled:opacity-50"><i :class="['fa-solid', exportandoCostos ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
+        <button v-if="$adminGeneral" @click="exportarCostosExcel()" :disabled="exportandoCostos" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg shadow disabled:opacity-50"><i :class="['fa-solid', exportandoCostos ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
       </div>
     </div>
     <div class="mt-3 flex flex-wrap items-end gap-3">

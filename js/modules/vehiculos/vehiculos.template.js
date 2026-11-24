@@ -10,7 +10,7 @@ export default /* html */ `
     </div>
     <div class="flex items-center gap-2 flex-wrap">
       <button @click="recargarTodo" :disabled="cargandoVeh" title="Recargar" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-2.5 rounded-xl border"><i :class="['fa-solid fa-rotate', cargandoVeh ? 'fa-spin' : '']"></i></button>
-      <button @click="exportarVehiculosExcel" :disabled="exportandoVeh || !vehiculos.length" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 disabled:opacity-60"><i :class="['fa-solid', exportandoVeh ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
+      <button v-if="$adminGeneral" @click="exportarVehiculosExcel" :disabled="exportandoVeh || !vehiculos.length" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 disabled:opacity-60"><i :class="['fa-solid', exportandoVeh ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
       <button v-if="puedeEditar" @click="abrirNuevoVehiculo" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl shadow flex items-center gap-2"><i class="fa-solid fa-plus-circle"></i> Agregar vehículo</button>
     </div>
   </div>

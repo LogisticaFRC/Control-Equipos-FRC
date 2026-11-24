@@ -8,8 +8,8 @@ export default /* html */ `
         <p class="text-xs text-slate-500">Inventario general de filtros sueltos. <b>Armar KIT</b> saca filtros del inventario y los junta bajo un código de KIT para un modelo de equipo. Al marcar "Realizado" en Programas → Mantención se descuenta 1 KIT.</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button v-if="vistaBodega === 'stock'" @click="exportarStock(exportarCSV)" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> Exportar</button>
-        <button v-if="vistaBodega === 'kits'" @click="exportarKits(exportarCSV)" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> Exportar</button>
+        <button v-if="vistaBodega === 'stock' && $adminGeneral" @click="exportarStock(exportarCSV)" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> Exportar</button>
+        <button v-if="vistaBodega === 'kits' && $adminGeneral" @click="exportarKits(exportarCSV)" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> Exportar</button>
         <label v-if="isAdmin && vistaBodega === 'stock'" :class="['font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5 cursor-pointer text-white', importandoStock ? 'bg-slate-400' : 'bg-sky-600 hover:bg-sky-700']" title="Columnas: CODIGO | TIPO | MARCA | CANTIDAD (se suma a lo que hay)">
           <i :class="['fa-solid', importandoStock ? 'fa-spinner fa-spin' : 'fa-file-import']"></i> {{ importandoStock ? 'Importando...' : 'Importar stock (Excel)' }}
           <input type="file" accept=".xlsx,.xls,.csv" class="hidden" :disabled="importandoStock" @change="importarStockExcel">

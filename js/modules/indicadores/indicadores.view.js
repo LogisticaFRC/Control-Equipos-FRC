@@ -31,7 +31,7 @@ export default {
     <label class="text-[10px] font-bold uppercase text-slate-500">Empresa<select v-model="K.filtro.value.empresa" class="block mt-0.5 p-2 border rounded-lg text-sm max-w-[180px]"><option value="">Todas</option><option v-for="e in K.empresas.value" :key="e">{{ e }}</option></select></label>
     <label class="text-[10px] font-bold uppercase text-slate-500">Tipo de equipo<select v-model="K.filtro.value.tipo" class="block mt-0.5 p-2 border rounded-lg text-sm max-w-[180px]"><option value="">Todos</option><option v-for="t in K.tiposEquipo.value" :key="t">{{ t }}</option></select></label>
     <button @click="K.cargarDatosKPI(true)" :disabled="K.cargandoKPI.value" class="px-3 py-2 rounded-lg border text-sm font-bold text-slate-600 hover:bg-slate-50" title="Volver a bajar taller, pedidos, check list y estandarizaciones"><i :class="['fa-solid fa-rotate', K.cargandoKPI.value ? 'fa-spin' : '']"></i></button>
-    <button @click="K.exportarKPIExcel()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold" data-kpi="excel"><i class="fa-solid fa-file-excel mr-1"></i>Exportar Excel</button>
+    <button v-if="$adminGeneral" @click="K.exportarKPIExcel()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold" data-kpi="excel"><i class="fa-solid fa-file-excel mr-1"></i>Exportar Excel</button>
   </div>
 
   <!-- Tarjetas principales -->

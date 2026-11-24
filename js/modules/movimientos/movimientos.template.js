@@ -21,7 +21,7 @@ export default /* html */ `
       <div class="flex items-center gap-2">
         <button v-if="isAdmin" @click="abrirModalCrearMovimiento" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5"><i class="fa-solid fa-plus-circle"></i> Registrar Movimiento</button>
         <button @click="limpiarFiltrosMovimientos" class="text-xs text-slate-500 hover:text-slate-800 underline mx-1">Limpiar Filtros</button>
-        <button @click="exportarCSV(filteredMovimientos, 'Movimientos_Filtrados')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
+        <button v-if="$adminGeneral" @click="exportarCSV(filteredMovimientos, 'Movimientos_Filtrados')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
       </div>
     </div>
     

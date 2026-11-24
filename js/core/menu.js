@@ -58,6 +58,11 @@ export const AREAS = [
     ]
   },
   {
+    // PRUEBAS (2026-11-24): módulos en revisión, SOLO los ve el Admin general. La calculadora pasará a Ventas cuando se libere.
+    key: 'pruebas', label: 'Pruebas (Admin)', icon: 'fa-flask', color: 'text-fuchsia-300', soloAdminGeneral: true,
+    modulos: [{ key: 'calcArriendo', label: 'Calculadora de arriendo', icon: 'fa-calculator' }]
+  },
+  {
     key: 'ventas', label: 'Ventas', icon: 'fa-hand-holding-dollar', color: 'text-emerald-400',
     modulos: [{ key: 'ventas', label: 'Inicio Ventas', icon: 'fa-house', placeholder: true }]
   },
@@ -118,7 +123,7 @@ export const gruposDeArea = (area) => {
 };
 
 /** Áreas a las que se les asignan permisos (todas menos Inicio). */
-export const AREAS_PERMISOS = AREAS.filter(a => !a.directo);
+export const AREAS_PERMISOS = AREAS.filter(a => !a.directo && !a.soloAdminGeneral);   // Pruebas: no se asigna (solo Admin general)
 
 /** Todas las claves de pantalla válidas (para la URL #clave). */
 export const TABS_VALIDAS = AREAS.flatMap(a => a.modulos.map(m => m.key));

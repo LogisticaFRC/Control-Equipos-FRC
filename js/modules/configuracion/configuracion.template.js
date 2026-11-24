@@ -7,7 +7,7 @@ export default /* html */ `
       <h3 class="text-base font-extrabold flex items-center gap-2"><i class="fa-solid fa-file-excel text-emerald-400 text-xl"></i> Exportar Base de Datos Completa</h3>
       <p class="text-xs text-slate-300 mt-1">Descarga TODO el sistema en un Excel con formato (logo, títulos centrados, filtros): resumen, historial detallado y una hoja por cada tabla con todas sus columnas.</p>
     </div>
-    <button @click="exportarTodasLasTablasExcel" :disabled="exportandoTodo" class="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-70 text-slate-950 font-extrabold px-5 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-xs uppercase tracking-wider">
+    <button v-if="$adminGeneral" @click="exportarTodasLasTablasExcel" :disabled="exportandoTodo" class="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-70 text-slate-950 font-extrabold px-5 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-xs uppercase tracking-wider">
       <i :class="['fa-solid', exportandoTodo ? 'fa-spinner fa-spin' : 'fa-download']"></i> {{ exportandoTodo ? (progresoTodo || 'Exportando…') : 'Exportar todo (Excel completo)' }}
     </button>
   </div>

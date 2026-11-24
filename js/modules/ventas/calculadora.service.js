@@ -1,0 +1,282 @@
+// =====================================================================
+// CALCULADORA DE ARRIENDO · CAMIONES (2026-11-24) — módulo de PRUEBA, solo Admin general.
+// Más adelante pasa al área Ventas. Calcula el costo y el precio sugerido de un arriendo de camión:
+// combustible, peajes, chofer, pluma/rigger, desgaste por km, costo de posesión por día, faena,
+// imprevistos, gastos generales, margen e IVA.
+//  - Parámetros (precio diésel, tipos de camión, peajes, valores de chofer, %) → bd_config clave 'calc_arriendo'.
+//  - Cotizaciones guardadas → tabla bd_cotizaciones_arriendo (sql/cotizaciones_arriendo.sql).
+// Todos los valores por defecto son REFERENCIALES: ajustarlos con datos reales de FRC.
+// =====================================================================
+import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
+import { dbEquipos, usuarioActivo, soloAdminGeneral } from '../../core/store.js';
+import { esVehiculo } from '../inventario/inventario.mapper.js';
+import { hoyISO } from '../../core/utils.js';
+
+const { ref, reactive, computed } = Vue;
+
+export const TABLA_COTIZACIONES = 'bd_cotizaciones_arriendo';
+const CLAVE_PARAMS = 'calc_arriendo';
+const quien = () => { const u = usuarioActivo.value; return (u && (u.nombre || u.usuario)) || ''; };
+export const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+// ---------- Parámetros por defecto (referenciales) ----------
+// ejes: '2' = camión de 2 ejes · '3' = camión de más de 2 ejes (categoría de peaje)
+export const TIPOS_DEFAULT = () => ([
+  { tipo: 'CAMIÓN PLUMA', ejes: '3', rend: 3.0, valor: 120000000, residual: 30, vidaAnios: 10, neumaticos: 10, precioNeumatico: 450000, vidaNeumaticoKm: 80000, mantKm: 120, seguroAnual: 2500000, permisosAnual: 900000, gpsMes: 25000, pluma: true, consumoPlumaLh: 6 },
+  { tipo: 'CAMIÓN PLANO', ejes: '3', rend: 3.2, valor: 90000000, residual: 30, vidaAnios: 10, neumaticos: 10, precioNeumatico: 420000, vidaNeumaticoKm: 90000, mantKm: 100, seguroAnual: 2000000, permisosAnual: 800000, gpsMes: 25000, pluma: false, consumoPlumaLh: 0 },
+  { tipo: 'CAMIÓN TOLVA', ejes: '3', rend: 2.6, valor: 110000000, residual: 30, vidaAnios: 10, neumaticos: 10, precioNeumatico: 450000, vidaNeumaticoKm: 70000, mantKm: 130, seguroAnual: 2300000, permisosAnual: 850000, gpsMes: 25000, pluma: false, consumoPlumaLh: 0 },
+  { tipo: 'CAMIÓN ALJIBE', ejes: '3', rend: 3.0, valor: 100000000, residual: 30, vidaAnios: 10, neumaticos: 10, precioNeumatico: 420000, vidaNeumaticoKm: 90000, mantKm: 110, seguroAnual: 2200000, permisosAnual: 800000, gpsMes: 25000, pluma: false, consumoPlumaLh: 0 },
+  { tipo: 'TRACTO + RAMPLA', ejes: '3', rend: 2.3, valor: 150000000, residual: 30, vidaAnios: 10, neumaticos: 18, precioNeumatico: 430000, vidaNeumaticoKm: 100000, mantKm: 140, seguroAnual: 3000000, permisosAnual: 1100000, gpsMes: 25000, pluma: false, consumoPlumaLh: 0 },
+  { tipo: 'TRACTO + CAMA BAJA', ejes: '3', rend: 2.0, valor: 170000000, residual: 30, vidaAnios: 10, neumaticos: 22, precioNeumatico: 430000, vidaNeumaticoKm: 90000, mantKm: 160, seguroAnual: 3300000, permisosAnual: 1200000, gpsMes: 25000, pluma: false, consumoPlumaLh: 0 },
+  { tipo: 'CAMIÓN 3/4 (2 EJES)', ejes: '2', rend: 5.0, valor: 45000000, residual: 30, vidaAnios: 10, neumaticos: 6, precioNeumatico: 250000, vidaNeumaticoKm: 70000, mantKm: 70, seguroAnual: 1200000, permisosAnual: 450000, gpsMes: 25000, pluma: false, consumoPlumaLh: 0 }
+]);
+// Peajes: tarifa por pasada (un sentido). auto = categoría 1 (referencia); c2 = camión 2 ejes; c3 = camión de más de 2 ejes.
+// estimado: true → la tarifa de camión se calculó con un factor aproximado sobre la de auto: CONFIRMAR con la concesionaria.
+export const PEAJES_DEFAULT = () => ([
+  { id: 'angostura', nombre: 'Angostura · troncal Ruta 5 Sur', ruta: 'Santiago – Rancagua (Ruta del Maipo)', auto: 3800, c2: 6840, c3: 12160, estimado: true, nota: 'Auto 2026: $3.800 (MOP). Camión = auto × 1,8 / × 3,2 (estimado).' },
+  { id: 'lateral', nombre: 'Lateral Ruta 5 Sur (salida/entrada)', ruta: 'Ej. enlaces Rancagua, San Fernando', auto: 900, c2: 1620, c3: 2880, estimado: true, nota: 'Auto 2026: $900. Camión estimado.' },
+  { id: 'vespucio', nombre: 'Pórtico Américo Vespucio – Ruta 78', ruta: 'Santiago (autopista urbana)', auto: 0, c2: 1436, c3: 2585, estimado: true, nota: 'Camión 2 ejes 2026: $1.436 normal / $2.872 punta. >2 ejes estimado.' },
+  { id: 'riomaipo', nombre: 'Río Maipo · troncal', ruta: 'Acceso Sur a Santiago', auto: 1320, c2: 2380, c3: 4220, estimado: true, nota: 'Valor auto 2025. Verificar tarifa 2026 y si aplica a la ruta.' }
+]);
+export const PARAMS_DEFAULT = () => ({
+  precioDiesel: 1500,           // $/L referencial → actualizar (bencinaenlinea.cl)
+  diasOperativosAnio: 250,      // para repartir depreciación, seguro y permisos por día
+  costoDiaChofer: 65000,        // costo empresa por día (sueldo + leyes sociales)
+  valorHoraExtra: 9000,
+  viaticoDia: 15000,            // alimentación
+  alojamientoNoche: 35000,
+  bonoFaenaDia: 0,
+  costoDiaRigger: 70000,
+  imprevistosPct: 5,
+  gastosGeneralesPct: 10,
+  margenPct: 25,
+  ivaPct: 19,
+  tipos: TIPOS_DEFAULT(),
+  peajes: PEAJES_DEFAULT(),
+  actualizado: ''
+});
+
+export const params = reactive(PARAMS_DEFAULT());
+export const faltaConfig = ref(false);
+export const guardandoParams = ref(false);
+
+export const cargarParams = async () => {
+  try {
+    const data = await sb(supabaseClient.from('bd_config').select('valor').eq('clave', CLAVE_PARAMS).limit(1));
+    const v = data && data[0] && data[0].valor;
+    const obj = typeof v === 'string' ? JSON.parse(v) : v;
+    if (obj && typeof obj === 'object') Object.assign(params, PARAMS_DEFAULT(), obj);
+    faltaConfig.value = false;
+  } catch (e) { faltaConfig.value = true; }
+};
+export const guardarParams = async () => {
+  if (!soloAdminGeneral()) return;
+  guardandoParams.value = true;
+  try {
+    params.actualizado = hoyISO();
+    const valor = JSON.parse(JSON.stringify(params));
+    await sb(supabaseClient.from('bd_config').upsert([{ clave: CLAVE_PARAMS, valor, updated_at: new Date().toISOString() }], { onConflict: 'clave' }));
+    alert('Parámetros guardados.');
+  } catch (err) { alert('No se pudieron guardar los parámetros: ' + errMsg(err)); }
+  finally { guardandoParams.value = false; }
+};
+export const restaurarParams = () => { if (confirm('¿Volver a los valores referenciales por defecto? (no se guarda hasta que presiones "Guardar parámetros")')) Object.assign(params, PARAMS_DEFAULT()); };
+export const agregarPeaje = () => params.peajes.push({ id: 'p' + Date.now(), nombre: '', ruta: '', auto: 0, c2: 0, c3: 0, estimado: false, nota: '' });
+export const quitarPeaje = (i) => params.peajes.splice(i, 1);
+export const agregarTipo = () => params.tipos.push({ ...TIPOS_DEFAULT()[1], tipo: 'NUEVO TIPO' });
+export const quitarTipo = (i) => { if (params.tipos.length > 1) params.tipos.splice(i, 1); };
+
+// ---------- Camiones de la flota (Vehículos) ----------
+const sinTilde = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+export const esCamionFlota = (e) => { const t = sinTilde(e?.tipo); return esVehiculo(e) && ((/CAMION/.test(t) && !/CAMIONETA/.test(t)) || /RAMPLA/.test(t) || /CAMA\s*BAJA/.test(t) || /TRACTO/.test(t)); };
+export const camionesFlota = computed(() => dbEquipos.value.filter(esCamionFlota).sort((a, b) => String(a.tipo).localeCompare(String(b.tipo))));
+/** Tipo de la calculadora que mejor calza con el tipo escrito en Vehículos. */
+export const tipoSugerido = (tipoFlota) => {
+  const t = sinTilde(tipoFlota);
+  const busca = (re) => params.tipos.find(x => re.test(sinTilde(x.tipo)));
+  if (/PLUMA/.test(t)) return busca(/PLUMA/);
+  if (/CAMA\s*BAJA/.test(t)) return busca(/CAMA\s*BAJA/);
+  if (/RAMPLA|TRACTO/.test(t)) return busca(/RAMPLA/);
+  if (/TOLVA/.test(t)) return busca(/TOLVA/);
+  if (/ALJIBE/.test(t)) return busca(/ALJIBE/);
+  if (/PLANO/.test(t)) return busca(/PLANO/);
+  return null;
+};
+
+// ---------- Cotización en pantalla ----------
+export const MODALIDADES = [
+  { k: 'flete', l: 'Flete / traslado', d: 'Se cobra por viaje (ida o ida y vuelta).' },
+  { k: 'dias', l: 'Arriendo por días', d: 'El camión queda en faena por días.' },
+  { k: 'mes', l: 'Arriendo mensual', d: 'Por meses (30 días cada uno).' }
+];
+export const formVacio = () => ({
+  id: null, nombre: '', cliente: '', fecha: hoyISO(), afi: '', tipo: 'CAMIÓN PLUMA', modalidad: 'flete',
+  origen: '', destino: '', kmIda: 90, idaVuelta: true, viajes: 1,
+  dias: 1, meses: 1, kmFaenaDia: 0, horasPlumaDia: 0,
+  conChofer: true, conRigger: false, horasExtra: 0, diasViatico: 1, noches: 0,
+  peajes: {},                 // { idPeaje: pasadas }
+  tagUrbano: 0, permisosEspeciales: 0, escolta: 0, lavado: 0, estacionamiento: 0,
+  acreditacion: 0, examenes: 0, induccion: 0, epp: 0, otrosFaena: 0,
+  otros: 0, notaOtros: '',
+  usarPctParams: true, imprevistosPct: 5, gastosGeneralesPct: 10, margenPct: 25,
+  observaciones: ''
+});
+export const form = reactive(formVacio());
+export const nuevaCotizacion = () => Object.assign(form, formVacio());
+
+export const tipoSel = computed(() => params.tipos.find(t => t.tipo === form.tipo) || params.tipos[0]);
+export const diasServicio = computed(() => form.modalidad === 'mes' ? Math.max(0, num(form.meses)) * 30 : Math.max(0, num(form.dias)));
+export const pasadasSugeridas = computed(() => Math.max(0, num(form.viajes)) * (form.idaVuelta ? 2 : 1));
+export const pasadasDe = (id) => (form.peajes[id] === undefined || form.peajes[id] === '' ? 0 : num(form.peajes[id]));
+export const marcarPeaje = (id, on) => { form.peajes[id] = on ? pasadasSugeridas.value : 0; };
+const tarifaPeaje = (p, ejes) => num(ejes === '2' ? p.c2 : p.c3);
+
+/** Cálculo completo. Devuelve líneas por grupo + totales. */
+export const resultado = computed(() => {
+  const t = tipoSel.value || {};
+  const dias = diasServicio.value;
+  const kmViajes = Math.max(0, num(form.viajes)) * Math.max(0, num(form.kmIda)) * (form.idaVuelta ? 2 : 1);
+  const kmFaena = dias * Math.max(0, num(form.kmFaenaDia));
+  const km = kmViajes + kmFaena;
+  const precio = num(params.precioDiesel);
+  const litrosRuta = num(t.rend) > 0 ? km / num(t.rend) : 0;
+  const horasPluma = t.pluma ? dias * Math.max(0, num(form.horasPlumaDia)) : 0;
+  const litrosPluma = horasPluma * num(t.consumoPlumaLh);
+  const lineas = [];
+  const add = (grupo, concepto, detalle, monto) => { monto = Math.round(num(monto)); if (monto) lineas.push({ grupo, concepto, detalle, monto }); };
+
+  // Combustible
+  add('Combustible', 'Diésel en ruta', `${fmtN(km)} km ÷ ${fmtN(t.rend, 1)} km/L = ${fmtN(litrosRuta, 0)} L × $${fmtN(precio)}`, litrosRuta * precio);
+  add('Combustible', 'Diésel operación pluma', `${fmtN(horasPluma, 1)} h × ${fmtN(t.consumoPlumaLh, 1)} L/h = ${fmtN(litrosPluma, 0)} L`, litrosPluma * precio);
+  // Peajes
+  params.peajes.forEach(p => {
+    const pas = pasadasDe(p.id); if (!pas) return;
+    const tar = tarifaPeaje(p, t.ejes);
+    add('Peajes', p.nombre || 'Peaje', `${pas} pasada(s) × $${fmtN(tar)} (${t.ejes === '2' ? '2 ejes' : '+2 ejes'})${p.estimado ? ' · estimado' : ''}`, pas * tar);
+  });
+  add('Peajes', 'TAG autopistas urbanas', 'monto estimado', form.tagUrbano);
+  // Chofer y personal
+  if (form.conChofer) {
+    add('Chofer y personal', 'Chofer', `${fmtN(dias)} día(s) × $${fmtN(params.costoDiaChofer)}`, dias * num(params.costoDiaChofer));
+    add('Chofer y personal', 'Horas extra', `${fmtN(form.horasExtra)} h × $${fmtN(params.valorHoraExtra)}`, num(form.horasExtra) * num(params.valorHoraExtra));
+    add('Chofer y personal', 'Viático alimentación', `${fmtN(form.diasViatico)} día(s) × $${fmtN(params.viaticoDia)}`, num(form.diasViatico) * num(params.viaticoDia));
+    add('Chofer y personal', 'Alojamiento', `${fmtN(form.noches)} noche(s) × $${fmtN(params.alojamientoNoche)}`, num(form.noches) * num(params.alojamientoNoche));
+    add('Chofer y personal', 'Bono faena', `${fmtN(dias)} día(s) × $${fmtN(params.bonoFaenaDia)}`, dias * num(params.bonoFaenaDia));
+  }
+  if (form.conRigger) add('Chofer y personal', 'Rigger', `${fmtN(dias)} día(s) × $${fmtN(params.costoDiaRigger)}`, dias * num(params.costoDiaRigger));
+  // Desgaste por km
+  const neumKm = num(t.vidaNeumaticoKm) > 0 ? (num(t.neumaticos) * num(t.precioNeumatico)) / num(t.vidaNeumaticoKm) : 0;
+  add('Uso del camión', 'Neumáticos', `${fmtN(km)} km × $${fmtN(neumKm, 1)}/km`, km * neumKm);
+  add('Uso del camión', 'Mantención y lubricantes', `${fmtN(km)} km × $${fmtN(t.mantKm)}/km`, km * num(t.mantKm));
+  // Costo de posesión por día
+  const diasAnio = Math.max(1, num(params.diasOperativosAnio));
+  const deprDia = num(t.vidaAnios) > 0 ? (num(t.valor) * (1 - num(t.residual) / 100)) / num(t.vidaAnios) / diasAnio : 0;
+  const fijoDia = (num(t.seguroAnual) + num(t.permisosAnual)) / diasAnio + (num(t.gpsMes) * 12) / diasAnio;
+  add('Uso del camión', 'Depreciación', `${fmtN(dias)} día(s) × $${fmtN(deprDia)}`, dias * deprDia);
+  add('Uso del camión', 'Seguro, permisos, revisión y GPS', `${fmtN(dias)} día(s) × $${fmtN(fijoDia)}`, dias * fijoDia);
+  // Faena
+  add('Faena y acreditación', 'Acreditación', '', form.acreditacion);
+  add('Faena y acreditación', 'Exámenes ocupacionales', '', form.examenes);
+  add('Faena y acreditación', 'Inducción', '', form.induccion);
+  add('Faena y acreditación', 'EPP', '', form.epp);
+  add('Faena y acreditación', 'Otros de faena', '', form.otrosFaena);
+  // Otros
+  add('Otros', 'Permisos especiales (sobredimensión)', '', form.permisosEspeciales);
+  add('Otros', 'Escolta / señalero', '', form.escolta);
+  add('Otros', 'Lavado', '', form.lavado);
+  add('Otros', 'Estacionamiento', '', form.estacionamiento);
+  add('Otros', form.notaOtros || 'Otros', '', form.otros);
+
+  const directo = lineas.reduce((s, l) => s + l.monto, 0);
+  const pct = form.usarPctParams ? params : form;
+  const imprevistos = Math.round(directo * num(pct.imprevistosPct) / 100);
+  const costoTotal = directo + imprevistos;
+  const gg = Math.round(costoTotal * num(pct.gastosGeneralesPct) / 100);
+  const costoConGG = costoTotal + gg;
+  const margen = Math.round(costoConGG * num(pct.margenPct) / 100);
+  const neto = costoConGG + margen;
+  const iva = Math.round(neto * num(params.ivaPct) / 100);
+  const total = neto + iva;
+  const grupos = {};
+  lineas.forEach(l => { grupos[l.grupo] = (grupos[l.grupo] || 0) + l.monto; });
+  const viajes = Math.max(0, num(form.viajes));
+  return {
+    lineas, grupos: Object.entries(grupos).map(([g, m]) => ({ g, m, pct: directo ? m / directo * 100 : 0 })).sort((a, b) => b.m - a.m),
+    km, kmViajes, kmFaena, litros: litrosRuta + litrosPluma, dias, directo, imprevistos, costoTotal, gg, margen, neto, iva, total,
+    porDia: dias ? Math.round(neto / dias) : null, porKm: km ? Math.round(neto / km) : null, porViaje: viajes ? Math.round(neto / viajes) : null,
+    pcts: { imprevistos: num(pct.imprevistosPct), gg: num(pct.gastosGeneralesPct), margen: num(pct.margenPct), iva: num(params.ivaPct) }
+  };
+});
+
+export const fmtN = (v, dec = 0) => Number(num(v)).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+export const fmt$ = (v) => (v === null || v === undefined ? '—' : '$' + fmtN(Math.round(num(v))));
+
+// ---------- Cotizaciones guardadas ----------
+export const cotizaciones = ref([]);
+export const faltaTabla = ref(false);
+export const cargandoCot = ref(false);
+export const cargarCotizaciones = async () => {
+  cargandoCot.value = true;
+  try {
+    cotizaciones.value = (await sb(supabaseClient.from(TABLA_COTIZACIONES).select('*').order('created_at', { ascending: false }).limit(500))) || [];
+    faltaTabla.value = false;
+  } catch (e) { faltaTabla.value = true; cotizaciones.value = []; }
+  finally { cargandoCot.value = false; }
+};
+export const guardarCotizacion = async () => {
+  if (!soloAdminGeneral()) return;
+  if (!String(form.nombre || '').trim()) return alert('Ponle un nombre a la cotización (ej. "Traslado generador a Colón Alto").');
+  const r = resultado.value;
+  const fila = {
+    tipo_calculo: 'CAMION', nombre: form.nombre.trim(), cliente: (form.cliente || '').trim() || null, fecha: form.fecha || hoyISO(),
+    afi: form.afi || null, tipo_vehiculo: form.tipo, modalidad: form.modalidad,
+    datos: JSON.parse(JSON.stringify(form)), parametros: JSON.parse(JSON.stringify({ precioDiesel: params.precioDiesel, tipo: tipoSel.value })),
+    costo_total: r.costoTotal, neto: r.neto, total: r.total, usuario: quien()
+  };
+  try {
+    if (form.id) await sb(supabaseClient.from(TABLA_COTIZACIONES).update(fila).eq('id', form.id));
+    else { const res = await sb(supabaseClient.from(TABLA_COTIZACIONES).insert([fila]).select('id')); if (res && res[0]) form.id = res[0].id; }
+    await cargarCotizaciones();
+    alert('Cotización guardada.');
+  } catch (err) { alert('No se pudo guardar (¿ejecutaste sql/cotizaciones_arriendo.sql?): ' + errMsg(err)); }
+};
+export const abrirCotizacion = (c) => { Object.assign(form, formVacio(), c.datos || {}, { id: c.id }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+export const duplicarCotizacion = (c) => { Object.assign(form, formVacio(), c.datos || {}, { id: null, nombre: (c.nombre || '') + ' (copia)', fecha: hoyISO() }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+export const eliminarCotizacion = async (c) => {
+  if (!soloAdminGeneral()) return;
+  if (!confirm(`¿Eliminar la cotización "${c.nombre}"?`)) return;
+  try { await sb(supabaseClient.from(TABLA_COTIZACIONES).delete().eq('id', c.id)); if (form.id === c.id) form.id = null; await cargarCotizaciones(); }
+  catch (err) { alert('No se pudo eliminar: ' + errMsg(err)); }
+};
+
+// ---------- Exportar a Excel (con formato FRC) ----------
+export const exportando = ref(false);
+export const exportarCotizacionExcel = async () => {
+  if (!soloAdminGeneral()) return;
+  exportando.value = true;
+  try {
+    const { nuevoLibro, hojaTabla, descargarLibro } = await import('../../core/excel.js');
+    const { wb, logo } = await nuevoLibro();
+    const r = resultado.value;
+    const mod = (MODALIDADES.find(m => m.k === form.modalidad) || {}).l || form.modalidad;
+    const sub = [form.nombre || 'Cotización', form.cliente, form.tipo, mod, form.origen && form.destino ? `${form.origen} → ${form.destino}` : ''].filter(Boolean).join(' · ');
+    const filas = r.lineas.map(l => [l.grupo, l.concepto, l.detalle, l.monto]);
+    const tot = (c, m) => ['', c, '', m];
+    filas.push(tot('COSTO DIRECTO', r.directo));
+    filas.push(tot(`Imprevistos (${r.pcts.imprevistos}%)`, r.imprevistos));
+    filas.push(tot(`Gastos generales (${r.pcts.gg}%)`, r.gg));
+    filas.push(tot(`Margen (${r.pcts.margen}%)`, r.margen));
+    filas.push(tot('PRECIO NETO', r.neto));
+    filas.push(tot(`IVA (${r.pcts.iva}%)`, r.iva));
+    const ws = hojaTabla(wb, logo, {
+      nombre: 'Cotización', titulo: 'CALCULADORA DE ARRIENDO · CAMIÓN', subtitulo: sub,
+      columnas: [{ t: 'Ítem', w: 22, al: 'left' }, { t: 'Concepto', w: 34, al: 'left' }, { t: 'Detalle del cálculo', w: 58, al: 'left' }, { t: 'Monto ($)', w: 16, fmt: '#,##0', al: 'right' }],
+      filas, totales: ['', 'TOTAL CON IVA', `${fmtN(r.km)} km · ${fmtN(r.dias)} día(s) · ${fmtN(r.litros)} L diésel`, r.total],
+      estiloFila: (v) => (v[0] === '' ? { font: { bold: true } , fill: 'FFE8F5EC' } : null), apaisado: false
+    });
+    ws.autoFilter = undefined;
+    const fecha = (form.fecha || hoyISO()).replace(/-/g, '');
+    await descargarLibro(wb, `Cotizacion_Camion_${(form.nombre || 'FRC').replace(/[^A-Za-z0-9]+/g, '_')}_${fecha}.xlsx`);
+  } catch (err) { alert('No se pudo exportar: ' + errMsg(err)); }
+  finally { exportando.value = false; }
+};

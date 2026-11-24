@@ -48,7 +48,7 @@ export default /* html */ `
     </div>
     <div class="p-4 border-b flex flex-wrap gap-2 items-center justify-between">
       <input type="text" v-model="buscarEliminados" placeholder="Buscar AFI, motivo, usuario..." class="p-2 border rounded-lg w-72">
-      <button @click="exportarEliminados(exportarCSV)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-file-excel"></i> Exportar</button>
+      <button v-if="$adminGeneral" @click="exportarEliminados(exportarCSV)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-file-excel"></i> Exportar</button>
     </div>
     <div class="overflow-auto flex-grow">
       <table class="w-full text-left">

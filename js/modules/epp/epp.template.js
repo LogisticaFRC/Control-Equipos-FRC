@@ -10,7 +10,7 @@ export default /* html */ `
     </div>
     <div class="flex items-center gap-2 flex-wrap">
       <button @click="cargarEPP" :disabled="cargandoEPP" title="Recargar" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-2.5 rounded-xl border"><i :class="['fa-solid fa-rotate', cargandoEPP ? 'fa-spin' : '']"></i></button>
-      <button @click="exportarEPPExcel" :disabled="exportandoEPP || !dbTrabajadores.length" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 disabled:opacity-60"><i :class="['fa-solid', exportandoEPP ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
+      <button v-if="$adminGeneral" @click="exportarEPPExcel" :disabled="exportandoEPP || !dbTrabajadores.length" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 disabled:opacity-60"><i :class="['fa-solid', exportandoEPP ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
       <button v-if="puedeEditar" @click="nuevoTrabajador" class="bg-orange-500 hover:bg-orange-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl shadow flex items-center gap-2"><i class="fa-solid fa-user-plus"></i> Nuevo trabajador</button>
     </div>
   </div>
@@ -170,7 +170,7 @@ export default /* html */ `
         <div class="flex items-center gap-2 flex-wrap">
           <button v-if="puedeEditar && perfilTrabajador.activo" @click="abrirEntrega(perfilTrabajador)" class="bg-orange-500 hover:bg-orange-600 text-slate-950 font-extrabold px-3 py-2 rounded-lg text-xs"><i class="fa-solid fa-hand-holding-medical mr-1"></i>Entregar EPP</button>
           <button v-if="puedeEditar" @click="editarTrabajador(perfilTrabajador)" class="bg-white/10 hover:bg-white/20 font-bold px-3 py-2 rounded-lg text-xs border border-white/20"><i class="fa-solid fa-pen mr-1"></i>Editar</button>
-          <button @click="exportarFichaTrabajador(perfilTrabajador)" :disabled="exportandoEPP" title="Ficha Excel con columna de firma" class="bg-emerald-600 hover:bg-emerald-700 font-bold px-3 py-2 rounded-lg text-xs"><i class="fa-solid fa-file-excel mr-1"></i>Ficha</button>
+          <button v-if="$adminGeneral" @click="exportarFichaTrabajador(perfilTrabajador)" :disabled="exportandoEPP" title="Ficha Excel con columna de firma" class="bg-emerald-600 hover:bg-emerald-700 font-bold px-3 py-2 rounded-lg text-xs"><i class="fa-solid fa-file-excel mr-1"></i>Ficha</button>
           <button v-if="isAdmin" @click="eliminarTrabajador(perfilTrabajador)" title="Eliminar trabajador" class="bg-rose-600 hover:bg-rose-700 px-3 py-2 rounded-lg text-xs"><i class="fa-solid fa-trash"></i></button>
           <button @click="cerrarPerfil" aria-label="Cerrar" class="w-8 h-8 rounded-md hover:bg-white/10"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>

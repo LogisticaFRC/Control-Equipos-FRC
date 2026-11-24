@@ -21,6 +21,7 @@ import AceitesView from './modules/aceites/aceites.view.js';
 import ConfiguracionView from './modules/configuracion/configuracion.view.js';
 import FormatosView from './modules/formatos/formatos.view.js';
 import DocumentosGeneralesView from './modules/formatos/documentos-generales.view.js';   // 2026-11-24
+import CalculadoraArriendoView from './modules/ventas/calculadora.view.js';   // 2026-11-24 (prueba, solo Admin general)
 import FiltrosView from './modules/filtros/filtros.view.js';
 import BodegaView from './modules/bodega/bodega.view.js';
 import MinutasView from './modules/minutas/minutas.view.js';
@@ -200,6 +201,7 @@ const template = /* html */ `
       <bodega-view v-if="currentTab === 'bodega'"></bodega-view>
       <formatos-view v-if="currentTab === 'formatos'"></formatos-view>
       <documentos-generales-view v-if="currentTab === 'docGenerales'"></documentos-generales-view>
+      <calculadora-arriendo-view v-if="currentTab === 'calcArriendo' && esAdminGeneral"></calculadora-arriendo-view>
       <configuracion-view v-if="currentTab === 'configuracion'"></configuracion-view>
       <en-construccion-view v-if="moduloActual.placeholder"></en-construccion-view>
     </main>
@@ -256,10 +258,11 @@ const app = createApp({
     // Menú según el perfil del usuario: solo los módulos que puede ver (Inicio y Mis Tareas siempre)
     const areasVisibles = computed(() => AREAS
       .filter(a => !a.soloSupervisor || esSupervisorMec.value)   // MECÁNICOS: solo Admin general / supervisores
+      .filter(a => !a.soloAdminGeneral || esAdminGeneral.value)   // PRUEBAS: solo Admin general (2026-11-24)
       .map(a => ({ ...a, modulos: a.modulos.filter(m => puedeVerModulo(m.key)) }))
       .filter(a => a.modulos.length));
     // Si entra a un módulo que no puede ver (link, F5 o le quitaron el acceso) → Inicio
-    watch([currentTab, usuarioActivo], ([t, u]) => { if (u && (!puedeVerModulo(t) || (['mecPanel', 'choferPanel'].includes(t) && !esSupervisorMec.value))) currentTab.value = 'inicio'; }, { immediate: true });
+    watch([currentTab, usuarioActivo], ([t, u]) => { if (u && (!puedeVerModulo(t) || (['mecPanel', 'choferPanel'].includes(t) && !esSupervisorMec.value) || (t === 'calcArriendo' && !esAdminGeneral.value))) currentTab.value = 'inicio'; }, { immediate: true });
     const cerrarVistaApp = () => { vistaAppForzada.value = false; };
     const switchTab = (tab) => { if (!puedeVerModulo(tab)) return; currentTab.value = tab; menuAbierto.value = false; };
     // "Salir" apretado a mano: deja de avisar las tareas en este navegador
@@ -299,6 +302,9 @@ const app = createApp({
   }
 });
 
+// 2026-11-24 (decisión usuario): los botones de EXPORTAR a Excel solo los ve el Admin general.
+// Disponible en todas las plantillas como $adminGeneral (ej. <button v-if="$adminGeneral" ...>).
+Object.defineProperty(app.config.globalProperties, '$adminGeneral', { get: () => esAdminGeneral.value });
 app.component('LoginView', LoginView);
 app.component('DashboardView', DashboardView);
 app.component('InventarioView', InventarioView);
@@ -313,6 +319,7 @@ app.component('AceitesView', AceitesView);
 app.component('ConfiguracionView', ConfiguracionView);
 app.component('FormatosView', FormatosView);
 app.component('DocumentosGeneralesView', DocumentosGeneralesView);
+app.component('CalculadoraArriendoView', CalculadoraArriendoView);
 app.component('FiltrosView', FiltrosView);
 app.component('BodegaView', BodegaView);
 app.component('MinutasView', MinutasView);

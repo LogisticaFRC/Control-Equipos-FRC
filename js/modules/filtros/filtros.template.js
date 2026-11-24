@@ -8,7 +8,7 @@ export default /* html */ `
         <p class="text-xs text-slate-500">La lista de precios se importa desde Excel o se edita aquí. Los equipos se enlazan solos al registrar filtros en una mantención (o a mano al editar un código).</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button @click="exportarComparativo(exportarCSV)" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> Exportar</button>
+        <button v-if="$adminGeneral" @click="exportarComparativo(exportarCSV)" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> Exportar</button>
         <label v-if="isAdmin" :class="['font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5 cursor-pointer text-white', importandoPrecios ? 'bg-slate-400' : 'bg-sky-600 hover:bg-sky-700']">
           <i :class="['fa-solid', importandoPrecios ? 'fa-spinner fa-spin' : 'fa-file-import']"></i> {{ importandoPrecios ? 'Importando...' : 'Importar lista de precios (Excel)' }}
           <input type="file" accept=".xlsx,.xls,.csv" class="hidden" :disabled="importandoPrecios" @change="importarPreciosExcel">

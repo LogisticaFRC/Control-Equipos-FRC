@@ -26,7 +26,7 @@ export default {
       </div>
       <div class="flex gap-2">
         <button @click="S.cargarMec()" class="w-9 h-9 rounded-xl border text-slate-500 hover:bg-slate-50" title="Actualizar"><i :class="['fa-solid fa-rotate', S.cargandoMec.value ? 'fa-spin' : '']"></i></button>
-        <button @click="S.exportarTiempos()" class="bg-white border border-emerald-600 text-emerald-700 hover:bg-emerald-50 font-bold px-4 py-2 rounded-xl" title="Cada report con inicio, término y duración" data-panel="tiempos"><i class="fa-solid fa-file-excel mr-1"></i>Tiempos de trabajo</button>
+        <button v-if="$adminGeneral" @click="S.exportarTiempos()" class="bg-white border border-emerald-600 text-emerald-700 hover:bg-emerald-50 font-bold px-4 py-2 rounded-xl" title="Cada report con inicio, término y duración" data-panel="tiempos"><i class="fa-solid fa-file-excel mr-1"></i>Tiempos de trabajo</button>
         <button @click="S.vistaAppForzada.value = true" class="bg-[#1f4d3a] hover:bg-emerald-900 text-white font-bold px-4 py-2 rounded-xl shadow"><i class="fa-solid fa-mobile-screen mr-1"></i>Ver la app de técnicos</button>
       </div>
     </div>

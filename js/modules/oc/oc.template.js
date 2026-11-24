@@ -8,7 +8,7 @@ export default /* html */ `
       <p class="text-slate-500 mt-0.5">Registro histórico de OC. Cada OC queda <b>vinculada</b> a la mantención que tenga su N° en la columna <b>OC</b> del Historial (una mantención puede tener varias OC).</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
-      <button @click="exportarOCExcel" :disabled="exportandoOC" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 disabled:opacity-60"><i :class="['fa-solid', exportandoOC ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
+      <button v-if="$adminGeneral" @click="exportarOCExcel" :disabled="exportandoOC" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 disabled:opacity-60"><i :class="['fa-solid', exportandoOC ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
       <button v-if="puedeEditar" @click="nuevaOC()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl shadow flex items-center gap-2"><i class="fa-solid fa-plus-circle"></i> Nueva OC</button>
     </div>
   </div>

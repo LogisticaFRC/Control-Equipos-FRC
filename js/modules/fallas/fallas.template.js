@@ -9,7 +9,7 @@ export default /* html */ `
         <h2 class="text-lg font-extrabold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass-chart text-rose-500"></i> Análisis de Fallas</h2>
         <p class="text-slate-500">Lee <b>causa</b>, <b>causa detallada</b>, <b>descripción</b> y <b>horas</b> del Historial y agrupa por sistema: qué falla más, qué se repite y en qué equipos.</p>
       </div>
-      <button @click="exportarFallasExcel" :disabled="exportandoFallas || !a.total" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl shadow flex items-center gap-2 disabled:opacity-60"><i :class="['fa-solid', exportandoFallas ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
+      <button v-if="$adminGeneral" @click="exportarFallasExcel" :disabled="exportandoFallas || !a.total" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl shadow flex items-center gap-2 disabled:opacity-60"><i :class="['fa-solid', exportandoFallas ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
     </div>
     <div class="flex flex-wrap items-end gap-2">
       <div><label class="block text-[10px] font-bold text-slate-500">Período</label>

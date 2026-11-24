@@ -13,7 +13,7 @@ export default /* html */ `
           <option value="desc">Más Recientes</option>
           <option value="asc">Más Antiguos</option>
         </select>
-        <button @click="exportarCSV(filteredAceitesRecords, 'Reporte_Consumo_Aceites')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
+        <button v-if="$adminGeneral" @click="exportarCSV(filteredAceitesRecords, 'Reporte_Consumo_Aceites')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
       </div>
     </div>
 
