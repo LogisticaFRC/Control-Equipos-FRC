@@ -3,7 +3,7 @@
 // Se abre desde cualquier módulo al hacer clic en un AFI.
 // =====================================================================
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
-import { empresaDe, esFueraDeServicio, EMPRESA_TALLER } from './inventario.mapper.js';
+import { empresaDe, esFueraDeServicio, EMPRESA_TALLER, esEquipoOtros } from './inventario.mapper.js';
 import { listaEmpresas } from '../../core/store.js';
 import { dbIntervenciones, dbEquipos, cargarDatosDesdeSupabase, buscarEquipoPorAfi, soloEditor } from '../../core/store.js';
 import { normalizarFecha, formatExcelDate, formatIsoDateForSupabase, parseIsoDate, parseNum, mismoAfi, hoyISO } from '../../core/utils.js';
@@ -30,6 +30,11 @@ export const TABS_PERFIL = [
   { k: 'costos', l: 'Costo mantención', i: 'fa-sack-dollar' },
   { k: 'oc', l: 'OC y traslados', i: 'fa-file-invoice-dollar' }
 ];
+/** AFI OTROS (documentos generales): solo pestañas Documentos e Historial. (2026-11-24) */
+export const esPerfilOtros = computed(() => esEquipoOtros(perfilEquipo.value));
+export const tabsPerfil = computed(() => esPerfilOtros.value
+  ? [{ k: 'ficha', l: 'Documentos', i: 'fa-folder-open' }, { k: 'historial', l: 'Historial', i: 'fa-wrench' }]
+  : TABS_PERFIL);
 
 // ---------- Filtros del dashboard individual ----------
 export const perfilFiltroFechaInicio = ref("");
@@ -82,7 +87,7 @@ export const abrirPerfilEquipo = (equipo) => {
   perfilEquipo.value.empresaArriendo = empresaDe(equipo);
   perfilEquipo.value.sel = selDesdeLocacion(equipo.locacionId);   // Empresa → Área → Sector → Locación (módulo Áreas)
   resetFiltrosPerfil();
-  perfilTab.value = 'resumen';
+  perfilTab.value = esEquipoOtros(equipo) ? 'ficha' : 'resumen';
   perfilAsignacionFechaInicio.value = ''; perfilAsignacionFechaFin.value = '';
   showPerfilEquipoModal.value = true;
 };

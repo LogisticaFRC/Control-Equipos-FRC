@@ -33,7 +33,7 @@ export default /* html */ `
 
     <!-- Pestañas -->
     <div class="shrink-0 flex gap-1 px-4 pt-2 border-b border-slate-300 bg-slate-100 overflow-x-auto overflow-y-hidden">
-      <button v-for="t in TABS_PERFIL" :key="t.k" @click="perfilTab = t.k"
+      <button v-for="t in tabsPerfil" :key="t.k" @click="perfilTab = t.k"
         :class="['px-3 py-2 text-xs font-bold rounded-t-lg border border-b-0 -mb-px whitespace-nowrap transition', perfilTab === t.k ? 'bg-white text-blue-700 border-slate-300' : 'text-slate-500 border-transparent hover:text-slate-800']">
         <i :class="['fa-solid mr-1', t.i]"></i>{{ t.l }}
         <span v-if="t.k === 'ots' && otsAbiertasDelEquipo(perfilEquipo.afi)" class="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[9px]" title="OT abiertas">{{ otsAbiertasDelEquipo(perfilEquipo.afi) }}</span>
@@ -334,7 +334,7 @@ export default /* html */ `
       <!-- ===== FILTROS Y FICHA ===== -->
       <div v-show="perfilTab === 'ficha'" class="space-y-5">
       <!-- FILTROS QUE USA EL EQUIPO (vienen del módulo FILTROS, por marca + modelo) -->
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-emerald-200">
+      <div v-if="!esPerfilOtros" class="bg-white p-5 rounded-xl shadow-sm border border-emerald-200">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2 mb-4">
           <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2"><i class="fa-solid fa-filter text-emerald-600"></i> Filtros que usa el equipo <span class="normal-case font-semibold text-slate-500">({{ perfilEquipo.marca || 'sin marca' }} · {{ perfilEquipo.modelo || 'sin modelo' }})</span></h4>
           <button @click="verFiltrosDelPerfil" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow flex items-center gap-1.5"><i class="fa-solid fa-pen-to-square"></i> Ver / corregir en módulo Filtros</button>
@@ -368,8 +368,9 @@ export default /* html */ `
       </div>
       <!-- FICHA TÉCNICA DEL EQUIPO (Admin sube archivo o enlace; los demás solo ven) -->
       <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-4"><i class="fa-solid fa-file-pdf text-rose-600"></i> Ficha Técnica del Equipo</h4>
-        <documentos-carpeta v-if="perfilEquipo.id" :carpeta="'EQUIPO:' + perfilEquipo.id" vacio="Este equipo aún no tiene ficha técnica cargada."></documentos-carpeta>
+        <h4 class="font-bold text-slate-800 uppercase flex items-center gap-2 border-b pb-2 mb-4"><i :class="['fa-solid', esPerfilOtros ? 'fa-folder-open text-emerald-600' : 'fa-file-pdf text-rose-600']"></i> {{ esPerfilOtros ? 'Documentos generales (inducciones y otros)' : 'Ficha Técnica del Equipo' }}</h4>
+        <p v-if="esPerfilOtros" class="text-[11px] text-slate-500 mb-3">Documentos que no son de un equipo en particular. Crea subcarpetas (ej. Inducciones, Capacitaciones) para ordenarlos. Este AFI no cuenta en KPI ni en Dashboard.</p>
+        <documentos-carpeta v-if="perfilEquipo.id" :carpeta="'EQUIPO:' + perfilEquipo.id" :vacio="esPerfilOtros ? 'Aún no hay documentos.' : 'Este equipo aún no tiene ficha técnica cargada.'"></documentos-carpeta>
       </div>
       </div>
 

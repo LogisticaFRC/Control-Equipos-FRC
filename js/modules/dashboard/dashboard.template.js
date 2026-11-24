@@ -52,7 +52,7 @@ export default /* html */ `
 
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
     <div @click="filtrarYIrAInventario('ALL')" class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer hover:border-slate-400 transition">
-      <div><p class="text-[10px] text-slate-500 font-bold uppercase">Total Flota</p><h3 class="text-xl font-bold text-slate-800">{{ dbEquipos.length }}</h3></div>
+      <div><p class="text-[10px] text-slate-500 font-bold uppercase">Total Flota</p><h3 class="text-xl font-bold text-slate-800">{{ totalFlota }}</h3></div>
       <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm"><i class="fa-solid fa-truck-monster"></i></div>
     </div>
     <div @click="filtrarYIrAInventario('Operativo')" class="bg-white p-3.5 rounded-xl shadow-sm border border-emerald-200 flex items-center justify-between cursor-pointer hover:border-emerald-500 transition">

@@ -34,6 +34,9 @@ export const esPatente = (v) => {
   return RE_PATENTE.test(s) && /[A-Z]/.test(s);
 };
 export const esVehiculo = (e) => esPatente(e?.afi);
+/** 2026-11-24: AFI "OTROS" = ficha para documentos generales (inducciones, etc.). Sale en el listado de equipos,
+ *  pero NO cuenta en KPI ni en Dashboard. (No confundir con AFI "OTRO" de Movimientos = subarrendados.) */
+export const esEquipoOtros = (e) => String(e?.afi || '').trim().toUpperCase() === 'OTROS';
 /** "rtzk45" / "RTZK 45" / "rtzk-45" → "RTZK-45" (si no calza con el formato, se devuelve en mayúsculas). */
 export const normalizarPatente = (v) => {
   const s = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');

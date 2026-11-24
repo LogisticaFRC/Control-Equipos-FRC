@@ -6,6 +6,7 @@ import { comunes } from '../../core/comunes.js';
 import { dbEquipos, dbIntervenciones, currentTab, datosVersion } from '../../core/store.js';
 import { esEquipoCritico, esAnualVencida, esAnualProxima, esAlertaRoja } from '../../core/horometros.js';
 import { countEstado, filtrarPorEstado } from '../inventario/inventario.service.js';
+import { esEquipoOtros } from '../inventario/inventario.mapper.js';   // AFI OTROS no cuenta (2026-11-24)
 
 const { computed, onMounted, onBeforeUnmount, watch, nextTick } = Vue;
 
@@ -21,7 +22,7 @@ export default {
       .sort((a, b) => Number(esAlertaRoja(b.horometros)) - Number(esAlertaRoja(a.horometros))));
 
     const resumenKPIs = computed(() => [
-      { Metrica: "Total Flota", Valor: dbEquipos.value.length },
+      { Metrica: "Total Flota", Valor: dbEquipos.value.filter(e => !esEquipoOtros(e)).length },
       { Metrica: "Trabajando / Operativo", Valor: countEstado('Operativo') },
       { Metrica: "Disponible", Valor: countEstado('Disponible') },
       { Metrica: "En Traslado", Valor: countEstado('En Traslado') },
@@ -83,6 +84,7 @@ export default {
     watch(datosVersion, renderCharts);   // se redibuja solo cuando cambian los datos
     onBeforeUnmount(destruir);
 
-    return { ...comunes(), countEstado, equiposCriticosDashboard, resumenKPIs, filtrarYIrAInventario, renderCharts };
+    const totalFlota = computed(() => dbEquipos.value.filter(e => !esEquipoOtros(e)).length);
+    return { ...comunes(), countEstado, totalFlota, equiposCriticosDashboard, resumenKPIs, filtrarYIrAInventario, renderCharts };
   }
 };

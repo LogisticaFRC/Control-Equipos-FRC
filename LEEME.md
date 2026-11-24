@@ -1191,3 +1191,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Como el "horómetro" de los vehículos es kilometraje, los camiones NO entran al MTBF (horas) ni al costo por hora; sí cuentan en disponibilidad, utilización, preventivo, taller, repuestos, movimientos y estandarización.
 - Encabezado: "N equipos (X AFI + Y camiones)". APP_VERSION '2026-11-24 kpi camiones'.
 - (2026-11-24, ajuste) También entran al KPI las RAMPLAS y CAMAS BAJAS de Vehículos (tipo con "RAMPLA" o "CAMA BAJA"). APP_VERSION '2026-11-24 kpi ramplas'.
+
+## 2026-11-24 · AFI "OTROS" para documentos generales
+- Se crea en Inventario un equipo con AFI "OTROS" (Tipo "OTROS"). Sale en el listado de equipos; su perfil muestra solo las pestañas "Documentos" (carpeta EQUIPO:<id> con subcarpetas, ej. Inducciones) e "Historial".
+- NO cuenta en: Indicadores (KPI), Dashboard (Total Flota y estados), contador del menú Inventario AFI ni equipos críticos. Helper esEquipoOtros() en inventario.mapper.js. (Distinto de AFI "OTRO" de Movimientos = subarrendados.)
+- El módulo "Documentos generales" del área General se mantiene (para otro uso más adelante).
+- APP_VERSION '2026-11-24 afi otros'. Sin SQL.

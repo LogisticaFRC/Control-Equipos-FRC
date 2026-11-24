@@ -3,7 +3,7 @@
 // (usado por Dashboard, Inventario y Perfil de Equipo)
 // =====================================================================
 import { normalizarFecha, normalizarClave, parseIsoDate, diasEntre, hoyISO, sumarDiasISO } from './utils.js';
-import { esPatente } from '../modules/inventario/inventario.mapper.js';
+import { esPatente, esEquipoOtros } from '../modules/inventario/inventario.mapper.js';
 
 const USO_POR_DEFECTO_HRS_DIA = 1.5;
 const UMBRAL_PROXIMO_HRS = 50;
@@ -190,4 +190,4 @@ export const getAnualTextoDias = (h) => {
 /** Rojo si está pasado por horas o vencida la anual; ámbar si es solo "próximo". */
 export const esAlertaRoja = (h) => h?.horasFaltantes <= 0 || esAnualVencida(h);
 
-export const esEquipoCritico = (eq) => Boolean(eq.horometros) && (eq.horometros.horasFaltantes <= umbralDe(eq.horometros) || tieneAlertaAnual(eq.horometros));
+export const esEquipoCritico = (eq) => !esEquipoOtros(eq) && Boolean(eq.horometros) && (eq.horometros.horasFaltantes <= umbralDe(eq.horometros) || tieneAlertaAnual(eq.horometros));

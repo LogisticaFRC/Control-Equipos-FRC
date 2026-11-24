@@ -8,7 +8,7 @@
 import { supabaseClient, sb } from '../../core/supabase.js';
 import { dbEquipos, dbIntervenciones, dbMovimientos, dbOC } from '../../core/store.js';
 import { normalizarFecha, normalizarClave, hoyISO, mismoAfi } from '../../core/utils.js';
-import { empresaDe, esVehiculo } from '../inventario/inventario.mapper.js';
+import { empresaDe, esVehiculo, esEquipoOtros } from '../inventario/inventario.mapper.js';
 import { claseMantencion } from '../../core/horometros.js';
 import { esNoFalla } from '../../core/analisis-fallas.js';
 import { dbOT } from '../ot/ot.service.js';
@@ -40,7 +40,7 @@ export const mesesPeriodo = computed(() => {
 /** 2026-11-24 (decisión usuario): los KPI suman Inventario AFI + CAMIONES, RAMPLAS y CAMAS BAJAS de Vehículos (también se arriendan).
  *  Camionetas, furgones, autos, etc. quedan fuera. */
 export const esCamion = (e) => { const t = String(e?.tipo || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase(); return (/CAMION/.test(t) && !/CAMIONETA/.test(t)) || /RAMPLA/.test(t) || /CAMA\s*BAJA/.test(t); };   // + ramplas y camas bajas (2026-11-24)
-export const entraEnKPI = (e) => !esVehiculo(e) || esCamion(e);
+export const entraEnKPI = (e) => !esEquipoOtros(e) && (!esVehiculo(e) || esCamion(e));   // AFI OTROS (documentos) nunca cuenta
 export const tiposEquipo = computed(() => [...new Set(dbEquipos.value.filter(entraEnKPI).map(e => String(e.tipo || '').trim().toUpperCase()).filter(Boolean))].sort());
 export const empresas = computed(() => [...new Set(dbEquipos.value.map(e => empresaDe(e)).filter(Boolean))].sort());
 /** Equipos del Inventario AFI + camiones de Vehículos que cumplen el filtro de tipo y empresa. */

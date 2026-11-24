@@ -5,7 +5,7 @@ import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
 import { dbEquipos, cargarDatosDesdeSupabase, soloEditor, soloAdmin } from '../../core/store.js';
 import { normalizarClave, parseNum, parseStr, compararAfi, exportarCSV, getVal, tieneColumna, parseFileAnyFormat, resetInputFile, formatDateForDisplay } from '../../core/utils.js';
 import { esEquipoCritico, VEH_FRECUENCIA_KM } from '../../core/horometros.js';
-import { TABLA_INVENTARIO, empresaDe, esVehiculo, esPatente } from './inventario.mapper.js';
+import { TABLA_INVENTARIO, empresaDe, esVehiculo, esPatente, esEquipoOtros } from './inventario.mapper.js';
 import { subirFotoEquipo } from './fotos-equipo.js';   // fotos en Storage (ahorro de datos)
 import { currentTab } from '../../core/store.js';
 import { listaEmpresas } from '../../core/store.js';
@@ -16,7 +16,7 @@ const { ref, computed } = Vue;
 // ---------- Estados ----------
 export const ESTADOS = ['Operativo', 'Disponible', 'En Traslado', 'En Mantencion', 'Fuera de Servicio', 'Venta'];
 
-export const countEstado = (st) => dbEquipos.value.filter(e => normalizarClave(e.disponibilidad) === normalizarClave(st)).length;
+export const countEstado = (st) => dbEquipos.value.filter(e => !esEquipoOtros(e) && normalizarClave(e.disponibilidad) === normalizarClave(st)).length;   // AFI OTROS no cuenta (2026-11-24)
 
 export const getEstadoText = (est) => {
   const norm = normalizarClave(est);

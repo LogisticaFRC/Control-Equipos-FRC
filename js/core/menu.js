@@ -8,7 +8,7 @@
 // =====================================================================
 import { hallazgosSinOT, lugaresNuevos, pedidosPendientes } from './avisos-taller.js';   // + lugares nuevos de choferes → alerta en Áreas (2026-11-17)   // inspecciones del taller esperando OT (2026-11-16)
 import { dbEquipos, dbMovimientos, dbIntervenciones, dbOC, dbLocaciones, dbFormatos } from './store.js';
-import { esVehiculo } from '../modules/inventario/inventario.mapper.js';
+import { esVehiculo, esEquipoOtros } from '../modules/inventario/inventario.mapper.js';
 
 const { ref } = Vue;
 
@@ -40,7 +40,7 @@ export const AREAS = [
       { key: 'progMotores', grupo: 'gestion', label: 'Programa Reparación Motores', icon: 'fa-gear' },     // motores a proveedores externos (modules/motores)
       { key: 'minutas', grupo: 'gestion', label: 'Minutas', icon: 'fa-clipboard-list' },
 
-      { key: 'inventario', grupo: 'equipos', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.filter(e => !esVehiculo(e)).length },
+      { key: 'inventario', grupo: 'equipos', label: 'Inventario AFI', icon: 'fa-boxes-stacked', count: () => dbEquipos.value.filter(e => !esVehiculo(e) && !esEquipoOtros(e)).length },
       { key: 'vehiculos', grupo: 'equipos', label: 'Vehículos', icon: 'fa-car-side', count: () => dbEquipos.value.filter(esVehiculo).length },   // AFI = patente XXXX-XX
       { key: 'areas', grupo: 'equipos', label: 'Áreas y Locaciones', icon: 'fa-sitemap', count: () => dbLocaciones.value.filter(n => n.tipo === 'LOCACION').length, alerta: () => lugaresNuevos.value.length },   // alerta = lugares nuevos escritos por choferes
       { key: 'movimientos', grupo: 'equipos', label: 'Movimientos', icon: 'fa-truck-ramp-box', count: () => dbMovimientos.value.length },
