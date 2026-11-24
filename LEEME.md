@@ -1177,3 +1177,16 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Nuevo helper textoEstado() en js/core/comunes.js. Perfil del equipo (encabezado), Áreas, app de terreno, tarjetas de Inventario/Vehículos y selectores de estado (Inventario, Perfil, Movimientos, Nuevo equipo, Vehículos) dicen "En Reparación".
 - Control Aceites: el filtro de tipo muestra todo el catálogo de aceites (ej. HYDRA 68), aunque no tenga consumo.
 - APP_VERSION '2026-11-23 en reparacion'. Sin SQL.
+
+## 2026-11-24 · Documentos generales (área General)
+- Nuevo módulo "Documentos generales" (clave docGenerales) en el área General, arriba de Formatos: inducciones y documentos que NO son de un equipo.
+- Carpetas: INDUCCIONES, CAPACITACIONES, PROCEDIMIENTOS E INSTRUCTIVOS, REGLAMENTOS Y POLITICAS, SEGURIDAD Y SIMULACROS, OTROS (lista CATEGORIAS_GENERALES en formatos.service.js). Cada una admite subcarpetas, buscador, subir archivo o enlace, mover y editar (solo Admin, igual que Formatos).
+- Usa la misma tabla bd_formatos con carpeta "GENERAL / <CATEGORÍA>": sin SQL. Se cuentan aparte (contador propio en el menú); no aparecen en el buscador de Formatos ni en los equipos. No se usa AFI "OTRO" (ese AFI es de subarrendados en Movimientos).
+- Usuarios con permisos por submódulo: el Admin debe habilitar "Documentos generales" en Config & Usuarios → Módulos.
+- Archivos: js/modules/formatos/documentos-generales.view.js; menu.js; main.js. APP_VERSION '2026-11-24 documentos generales'.
+
+## 2026-11-24 · Indicadores (KPI): Inventario AFI + camiones
+- Los KPI ahora suman los equipos del Inventario AFI + los CAMIONES de Vehículos (decisión usuario: también se arriendan). Camionetas, furgones, autos y ramplas quedan fuera.
+- Camión = tipo que contiene "CAMIÓN" (ej. CAMIÓN, CAMIÓN PLUMA) y no "CAMIONETA" (esCamion / entraEnKPI en indicadores.service.js). El filtro "Tipo de equipo" incluye esos tipos.
+- Como el "horómetro" de los vehículos es kilometraje, los camiones NO entran al MTBF (horas) ni al costo por hora; sí cuentan en disponibilidad, utilización, preventivo, taller, repuestos, movimientos y estandarización.
+- Encabezado: "N equipos (X AFI + Y camiones)". APP_VERSION '2026-11-24 kpi camiones'.

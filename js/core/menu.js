@@ -7,7 +7,7 @@
 //   placeholder: true → muestra la pantalla "En construcción" del área.
 // =====================================================================
 import { hallazgosSinOT, lugaresNuevos, pedidosPendientes } from './avisos-taller.js';   // + lugares nuevos de choferes → alerta en Áreas (2026-11-17)   // inspecciones del taller esperando OT (2026-11-16)
-import { dbEquipos, dbMovimientos, dbIntervenciones, dbOC, dbLocaciones } from './store.js';
+import { dbEquipos, dbMovimientos, dbIntervenciones, dbOC, dbLocaciones, dbFormatos } from './store.js';
 import { esVehiculo } from '../modules/inventario/inventario.mapper.js';
 
 const { ref } = Vue;
@@ -90,6 +90,7 @@ export const AREAS = [
   {
     key: 'general', label: 'General', icon: 'fa-layer-group', color: 'text-slate-300',
     modulos: [
+      { key: 'docGenerales', label: 'Documentos generales', icon: 'fa-folder-open', count: () => dbFormatos.value.filter(d => String(d.carpeta || '').startsWith('GENERAL / ') && d.nombre !== '__CARPETA__').length },   // inducciones y docs que no son de un equipo (2026-11-24)
       { key: 'formatos', label: 'Formatos', icon: 'fa-folder-tree' },
       { key: 'configuracion', label: 'Config & Usuarios', icon: 'fa-gear' }
     ]

@@ -20,6 +20,7 @@ import HistorialView from './modules/historial/historial.view.js';
 import AceitesView from './modules/aceites/aceites.view.js';
 import ConfiguracionView from './modules/configuracion/configuracion.view.js';
 import FormatosView from './modules/formatos/formatos.view.js';
+import DocumentosGeneralesView from './modules/formatos/documentos-generales.view.js';   // 2026-11-24
 import FiltrosView from './modules/filtros/filtros.view.js';
 import BodegaView from './modules/bodega/bodega.view.js';
 import MinutasView from './modules/minutas/minutas.view.js';
@@ -198,6 +199,7 @@ const template = /* html */ `
       <filtros-view v-if="currentTab === 'filtros'"></filtros-view>
       <bodega-view v-if="currentTab === 'bodega'"></bodega-view>
       <formatos-view v-if="currentTab === 'formatos'"></formatos-view>
+      <documentos-generales-view v-if="currentTab === 'docGenerales'"></documentos-generales-view>
       <configuracion-view v-if="currentTab === 'configuracion'"></configuracion-view>
       <en-construccion-view v-if="moduloActual.placeholder"></en-construccion-view>
     </main>
@@ -310,6 +312,7 @@ app.component('HistorialView', HistorialView);
 app.component('AceitesView', AceitesView);
 app.component('ConfiguracionView', ConfiguracionView);
 app.component('FormatosView', FormatosView);
+app.component('DocumentosGeneralesView', DocumentosGeneralesView);
 app.component('FiltrosView', FiltrosView);
 app.component('BodegaView', BodegaView);
 app.component('MinutasView', MinutasView);

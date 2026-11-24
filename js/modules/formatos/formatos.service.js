@@ -100,9 +100,27 @@ export const filtrarPorTexto = (docs, texto) => {
     return palabras.every(p => hay.includes(p));
   });
 };
-/** Búsqueda en TODO el módulo Formatos (no incluye fichas técnicas de equipos). */
+/** Búsqueda en TODO el módulo Formatos (no incluye fichas técnicas de equipos ni Documentos generales). */
 export const buscarEnFormatos = (texto) =>
-  ordenarPorNombre(filtrarPorTexto(docsReales().filter(d => !String(d.carpeta || '').startsWith('EQUIPO:')), texto));
+  ordenarPorNombre(filtrarPorTexto(docsReales().filter(d => !String(d.carpeta || '').startsWith('EQUIPO:') && !esDocGeneral(d)), texto));
+
+// ---------- DOCUMENTOS GENERALES (2026-11-24) ----------
+// Inducciones y documentos que NO son de un equipo en particular. Misma tabla bd_formatos,
+// carpeta "GENERAL / <CATEGORÍA>" (+ " / <subcarpeta>"). Se cuentan aparte: no suman en Formatos ni en equipos.
+export const PREFIJO_GENERAL = 'GENERAL / ';
+export const CATEGORIAS_GENERALES = [
+  { key: 'INDUCCIONES', icon: 'fa-chalkboard-user', desc: 'Inducciones de ingreso, faena y cliente' },
+  { key: 'CAPACITACIONES', icon: 'fa-graduation-cap', desc: 'Cursos, charlas y certificados de capacitación' },
+  { key: 'PROCEDIMIENTOS E INSTRUCTIVOS', icon: 'fa-list-check', desc: 'Procedimientos de trabajo e instructivos generales' },
+  { key: 'REGLAMENTOS Y POLITICAS', icon: 'fa-scale-balanced', desc: 'Reglamento interno, políticas y normas de la empresa' },
+  { key: 'SEGURIDAD Y SIMULACROS', icon: 'fa-helmet-safety', desc: 'Simulacros, planes de emergencia, charlas de seguridad' },
+  { key: 'OTROS', icon: 'fa-folder', desc: 'Todo lo que no calza en otra carpeta' }
+];
+export const esDocGeneral = (d) => String(d?.carpeta || '').startsWith(PREFIJO_GENERAL);
+export const carpetaGeneral = (cat) => PREFIJO_GENERAL + cat;
+/** Total de documentos generales (sin contar marcadores de subcarpeta). */
+export const totalDocGenerales = () => docsReales().filter(esDocGeneral).length;
+export const buscarEnGenerales = (texto) => ordenarPorNombre(filtrarPorTexto(docsReales().filter(esDocGeneral), texto));
 
 /** true si el link apunta a un archivo subido a nuestro Storage (y no a un enlace externo). */
 export const esArchivoSubido = (link) => String(link || '').includes('/storage/v1/object/');

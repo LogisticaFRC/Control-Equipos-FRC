@@ -37,12 +37,18 @@ export const mesesPeriodo = computed(() => {
   for (let i = 0; m <= fin && i < 36; i++) { out.push(m); const d = new Date(m + '-15'); d.setMonth(d.getMonth() + 1); m = d.toISOString().slice(0, 7); }
   return out;
 });
-export const tiposEquipo = computed(() => [...new Set(dbEquipos.value.filter(e => !esVehiculo(e)).map(e => String(e.tipo || '').trim().toUpperCase()).filter(Boolean))].sort());
+/** 2026-11-24 (decisión usuario): los KPI suman Inventario AFI + CAMIONES de Vehículos (también se arriendan).
+ *  Camionetas, furgones, autos, ramplas, etc. quedan fuera. */
+export const esCamion = (e) => { const t = String(e?.tipo || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase(); return /CAMION/.test(t) && !/CAMIONETA/.test(t); };
+export const entraEnKPI = (e) => !esVehiculo(e) || esCamion(e);
+export const tiposEquipo = computed(() => [...new Set(dbEquipos.value.filter(entraEnKPI).map(e => String(e.tipo || '').trim().toUpperCase()).filter(Boolean))].sort());
 export const empresas = computed(() => [...new Set(dbEquipos.value.map(e => empresaDe(e)).filter(Boolean))].sort());
-/** Equipos (no vehículos) que cumplen el filtro de tipo y empresa. */
-export const equiposF = computed(() => dbEquipos.value.filter(e => !esVehiculo(e)
+/** Equipos del Inventario AFI + camiones de Vehículos que cumplen el filtro de tipo y empresa. */
+export const equiposF = computed(() => dbEquipos.value.filter(e => entraEnKPI(e)
   && (!filtro.value.tipo || String(e.tipo || '').trim().toUpperCase() === filtro.value.tipo)
   && (!filtro.value.empresa || empresaDe(e) === filtro.value.empresa)));
+/** Cuántos de los equipos del KPI son camiones (Vehículos). */
+export const camionesF = computed(() => equiposF.value.filter(esVehiculo).length);
 const afisF = computed(() => new Set(equiposF.value.map(e => String(e.afi).trim().toUpperCase())));
 const enFiltro = (afi) => afisF.value.has(String(afi || '').trim().toUpperCase());
 
@@ -147,6 +153,7 @@ export const confiabilidad = computed(() => {
     const difs = [];
     for (let j = 1; j < conH.length; j++) { const d = conH[j].horometro - conH[j - 1].horometro; if (d > 0 && d < 20000) difs.push(d); }
     const e = dbEquipos.value.find(x => mismoAfi(x.afi, afi));
+    if (esVehiculo(e)) difs.length = 0;   // camiones: su "horómetro" es kilometraje → no entran al MTBF en horas
     filas.push({ afi, tipo: e?.tipo || lista[0].equipo || '', fallas: lista.length, fallasPeriodo: enPer, mtbf: difs.length ? Math.round(prom(difs)) : null });
   });
   const conMtbf = filas.filter(f => f.mtbf != null);
@@ -200,7 +207,7 @@ export const repuestos = computed(() => {
   const costos = equiposF.value.map(e => {
     const oc = dbOC.value.filter(o => mismoAfi(o.afi, e.afi) && dentro(o.fecha)).reduce((s, o) => s + o.precio, 0);
     const hs = dbIntervenciones.value.filter(i => mismoAfi(i.afi, e.afi) && dentro(i.fecha) && i.horometro > 0).map(i => i.horometro);
-    const horasTrab = hs.length > 1 ? Math.max(...hs) - Math.min(...hs) : 0;
+    const horasTrab = !esVehiculo(e) && hs.length > 1 ? Math.max(...hs) - Math.min(...hs) : 0;   // camiones: km, no horas
     return { afi: e.afi, tipo: e.tipo, oc, horas: Math.round(horasTrab), porHora: horasTrab > 0 && oc > 0 ? Math.round(oc / horasTrab) : null };
   }).filter(c => c.oc > 0).sort((a, b) => b.oc - a.oc);
   return { abiertos: abiertos.length, esperaProm: recibidos.length ? Math.round(prom(recibidos) * 10) / 10 : null, nRecibidos: recibidos.length, tramos,
