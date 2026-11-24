@@ -430,7 +430,7 @@ export default /* html */ `
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">N° AFI del vehículo</label><input v-model="formNuevoVeh.numeroAfi" type="text" placeholder="Ej: 615" class="w-full p-2.5 border rounded-lg bg-white font-bold text-amber-800"></div>
         </div>
         <div class="grid grid-cols-3 gap-3">
-          <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Tipo *</label><input v-model="formNuevoVeh.tipo" list="veh-tipos" type="text" class="w-full p-2.5 border rounded-lg bg-white"><datalist id="veh-tipos"><option>CAMIONETA</option><option>CAMIÓN</option><option>CAMIÓN PLUMA</option><option>FURGÓN</option><option>AUTOMÓVIL</option><option>RAMPLA</option></datalist></div>
+          <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Tipo *</label><input v-model="formNuevoVeh.tipo" list="veh-tipos" type="text" class="w-full p-2.5 border rounded-lg bg-white"><datalist id="veh-tipos"><option>CAMIONETA</option><option>CAMIÓN</option><option>CAMIÓN PLUMA</option><option>FURGÓN</option><option>AUTOMÓVIL</option><option>RAMPLA</option><option>CAMA BAJA</option></datalist></div>
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Marca</label><input v-model="formNuevoVeh.marca" type="text" class="w-full p-2.5 border rounded-lg bg-white"></div>
           <div><label class="block font-bold text-slate-700 mb-1 uppercase text-[11px]">Modelo</label><input v-model="formNuevoVeh.modelo" type="text" class="w-full p-2.5 border rounded-lg bg-white"></div>
         </div>

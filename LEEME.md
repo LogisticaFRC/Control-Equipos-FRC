@@ -1190,3 +1190,4 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Camión = tipo que contiene "CAMIÓN" (ej. CAMIÓN, CAMIÓN PLUMA) y no "CAMIONETA" (esCamion / entraEnKPI en indicadores.service.js). El filtro "Tipo de equipo" incluye esos tipos.
 - Como el "horómetro" de los vehículos es kilometraje, los camiones NO entran al MTBF (horas) ni al costo por hora; sí cuentan en disponibilidad, utilización, preventivo, taller, repuestos, movimientos y estandarización.
 - Encabezado: "N equipos (X AFI + Y camiones)". APP_VERSION '2026-11-24 kpi camiones'.
+- (2026-11-24, ajuste) También entran al KPI las RAMPLAS y CAMAS BAJAS de Vehículos (tipo con "RAMPLA" o "CAMA BAJA"). APP_VERSION '2026-11-24 kpi ramplas'.

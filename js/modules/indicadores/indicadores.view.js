@@ -21,7 +21,7 @@ export default {
   <div class="bg-white rounded-2xl shadow-sm border p-4 flex flex-wrap items-end gap-3">
     <div class="mr-auto">
       <h2 class="text-xl font-black text-slate-800 flex items-center gap-2"><span class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center"><i class="fa-solid fa-chart-pie"></i></span>Indicadores (KPI)</h2>
-      <p class="text-xs text-slate-500 mt-1">{{ K.equiposF.value.length }} equipos<template v-if="K.camionesF.value"> ({{ K.equiposF.value.length - K.camionesF.value }} AFI + {{ K.camionesF.value }} camiones)</template> · período {{ fecha(K.filtro.value.desde) }} al {{ fecha(K.filtro.value.hasta) }}</p>
+      <p class="text-xs text-slate-500 mt-1">{{ K.equiposF.value.length }} equipos<template v-if="K.camionesF.value"> ({{ K.equiposF.value.length - K.camionesF.value }} AFI + {{ K.camionesF.value }} camiones/ramplas)</template> · período {{ fecha(K.filtro.value.desde) }} al {{ fecha(K.filtro.value.hasta) }}</p>
     </div>
     <div class="flex gap-1">
       <button v-for="p in PERIODOS" :key="p.m" @click="periodo(p.m)" :class="['px-2.5 py-2 rounded-lg text-xs font-bold border', periodoSel === p.m ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 hover:bg-slate-50']">{{ p.t }}</button>
