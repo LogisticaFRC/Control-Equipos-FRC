@@ -1206,3 +1206,12 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
   - Parámetros (todos referenciales, editables) en bd_config clave 'calc_arriendo'. Peajes con tarifa de camión "ESTIMADA" (auto × 1,8 / × 3,2) hasta confirmarla.
   - Cotizaciones guardadas: sql/cotizaciones_arriendo.sql (tabla bd_cotizaciones_arriendo, RLS solo Admin general). Exportar Excel con formato FRC e Imprimir/PDF.
 - APP_VERSION '2026-11-24 calculadora'. SQL: sql/cotizaciones_arriendo.sql.
+
+## 2026-11-25 · Calculadora de arriendo: distancias automáticas, AUTO/MANUAL y fuentes
+- Distancia automática: botón "Calcular distancia" (Origen/Destino = ciudad, lugar de Áreas con coordenadas, link de Google Maps o "lat,lng"). Geocodifica con OpenStreetMap Nominatim (máx. 1 consulta/s) y calcula la ruta con OSRM (router.project-osrm.org, gratis, sin clave). Link "Revisar en Google Maps". Si falla, se escribe a mano.
+- Campos AUTO/MANUAL (componente CampoAuto): km de ida (ruta), días de servicio en flete (horas de manejo × 1,25 ÷ 9 h), rendimiento km/L (modelo registrado o tipo), precio diésel (parámetros), días de viático (= días) y noches (ida > 200 km → días − 1). Ticket AUTO marcado = automático; al desmarcarlo pasa a MANUAL con el valor actual para editarlo. form.man guarda el modo.
+- Peajes AUTO: se cobran si la ruta pasa a menos de 1,5 km del peaje (requiere lat/lng del peaje: Parámetros → botón Ubicar o pegar coordenadas). Cada peaje puede pasar a MANUAL.
+- Colores: amarillo = obligatorio (*), verde = AUTO, ámbar = MANUAL, blanco = opcional. Leyenda arriba.
+- Rendimiento por MODELO con fuente (Parámetros → "Rendimiento por modelo": marca, modelo, km/L, tipo de fuente, link PDF/web). Al elegir un camión de la flota se muestran sus fichas técnicas (bd_formatos EQUIPO:<id>) y el rendimiento del modelo si está registrado.
+- "Supuestos y fuentes": tabla con cada variable, valor, AUTO/MANUAL y de dónde sale; también como hoja en el Excel. Se guarda en la cotización (parametros.supuestos).
+- Cotizaciones antiguas (sin modo) se abren con sus valores como MANUAL. APP_VERSION '2026-11-25 calculadora rutas'. Sin SQL.
