@@ -159,7 +159,17 @@ export const lugaresConCoord = computed(() => dbLocaciones.value.filter(n => n.l
   while (x && guard++ < 5) { partes.unshift(x.nombre); x = x.padreId != null ? dbLocaciones.value.find(y => String(y.id) === String(x.padreId)) : null; }
   return { nombre: partes.join(' › '), lat: n.lat, lng: n.lng };
 }).sort((a, b) => a.nombre.localeCompare(b.nombre)));
-export const CIUDADES = ['Santiago', 'Rancagua', 'Machalí', 'Coya', 'San Fernando', 'Talca', 'Curicó', 'Graneros', 'Codegua', 'Mostazal', 'San Bernardo', 'Buin', 'Paine', 'Melipilla', 'Valparaíso', 'San Antonio', 'Los Andes', 'Calama', 'Antofagasta', 'Copiapó', 'La Serena', 'Concepción'];
+export const CIUDADES = [
+  // Norte
+  'Arica', 'Iquique', 'Alto Hospicio', 'Pozo Almonte', 'Calama', 'Antofagasta', 'Mejillones', 'Tocopilla', 'Taltal', 'Chañaral', 'Diego de Almagro', 'El Salvador', 'Copiapó', 'Caldera', 'Tierra Amarilla', 'Vallenar', 'La Serena', 'Coquimbo', 'Ovalle', 'Vicuña', 'Illapel', 'Salamanca', 'Los Vilos',
+  // Centro
+  'Valparaíso', 'Viña del Mar', 'Quilpué', 'Villa Alemana', 'Quillota', 'La Calera', 'Los Andes', 'San Felipe', 'Llaillay', 'San Antonio', 'Cartagena', 'Casablanca',
+  'Santiago', 'Pudahuel', 'Quilicura', 'Lampa', 'Colina', 'Til Til', 'Maipú', 'San Bernardo', 'Puente Alto', 'Buin', 'Paine', 'Talagante', 'Peñaflor', 'Melipilla', 'Curacaví',
+  'Rancagua', 'Machalí', 'Coya', 'Graneros', 'Codegua', 'Mostazal', 'Requínoa', 'Rengo', 'San Vicente', 'Peumo', 'San Fernando', 'Chimbarongo', 'Santa Cruz', 'Pichilemu',
+  'Curicó', 'Molina', 'Talca', 'San Javier', 'Constitución', 'Linares', 'Parral', 'Cauquenes',
+  // Sur
+  'Chillán', 'San Carlos', 'Concepción', 'Talcahuano', 'Coronel', 'Lota', 'Los Ángeles', 'Temuco', 'Angol', 'Villarrica', 'Valdivia', 'Osorno', 'Puerto Montt', 'Puerto Varas', 'Castro', 'Coyhaique', 'Punta Arenas'
+];
 /** Coordenadas desde texto: "lat,lng", link de Google Maps (@lat,lng o !3dlat!4dlng) o lugar de Áreas. */
 const coordDeTexto = (t) => {
   const s = String(t || '');

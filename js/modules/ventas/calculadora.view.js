@@ -108,10 +108,10 @@ const template = /* html */ `
 
       <div class="${card}">
         <h3 class="${h}"><i class="fa-solid fa-route text-slate-400"></i> Ruta y tiempo</h3>
-        <datalist id="calc-lugares"><option v-for="l in C.lugaresConCoord.value" :key="l.nombre" :value="l.nombre"></option><option v-for="c in C.CIUDADES" :key="c" :value="c"></option></datalist>
+        <datalist id="calc-ciudades"><option v-for="c in C.CIUDADES" :key="c" :value="c"></option></datalist>
         <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-          <label><span class="${lab}">Origen <b class="text-rose-600">*</b></span><input v-model="C.form.origen" list="calc-lugares" placeholder="Ciudad, lugar de Áreas, link de Google Maps o lat,lng" class="${req}"></label>
-          <label><span class="${lab}">Destino <b class="text-rose-600">*</b></span><input v-model="C.form.destino" list="calc-lugares" placeholder="Ej. Rancagua · Colón Alto (Áreas)" class="${req}"></label>
+          <label><span class="${lab}">Origen <b class="text-rose-600">*</b></span><input v-model="C.form.origen" list="calc-ciudades" autocomplete="off" name="calc-origen-ciudad" placeholder="Elige una ciudad (o pega un link de Google Maps)" class="${req}"></label>
+          <label><span class="${lab}">Destino <b class="text-rose-600">*</b></span><input v-model="C.form.destino" list="calc-ciudades" autocomplete="off" name="calc-destino-ciudad" placeholder="Elige una ciudad (o pega un link de Google Maps)" class="${req}"></label>
           <button @click="C.calcularRuta()" :disabled="C.rutaEstado.value === 'calculando'" class="px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold disabled:opacity-60 whitespace-nowrap"><i :class="['fa-solid', C.rutaEstado.value === 'calculando' ? 'fa-spinner fa-spin' : 'fa-map-location-dot']"></i> Calcular distancia</button>
         </div>
         <p v-if="C.rutaEstado.value === 'error'" class="text-[11px] text-rose-700 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> {{ C.rutaError.value }} Puedes desmarcar AUTO y escribir los km a mano.</p>
