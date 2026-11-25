@@ -34,6 +34,14 @@ const MapaRuta = {
         const pin = (lat, lng, txt, color) => L.marker([lat, lng], { icon: L.divIcon({ className: '', html: `<div style="background:${color};color:#fff;font-weight:800;font-size:12px;width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px #0006"><span style="transform:rotate(45deg)">${txt}</span></div>`, iconSize: [26, 26], iconAnchor: [13, 26] }) });
         if (r.origen) pin(r.origen.lat, r.origen.lng, 'A', '#0E1A14').bindTooltip('Origen: ' + (r.origen.nombre || '').split(',')[0]).addTo(capa);
         if (r.destino) pin(r.destino.lat, r.destino.lng, 'B', '#149A3E').bindTooltip('Destino: ' + (r.destino.nombre || '').split(',')[0]).addTo(capa);
+        // Plazas del catálogo FRC por las que pasa la ruta (si OpenStreetMap ya marcó la misma plaza, se usa ese punto)
+        const marcadas = new Set((r.peajesOSM || []).map(p => p.idCatalogo).filter(Boolean));
+        (r.peajes || []).forEach(id => {
+          const cat = (props.peajes || []).find(x => x.id === id); if (!cat || cat.lat == null || marcadas.has(id)) return;
+          const tarifa = props.ejes === '2' ? cat.c2 : cat.c3;
+          L.marker([cat.lat, cat.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#f59e0b;color:#111;font-weight:800;font-size:11px;padding:2px 6px;border-radius:6px;border:2px solid #fff;box-shadow:0 1px 4px #0006;white-space:nowrap">$ peaje</div>', iconSize: [56, 22], iconAnchor: [28, 11] }) })
+            .bindTooltip(`<b>${cat.nombre}</b><br>${tarifa ? 'Tarifa: ' + fmt(tarifa) + ' por pasada' : 'Sin tarifa: complétala en Parámetros'}`).addTo(capa);
+        });
         (r.peajesOSM || []).forEach(p => {
           if (p.tipo === 'portico') { L.circleMarker([p.lat, p.lng], { radius: 4, color: '#7c3aed', fillColor: '#a78bfa', fillOpacity: 0.9, weight: 1 }).bindTooltip('Pórtico TAG' + (p.nombre ? ': ' + p.nombre : '')).addTo(capa); return; }
           const cat = (props.peajes || []).find(x => x.id === p.idCatalogo);
@@ -48,7 +56,7 @@ const MapaRuta = {
       } catch (e) { error.value = 'No se pudo mostrar el mapa: ' + (e.message || e); }
     };
     onMounted(() => nextTick(dibujar));
-    watch(() => [props.ruta, props.ruta && props.ruta.peajesOSM, props.ejes], () => nextTick(dibujar), { deep: true });
+    watch(() => [props.ruta, props.ruta && props.ruta.peajesOSM, props.ruta && props.ruta.peajes, props.ejes], () => nextTick(dibujar), { deep: true });
     onBeforeUnmount(() => { if (mapa) mapa.remove(); mapa = null; });
     return { el, error };
   }
@@ -95,7 +103,8 @@ const template = /* html */ `
       <button @click="C.nuevaCotizacion()" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold"><i class="fa-solid fa-file-circle-plus"></i> Nueva</button>
       <button @click="C.guardarCotizacion()" class="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold"><i class="fa-solid fa-floppy-disk"></i> {{ C.form.id ? 'Guardar cambios' : 'Guardar cotización' }}</button>
       <button v-if="$adminGeneral" @click="C.exportarCotizacionExcel()" :disabled="C.exportando.value" class="px-3 py-2 rounded-lg bg-white text-emerald-800 text-xs font-bold disabled:opacity-60"><i :class="['fa-solid', C.exportando.value ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Excel</button>
-      <button @click="imprimir" class="px-3 py-2 rounded-lg bg-white text-slate-800 text-xs font-bold"><i class="fa-solid fa-print"></i> Imprimir / PDF</button>
+      <button v-if="$adminGeneral" @click="pdf" :disabled="generandoPdf" class="px-3 py-2 rounded-lg bg-white text-rose-700 text-xs font-bold disabled:opacity-60"><i :class="['fa-solid', generandoPdf ? 'fa-spinner fa-spin' : 'fa-file-pdf']"></i> Informe PDF</button>
+      <button @click="imprimir" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold" title="Imprime la pantalla tal cual"><i class="fa-solid fa-print"></i></button>
     </div>
   </div>
   <div class="flex flex-wrap gap-3 text-[11px] font-semibold bg-white border rounded-xl p-2.5">
@@ -174,8 +183,10 @@ const template = /* html */ `
             <span class="flex items-center gap-1"><b class="inline-block w-5 h-5 rounded-full bg-emerald-700 text-white text-center leading-5 text-[10px]">B</b> Destino</span>
             <span class="flex items-center gap-1"><b class="px-1.5 rounded bg-amber-400 text-[10px]">$ peaje</b> Plaza de peaje</span>
             <span class="flex items-center gap-1"><b class="inline-block w-3 h-3 rounded-full bg-violet-400"></b> Pórtico TAG ({{ C.form.ruta.porticos || 0 }})</span>
-            <span v-if="C.peajesEstado.value === 'buscando'" class="text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Buscando peajes en la ruta…</span>
-            <span v-else-if="C.peajesEstado.value === 'error'" class="text-rose-700">No se pudieron buscar los peajes en el mapa (servicio ocupado). Vuelve a calcular en un rato o márcalos a mano.</span>
+            <span class="text-emerald-700 font-semibold"><i class="fa-solid fa-road-barrier"></i> {{ (C.form.ruta.peajes || []).length }} plaza(s) de peaje en la ruta</span>
+            <span v-if="C.peajesEstado.value === 'buscando'" class="text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Buscando en OpenStreetMap…</span>
+            <span v-else-if="C.peajesEstado.value === 'catalogo'" class="text-slate-500">OpenStreetMap no respondió: se usa el catálogo de peajes FRC.</span>
+            <button v-if="C.peajesEstado.value !== 'buscando'" @click="C.buscarPeajesEnRuta()" class="px-2 py-0.5 rounded border bg-white font-bold text-blue-700" title="Opcional: busca otras plazas (fuera del catálogo) en OpenStreetMap. Puede tardar o no responder."><i class="fa-solid fa-magnifying-glass-location"></i> Buscar otros peajes (OpenStreetMap)</button>
           </div>
           <p v-if="C.peajesSinTarifa.value.length" class="text-[11px] bg-amber-50 border border-amber-300 text-amber-900 rounded-lg p-2">
             <i class="fa-solid fa-triangle-exclamation"></i> La ruta pasa por {{ C.peajesSinTarifa.value.length }} peaje(s) sin tarifa de camión: <b>{{ C.peajesSinTarifa.value.map(p => p.nombre).join(', ') }}</b>. Complétala en Parámetros → Peajes y presiona "Guardar parámetros".</p>
@@ -202,7 +213,7 @@ const template = /* html */ `
         <div class="overflow-x-auto"><table class="w-full text-xs">
           <thead class="bg-slate-50 text-slate-500 uppercase text-[10px]"><tr><th class="p-2 text-left">Peaje</th><th class="p-2 text-right">Tarifa</th><th class="p-2 text-center">Pasadas</th><th class="p-2 text-right">Subtotal</th></tr></thead>
           <tbody class="divide-y">
-            <tr v-for="p in C.params.peajes" :key="p.id">
+            <tr v-for="p in (C.verTodosPeajes.value ? C.params.peajes : C.params.peajes.filter(x => C.pasadasDe(x.id) || C.form.peajeMan[x.id]))" :key="p.id">
               <td class="p-2"><b>{{ p.nombre }}</b> <span v-if="p.estimado" class="ml-1 px-1.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold" :title="p.nota">ESTIMADO</span><div class="text-[10px] text-slate-400">{{ p.ruta }}</div></td>
               <td class="p-2 text-right font-mono">{{ C.fmt$(C.tipoSel.value.ejes === '2' ? p.c2 : p.c3) }}</td>
               <td class="p-2 text-center whitespace-nowrap">
@@ -213,11 +224,13 @@ const template = /* html */ `
                 <div v-if="!C.form.peajeMan[p.id] && p.lat == null" class="text-[9px] text-slate-400">sin ubicación</div></td>
               <td class="p-2 text-right font-mono font-bold">{{ C.fmt$(C.pasadasDe(p.id) * (C.tipoSel.value.ejes === '2' ? p.c2 : p.c3)) }}</td>
             </tr>
+            <tr v-if="!C.verTodosPeajes.value && !C.params.peajes.some(x => C.pasadasDe(x.id) || C.form.peajeMan[x.id])"><td colspan="4" class="p-2 text-slate-400 italic">{{ C.form.ruta ? 'La ruta no pasa por plazas de peaje del catálogo.' : 'Calcula la ruta para detectar los peajes.' }}</td></tr>
           </tbody></table></div>
+        <button @click="C.verTodosPeajes.value = !C.verTodosPeajes.value" class="text-[11px] font-bold text-blue-700"><i :class="['fa-solid', C.verTodosPeajes.value ? 'fa-eye-slash' : 'fa-list']"></i> {{ C.verTodosPeajes.value ? 'Mostrar solo los peajes de la ruta' : 'Ver todos los peajes (para agregar uno a mano)' }}</button>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <label><span class="${lab}">TAG autopistas urbanas ($)</span><input type="number" min="0" v-model.number="C.form.tagUrbano" class="${inp}"></label>
         </div>
-        <p class="text-[10px] text-slate-400">AUTO: si la ruta calculada pasa por el peaje se cobran {{ C.pasadasSugeridas.value }} pasada(s) (viajes × ida/vuelta). Para que un peaje se detecte solo debe tener su ubicación (Parámetros → Ubicar). Las tarifas se editan en Parámetros.</p>
+        <p class="text-[10px] text-slate-400">AUTO: si la ruta calculada pasa por el peaje se cobran {{ C.pasadasSugeridas.value }} pasada(s) (viajes × ida/vuelta). Las plazas troncales (Ruta 5 Norte/Sur, 68, 57, 78) vienen en el catálogo FRC con ubicación y tarifa 2026; los laterales y pórticos urbanos se cobran a mano. Las tarifas se editan en Parámetros.</p>
       </div>
 
       <div v-if="C.form.conChofer" class="${card}">
@@ -422,12 +435,19 @@ export default {
       if (t) C.form.tipo = t.tipo;
     };
     const imprimir = () => window.print();
+    const generandoPdf = ref(false);
+    const pdf = async () => {
+      generandoPdf.value = true;
+      try { const m = await import('./calculadora.pdf.js'); await m.exportarCotizacionPDF(); }
+      catch (err) { alert('No se pudo generar el PDF: ' + (err.message || err)); }
+      finally { generandoPdf.value = false; }
+    };
     const registrarModelo = () => {
       const e = C.camionSel.value; if (!e) return;
       C.agregarModelo({ marca: e.marca || '', modelo: e.modelo || '', rend: C.efectivo.value.rend });
       const det = document.querySelector('#calc-modelos')?.closest('details'); if (det) det.open = true;
       setTimeout(() => document.querySelector('#calc-modelos')?.scrollIntoView({ behavior: 'smooth' }), 50);
     };
-    return { ...comunes(), C, elegirCamion, imprimir, registrarModelo };
+    return { ...comunes(), C, elegirCamion, imprimir, registrarModelo, pdf, generandoPdf };
   }
 };

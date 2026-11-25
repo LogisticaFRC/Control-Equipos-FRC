@@ -32,12 +32,52 @@ export const TIPOS_DEFAULT = () => ([
 ]);
 // Peajes: tarifa por pasada (un sentido). auto = categoría 1 (referencia); c2 = camión 2 ejes; c3 = camión de más de 2 ejes.
 // estimado: true → la tarifa de camión se calculó con un factor aproximado sobre la de auto: CONFIRMAR con la concesionaria.
+// Catálogo de plazas de peaje TRONCALES (se detectan solas si la ruta pasa por ellas). Tarifas 2026 camión 2 ejes (c2) y
+// más de 2 ejes (c3) publicadas por las concesionarias (recopiladas en chiletransportistas.com/peajes-camiones, nov-2026).
+// Ubicación: punto sobre la carretera (aprox. ±2 km a lo largo de la vía; basta para saber si la ruta pasa por ahí).
+const FUENTE_PEAJES = 'Tarifas 2026 concesionarias (chiletransportistas.com/peajes-camiones). Verificar cada enero.';
+const pj = (id, nombre, ruta, lat, lng, auto, c2, c3, nota = '') => ({ id, buscar: '', lat, lng, nombre, ruta, auto, c2, c3, estimado: false, red: true, nota: nota || FUENTE_PEAJES, fuente: FUENTE_PEAJES });
 export const PEAJES_DEFAULT = () => ([
-  { id: 'angostura', buscar: 'Plaza de Peaje Angostura, Paine', lat: null, lng: null, nombre: 'Angostura · troncal Ruta 5 Sur', ruta: 'Santiago – Rancagua (Ruta del Maipo)', auto: 3800, c2: 6840, c3: 12160, estimado: true, nota: 'Auto 2026: $3.800 (MOP). Camión = auto × 1,8 / × 3,2 (estimado).' },
-  { id: 'lateral', buscar: '', lat: null, lng: null, nombre: 'Lateral Ruta 5 Sur (salida/entrada)', ruta: 'Ej. enlaces Rancagua, San Fernando', auto: 900, c2: 1620, c3: 2880, estimado: true, nota: 'Auto 2026: $900. Camión estimado.' },
-  { id: 'vespucio', buscar: '', lat: null, lng: null, nombre: 'Pórtico Américo Vespucio – Ruta 78', ruta: 'Santiago (autopista urbana)', auto: 0, c2: 1436, c3: 2585, estimado: true, nota: 'Camión 2 ejes 2026: $1.436 normal / $2.872 punta. >2 ejes estimado.' },
-  { id: 'riomaipo', buscar: 'Peaje Río Maipo', lat: null, lng: null, nombre: 'Río Maipo · troncal', ruta: 'Acceso Sur a Santiago', auto: 1320, c2: 2380, c3: 4220, estimado: true, nota: 'Valor auto 2025. Verificar tarifa 2026 y si aplica a la ruta.' }
+  // Ruta 5 Sur (de norte a sur)
+  pj('angostura', 'Angostura · troncal Ruta 5 Sur', 'Ruta 5 Sur km 54 · Santiago – Rancagua', -33.9076, -70.7311, 3800, 6900, 12200),
+  pj('r5s_quinta', 'Quinta · troncal Ruta 5 Sur', 'Ruta 5 Sur km 162 · San Fernando – Curicó', -34.7996, -71.0496, 3800, 6900, 12200),
+  pj('r5s_rioclaro', 'Río Claro · troncal Ruta 5 Sur', 'Ruta 5 Sur km 220 · Curicó – Talca', -35.2156, -71.4166, 3300, 5900, 10400),
+  pj('r5s_retiro', 'Retiro · troncal Ruta 5 Sur', 'Ruta 5 Sur km 323 · Linares – Parral', -36.0312, -71.7517, 3300, 5900, 10400),
+  pj('r5s_santaclara', 'Santa Clara · troncal Ruta 5 Sur', 'Ruta 5 Sur km 444 · Chillán – Los Ángeles', -36.9413, -72.3489, 3400, 6100, 10800),
+  pj('r5s_lasmaicas', 'Las Maicas · troncal Ruta 5 Sur', 'Ruta 5 Sur km 550 · Los Ángeles – Collipulli', -37.8066, -72.3309, 3400, 6100, 10800),
+  pj('r5s_pua', 'Púa · troncal Ruta 5 Sur', 'Ruta 5 Sur km 623 · Victoria – Temuco', -38.3703, -72.3872, 3600, 6400, 11400),
+  pj('r5s_quepe', 'Quepe · troncal Ruta 5 Sur', 'Ruta 5 Sur km 693 · Temuco – Freire', -38.9158, -72.6241, 3600, 6400, 11400),
+  pj('r5s_lanco', 'Lanco · troncal Ruta 5 Sur', 'Ruta 5 Sur · Temuco – Valdivia', -39.4333, -72.7547, 0, 6500, 11600),
+  pj('r5s_launion', 'La Unión · troncal Ruta 5 Sur', 'Ruta 5 Sur · Río Bueno – La Unión', -40.2281, -72.9388, 0, 6500, 11600),
+  pj('r5s_cuatrovientos', 'Cuatro Vientos · troncal Ruta 5 Sur', 'Ruta 5 Sur · Osorno – Puerto Montt', -41.0040, -73.1199, 0, 6500, 11600),
+  // Ruta 5 Norte
+  pj('r5n_lampa', 'Lampa · Ruta 5 Norte', 'Ruta 5 Norte · Santiago – Los Vilos', -33.2356, -70.7588, 0, 1600, 2900),
+  pj('r5n_lasvegas', 'Las Vegas · troncal Ruta 5 Norte', 'Ruta 5 Norte · Llay-Llay', -32.8433, -70.9893, 0, 5300, 9400),
+  pj('r5n_melon', 'Túnel El Melón · Ruta 5 Norte', 'Ruta 5 Norte · Nogales', -32.6819, -71.2108, 0, 5300, 9400),
+  pj('r5n_pichidangui', 'Pichidangui · troncal Ruta 5 Norte', 'Ruta 5 Norte · Los Vilos', -32.1302, -71.5004, 0, 5300, 9400),
+  // Ruta 68 (Santiago – Valparaíso), Ruta 57 (Los Andes), Ruta 78 (San Antonio)
+  pj('r68_loprado', 'Lo Prado · troncal Ruta 68', 'Ruta 68 · Santiago – Valparaíso', -33.4568, -70.8994, 0, 4800, 8600, 'Tiene tarifa punta (más cara) fines de semana/feriados. ' + FUENTE_PEAJES),
+  pj('r68_zapata', 'Zapata · troncal Ruta 68', 'Ruta 68 · Curacaví – Casablanca', -33.3549, -71.3341, 0, 4800, 8600, 'Tiene tarifa punta (más cara) fines de semana/feriados. ' + FUENTE_PEAJES),
+  pj('r57_chacabuco', 'Chacabuco · troncal Ruta 57', 'Ruta 57 · Santiago – Los Andes', -33.0335, -70.6935, 0, 6000, 10600),
+  pj('r78_puangue', 'Puangue · troncal Ruta 78', 'Ruta 78 · Santiago – San Antonio', -33.6510, -71.2639, 0, 2322, 4064, 'Tarifa normal; hay tarifa punta. ' + FUENTE_PEAJES),
+  // Sin ubicación: se cobran a mano (pasarlos a MANUAL)
+  { id: 'lateral', buscar: '', lat: null, lng: null, nombre: 'Lateral Ruta 5 Sur (salida/entrada)', ruta: 'Ej. enlaces Rancagua, San Fernando', auto: 900, c2: 1600, c3: 2900, estimado: true, nota: 'Camión 2 ejes 2026: $1.600 (Ruta del Maipo). +2 ejes estimado. Se cobra a mano.' },
+  { id: 'vespucio', buscar: '', lat: null, lng: null, nombre: 'Pórtico Américo Vespucio – Ruta 78', ruta: 'Santiago (autopista urbana)', auto: 0, c2: 1436, c3: 2513, estimado: false, nota: 'Camión 2026: $1.436 / $2.513 normal (punta el doble). ' + FUENTE_PEAJES },
+  { id: 'riomaipo', buscar: 'Peaje Río Maipo', lat: null, lng: null, nombre: 'Troncal Acceso Sur', ruta: 'Acceso Sur a Santiago', auto: 1400, c2: 2600, c3: 4600, estimado: true, nota: 'Camión 2 ejes 2026: $2.600 (Ruta del Maipo). +2 ejes estimado. Se cobra a mano.' }
 ]);
+/** Agrega al catálogo guardado las plazas nuevas del catálogo FRC y completa ubicaciones/tarifas oficiales que falten. */
+const mezclarPeajes = () => {
+  const def = PEAJES_DEFAULT();
+  def.forEach(d => {
+    const s = params.peajes.find(p => p.id === d.id);
+    if (!s) { params.peajes.push(d); return; }
+    if (s.lat == null && d.lat != null) { s.lat = d.lat; s.lng = d.lng; }
+    if (d.red) s.red = true;
+    if (s.estimado && d.estimado === false) Object.assign(s, { auto: d.auto, c2: d.c2, c3: d.c3, estimado: false, nota: d.nota, fuente: d.fuente });
+  });
+  // Peajes que se agregaron antes desde OpenStreetMap sin tarifa y que ya están en el catálogo FRC → se quitan
+  params.peajes = params.peajes.filter(p => !(String(p.id).startsWith('osm') && !num(p.c2) && !num(p.c3) && def.some(d => d.lat != null && p.lat != null && distKm([d.lng, d.lat], [p.lng, p.lat]) < 3)));
+};
 export const PARAMS_DEFAULT = () => ({
   precioDiesel: 1500,           // $/L referencial → actualizar (bencinaenlinea.cl)
   diasOperativosAnio: 250,      // para repartir depreciación, seguro y permisos por día
@@ -68,6 +108,7 @@ export const cargarParams = async () => {
     const v = data && data[0] && data[0].valor;
     const obj = typeof v === 'string' ? JSON.parse(v) : v;
     if (obj && typeof obj === 'object') Object.assign(params, PARAMS_DEFAULT(), obj);
+    mezclarPeajes();
     faltaConfig.value = false;
   } catch (e) { faltaConfig.value = true; }
 };
@@ -205,7 +246,7 @@ export const calcularRuta = async () => {
     form.ruta = { km: Math.round(ruta.distance / 100) / 10, horas: Math.round(ruta.duration / 360) / 10, origen: o, destino: d, fuente: 'OpenStreetMap (OSRM)', fecha: hoyISO(),
       linea: simplificar(ruta.geometry.coordinates, 600), peajes: detectarPeajes(ruta.geometry.coordinates), peajesOSM: [], porticos: 0 };
     rutaEstado.value = 'ok';
-    buscarPeajesEnRuta(ruta.geometry.coordinates);   // en segundo plano: peajes reales del mapa
+    peajesEstado.value = '';   // los troncales salen del catálogo FRC; OpenStreetMap es opcional (botón)
   } catch (err) { rutaEstado.value = 'error'; rutaError.value = 'No se pudo calcular la ruta: ' + (err.message || err); }
 };
 
@@ -213,7 +254,8 @@ export const calcularRuta = async () => {
 // Busca plazas de peaje (barrier=toll_booth) y pórticos TAG (highway=toll_gantry) a menos de 120 m de la ruta.
 // Cada plaza se asocia a un peaje del catálogo por nombre o cercanía; si no existe, se agrega al catálogo
 // "sin tarifa" para completarla en Parámetros. Los pórticos solo se cuentan y se muestran (TAG va aparte).
-export const peajesEstado = ref('');   // '' | 'buscando' | 'ok' | 'error'
+export const peajesEstado = ref('');   // '' | 'buscando' | 'ok' | 'catalogo' (OpenStreetMap no respondió: solo catálogo)
+export const verTodosPeajes = ref(false);
 const simplificar = (coords, max) => { if (coords.length <= max) return coords.map(c => [Math.round(c[0] * 1e5) / 1e5, Math.round(c[1] * 1e5) / 1e5]); const paso = Math.ceil(coords.length / max); const out = coords.filter((_, i) => i % paso === 0); out.push(coords[coords.length - 1]); return out.map(c => [Math.round(c[0] * 1e5) / 1e5, Math.round(c[1] * 1e5) / 1e5]); };
 /** Distancia en metros de un punto [lng,lat] a la línea de la ruta (segmento por segmento). */
 const distARutaM = (pt, coords) => {
@@ -227,23 +269,43 @@ const distARutaM = (pt, coords) => {
 };
 const llaveNombre = (t) => normTxtCalc(t).replace(/\b(peaje|plaza|de|del|la|el|troncal|lateral|ruta|5|sur|norte|tag|portico|pórtico)\b/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const normTxtCalc = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-export const buscarPeajesEnRuta = async (coords) => {
+// Servidores Overpass (si uno está ocupado se prueba el siguiente)
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+const consultarOverpass = async (q) => {
+  let ultimoError = null;
+  for (const url of OVERPASS) {
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 35000);
+    try {
+      const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctrl.signal });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } catch (e) { ultimoError = e; } finally { clearTimeout(t); }
+  }
+  throw ultimoError || new Error('sin respuesta');
+};
+export const buscarPeajesEnRuta = async (coordsIn) => {
+  let coords = coordsIn && coordsIn.length ? coordsIn : (rutaGeom.value.length ? rutaGeom.value : (form.ruta && form.ruta.linea) || []);
+  // Con la ruta completa la caseta queda sobre la línea (≤ 35 m); así no se cuentan peajes laterales de salidas que no se usan.
+  const completa = coords.length > 600, umbral = completa ? 35 : 120;
+  if (!coords.length) return;
   peajesEstado.value = 'buscando';
   try {
-    const linea = simplificar(coords, 400).map(c => `${c[1]},${c[0]}`).join(',');
-    const q = `[out:json][timeout:25];(node(around:120,${linea})["barrier"="toll_booth"];way(around:120,${linea})["barrier"="toll_booth"];node(around:120,${linea})["highway"="toll_gantry"];);out center tags;`;
-    const r = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-    if (!r.ok) throw new Error('servicio de mapas ocupado (' + r.status + ')');
-    const j = await r.json();
+    // Consulta por rectángulo (liviana) y luego se filtra lo que queda a ≤ 150 m de la ruta
+    let S = 90, W = 180, N = -90, E = -180;
+    coords.forEach(c => { if (c[1] < S) S = c[1]; if (c[1] > N) N = c[1]; if (c[0] < W) W = c[0]; if (c[0] > E) E = c[0]; });
+    const pad = 0.03, bb = `${(S - pad).toFixed(4)},${(W - pad).toFixed(4)},${(N + pad).toFixed(4)},${(E + pad).toFixed(4)}`;
+    const q = `[out:json][timeout:60];(node["barrier"="toll_booth"](${bb});way["barrier"="toll_booth"](${bb});node["highway"="toll_gantry"](${bb}););out center tags;`;
+    const j = await consultarOverpass(q);
+    if (coords.length > 20000) coords = simplificar(coords, 20000);
     const pts = (j.elements || []).map(e => ({ id: e.id, lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon, nombre: (e.tags && (e.tags.name || e.tags['name:es'] || e.tags.operator)) || '', portico: e.tags?.highway === 'toll_gantry' }))
-      .filter(x => x.lat != null && distARutaM([x.lng, x.lat], coords) <= 150);
+      .filter(x => x.lat != null && distARutaM([x.lng, x.lat], coords) <= umbral);
     // Agrupar las casetas de una misma plaza (ambos sentidos, varias vías) a menos de 1,5 km
     const plazas = [];
     pts.filter(x => !x.portico).forEach(x => { const g = plazas.find(p => distKm([p.lng, p.lat], [x.lng, x.lat]) < 1.5); if (g) { if (!g.nombre && x.nombre) g.nombre = x.nombre; } else plazas.push({ ...x }); });
     const porticos = []; pts.filter(x => x.portico).forEach(x => { if (!porticos.some(p => distKm([p.lng, p.lat], [x.lng, x.lat]) < 0.3)) porticos.push(x); });
     // Asociar cada plaza a un peaje del catálogo (por cercanía a sus coordenadas o por nombre); si no existe, crearlo sin tarifa
     plazas.forEach(pl => {
-      let cat = params.peajes.find(p => p.lat != null && p.lng != null && distKm([p.lng, p.lat], [pl.lng, pl.lat]) < 2);
+      let cat = params.peajes.find(p => p.lat != null && p.lng != null && distKm([p.lng, p.lat], [pl.lng, pl.lat]) < (p.red ? 5 : 2));
       const kn = llaveNombre(pl.nombre);
       if (!cat && kn) cat = params.peajes.find(p => { const kc = llaveNombre(p.nombre + ' ' + (p.buscar || '')); return kc && (kc.includes(kn) || kn.split(' ').some(w => w.length > 3 && kc.includes(w))); });
       if (!cat) {
@@ -258,7 +320,7 @@ export const buscarPeajesEnRuta = async (coords) => {
       form.ruta.peajes = [...new Set([...(form.ruta.peajes || []), ...plazas.map(p => p.idCatalogo)])];
     }
     peajesEstado.value = 'ok';
-  } catch (err) { peajesEstado.value = 'error'; console.warn('[Calculadora] peajes OSM:', err); }
+  } catch (err) { peajesEstado.value = 'catalogo'; console.warn('[Calculadora] peajes OSM (se usa solo el catálogo FRC):', err); }
 };
 /** Peajes del catálogo que aparecieron en la ruta pero no tienen tarifa de camión. */
 export const peajesSinTarifa = computed(() => {
@@ -273,7 +335,18 @@ export const linkGoogleMaps = computed(() => {
 });
 // Distancia (km) de un punto a la ruta: se revisan los vértices de la línea (suficiente para un radio de ~1,5 km).
 const distKm = (a, b) => { const R = 6371, toR = Math.PI / 180; const dLat = (b[1] - a[1]) * toR, dLng = (b[0] - a[0]) * toR; const x = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * toR) * Math.cos(b[1] * toR) * Math.sin(dLng / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
-const detectarPeajes = (coords) => params.peajes.filter(p => p.lat != null && p.lng != null && coords.some(c => distKm(c, [p.lng, p.lat]) < 1.5)).map(p => p.id);
+/** Peajes del catálogo por los que pasa la ruta: plazas troncales a ≤ 500 m de la línea (otros peajes con ubicación: ≤ 150 m). */
+const detectarPeajes = (coords) => params.peajes.filter(p => {
+  if (p.lat == null || p.lng == null || !coords.length) return false;
+  const pt = [Number(p.lng), Number(p.lat)];
+  if (!coords.some(c => distKm(c, pt) < 8)) return false;   // descarte rápido
+  return distARutaM(pt, coords) <= (p.red ? 500 : 150);
+}).map(p => p.id);
+/** Vuelve a revisar los peajes del catálogo sobre la ruta actual (ej. después de agregar o ubicar un peaje). */
+export const redetectarPeajes = () => {
+  const coords = rutaGeom.value.length ? rutaGeom.value : (form.ruta && form.ruta.linea) || [];
+  if (form.ruta && coords.length) form.ruta.peajes = [...new Set([...detectarPeajes(coords), ...((form.ruta.peajesOSM || []).map(p => p.idCatalogo).filter(Boolean))])];
+};
 /** Busca en el mapa la ubicación de un peaje (por su texto "buscar" o su nombre) y la guarda en Parámetros. */
 export const ubicarPeaje = async (p) => {
   try { const c = await geocodificar(p.buscar || p.nombre); p.lat = Math.round(c.lat * 1e5) / 1e5; p.lng = Math.round(c.lng * 1e5) / 1e5; alert(`Ubicado: ${c.nombre}\n(${p.lat}, ${p.lng}). Revisa que sea el peaje correcto y guarda los parámetros.`); }
@@ -401,7 +474,7 @@ export const supuestos = computed(() => {
     fila('Precio diésel', '$' + fmtN(E.diesel) + '/L', !M.diesel, a.fDiesel),
     fila('Días con viático', fmtN(E.diasViatico), !M.diasViatico, 'Regla: un viático por día de servicio con chofer'),
     fila('Noches de alojamiento', fmtN(E.noches), !M.noches, 'Regla: si la ida supera 200 km, noches = días − 1'),
-    ...params.peajes.filter(p => pasadasDe(p.id)).map(p => fila('Peaje ' + p.nombre, pasadasDe(p.id) + ' pasada(s)', !form.peajeMan[p.id], 'Detectado en la ruta (a menos de 1,5 km del peaje)' + (p.estimado ? ' · tarifa estimada: ' + (p.nota || '') : ''))),
+    ...params.peajes.filter(p => pasadasDe(p.id)).map(p => fila('Peaje ' + p.nombre, pasadasDe(p.id) + ' pasada(s)', !form.peajeMan[p.id], 'La ruta calculada pasa por la plaza (catálogo de peajes FRC)' + (p.estimado ? ' · tarifa estimada: ' + (p.nota || '') : ''))),
     ...(r ? [fila('Origen', r.origen?.nombre || form.origen, true, r.origen?.fuente || ''), fila('Destino', r.destino?.nombre || form.destino, true, r.destino?.fuente || '')] : [])
   ];
 });
@@ -479,6 +552,14 @@ export const exportarCotizacionExcel = async () => {
       nombre: 'Supuestos y fuentes', titulo: 'SUPUESTOS Y FUENTES DEL CÁLCULO', subtitulo: sub,
       columnas: [{ t: 'Variable', w: 30, al: 'left' }, { t: 'Valor', w: 22, al: 'left' }, { t: 'Origen', w: 14 }, { t: 'Fuente / regla', w: 60, al: 'left' }, { t: 'Link', w: 40, al: 'left' }],
       filas: supuestos.value.map(x => [x.variable, x.valor, x.origen, x.fuente, x.link || '']), apaisado: true
+    });
+    const t = tipoSel.value || {}, ej2 = t.ejes === '2';
+    const pj = params.peajes.filter(p => pasadasDe(p.id));
+    hojaTabla(wb, logo, {
+      nombre: 'Peajes', titulo: 'PEAJES EN LA RUTA · ' + (ej2 ? 'CAMIÓN 2 EJES' : 'CAMIÓN MÁS DE 2 EJES'), subtitulo: sub,
+      columnas: [{ t: 'Plaza de peaje', w: 36, al: 'left' }, { t: 'Ruta', w: 40, al: 'left' }, { t: 'Tarifa ($)', w: 13, fmt: '#,##0', al: 'right' }, { t: 'Pasadas', w: 10 }, { t: 'Subtotal ($)', w: 15, fmt: '#,##0', al: 'right' }, { t: 'Origen', w: 13 }, { t: 'Fuente de la tarifa', w: 60, al: 'left' }],
+      filas: pj.map(p => { const tar = num(ej2 ? p.c2 : p.c3), pas = pasadasDe(p.id); return [p.nombre, p.ruta, tar, pas, tar * pas, form.peajeMan[p.id] ? 'MANUAL' : 'AUTOMÁTICO', (p.estimado ? 'ESTIMADO · ' : '') + (p.nota || '')]; }),
+      totales: ['TOTAL PEAJES', '', '', '', pj.reduce((s, p) => s + num(ej2 ? p.c2 : p.c3) * pasadasDe(p.id), 0), '', ''], apaisado: true
     });
     const fecha = (form.fecha || hoyISO()).replace(/-/g, '');
     await descargarLibro(wb, `Cotizacion_Camion_${(form.nombre || 'FRC').replace(/[^A-Za-z0-9]+/g, '_')}_${fecha}.xlsx`);
