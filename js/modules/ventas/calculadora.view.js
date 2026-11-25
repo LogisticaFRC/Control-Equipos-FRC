@@ -102,8 +102,9 @@ const template = /* html */ `
     <div class="flex gap-2 flex-wrap">
       <button @click="C.nuevaCotizacion()" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold"><i class="fa-solid fa-file-circle-plus"></i> Nueva</button>
       <button @click="C.guardarCotizacion()" class="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold"><i class="fa-solid fa-floppy-disk"></i> {{ C.form.id ? 'Guardar cambios' : 'Guardar cotización' }}</button>
-      <button v-if="$adminGeneral" @click="C.exportarCotizacionExcel()" :disabled="C.exportando.value" class="px-3 py-2 rounded-lg bg-white text-emerald-800 text-xs font-bold disabled:opacity-60"><i :class="['fa-solid', C.exportando.value ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Excel</button>
-      <button v-if="$adminGeneral" @click="pdf" :disabled="generandoPdf" class="px-3 py-2 rounded-lg bg-white text-rose-700 text-xs font-bold disabled:opacity-60"><i :class="['fa-solid', generandoPdf ? 'fa-spinner fa-spin' : 'fa-file-pdf']"></i> Informe PDF</button>
+      <button v-if="$adminGeneral" @click="excelCliente" :disabled="generandoPdf" class="px-3 py-2 rounded-lg bg-white text-emerald-800 text-xs font-bold disabled:opacity-60" title="Para el cliente: datos y ruta, detalle y condiciones (sin costos internos)"><i class="fa-solid fa-file-excel"></i> Excel</button>
+      <button v-if="$adminGeneral" @click="C.exportarCotizacionExcel()" :disabled="C.exportando.value" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold disabled:opacity-60" title="USO INTERNO: costos, margen, supuestos y fuentes. No enviar al cliente"><i :class="['fa-solid', C.exportando.value ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Excel interno</button>
+      <button v-if="$adminGeneral" @click="pdf" :disabled="generandoPdf" class="px-3 py-2 rounded-lg bg-white text-rose-700 text-xs font-bold disabled:opacity-60"><i :class="['fa-solid', generandoPdf ? 'fa-spinner fa-spin' : 'fa-file-pdf']"></i> PDF cliente</button>
       <button @click="imprimir" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold" title="Imprime la pantalla tal cual"><i class="fa-solid fa-print"></i></button>
     </div>
   </div>
@@ -344,6 +345,11 @@ const template = /* html */ `
       <label><span class="${lab}">Margen %</span><input type="number" v-model.number="C.params.margenPct" class="${inp}"></label>
       <label><span class="${lab}">IVA %</span><input type="number" v-model.number="C.params.ivaPct" class="${inp}"></label>
     </div>
+    <h4 class="text-[11px] font-extrabold uppercase text-slate-600 pt-2">Informe PDF para el cliente</h4>
+    <div class="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-3">
+      <label><span class="${lab}">Validez (días)</span><input type="number" min="1" v-model.number="C.params.validezDias" class="${inp}"></label>
+      <label><span class="${lab}">Condiciones comerciales (una por línea; van en la última página del PDF)</span><textarea v-model="C.params.condicionesCliente" rows="5" class="w-full p-2 border rounded-lg bg-white text-xs"></textarea></label>
+    </div>
     <p class="text-[10px] text-slate-400">Precio del diésel: revisar el promedio de la región en bencinaenlinea.cl (CNE) antes de cotizar; cambia cada semana.</p>
 
     <h4 class="text-[11px] font-extrabold uppercase text-slate-600 pt-2">Tipos de camión</h4>
@@ -457,12 +463,18 @@ export default {
       catch (err) { alert('No se pudo generar el PDF: ' + (err.message || err)); }
       finally { generandoPdf.value = false; }
     };
+    const excelCliente = async () => {
+      generandoPdf.value = true;
+      try { const m = await import('./calculadora.pdf.js'); await m.exportarCotizacionExcelCliente(); }
+      catch (err) { alert('No se pudo generar el Excel: ' + (err.message || err)); }
+      finally { generandoPdf.value = false; }
+    };
     const registrarModelo = () => {
       const e = C.camionSel.value; if (!e) return;
       C.agregarModelo({ marca: e.marca || '', modelo: e.modelo || '', rend: C.efectivo.value.rend });
       const det = document.querySelector('#calc-modelos')?.closest('details'); if (det) det.open = true;
       setTimeout(() => document.querySelector('#calc-modelos')?.scrollIntoView({ behavior: 'smooth' }), 50);
     };
-    return { ...comunes(), C, elegirCamion, imprimir, registrarModelo, pdf, generandoPdf };
+    return { ...comunes(), C, elegirCamion, imprimir, registrarModelo, pdf, generandoPdf, excelCliente };
   }
 };

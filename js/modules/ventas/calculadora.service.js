@@ -91,6 +91,15 @@ export const PARAMS_DEFAULT = () => ({
   gastosGeneralesPct: 10,
   margenPct: 25,
   ivaPct: 19,
+  validezDias: 15,
+  // Condiciones que se imprimen en el PDF para el cliente (una por línea; editables en Parámetros)
+  condicionesCliente: [
+    'Valores en pesos chilenos. El precio neto no incluye IVA; el IVA se suma en el total.',
+    'Distancias y tiempos según la ruta calculada entre el origen y el destino indicados. Cambios de ruta, destino, días o número de viajes se recotizan.',
+    'Peajes según tarifas vigentes para el tipo de camión, en horario normal. Pórticos TAG urbanos y recargos en horario punta se cobran según corresponda.',
+    'Tiempos de espera, días adicionales o trabajos no indicados en esta cotización se cobran aparte.',
+    'Sujeto a disponibilidad del equipo al momento de la confirmación.'
+  ].join('\n'),
   tipos: TIPOS_DEFAULT(),
   peajes: PEAJES_DEFAULT(),
   // Rendimiento por MODELO de camión, con su fuente (ficha técnica, medición FRC, etc.). Se usa en vez del rendimiento del tipo.
