@@ -211,34 +211,44 @@ export const CIUDADES = [
   // Sur
   'Chillán', 'San Carlos', 'Concepción', 'Talcahuano', 'Coronel', 'Lota', 'Los Ángeles', 'Temuco', 'Angol', 'Villarrica', 'Valdivia', 'Osorno', 'Puerto Montt', 'Puerto Varas', 'Castro', 'Coyhaique', 'Punta Arenas'
 ];
+// Centro aproximado de cada ciudad (lat, lng): así origen/destino no dependen del buscador de OpenStreetMap.
+export const COORD_CIUDADES = { 'Arica': [-18.4783, -70.3126], 'Iquique': [-20.2141, -70.1524], 'Alto Hospicio': [-20.2706, -70.1015], 'Pozo Almonte': [-20.2597, -69.7862], 'Calama': [-22.456, -68.9293], 'Antofagasta': [-23.6509, -70.3975], 'Mejillones': [-23.1, -70.45], 'Tocopilla': [-22.092, -70.1979], 'Taltal': [-25.4053, -70.4836], 'Chañaral': [-26.3479, -70.6224], 'Diego de Almagro': [-26.3697, -70.0497], 'El Salvador': [-26.2464, -69.6227], 'Copiapó': [-27.3668, -70.3323], 'Caldera': [-27.0667, -70.8167], 'Tierra Amarilla': [-27.4833, -70.2667], 'Vallenar': [-28.5708, -70.7581], 'La Serena': [-29.9027, -71.2519], 'Coquimbo': [-29.9533, -71.3436], 'Ovalle': [-30.6015, -71.199], 'Vicuña': [-30.0319, -70.7081], 'Illapel': [-31.6308, -71.1653], 'Salamanca': [-31.7797, -70.9636], 'Los Vilos': [-31.9113, -71.5097], 'Valparaíso': [-33.0472, -71.6127], 'Viña del Mar': [-33.0245, -71.5518], 'Quilpué': [-33.0478, -71.4422], 'Villa Alemana': [-33.0422, -71.3733], 'Quillota': [-32.8794, -71.2467], 'La Calera': [-32.787, -71.1886], 'Los Andes': [-32.8337, -70.5986], 'San Felipe': [-32.7507, -70.7251], 'Llaillay': [-32.84, -70.9567], 'San Antonio': [-33.5933, -71.6127], 'Cartagena': [-33.5539, -71.6067], 'Casablanca': [-33.3197, -71.4078], 'Santiago': [-33.4489, -70.6693], 'Pudahuel': [-33.44, -70.76], 'Quilicura': [-33.36, -70.73], 'Lampa': [-33.2856, -70.877], 'Colina': [-33.2, -70.675], 'Til Til': [-33.0833, -70.9333], 'Maipú': [-33.51, -70.757], 'San Bernardo': [-33.5927, -70.6995], 'Puente Alto': [-33.6117, -70.5758], 'Buin': [-33.7322, -70.7428], 'Paine': [-33.8075, -70.7417], 'Talagante': [-33.6639, -70.9272], 'Peñaflor': [-33.6066, -70.8766], 'Melipilla': [-33.6856, -71.2158], 'Curacaví': [-33.4039, -71.1333], 'Rancagua': [-34.1708, -70.7444], 'Machalí': [-34.1808, -70.6497], 'Coya': [-34.2, -70.5333], 'Graneros': [-34.0647, -70.7272], 'Codegua': [-34.0367, -70.6672], 'Mostazal': [-33.9767, -70.7039], 'Requínoa': [-34.2875, -70.8156], 'Rengo': [-34.4064, -70.8581], 'San Vicente': [-34.4386, -71.0778], 'Peumo': [-34.3956, -71.1706], 'San Fernando': [-34.5853, -70.9868], 'Chimbarongo': [-34.7128, -71.0433], 'Santa Cruz': [-34.6386, -71.3653], 'Pichilemu': [-34.3872, -72.0033], 'Curicó': [-34.9828, -71.2394], 'Molina': [-35.1144, -71.2825], 'Talca': [-35.4264, -71.6554], 'San Javier': [-35.5953, -71.7292], 'Constitución': [-35.3333, -72.4167], 'Linares': [-35.8467, -71.5931], 'Parral': [-36.1431, -71.8258], 'Cauquenes': [-35.9675, -72.3225], 'Chillán': [-36.6066, -72.1034], 'San Carlos': [-36.4247, -71.9581], 'Concepción': [-36.827, -73.0503], 'Talcahuano': [-36.7249, -73.1168], 'Coronel': [-37.0303, -73.1416], 'Lota': [-37.0897, -73.1561], 'Los Ángeles': [-37.4697, -72.3537], 'Temuco': [-38.7359, -72.5904], 'Angol': [-37.7958, -72.7164], 'Villarrica': [-39.2856, -72.2279], 'Valdivia': [-39.8142, -73.2459], 'Osorno': [-40.5739, -73.1336], 'Puerto Montt': [-41.4693, -72.9424], 'Puerto Varas': [-41.3195, -72.9854], 'Castro': [-42.48, -73.7622], 'Coyhaique': [-45.5752, -72.0662], 'Punta Arenas': [-53.1638, -70.9171] };
 /** Coordenadas desde texto: "lat,lng", link de Google Maps (@lat,lng o !3dlat!4dlng) o lugar de Áreas. */
 const coordDeTexto = (t) => {
   const s = String(t || '');
   const lug = lugaresConCoord.value.find(l => l.nombre === s.trim());
   if (lug) return { lat: lug.lat, lng: lug.lng, nombre: lug.nombre, fuente: 'Áreas FRC' };
+  const ciu = Object.keys(COORD_CIUDADES).find(k => normTxtCalc(k) === normTxtCalc(s.trim()));
+  if (ciu) return { lat: COORD_CIUDADES[ciu][0], lng: COORD_CIUDADES[ciu][1], nombre: ciu + ', Chile', fuente: 'Ciudades FRC (centro de la ciudad)' };
   let m = s.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) || s.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) || s.match(/^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/);
   if (m) return { lat: Number(m[1]), lng: Number(m[2]), nombre: s.trim(), fuente: 'coordenadas' };
   return null;
 };
 const geocodificar = async (texto) => {
   const c = coordDeTexto(texto); if (c) return c;
-  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cl&accept-language=es&q=' + encodeURIComponent(texto);
-  const r = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!r.ok) throw new Error('buscador de lugares no responde (' + r.status + ')');
-  const j = await r.json();
-  if (!j.length) throw new Error(`no se encontró "${texto}". Escribe la ciudad o comuna, pega un link de Google Maps o usa un lugar de Áreas con coordenadas.`);
-  return { lat: Number(j[0].lat), lng: Number(j[0].lon), nombre: j[0].display_name, fuente: 'OpenStreetMap' };
+  // 1) OpenStreetMap (Nominatim)  2) si no responde, Photon (komoot), también con datos de OpenStreetMap
+  try {
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cl&accept-language=es&q=' + encodeURIComponent(texto), { headers: { Accept: 'application/json' } });
+    if (r.ok) { const j = await r.json(); if (j.length) return { lat: Number(j[0].lat), lng: Number(j[0].lon), nombre: j[0].display_name, fuente: 'OpenStreetMap' }; }
+  } catch (e) { /* bloqueado o sin respuesta: se prueba Photon */ }
+  let j = null;
+  try { const r = await fetch('https://photon.komoot.io/api/?limit=5&lang=es&q=' + encodeURIComponent(texto + ', Chile')); if (r.ok) j = await r.json(); }
+  catch (e) { throw new Error('los buscadores de lugares no responden. Elige una ciudad de la lista, pega un link de Google Maps o escribe "lat,lng".'); }
+  const f = ((j && j.features) || []).find(x => x.properties && x.properties.countrycode === 'CL');
+  if (!f) throw new Error(`no se encontró "${texto}". Elige una ciudad de la lista, pega un link de Google Maps o usa un lugar de Áreas con coordenadas.`);
+  const pr = f.properties;
+  return { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], nombre: [pr.name, pr.city, pr.state].filter(Boolean).join(', '), fuente: 'OpenStreetMap (Photon)' };
 };
 export const calcularRuta = async () => {
   if (!String(form.origen).trim() || !String(form.destino).trim()) { rutaError.value = 'Escribe origen y destino.'; rutaEstado.value = 'error'; return; }
   rutaEstado.value = 'calculando'; rutaError.value = '';
   try {
     const o = await geocodificar(form.origen);
-    await new Promise(res => setTimeout(res, 1100));   // Nominatim: máximo 1 consulta por segundo
+    if (!coordDeTexto(form.origen) && !coordDeTexto(form.destino)) await new Promise(res => setTimeout(res, 1100));   // Nominatim: máximo 1 consulta por segundo
     const d = await geocodificar(form.destino);
     const url = `https://router.project-osrm.org/route/v1/driving/${o.lng},${o.lat};${d.lng},${d.lat}?overview=full&geometries=geojson`;
     const r = await fetch(url);
-    if (!r.ok) throw new Error('el servicio de rutas no responde (' + r.status + ')');
+    if (!r.ok) throw new Error('el servicio de rutas no responde (' + r.status + '). Intenta de nuevo en un minuto');
     const j = await r.json();
     if (j.code !== 'Ok' || !j.routes || !j.routes.length) throw new Error('no se encontró una ruta por camino entre esos puntos.');
     const ruta = j.routes[0];
@@ -247,7 +257,7 @@ export const calcularRuta = async () => {
       linea: simplificar(ruta.geometry.coordinates, 600), peajes: detectarPeajes(ruta.geometry.coordinates), peajesOSM: [], porticos: 0 };
     rutaEstado.value = 'ok';
     peajesEstado.value = '';   // los troncales salen del catálogo FRC; OpenStreetMap es opcional (botón)
-  } catch (err) { rutaEstado.value = 'error'; rutaError.value = 'No se pudo calcular la ruta: ' + (err.message || err); }
+  } catch (err) { rutaEstado.value = 'error'; const m = String(err.message || err); rutaError.value = 'No se pudo calcular la ruta: ' + (/failed to fetch|networkerror|load failed/i.test(m) ? 'sin respuesta del servicio de rutas (revisa internet o intenta en un minuto)' : m); }
 };
 
 // ---------- Peajes sobre la ruta, desde OpenStreetMap (Overpass) ----------
