@@ -202,10 +202,69 @@ export const calcularRuta = async () => {
     if (j.code !== 'Ok' || !j.routes || !j.routes.length) throw new Error('no se encontró una ruta por camino entre esos puntos.');
     const ruta = j.routes[0];
     rutaGeom.value = ruta.geometry.coordinates;
-    form.ruta = { km: Math.round(ruta.distance / 100) / 10, horas: Math.round(ruta.duration / 360) / 10, origen: o, destino: d, fuente: 'OpenStreetMap (OSRM)', fecha: hoyISO(), peajes: detectarPeajes(ruta.geometry.coordinates) };
+    form.ruta = { km: Math.round(ruta.distance / 100) / 10, horas: Math.round(ruta.duration / 360) / 10, origen: o, destino: d, fuente: 'OpenStreetMap (OSRM)', fecha: hoyISO(),
+      linea: simplificar(ruta.geometry.coordinates, 600), peajes: detectarPeajes(ruta.geometry.coordinates), peajesOSM: [], porticos: 0 };
     rutaEstado.value = 'ok';
+    buscarPeajesEnRuta(ruta.geometry.coordinates);   // en segundo plano: peajes reales del mapa
   } catch (err) { rutaEstado.value = 'error'; rutaError.value = 'No se pudo calcular la ruta: ' + (err.message || err); }
 };
+
+// ---------- Peajes sobre la ruta, desde OpenStreetMap (Overpass) ----------
+// Busca plazas de peaje (barrier=toll_booth) y pórticos TAG (highway=toll_gantry) a menos de 120 m de la ruta.
+// Cada plaza se asocia a un peaje del catálogo por nombre o cercanía; si no existe, se agrega al catálogo
+// "sin tarifa" para completarla en Parámetros. Los pórticos solo se cuentan y se muestran (TAG va aparte).
+export const peajesEstado = ref('');   // '' | 'buscando' | 'ok' | 'error'
+const simplificar = (coords, max) => { if (coords.length <= max) return coords.map(c => [Math.round(c[0] * 1e5) / 1e5, Math.round(c[1] * 1e5) / 1e5]); const paso = Math.ceil(coords.length / max); const out = coords.filter((_, i) => i % paso === 0); out.push(coords[coords.length - 1]); return out.map(c => [Math.round(c[0] * 1e5) / 1e5, Math.round(c[1] * 1e5) / 1e5]); };
+/** Distancia en metros de un punto [lng,lat] a la línea de la ruta (segmento por segmento). */
+const distARutaM = (pt, coords) => {
+  const k = Math.cos(pt[1] * Math.PI / 180) * 111320, kl = 110540; let min = Infinity;
+  for (let i = 1; i < coords.length; i++) {
+    const ax = (coords[i - 1][0] - pt[0]) * k, ay = (coords[i - 1][1] - pt[1]) * kl, bx = (coords[i][0] - pt[0]) * k, by = (coords[i][1] - pt[1]) * kl;
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy; let t = l2 ? -(ax * dx + ay * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
+    const x = ax + t * dx, y = ay + t * dy; const d = Math.sqrt(x * x + y * y); if (d < min) min = d;
+  }
+  return min;
+};
+const llaveNombre = (t) => normTxtCalc(t).replace(/\b(peaje|plaza|de|del|la|el|troncal|lateral|ruta|5|sur|norte|tag|portico|pórtico)\b/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const normTxtCalc = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+export const buscarPeajesEnRuta = async (coords) => {
+  peajesEstado.value = 'buscando';
+  try {
+    const linea = simplificar(coords, 400).map(c => `${c[1]},${c[0]}`).join(',');
+    const q = `[out:json][timeout:25];(node(around:120,${linea})["barrier"="toll_booth"];way(around:120,${linea})["barrier"="toll_booth"];node(around:120,${linea})["highway"="toll_gantry"];);out center tags;`;
+    const r = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    if (!r.ok) throw new Error('servicio de mapas ocupado (' + r.status + ')');
+    const j = await r.json();
+    const pts = (j.elements || []).map(e => ({ id: e.id, lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon, nombre: (e.tags && (e.tags.name || e.tags['name:es'] || e.tags.operator)) || '', portico: e.tags?.highway === 'toll_gantry' }))
+      .filter(x => x.lat != null && distARutaM([x.lng, x.lat], coords) <= 150);
+    // Agrupar las casetas de una misma plaza (ambos sentidos, varias vías) a menos de 1,5 km
+    const plazas = [];
+    pts.filter(x => !x.portico).forEach(x => { const g = plazas.find(p => distKm([p.lng, p.lat], [x.lng, x.lat]) < 1.5); if (g) { if (!g.nombre && x.nombre) g.nombre = x.nombre; } else plazas.push({ ...x }); });
+    const porticos = []; pts.filter(x => x.portico).forEach(x => { if (!porticos.some(p => distKm([p.lng, p.lat], [x.lng, x.lat]) < 0.3)) porticos.push(x); });
+    // Asociar cada plaza a un peaje del catálogo (por cercanía a sus coordenadas o por nombre); si no existe, crearlo sin tarifa
+    plazas.forEach(pl => {
+      let cat = params.peajes.find(p => p.lat != null && p.lng != null && distKm([p.lng, p.lat], [pl.lng, pl.lat]) < 2);
+      const kn = llaveNombre(pl.nombre);
+      if (!cat && kn) cat = params.peajes.find(p => { const kc = llaveNombre(p.nombre + ' ' + (p.buscar || '')); return kc && (kc.includes(kn) || kn.split(' ').some(w => w.length > 3 && kc.includes(w))); });
+      if (!cat) {
+        cat = { id: 'osm' + pl.id, buscar: '', lat: Math.round(pl.lat * 1e5) / 1e5, lng: Math.round(pl.lng * 1e5) / 1e5, nombre: pl.nombre ? 'Peaje ' + pl.nombre : 'Peaje sin nombre (OSM ' + pl.id + ')', ruta: 'Detectado en la ruta', auto: 0, c2: 0, c3: 0, estimado: true, nota: 'Detectado en OpenStreetMap: completar la tarifa de camión y guardar parámetros.', nuevo: true };
+        params.peajes.push(cat);
+      } else if (cat.lat == null) { cat.lat = Math.round(pl.lat * 1e5) / 1e5; cat.lng = Math.round(pl.lng * 1e5) / 1e5; }
+      pl.idCatalogo = cat.id;
+    });
+    if (form.ruta) {
+      form.ruta.peajesOSM = [...plazas.map(p => ({ nombre: p.nombre, lat: p.lat, lng: p.lng, idCatalogo: p.idCatalogo, tipo: 'plaza' })), ...porticos.map(p => ({ nombre: p.nombre, lat: p.lat, lng: p.lng, tipo: 'portico' }))];
+      form.ruta.porticos = porticos.length;
+      form.ruta.peajes = [...new Set([...(form.ruta.peajes || []), ...plazas.map(p => p.idCatalogo)])];
+    }
+    peajesEstado.value = 'ok';
+  } catch (err) { peajesEstado.value = 'error'; console.warn('[Calculadora] peajes OSM:', err); }
+};
+/** Peajes del catálogo que aparecieron en la ruta pero no tienen tarifa de camión. */
+export const peajesSinTarifa = computed(() => {
+  const ids = form.ruta?.peajes || []; const ejes = (params.tipos.find(t => t.tipo === form.tipo) || {}).ejes;
+  return params.peajes.filter(p => ids.includes(p.id) && !num(ejes === '2' ? p.c2 : p.c3));
+});
 export const linkGoogleMaps = computed(() => {
   const r = form.ruta;
   const p = (x, t) => (x ? `${x.lat},${x.lng}` : encodeURIComponent(t || ''));

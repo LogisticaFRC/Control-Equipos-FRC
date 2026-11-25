@@ -5,7 +5,54 @@
 import { comunes } from '../../core/comunes.js';
 import * as C from './calculadora.service.js';
 
-const { ref, onMounted } = Vue;
+const { ref, onMounted, onBeforeUnmount, watch, nextTick } = Vue;
+
+// ---------- Mapa de la ruta (Leaflet + OpenStreetMap, se carga solo cuando se usa) ----------
+let leafletPromesa = null;
+const cargarLeaflet = () => leafletPromesa || (leafletPromesa = new Promise((ok, mal) => {
+  if (window.L) return ok(window.L);
+  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(css);
+  const js = document.createElement('script'); js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; js.onload = () => ok(window.L); js.onerror = () => { leafletPromesa = null; mal(new Error('No se pudo cargar el mapa')); }; document.head.appendChild(js);
+}));
+const MapaRuta = {
+  props: { ruta: Object, peajes: Array, ejes: String },
+  template: `<div class="relative z-0"><div ref="el" class="w-full rounded-lg border bg-slate-100" style="height:320px"></div><p v-if="error" class="text-[11px] text-rose-700 mt-1">{{ error }}</p></div>`,
+  setup(props) {
+    const el = ref(null), error = ref(''); let mapa = null, capa = null;
+    const fmt = (v) => '$' + Math.round(Number(v) || 0).toLocaleString('es-CL');
+    const dibujar = async () => {
+      const r = props.ruta; if (!r || !el.value) return;
+      try {
+        const L = await cargarLeaflet();
+        if (!mapa) {
+          mapa = L.map(el.value, { scrollWheelZoom: false, zoomSnap: 0.25 });
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(mapa);
+        }
+        if (capa) capa.remove(); capa = L.layerGroup().addTo(mapa);
+        const linea = (r.linea || []).map(c => [c[1], c[0]]);
+        if (linea.length) L.polyline(linea, { color: '#149A3E', weight: 5, opacity: 0.85 }).addTo(capa);
+        const pin = (lat, lng, txt, color) => L.marker([lat, lng], { icon: L.divIcon({ className: '', html: `<div style="background:${color};color:#fff;font-weight:800;font-size:12px;width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px #0006"><span style="transform:rotate(45deg)">${txt}</span></div>`, iconSize: [26, 26], iconAnchor: [13, 26] }) });
+        if (r.origen) pin(r.origen.lat, r.origen.lng, 'A', '#0E1A14').bindTooltip('Origen: ' + (r.origen.nombre || '').split(',')[0]).addTo(capa);
+        if (r.destino) pin(r.destino.lat, r.destino.lng, 'B', '#149A3E').bindTooltip('Destino: ' + (r.destino.nombre || '').split(',')[0]).addTo(capa);
+        (r.peajesOSM || []).forEach(p => {
+          if (p.tipo === 'portico') { L.circleMarker([p.lat, p.lng], { radius: 4, color: '#7c3aed', fillColor: '#a78bfa', fillOpacity: 0.9, weight: 1 }).bindTooltip('Pórtico TAG' + (p.nombre ? ': ' + p.nombre : '')).addTo(capa); return; }
+          const cat = (props.peajes || []).find(x => x.id === p.idCatalogo);
+          const tarifa = cat ? (props.ejes === '2' ? cat.c2 : cat.c3) : 0;
+          L.marker([p.lat, p.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#f59e0b;color:#111;font-weight:800;font-size:11px;padding:2px 6px;border-radius:6px;border:2px solid #fff;box-shadow:0 1px 4px #0006;white-space:nowrap">$ peaje</div>', iconSize: [56, 22], iconAnchor: [28, 11] }) })
+            .bindTooltip(`<b>${cat ? cat.nombre : (p.nombre || 'Peaje')}</b><br>${tarifa ? 'Tarifa: ' + fmt(tarifa) + ' por pasada' : 'Sin tarifa: complétala en Parámetros'}`).addTo(capa);
+        });
+        const pts = [...linea, ...(r.origen ? [[r.origen.lat, r.origen.lng]] : []), ...(r.destino ? [[r.destino.lat, r.destino.lng]] : [])];
+        const encuadrar = () => { if (!mapa) return; mapa.invalidateSize(); if (pts.length) mapa.fitBounds(L.latLngBounds(pts), { padding: [30, 30] }); };
+        encuadrar(); setTimeout(encuadrar, 200);
+        error.value = '';
+      } catch (e) { error.value = 'No se pudo mostrar el mapa: ' + (e.message || e); }
+    };
+    onMounted(() => nextTick(dibujar));
+    watch(() => [props.ruta, props.ruta && props.ruta.peajesOSM, props.ejes], () => nextTick(dibujar), { deep: true });
+    onBeforeUnmount(() => { if (mapa) mapa.remove(); mapa = null; });
+    return { el, error };
+  }
+};
 
 // Campo con ticket AUTO: marcado = valor automático (web / parámetros / regla); desmarcado = MANUAL (se puede escribir).
 const CampoAuto = {
@@ -120,6 +167,19 @@ const template = /* html */ `
           <span v-if="C.form.ruta.peajes?.length"> · peajes detectados: {{ C.form.ruta.peajes.length }}</span>
           <a :href="C.linkGoogleMaps.value" target="_blank" rel="noopener" class="underline font-bold ml-1">Revisar en Google Maps</a>
         </p>
+        <template v-if="C.form.ruta">
+          <mapa-ruta :ruta="C.form.ruta" :peajes="C.params.peajes" :ejes="C.tipoSel.value.ejes"></mapa-ruta>
+          <div class="flex flex-wrap gap-3 text-[11px] items-center">
+            <span class="flex items-center gap-1"><b class="inline-block w-5 h-5 rounded-full bg-slate-900 text-white text-center leading-5 text-[10px]">A</b> Origen</span>
+            <span class="flex items-center gap-1"><b class="inline-block w-5 h-5 rounded-full bg-emerald-700 text-white text-center leading-5 text-[10px]">B</b> Destino</span>
+            <span class="flex items-center gap-1"><b class="px-1.5 rounded bg-amber-400 text-[10px]">$ peaje</b> Plaza de peaje</span>
+            <span class="flex items-center gap-1"><b class="inline-block w-3 h-3 rounded-full bg-violet-400"></b> Pórtico TAG ({{ C.form.ruta.porticos || 0 }})</span>
+            <span v-if="C.peajesEstado.value === 'buscando'" class="text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Buscando peajes en la ruta…</span>
+            <span v-else-if="C.peajesEstado.value === 'error'" class="text-rose-700">No se pudieron buscar los peajes en el mapa (servicio ocupado). Vuelve a calcular en un rato o márcalos a mano.</span>
+          </div>
+          <p v-if="C.peajesSinTarifa.value.length" class="text-[11px] bg-amber-50 border border-amber-300 text-amber-900 rounded-lg p-2">
+            <i class="fa-solid fa-triangle-exclamation"></i> La ruta pasa por {{ C.peajesSinTarifa.value.length }} peaje(s) sin tarifa de camión: <b>{{ C.peajesSinTarifa.value.map(p => p.nombre).join(', ') }}</b>. Complétala en Parámetros → Peajes y presiona "Guardar parámetros".</p>
+        </template>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <campo-auto label="Km de ida (por viaje)" unidad="km" :valor="C.efectivo.value.kmIda" :auto="!C.form.man.kmIda" :fuente="C.auto.value.fKmIda" :link="C.form.ruta ? C.linkGoogleMaps.value : ''"
             @modo="v => C.ponerAuto('kmIda', v)" @escribir="v => C.form.kmIda = v"></campo-auto>
@@ -352,7 +412,7 @@ const template = /* html */ `
 
 export default {
   name: 'CalculadoraArriendoView',
-  components: { CampoAuto },
+  components: { CampoAuto, MapaRuta },
   template,
   setup() {
     onMounted(() => { C.cargarParams(); C.cargarCotizaciones(); });

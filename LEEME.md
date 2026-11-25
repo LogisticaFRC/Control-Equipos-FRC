@@ -1227,3 +1227,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Niveles: Riesgo alto (≥ 10 pts), Atención (≥ 6), Vigilar (≥ 4). Cada tarjeta muestra "Por qué" y "Qué hacer", causas probables de las piezas (core/conocimiento-fallas.js) y link a Historial. AFI OTROS excluido.
 - fallas.service.js: recomendaciones, limiteRecom, recomAbierta. APP_VERSION '2026-11-25 recomendaciones'. Sin SQL.
 - (2026-11-25, ajuste calculadora) Origen/Destino: la lista desplegable muestra solo ciudades de Chile (CIUDADES, ~90) y autocomplete="off" para que el navegador no sugiera lo escrito antes. Se puede seguir pegando un link de Google Maps o "lat,lng". APP_VERSION '2026-11-25 calc ciudades'.
+
+## 2026-11-25 · Calculadora: mapa de la ruta y peajes automáticos
+- Mapa (Leaflet 1.9.4 desde cdnjs, se carga solo al calcular; teselas OpenStreetMap): ruta en verde, A = origen, B = destino, plazas de peaje ($ peaje, con nombre y tarifa al pasar el mouse) y pórticos TAG (morado). form.ruta.linea guarda la ruta simplificada (≤ 600 puntos) para verla al abrir una cotización.
+- Peajes automáticos: después de la ruta se consulta Overpass (overpass-api.de) por barrier=toll_booth y highway=toll_gantry a ≤ 150 m de la ruta; las casetas a < 1,5 km se agrupan como una plaza. Cada plaza se asocia al catálogo por cercanía (< 2 km de sus coordenadas) o por nombre (ej. "Angostura"); si no existe se agrega al catálogo "sin tarifa" (id osm<id>) con aviso para completar la tarifa y guardar parámetros. Los pórticos solo se cuentan (TAG sigue manual).
+- Ejemplo: Rancagua → Santiago detecta Angostura y la cobra según ejes y ida/vuelta.
+- APP_VERSION '2026-11-25 calc mapa peajes'. Sin SQL.
