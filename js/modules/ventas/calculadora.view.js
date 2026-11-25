@@ -164,11 +164,26 @@ const template = /* html */ `
 
       <div class="${card}">
         <h3 class="${h}"><i class="fa-solid fa-route text-slate-400"></i> Ruta y tiempo</h3>
-        <datalist id="calc-ciudades"><option v-for="c in C.CIUDADES" :key="c" :value="c"></option></datalist>
-        <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-          <label><span class="${lab}">Origen <b class="text-rose-600">*</b></span><input v-model="C.form.origen" list="calc-ciudades" autocomplete="off" name="calc-origen-ciudad" placeholder="Elige una ciudad (o pega un link de Google Maps)" class="${req}"></label>
-          <label><span class="${lab}">Destino <b class="text-rose-600">*</b></span><input v-model="C.form.destino" list="calc-ciudades" autocomplete="off" name="calc-destino-ciudad" placeholder="Elige una ciudad (o pega un link de Google Maps)" class="${req}"></label>
-          <button @click="C.calcularRuta()" :disabled="C.rutaEstado.value === 'calculando'" class="px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold disabled:opacity-60 whitespace-nowrap"><i :class="['fa-solid', C.rutaEstado.value === 'calculando' ? 'fa-spinner fa-spin' : 'fa-map-location-dot']"></i> Calcular distancia</button>
+        <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+          <div><span class="${lab}">Origen <b class="text-rose-600">*</b></span>
+            <div class="flex gap-1.5">
+              <select v-model="C.form.regionOrigen" @change="C.form.origen && C.CIUDADES.includes(C.form.origen) && C.form.regionOrigen && C.regionDe(C.form.origen) !== C.form.regionOrigen ? C.form.origen = '' : null" class="w-36 shrink-0 p-2 border rounded-lg bg-white text-xs font-semibold" title="Filtra la lista por región">
+                <option value="">Todas las regiones</option><option v-for="r in C.REGIONES" :key="r.region" :value="r.region">{{ r.region }}</option></select>
+              <input v-model="C.form.origen" list="calc-ciudades-origen" autocomplete="off" name="calc-origen-ciudad" :placeholder="C.form.regionOrigen ? 'Comuna o faena de ' + C.form.regionOrigen : 'Ciudad, comuna o faena (o link de Google Maps)'" class="${req}">
+            </div>
+            <datalist id="calc-ciudades-origen"><option v-for="c in C.ciudadesDe(C.form.regionOrigen)" :key="c" :value="c">{{ C.form.regionOrigen ? '' : C.regionDe(c) }}</option></datalist>
+            <span v-if="C.form.origen && C.regionDe(C.form.origen)" class="text-[10px] text-slate-400">Región de {{ C.regionDe(C.form.origen) }}</span>
+          </div>
+          <div><span class="${lab}">Destino <b class="text-rose-600">*</b></span>
+            <div class="flex gap-1.5">
+              <select v-model="C.form.regionDestino" @change="C.form.destino && C.CIUDADES.includes(C.form.destino) && C.form.regionDestino && C.regionDe(C.form.destino) !== C.form.regionDestino ? C.form.destino = '' : null" class="w-36 shrink-0 p-2 border rounded-lg bg-white text-xs font-semibold" title="Filtra la lista por región">
+                <option value="">Todas las regiones</option><option v-for="r in C.REGIONES" :key="r.region" :value="r.region">{{ r.region }}</option></select>
+              <input v-model="C.form.destino" list="calc-ciudades-destino" autocomplete="off" name="calc-destino-ciudad" :placeholder="C.form.regionDestino ? 'Comuna o faena de ' + C.form.regionDestino : 'Ciudad, comuna o faena (o link de Google Maps)'" class="${req}">
+            </div>
+            <datalist id="calc-ciudades-destino"><option v-for="c in C.ciudadesDe(C.form.regionDestino)" :key="c" :value="c">{{ C.form.regionDestino ? '' : C.regionDe(c) }}</option></datalist>
+            <span v-if="C.form.destino && C.regionDe(C.form.destino)" class="text-[10px] text-slate-400">Región de {{ C.regionDe(C.form.destino) }}</span>
+          </div>
+          <button @click="C.calcularRuta()" :disabled="C.rutaEstado.value === 'calculando'" class="md:mt-4 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold disabled:opacity-60 whitespace-nowrap"><i :class="['fa-solid', C.rutaEstado.value === 'calculando' ? 'fa-spinner fa-spin' : 'fa-map-location-dot']"></i> Calcular distancia</button>
         </div>
         <p v-if="C.rutaEstado.value === 'error'" class="text-[11px] text-rose-700 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> {{ C.rutaError.value }} Puedes desmarcar AUTO y escribir los km a mano.</p>
         <p v-if="C.form.ruta" class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2">
