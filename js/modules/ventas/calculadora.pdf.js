@@ -17,9 +17,15 @@ const cargarJsPDF = () => (window.jspdf ? Promise.resolve() : (carga = carga || 
   s.onerror = () => { carga = null; mal(new Error('No se pudo cargar el generador de PDF (revisa la conexión).')); };
   document.head.appendChild(s);
 })));
-const logoDataUrl = () => fetch(new URL('plantillas/img/logo-frc-formato.png', window.location.href).href)
-  .then(r => (r.ok ? r.blob() : null))
+// Logo oficial FRC (imagotipo horizontal verde neón, plantillas/img/logo-frc-neon.png); respaldo: el logo configurado en la web.
+const archivoDataUrl = (ruta) => fetch(new URL(ruta, window.location.href).href).then(r => (r.ok ? r.blob() : null))
   .then(b => (b ? new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }) : null)).catch(() => null);
+const logoWeb = async () => {
+  const url = await archivoDataUrl('plantillas/img/logo-frc-neon.png');
+  if (url) return { url, ratio: 900 / 270 };
+  try { const { logoDataURL } = await import('../../core/excel.js'); const l = await logoDataURL(); if (l && l.url) return l; } catch (e) { /* sin logo */ }
+  return null;
+};
 
 const VERDE = [20, 154, 62], OSCURO = [14, 26, 20], GRIS = [100, 116, 139], CLARO = [232, 245, 236], AMBAR = [245, 158, 11];
 const $ = (v) => '$' + fmtN(Math.round(num(v)));
@@ -101,7 +107,7 @@ export const exportarCotizacionPDF = async () => {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
   const W = 215.9, H = 279.4, M = 12, AN = W - 2 * M;
-  const logo = await logoDataUrl();
+  const logo = await logoWeb();
   const r = resultado.value, t = tipoSel.value || {}, ejes2 = t.ejes === '2';
   const mod = (MODALIDADES.find(m => m.k === form.modalidad) || {}).l || form.modalidad;
   const ruta = form.ruta;
@@ -120,9 +126,9 @@ export const exportarCotizacionPDF = async () => {
   };
   const rect = (x, y, w, h, fill, stroke = true) => { if (fill) doc.setFillColor(...fill); doc.setDrawColor(205, 210, 214); doc.setLineWidth(0.2); doc.rect(x, y, w, h, fill ? (stroke ? 'FD' : 'F') : 'S'); };
   const encabezado = (titulo) => {
-    if (logo) doc.addImage(logo, 'PNG', M, 9, 42, 13.5);
-    rect(M + 46, 9, AN - 46 - 42, 14, VERDE, false);
-    txt(titulo, M + 46, 16, AN - 46 - 42, { size: 13, bold: true, al: 'center', color: [255, 255, 255] });
+    if (logo) { let h = 14, w = h * (logo.ratio || 3); if (w > 46) { w = 46; h = w / (logo.ratio || 3); } doc.addImage(logo.url, 'PNG', M, 9 + (14 - h) / 2, w, h); }
+    rect(M + 50, 9, AN - 50 - 42, 14, VERDE, false);
+    txt(titulo, M + 50, 16, AN - 50 - 42, { size: 13, bold: true, al: 'center', color: [255, 255, 255] });
     rect(W - M - 39, 9, 39, 14, OSCURO, false);
     txt('Fecha: ' + fechaCL(form.fecha), W - M - 39, 13, 39, { size: 7.5, bold: true, al: 'center', color: [255, 255, 255] });
     txt(form.id ? 'Cotización N° ' + form.id : 'Válida por ' + num(params.validezDias || 15) + ' días', W - M - 39, 19, 39, { size: 7, al: 'center', color: [255, 255, 255] });
@@ -222,7 +228,10 @@ export const exportarCotizacionPDF = async () => {
 export const exportarCotizacionExcelCliente = async () => {
   if (!soloAdminGeneral()) return;
   const { nuevoLibro, hojaTabla, descargarLibro } = await import('../../core/excel.js');
-  const { wb, logo } = await nuevoLibro();
+  const { wb } = await nuevoLibro();
+  // El encabezado del Excel dibuja el logo a 60 px de alto y máx. 150 px de ancho: se deja en proporción 2,5 (con margen) para no deformarlo.
+  let logo = await logoWeb();
+  if (logo) { try { const img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = logo.url; }); const c = document.createElement('canvas'); c.width = 1000; c.height = 400; const h = 1000 / (img.naturalWidth / img.naturalHeight); c.getContext('2d').drawImage(img, 0, (400 - h) / 2, 1000, h); logo = { url: c.toDataURL('image/png'), ratio: 2.5 }; } catch (e) { /* tal cual */ } }
   const r = resultado.value, t = tipoSel.value || {}, ejes2 = t.ejes === '2';
   const sub = [form.cliente, form.nombre, form.origen && form.destino ? `${form.origen} -> ${form.destino}` : ''].filter(Boolean).join(' · ');
   const peajes = peajesRuta();
@@ -237,7 +246,7 @@ export const exportarCotizacionExcelCliente = async () => {
   f1.push(['', 'PRECIO', '', 'sep'], ['', 'Precio neto', r.neto, 'neg'], ['', `IVA (${r.pcts.iva}%)`, r.iva]);
   const ws1 = hojaTabla(wb, logo, {
     nombre: 'Datos y ruta', titulo: 'COTIZACIÓN DE SERVICIO · CAMIÓN', subtitulo: sub, apaisado: false,
-    columnas: [{ t: 'Dato', w: 18, al: 'left', bold: true }, { t: 'Detalle', w: 72, al: 'left' }, { t: 'Valor ($)', w: 18, fmt: '#,##0', al: 'right' }],
+    columnas: [{ t: 'Dato', w: 22, al: 'left', bold: true }, { t: 'Detalle', w: 78, al: 'left' }, { t: 'Valor ($)', w: 20, fmt: '#,##0', al: 'right' }],
     filas: f1.map(x => x.slice(0, 3)), totales: ['', 'TOTAL CON IVA', r.total],
     estiloFila: (v, i) => (f1[i][3] === 'sep' ? { fill: SEP, font: { bold: true } } : f1[i][3] === 'neg' ? NEG : null)
   });
@@ -265,7 +274,7 @@ export const exportarCotizacionExcelCliente = async () => {
   // Hoja 3
   const ws3 = hojaTabla(wb, logo, {
     nombre: 'Condiciones', titulo: 'CONDICIONES DE LA COTIZACIÓN', subtitulo: sub, apaisado: false,
-    columnas: [{ t: 'N°', w: 6 }, { t: 'Condición', w: 110, al: 'left' }],
+    columnas: [{ t: 'N°', w: 8 }, { t: 'Condición', w: 112, al: 'left' }],
     filas: condicionesCliente().map((c, i) => [i + 1, c])
   });
   ws3.autoFilter = undefined;
