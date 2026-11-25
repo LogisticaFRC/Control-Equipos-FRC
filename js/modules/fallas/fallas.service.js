@@ -7,6 +7,8 @@ import { normalizarFecha, sumarDiasISO, hoyISO, mismoAfi } from '../../core/util
 import { analizarFallas, categoriaPorKey, CATEGORIAS_FALLA, CATEGORIA_OTROS, fmtMin, htmlHallazgo, claseNivel, categorizar, PIEZAS, MOTIVOS, MOTIVO_NO_INDICADO, piezaPorKey, motivoPorKey, detectarPiezas, detectarMotivo } from '../../core/analisis-fallas.js';
 import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel } from '../../core/excel.js';
 import { errMsg } from '../../core/supabase.js';
+import { esEquipoOtros } from '../inventario/inventario.mapper.js';
+import { esAnualVencida } from '../../core/horometros.js';
 
 const { ref, computed, watch } = Vue;
 
@@ -87,6 +89,71 @@ export const resultadosBusqueda = computed(() => {
   return { total: analisisFallas.value.lista.length, equipos };
 });
 export const busqAbierto = ref('');   // AFI desplegado en los resultados
+
+// =====================================================================
+// RECOMENDACIONES · Equipos en riesgo (2026-11-25)
+// Puntaje por equipo con reglas simples sobre el Historial (período y filtros actuales) + horómetro:
+//   fallas recientes (90 días) y tendencia, fallas repetidas del mismo sistema (< 30 días),
+//   piezas que se repiten (≥ 3 veces), "le toca" según días promedio entre fallas, quedó fuera de servicio,
+//   mantención vencida y costo alto. Cada regla deja una razón y una acción concreta.
+// =====================================================================
+const RIESGO = { ALTO: { label: 'Riesgo alto', cls: 'bg-rose-50 border-rose-300', badge: 'bg-rose-600 text-white', icon: 'fa-triangle-exclamation' },
+  MEDIO: { label: 'Atención', cls: 'bg-amber-50 border-amber-300', badge: 'bg-amber-500 text-white', icon: 'fa-eye' },
+  BAJO: { label: 'Vigilar', cls: 'bg-sky-50 border-sky-200', badge: 'bg-sky-600 text-white', icon: 'fa-binoculars' } };
+export const recomendaciones = computed(() => {
+  const a = analisisFallas.value, hoy = hoyISO(), d90 = sumarDiasISO(hoy, -90), d180 = sumarDiasISO(hoy, -180);
+  const eqPorAfi = new Map(dbEquipos.value.map(e => [String(e.afi).trim().toUpperCase(), e]));
+  const porAfi = new Map(); a.lista.forEach(x => { const k = String(x.afi).trim().toUpperCase(); if (!porAfi.has(k)) porAfi.set(k, []); porAfi.get(k).push(x); });
+  const out = [];
+  a.equiposRank.forEach(e => {
+    const k = String(e.afi).trim().toUpperCase(), eq = eqPorAfi.get(k);
+    if (esEquipoOtros(eq || { afi: e.afi })) return;
+    const xs = porAfi.get(k) || [];
+    const fallas = xs.filter(x => x.cat.key !== 'SERVICIO');
+    const n90 = fallas.filter(x => x.fecha >= d90).length, nPrev = fallas.filter(x => x.fecha >= d180 && x.fecha < d90).length;
+    let pts = 0; const razones = [], acciones = [], piezasCambio = [];
+    // 1) Piezas que se repiten
+    (e.piezas || []).filter(pz => pz.n >= 3).slice(0, 2).forEach(pz => {
+      pts += 3 + Math.min(pz.n - 3, 3);
+      razones.push(`<b>${pz.label}</b> falló ${pz.n} veces${pz.motivoTop ? ' (sobre todo ' + pz.motivoTop.label.toLowerCase() + ')' : ''}`);
+      acciones.push(`Cambiar ${pz.label.toLowerCase()} por repuesto nuevo (no seguir reparando) y revisar qué la está dañando.`);
+      piezasCambio.push({ key: pz.key, motivo: pz.motivoTop ? pz.motivoTop.key : '' });
+    });
+    // 2) Mismo sistema repetido en menos de 30 días
+    if (e.repetidas >= 1) {
+      pts += 2 * Math.min(e.repetidas, 4);
+      const ej = e.ejemplosRep[e.ejemplosRep.length - 1];
+      razones.push(`Volvió a fallar en el mismo sistema en menos de 30 días <b>${e.repetidas} vez/veces</b>${ej ? ' (última: ' + ej.cat.label + ', a los ' + ej.dias + ' días)' : ''}`);
+      acciones.push(`Buscar la causa raíz en ${ej ? ej.cat.label.toLowerCase() : 'el sistema'}: la reparación anterior no resolvió el problema. Probar el equipo con carga antes de devolverlo a terreno.`);
+    }
+    // 3) Fallas recientes y tendencia
+    if (n90 >= 3) { pts += Math.min(n90, 6); razones.push(`<b>${n90} fallas</b> en los últimos 90 días`); }
+    if (n90 >= 2 && n90 > nPrev * 1.5) { pts += 2; razones.push(`Fallas en aumento: ${n90} en los últimos 90 días vs ${nPrev} en los 90 anteriores`); acciones.push('Hacer una inspección general completa (todos los sistemas) en el taller.'); }
+    // 4) "Le toca": lleva sin fallar casi lo mismo que su promedio entre fallas
+    if (fallas.length >= 3 && e.mtbf && e.diasDesdeUltima != null && e.diasDesdeUltima >= 0.75 * e.mtbf && e.diasDesdeUltima <= 2 * e.mtbf) {
+      pts += 3;
+      razones.push(`Falla en promedio cada <b>${e.mtbf} días</b> y lleva ${e.diasDesdeUltima} días sin fallar`);
+      acciones.push(`Programar inspección preventiva de ${e.catTop ? e.catTop.label.toLowerCase() : 'sus sistemas'} esta semana, antes de que vuelva a fallar.`);
+    }
+    // 5) Quedó fuera de servicio
+    const fuera = xs.filter(x => x.motivo === 'FUERA_SERVICIO').length;
+    if (fuera) { pts += 2 * Math.min(fuera, 3); razones.push(`Quedó <b>fuera de servicio</b> ${fuera} vez/veces`); }
+    // 6) Mantención vencida (horómetro o anual)
+    const h = eq?.horometros;
+    if (h && (h.horasFaltantes <= 0 || esAnualVencida(h))) {
+      pts += 3; razones.push(h.horasFaltantes <= 0 ? `Mantención por horómetro <b>vencida</b> (${Math.abs(h.horasFaltantes)} h pasadas)` : 'Mantención <b>anual vencida</b>');
+      acciones.push('Hacer la mantención pendiente: muchas fallas aparecen con filtros y aceite vencidos.');
+    }
+    // 7) Muchas fallas o costo alto → evaluar reemplazo
+    if (fallas.length >= 12) { pts += 2; acciones.push(`Evaluar si conviene una reparación mayor o reemplazar el equipo: ${fallas.length} fallas en el período${e.costo ? ' y $' + Math.round(e.costo).toLocaleString('es-CL') + ' registrados' : ''}.`); }
+    if (pts < 4) return;
+    const nivel = pts >= 10 ? 'ALTO' : pts >= 6 ? 'MEDIO' : 'BAJO';
+    out.push({ afi: e.afi, tipo: e.tipo, marca: e.marca, modelo: e.modelo, estado: eq?.disponibilidad || '', pts, nivel, ...RIESGO[nivel], razones, acciones: [...new Set(acciones)], piezasCambio, ultima: e.ultima, n: fallas.length });
+  });
+  return out.sort((x, y) => y.pts - x.pts);
+});
+export const limiteRecom = ref(12);
+export const recomAbierta = ref('');
 
 /** Detalle desplegado de un equipo del ranking. */
 export const afiDetalle = ref('');

@@ -1221,3 +1221,8 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Panel de resultados: "N fallas en M equipos", agrupado por equipo (más fallas primero), con fecha de la última; clic para ver cada registro con las palabras resaltadas, link al perfil (AFI) y "Ver en Historial".
 - La búsqueda también filtra todo el análisis (KPI, hallazgos, gráficos, piezas, ranking). Respeta período, filtros e "Incluir mantenciones". Pausa de 300 ms al escribir.
 - Archivos: fallas.service.js (busquedaFallas, resultadosBusqueda, resaltar), fallas.template.js. APP_VERSION '2026-11-25 buscador fallas'. Sin SQL.
+
+## 2026-11-25 · Análisis de Fallas: Recomendaciones (equipos a vigilar)
+- Sección nueva después de Hallazgos. Puntaje por equipo (período y filtros actuales + horómetro): pieza repetida ≥ 3 veces (cambiar pieza), mismo sistema < 30 días (causa raíz), ≥ 3 fallas en 90 días y tendencia al alza, "le toca" (días sin fallar ≥ 75% del promedio entre fallas), fuera de servicio, mantención vencida (horómetro o anual), ≥ 12 fallas (evaluar reparación mayor/reemplazo).
+- Niveles: Riesgo alto (≥ 10 pts), Atención (≥ 6), Vigilar (≥ 4). Cada tarjeta muestra "Por qué" y "Qué hacer", causas probables de las piezas (core/conocimiento-fallas.js) y link a Historial. AFI OTROS excluido.
+- fallas.service.js: recomendaciones, limiteRecom, recomAbierta. APP_VERSION '2026-11-25 recomendaciones'. Sin SQL.

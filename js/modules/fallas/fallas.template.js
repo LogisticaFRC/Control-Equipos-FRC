@@ -94,6 +94,49 @@ export default /* html */ `
     </div>
   </div>
 
+  <!-- Recomendaciones: equipos en riesgo (2026-11-25) -->
+  <div class="bg-white rounded-2xl border shadow-sm p-4 space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h3 class="font-extrabold text-slate-800 uppercase"><i class="fa-solid fa-user-doctor text-emerald-600 mr-1"></i> Recomendaciones · equipos a vigilar
+        <span class="font-normal normal-case text-slate-400">· {{ recomendaciones.length }} equipo(s)</span></h3>
+      <div class="flex gap-1.5 text-[10px] font-bold">
+        <span class="px-2 py-0.5 rounded bg-rose-600 text-white">{{ recomendaciones.filter(r => r.nivel === 'ALTO').length }} riesgo alto</span>
+        <span class="px-2 py-0.5 rounded bg-amber-500 text-white">{{ recomendaciones.filter(r => r.nivel === 'MEDIO').length }} atención</span>
+        <span class="px-2 py-0.5 rounded bg-sky-600 text-white">{{ recomendaciones.filter(r => r.nivel === 'BAJO').length }} vigilar</span>
+      </div>
+    </div>
+    <p v-if="!recomendaciones.length" class="text-slate-400 text-center py-4">Ningún equipo muestra señales de riesgo con el período y filtros actuales.</p>
+    <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div v-for="r in recomendaciones.slice(0, limiteRecom)" :key="r.afi" :class="['rounded-xl border-2 p-3 space-y-2', r.cls]">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <button @click="verDetallePorAfiString(r.afi)" class="font-mono font-extrabold text-amber-700 hover:underline text-sm">AFI {{ r.afi }}</button>
+            <span class="font-semibold ml-1">{{ r.tipo }}</span>
+            <p class="text-[10px] text-slate-500">{{ r.marca }} {{ r.modelo }}<template v-if="r.estado"> · {{ textoEstado(r.estado) }}</template> · {{ r.n }} falla(s) · última {{ formatDateForDisplay(r.ultima) }}</p>
+          </div>
+          <span :class="['px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap', r.badge]"><i :class="['fa-solid mr-0.5', r.icon]"></i>{{ r.label }}</span>
+        </div>
+        <div>
+          <p class="text-[10px] font-bold uppercase text-slate-500">Por qué</p>
+          <ul class="list-disc pl-4 space-y-0.5"><li v-for="(t, i) in r.razones" :key="i" v-html="t"></li></ul>
+        </div>
+        <div v-if="r.acciones.length">
+          <p class="text-[10px] font-bold uppercase text-emerald-700">Qué hacer</p>
+          <ul class="space-y-0.5"><li v-for="(t, i) in r.acciones" :key="i" class="flex gap-1.5"><i class="fa-solid fa-wrench text-emerald-600 mt-0.5"></i><span>{{ t }}</span></li></ul>
+        </div>
+        <div class="flex flex-wrap gap-2 pt-1">
+          <button v-if="r.piezasCambio.some(p => tieneConocimiento(p.key))" @click="recomAbierta = recomAbierta === r.afi ? '' : r.afi" class="px-2 py-1 rounded-lg border bg-white font-bold text-[10px]"><i class="fa-solid fa-lightbulb text-amber-500"></i> {{ recomAbierta === r.afi ? 'Ocultar' : 'Ver' }} causas probables</button>
+          <button @click="irAlHistorial(r.afi)" class="px-2 py-1 rounded-lg border bg-white font-bold text-[10px] text-blue-700">Ver en Historial →</button>
+        </div>
+        <div v-if="recomAbierta === r.afi" class="space-y-2">
+          <causas-probables v-for="p in r.piezasCambio.filter(p => tieneConocimiento(p.key))" :key="p.key" :pieza="p.key" :motivo="p.motivo" :max="2"></causas-probables>
+        </div>
+      </div>
+    </div>
+    <div v-if="recomendaciones.length > limiteRecom" class="text-center"><button @click="limiteRecom += 12" class="text-blue-700 font-bold underline">Ver más ({{ recomendaciones.length - limiteRecom }})</button></div>
+    <p class="text-[10px] text-slate-400">Se calcula con el período y filtros de arriba: piezas que fallan 3 o más veces, fallas del mismo sistema en menos de 30 días, fallas de los últimos 90 días y si van en aumento, equipos que ya llevan casi su promedio de días entre fallas, veces que quedó fuera de servicio, mantención vencida y equipos con 12 o más fallas. Es una ayuda para priorizar: confírmalo con el técnico.</p>
+  </div>
+
   <!-- Gráficos -->
   <div class="grid lg:grid-cols-2 gap-4">
     <div class="bg-white rounded-2xl border shadow-sm p-4">
