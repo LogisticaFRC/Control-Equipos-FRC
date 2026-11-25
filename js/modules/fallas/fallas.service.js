@@ -8,7 +8,7 @@ import { analizarFallas, categoriaPorKey, CATEGORIAS_FALLA, CATEGORIA_OTROS, fmt
 import { nuevoLibro, hojaTabla, descargarLibro, fechaExcel } from '../../core/excel.js';
 import { errMsg } from '../../core/supabase.js';
 
-const { ref, computed } = Vue;
+const { ref, computed, watch } = Vue;
 
 export { fmtMin, htmlHallazgo, claseNivel, categoriaPorKey, piezaPorKey, motivoPorKey };
 export const PIEZAS_LISTA = [...PIEZAS].sort((a, b) => a.label.localeCompare(b.label));
@@ -17,7 +17,31 @@ export const CATEGORIAS = [...CATEGORIAS_FALLA, CATEGORIA_OTROS];
 
 const FILTRO_DEFAULT = () => ({ periodo: '365', desde: '', hasta: '', tipo: 'ALL', afi: '', categoria: 'ALL', pieza: 'ALL', motivo: 'ALL', incluirMant: false });
 export const filtroFallas = ref(FILTRO_DEFAULT());
-export const limpiarFiltroFallas = () => { filtroFallas.value = FILTRO_DEFAULT(); };
+export const limpiarFiltroFallas = () => { filtroFallas.value = FILTRO_DEFAULT(); busquedaFallas.value = ''; busquedaAplicada.value = ''; };
+
+// ---------- BUSCADOR (2026-11-25) ----------
+// Busca en causa, causa detallada, descripción, equipo, tipo, sistema, pieza y motivo detectados.
+// Todas las palabras escritas deben aparecer (sin importar tildes ni mayúsculas). Filtra TODO el análisis.
+export const busquedaFallas = ref('');      // lo que se escribe
+export const busquedaAplicada = ref('');    // lo que se aplica (con pausa de 300 ms para no recalcular en cada tecla)
+let tBusca = null;
+watch(busquedaFallas, (v) => { clearTimeout(tBusca); tBusca = setTimeout(() => { busquedaAplicada.value = String(v || '').trim(); }, 300); });
+export const normTxt = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const palabrasBusqueda = computed(() => normTxt(busquedaAplicada.value).split(/\s+/).filter(Boolean));
+const textoBuscable = (i, tipo) => normTxt([i.afi, i.causa, i.causaDetallada, i.descripcion, i.equipo, tipo, categorizar(i).label,
+  ...detectarPiezas(i).map(k => piezaPorKey(k)?.label), motivoPorKey(detectarMotivo(i))?.label].join(' '));
+/** Sugerencias para el buscador: piezas, motivos y sistemas. */
+export const sugerenciasBusqueda = computed(() => [...PIEZAS_LISTA.map(p => p.label), ...MOTIVOS.map(m => m.label), ...CATEGORIAS.map(c => c.label)]);
+/** Resalta las palabras buscadas (HTML seguro). */
+export const resaltar = (texto) => {
+  const esc = String(texto || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ps = palabrasBusqueda.value; if (!ps.length) return esc;
+  const n = normTxt(esc); const marcas = new Array(esc.length).fill(false);
+  ps.forEach(p => { let k = n.indexOf(p); while (k >= 0 && p) { for (let j = k; j < k + p.length; j++) marcas[j] = true; k = n.indexOf(p, k + p.length); } });
+  let out = '', dentro = false;
+  for (let j = 0; j < esc.length; j++) { if (marcas[j] && !dentro) { out += '<mark class="bg-yellow-200 rounded px-0.5">'; dentro = true; } if (!marcas[j] && dentro) { out += '</mark>'; dentro = false; } out += esc[j]; }
+  return dentro ? out + '</mark>' : out;
+};
 
 export const tiposEquipo = computed(() => Array.from(new Set(dbEquipos.value.map(e => String(e.tipo || '').trim().toUpperCase()).filter(Boolean))).sort());
 
@@ -42,11 +66,27 @@ const registrosFiltrados = computed(() => {
     if (f.categoria !== 'ALL' && categorizar(i).key !== f.categoria) return false;
     if (f.pieza !== 'ALL' && !detectarPiezas(i).includes(f.pieza)) return false;
     if (f.motivo !== 'ALL' && detectarMotivo(i) !== f.motivo) return false;
+    if (palabrasBusqueda.value.length) { const t = textoBuscable(i, tipoDe.get(String(i.afi).trim().toUpperCase())); if (!palabrasBusqueda.value.every(p => t.includes(p))) return false; }
     return true;
   });
 });
 
 export const analisisFallas = computed(() => analizarFallas(registrosFiltrados.value, dbEquipos.value, { incluirMantenciones: filtroFallas.value.incluirMant }));
+
+/** Resultado del buscador agrupado por equipo: [{ afi, tipo, marca, modelo, n, ultima, regs }] (más fallas primero). */
+export const resultadosBusqueda = computed(() => {
+  if (!palabrasBusqueda.value.length) return null;
+  const eqPorAfi = new Map(dbEquipos.value.map(e => [String(e.afi).trim().toUpperCase(), e]));
+  const grupos = new Map();
+  analisisFallas.value.lista.forEach(x => {
+    const k = String(x.afi).trim().toUpperCase();
+    if (!grupos.has(k)) { const e = eqPorAfi.get(k) || {}; grupos.set(k, { afi: x.afi, tipo: x.tipoEquipo, marca: e.marca || '', modelo: e.modelo || '', n: 0, ultima: '', regs: [] }); }
+    const g = grupos.get(k); g.n++; g.regs.push(x); if (x.fecha > g.ultima) g.ultima = x.fecha;
+  });
+  const equipos = [...grupos.values()].map(g => ({ ...g, regs: g.regs.slice().reverse() })).sort((a, b) => b.n - a.n || b.ultima.localeCompare(a.ultima));
+  return { total: analisisFallas.value.lista.length, equipos };
+});
+export const busqAbierto = ref('');   // AFI desplegado en los resultados
 
 /** Detalle desplegado de un equipo del ranking. */
 export const afiDetalle = ref('');

@@ -1215,3 +1215,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Rendimiento por MODELO con fuente (Parámetros → "Rendimiento por modelo": marca, modelo, km/L, tipo de fuente, link PDF/web). Al elegir un camión de la flota se muestran sus fichas técnicas (bd_formatos EQUIPO:<id>) y el rendimiento del modelo si está registrado.
 - "Supuestos y fuentes": tabla con cada variable, valor, AUTO/MANUAL y de dónde sale; también como hoja en el Excel. Se guarda en la cotización (parametros.supuestos).
 - Cotizaciones antiguas (sin modo) se abren con sus valores como MANUAL. APP_VERSION '2026-11-25 calculadora rutas'. Sin SQL.
+
+## 2026-11-25 · Análisis de Fallas: buscador
+- Buscador arriba de los filtros: busca en causa, causa detallada, descripción, equipo, tipo, sistema, pieza y motivo detectados (sin tildes ni mayúsculas; todas las palabras deben aparecer). Sugerencias con piezas, motivos y sistemas.
+- Panel de resultados: "N fallas en M equipos", agrupado por equipo (más fallas primero), con fecha de la última; clic para ver cada registro con las palabras resaltadas, link al perfil (AFI) y "Ver en Historial".
+- La búsqueda también filtra todo el análisis (KPI, hallazgos, gráficos, piezas, ranking). Respeta período, filtros e "Incluir mantenciones". Pausa de 300 ms al escribir.
+- Archivos: fallas.service.js (busquedaFallas, resultadosBusqueda, resaltar), fallas.template.js. APP_VERSION '2026-11-25 buscador fallas'. Sin SQL.

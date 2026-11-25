@@ -11,6 +11,14 @@ export default /* html */ `
       </div>
       <button v-if="$adminGeneral" @click="exportarFallasExcel" :disabled="exportandoFallas || !a.total" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl shadow flex items-center gap-2 disabled:opacity-60"><i :class="['fa-solid', exportandoFallas ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar Excel</button>
     </div>
+    <!-- Buscador (2026-11-25) -->
+    <div class="relative">
+      <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-magnifying-glass"></i></span>
+      <input v-model="busquedaFallas" type="search" list="sug-fallas" placeholder="Buscar falla: ej. batería, correa cortada, fuga hidráulica, alternador, no parte…"
+        class="w-full pl-10 pr-24 py-3 border-2 border-rose-200 rounded-xl bg-rose-50/40 focus:bg-white focus:border-rose-400 outline-none text-sm font-semibold">
+      <button v-if="busquedaFallas" @click="busquedaFallas = ''" class="absolute inset-y-0 right-0 pr-3.5 text-slate-400 hover:text-slate-700 font-bold"><i class="fa-solid fa-xmark"></i> Limpiar</button>
+      <datalist id="sug-fallas"><option v-for="t in sugerenciasBusqueda" :key="t" :value="t"></option></datalist>
+    </div>
     <div class="flex flex-wrap items-end gap-2">
       <div><label class="block text-[10px] font-bold text-slate-500">Período</label>
         <select v-model="filtroFallas.periodo" class="p-2 border rounded-lg font-bold">
@@ -31,6 +39,38 @@ export default /* html */ `
       <div><label class="block text-[10px] font-bold text-slate-500">AFI</label><input v-model="filtroFallas.afi" type="text" placeholder="Ej: 510" class="p-2 border rounded-lg w-24 font-mono font-bold"></div>
       <label class="flex items-center gap-1.5 pb-2 font-semibold"><input type="checkbox" v-model="filtroFallas.incluirMant"> Incluir mantenciones</label>
       <button @click="limpiarFiltroFallas" class="text-slate-500 hover:text-slate-800 underline pb-2">Limpiar</button>
+    </div>
+  </div>
+
+  <!-- Resultados del buscador -->
+  <div v-if="resultadosBusqueda" class="bg-white rounded-2xl border-2 border-rose-200 shadow-sm overflow-hidden">
+    <div class="px-4 py-3 border-b bg-rose-50 flex flex-wrap items-center justify-between gap-2">
+      <h3 class="font-extrabold text-rose-900"><i class="fa-solid fa-magnifying-glass mr-1"></i> "{{ busquedaAplicada }}": {{ resultadosBusqueda.total }} falla(s) en {{ resultadosBusqueda.equipos.length }} equipo(s)</h3>
+      <span class="text-[10px] text-rose-800">Período y filtros de arriba aplicados{{ filtroFallas.incluirMant ? '' : ' · sin mantenciones (marca "Incluir mantenciones" para verlas)' }}. Todo el análisis de abajo también queda filtrado.</span>
+    </div>
+    <div v-if="!resultadosBusqueda.equipos.length" class="p-6 text-center text-slate-400">No se encontraron fallas con ese texto. Prueba con otra palabra, amplía el período o incluye mantenciones.</div>
+    <div v-else class="max-h-[520px] overflow-y-auto divide-y">
+      <div v-for="g in resultadosBusqueda.equipos" :key="g.afi">
+        <div @click="busqAbierto = busqAbierto === g.afi ? '' : g.afi" :class="['px-4 py-2.5 flex flex-wrap items-center gap-3 cursor-pointer', busqAbierto === g.afi ? 'bg-amber-50' : 'hover:bg-slate-50']">
+          <i :class="['fa-solid text-slate-400', busqAbierto === g.afi ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+          <button @click.stop="verDetallePorAfiString(g.afi)" class="font-mono font-extrabold text-amber-700 hover:underline">AFI {{ g.afi }}</button>
+          <span class="font-semibold">{{ g.tipo }}</span><span class="text-slate-400">{{ g.marca }} {{ g.modelo }}</span>
+          <span class="font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">{{ g.n }} vez/veces</span>
+          <span class="text-slate-500">última: <b class="font-mono">{{ formatDateForDisplay(g.ultima) }}</b></span>
+          <span class="flex-1 min-w-[200px] truncate text-slate-500" v-html="resaltar(g.regs[0].r.causaDetallada || g.regs[0].r.descripcion)"></span>
+        </div>
+        <div v-if="busqAbierto === g.afi" class="bg-amber-50/50 px-4 pb-3 space-y-1">
+          <div class="flex justify-end"><button @click="irAlHistorial(g.afi)" class="text-blue-700 underline font-bold">Ver en Historial →</button></div>
+          <div v-for="x in g.regs" :key="x.r.id" class="bg-white border rounded-lg px-2 py-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+            <span class="font-mono font-bold">{{ formatDateForDisplay(x.fecha) }}</span>
+            <span class="font-bold" :style="{ color: x.cat.color === '#facc15' || x.cat.color === '#eab308' ? '#a16207' : x.cat.color }">{{ x.cat.label }}</span>
+            <span class="text-slate-500" v-html="resaltar(x.r.causa)"></span>
+            <span class="flex-1 min-w-[200px]"><span v-html="resaltar(x.r.causaDetallada)"></span><span v-if="x.r.descripcion" class="text-slate-500"> — <span v-html="resaltar(x.r.descripcion)"></span></span>
+              <span v-if="x.piezas.length" class="block text-[10px] mt-0.5"><span v-for="k in x.piezas" :key="k" class="mr-1 px-1.5 rounded bg-slate-200 text-slate-700 font-bold">{{ piezaPorKey(k)?.label }}</span></span></span>
+            <span v-if="x.min" class="text-sky-700 font-semibold">{{ fmtMin(x.min) }}</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
