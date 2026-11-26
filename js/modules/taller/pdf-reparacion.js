@@ -79,7 +79,7 @@ const bloqueHistorial = (n, m) => {
     <div style="padding:6px 10px;font-size:11px;white-space:pre-line"><b style="color:#1d4ed8">Trabajo realizado:</b> ${esc(m.descripcion || '-')}</div>
     ${m.aceites && m.aceites !== 'Sin consumo' ? `<div style="padding:0 10px 4px;font-size:10.5px"><b>Aceites:</b> ${esc(m.aceites)}</div>` : ''}
     ${m.filtrosTexto ? `<div style="padding:0 10px 4px;font-size:10.5px"><b>Filtros:</b> ${esc(m.filtrosTexto)}</div>` : ''}
-    <div style="padding:0 10px 6px;font-size:9px;color:#64748b">Registrado en el Historial${m.tipoMant ? ' · ' + esc(m.tipoMant) : ''}${m.linkDrive ? ' · hoja escaneada adjunta en el sistema' : ''}</div>
+    <div style="padding:0 10px 6px;font-size:9px;color:#64748b">Registrado en el Historial${m.tipoMant ? ' · ' + esc(m.tipoMant) : ''}${m.linkDrive ? ' · la hoja completa va al final de este informe' : ''}</div>
   </div>
 </div>`;
 };
@@ -147,7 +147,62 @@ export const generarPDFReparacion = async (repId) => {
   if (hist.length) await poner(`<div style="width:${ANCHO}px;padding:10px 34px 0;font-family:Arial;font-size:13px;font-weight:900;color:#1d4ed8;background:#fff">Intervenciones registradas en el Historial (${hist.length})</div>`);
   for (let k = 0; k < hist.length; k++) await poner(bloqueHistorial(k + 1, hist[k]));
   await poner(tablaApp(app));
-  return { blob: pdf.output('blob'), nombre: `Intervenciones AFI ${rep.afi} ${new Date().toISOString().slice(0, 10)}.pdf` };
+  const nombre = `Intervenciones AFI ${rep.afi} ${new Date().toISOString().slice(0, 10)}.pdf`;
+  // 2026-11-26: al final van COMPLETAS las hojas de cada intervención del Historial (la hoja escaneada adjunta
+  // o, si se llenó en la app, su PDF con firmas), en el mismo orden.
+  const conDoc = hist.filter(m => String(m.linkDrive || '').trim());
+  if (!conDoc.length) return { blob: pdf.output('blob'), nombre };
+  try { return { blob: await adjuntarHojas(pdf.output('arraybuffer'), conDoc), nombre }; }
+  catch (err) { console.warn('[PDF taller] No se pudieron adjuntar las hojas:', err); return { blob: pdf.output('blob'), nombre }; }
+};
+
+// ---------- Hojas adjuntas (pdf-lib) ----------
+let pdfLibP = null;
+const cargarPdfLib = () => (window.PDFLib ? Promise.resolve(window.PDFLib) : (pdfLibP = pdfLibP || new Promise((ok, mal) => {
+  const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+  sc.onload = () => ok(window.PDFLib); sc.onerror = () => { pdfLibP = null; mal(new Error('No se pudo cargar pdf-lib')); }; document.head.appendChild(sc);
+})));
+/** Bytes del documento de un registro del Historial: PDF de la app (?doc=APP-id) o el archivo adjunto. */
+const bytesDocumento = async (m) => {
+  const link = String(m.linkDrive || '').trim();
+  const app = link.match(/[?&]doc=APP-(\d+)/i);
+  if (app) {
+    const r = (await sb(supabaseClient.from(TABLAS.MEC_INTERVENCIONES).select('*').eq('id', app[1]).limit(1)))[0];
+    if (!r) throw new Error('report APP-' + app[1] + ' no encontrado');
+    const { generarPDF } = await import('../mecanicos/mecanicos.service.js');
+    return { tipo: 'pdf', bytes: await (await generarPDF(r)).arrayBuffer() };
+  }
+  const resp = await fetch(link);
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const ct = (resp.headers.get('content-type') || '').toLowerCase();
+  const bytes = await resp.arrayBuffer();
+  const ini = new Uint8Array(bytes.slice(0, 4));
+  if (ct.includes('pdf') || (ini[0] === 0x25 && ini[1] === 0x50)) return { tipo: 'pdf', bytes };
+  if (ct.includes('png') || ini[0] === 0x89) return { tipo: 'png', bytes };
+  if (ct.includes('jpeg') || ct.includes('jpg') || (ini[0] === 0xff && ini[1] === 0xd8)) return { tipo: 'jpg', bytes };
+  throw new Error('formato no soportado (' + (ct || 'desconocido') + ')');
+};
+const adjuntarHojas = async (base, regs) => {
+  const { PDFDocument, StandardFonts, rgb } = await cargarPdfLib();
+  const out = await PDFDocument.load(base);
+  const font = await out.embedFont(StandardFonts.HelveticaBold);
+  const A4 = [595.28, 841.89];
+  const aviso = (txt) => { const pg = out.addPage(A4); pg.drawText(txt.slice(0, 95), { x: 40, y: A4[1] - 60, size: 11, font, color: rgb(0.6, 0.1, 0.1) }); };
+  for (const m of regs) {
+    const etiqueta = `${m.numeroFolio ? 'Folio ' + m.numeroFolio : 'Registro ' + m.id}${m.numeroOT ? ' · OT ' + m.numeroOT : ''}`;
+    try {
+      const d = await bytesDocumento(m);
+      if (d.tipo === 'pdf') {
+        const src = await PDFDocument.load(d.bytes, { ignoreEncryption: true });
+        (await out.copyPages(src, src.getPageIndices())).forEach(pg => out.addPage(pg));
+      } else {
+        const img = d.tipo === 'png' ? await out.embedPng(d.bytes) : await out.embedJpg(d.bytes);
+        const pg = out.addPage(A4); const k = Math.min((A4[0] - 30) / img.width, (A4[1] - 30) / img.height);
+        pg.drawImage(img, { x: (A4[0] - img.width * k) / 2, y: (A4[1] - img.height * k) / 2, width: img.width * k, height: img.height * k });
+      }
+    } catch (err) { aviso(`No se pudo adjuntar la hoja (${etiqueta}): ${err.message || err}`); }
+  }
+  return new Blob([await out.save()], { type: 'application/pdf' });
 };
 
 /** Arma y abre (PC) o descarga (celular) el PDF. */
