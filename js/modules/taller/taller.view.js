@@ -146,7 +146,19 @@ export default {
       } finally { ocupado.value = false; }
     };
 
+    // 2026-11-26: exportar a Excel el programa elegido arriba (mismo Excel de Programas: inicio, naves con avance de OT,
+    // reportes del Historial, fuera de rango e interferencias). Solo Admin general.
+    const exportandoProg = ref(false);
+    const exportarProgramaTaller = async () => {
+      const prog = S.programaTaller.value;
+      if (!prog) return alert('No hay un programa de reparación seleccionado.');
+      exportandoProg.value = true;
+      try { const P = await import('../programas/programas.service.js'); await P.exportarProgramaGanttExcel(prog); }
+      catch (err) { alert('No se pudo exportar el programa: ' + (err.message || err)); }
+      finally { exportandoProg.value = false; }
+    };
     return {
+      exportandoProg, exportarProgramaTaller,
       quitarOTSel, eliminarOTSel,
       ...comunes(), ...S, editaTaller, esTotem,
       folioSugerido, imprimirOT, ESTILO_ESTADO_OT, ETIQUETA_ESTADO_OT, estadoOT, N_ACTIVIDADES, formatDateForDisplay,

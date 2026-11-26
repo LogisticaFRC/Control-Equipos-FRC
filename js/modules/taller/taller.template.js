@@ -17,6 +17,7 @@ export default /* html */ `
           <option v-for="p in programasReparacion" :key="p.id" :value="p.id">{{ nombreProg(p) }} ({{ formatDateForDisplay(p.fecha_inicio_programa) }} al {{ formatDateForDisplay(p.fecha_termino_programa) }}){{ programaVigente(p) ? ' · vigente' : '' }}</option>
         </select>
         <span v-if="programaTaller" class="font-mono text-slate-300">{{ formatDateForDisplay(programaTaller.fecha_inicio_programa) }} → {{ formatDateForDisplay(programaTaller.fecha_termino_programa) }}</span>
+        <button v-if="programaTaller && $adminGeneral && !esTotem" @click="exportarProgramaTaller" :disabled="exportandoProg" class="ml-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-3 py-1.5 text-xs font-extrabold disabled:opacity-60" :title="'Exportar a Excel el programa ' + nombreProg(programaTaller)"><i :class="['fa-solid mr-1', exportandoProg ? 'fa-spinner fa-spin' : 'fa-file-excel']"></i> Exportar programa</button>
       </div>
     </div>
     <div class="flex flex-wrap items-center gap-2">
