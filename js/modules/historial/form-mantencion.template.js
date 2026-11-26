@@ -64,6 +64,10 @@ export default /* html */ `
                   <label class="block font-bold mb-1 text-indigo-700">Programa (Opcional)</label>
                   <select v-model="formMant.programaCorrespondiente" class="w-full p-2 border border-indigo-300 rounded-lg bg-indigo-50 font-bold text-indigo-900">
                     <option value="">-- Sin Programa --</option>
+                    <optgroup v-if="tallerSinPrograma(formMant.afi)" :label="'En taller sin programa (no programado) · ' + tallerSinPrograma(formMant.afi).ubicacion">
+                      <option v-if="tallerSinPrograma(formMant.afi).valor" :value="tallerSinPrograma(formMant.afi).valor">[REPARACION] {{ tallerSinPrograma(formMant.afi).nombre }} · AFI {{ formMant.afi }} en {{ tallerSinPrograma(formMant.afi).ubicacion }} (no programado)</option>
+                      <option v-else disabled value="__sin__">Falta crear el programa de reparación "REPARACION SIN PROGRAMA" en Programas Reparación</option>
+                    </optgroup>
                     <optgroup v-if="programasDelAfi(formMant.afi).length" :label="'Programas con el AFI ' + formMant.afi">
                       <option v-for="x in programasDelAfi(formMant.afi)" :key="'a' + x.prog.id" :value="x.nombre">[{{ x.prog.carpeta || x.prog.tipo }}] {{ x.nombre }} · {{ x.etiqueta }}</option>
                     </optgroup>
@@ -71,6 +75,7 @@ export default /* html */ `
                       <option v-for="p in dbProgramasCalendarios.filter(p => !programasDelAfi(formMant.afi).some(x => x.prog.id === p.id))" :key="p.id" :value="p.nombre_programa || p.mes">[{{ p.carpeta || p.tipo }}] {{ p.nombre_programa || p.mes }}</option>
                     </optgroup>
                   </select>
+                  <p v-if="!formMant.programaCorrespondiente && tallerSinPrograma(formMant.afi)" class="text-[10px] text-amber-700 font-semibold mt-0.5"><i class="fa-solid fa-warehouse"></i> Este equipo está en el taller ({{ tallerSinPrograma(formMant.afi).ubicacion }}) sin programa: elige la opción "no programado" para que el reporte quede en su reparación.</p>
                   <template v-if="formMant.programaCorrespondiente && programaEsReparacion(formMant.programaCorrespondiente)">
                     <label :class="['mt-1.5 flex items-start gap-2 rounded-lg border p-2 cursor-pointer', formMant.reparacionTerminada ? 'bg-emerald-50 border-emerald-400' : 'bg-white border-indigo-200']">
                       <input type="checkbox" v-model="formMant.reparacionTerminada" class="mt-0.5 accent-emerald-600">

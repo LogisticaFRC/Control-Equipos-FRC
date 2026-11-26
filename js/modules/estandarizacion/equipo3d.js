@@ -308,14 +308,80 @@ export async function montarEquipo3D(host, opciones = {}) {
       afi: [0.65, yc + 0.25, 1.031, 0], rotulos: [[-1.6, yc + 0.25, Wd / 2 + 0.008, 0], [-1.6, yc - 0.15, Wd / 2 + 0.008, 0], [0.5, yc + 0.0, -Wd / 2 - 0.008, Math.PI]],
       senales: { y: yc - 0.25, z: -Wd / 2 - 0.008, rot: Math.PI, xs: [0.85, 0.6, 0.35, 0.1, -0.15] }, huincha: { L: 2.8, W: Wd, y: yc - 0.35, cx: -0.25 }, bandeja, escape };
   };
-  FIG.camioneta = FIG.camion;
-  const fig = figuraDe(tipo);
+  // ---------- 2026-11-25: CAMIONETA (pickup doble cabina con barra antivuelco) para el check list de vehículo ----------
+  FIG.camioneta = () => {
+    const Wd = 1.85, yb = 0.9;
+    [[1.55, 1], [1.55, -1], [-1.6, 1], [-1.6, -1]].forEach(([x, sg]) => rueda(x, sg * (Wd / 2 - 0.08), 0.4, 0.3));
+    caja(4.6, 0.2, 1.3, M.oscuro, 0, 0.55, 0);
+    caja(5.2, 0.5, Wd, M.verde, 0, yb, 0);                          // carrocería baja
+    caja(1.35, 0.22, Wd - 0.04, M.verde, 1.88, yb + 0.36, 0);        // capó
+    const cab = caja(1.8, 0.78, Wd - 0.04, M.verde, 0.17, yb + 0.64, 0);
+    const techo = yb + 1.03; caja(1.7, 0.05, Wd - 0.08, M.verdeOsc, 0.12, techo, 0);
+    const pb = caja(0.74, 0.04, Wd - 0.12, M.vidrio, 1.25, yb + 0.69, 0); pb.rotation.z = -0.95;   // parabrisas inclinado
+    [1, -1].forEach(sg => { caja(0.7, 0.42, 0.02, M.vidrio, 0.6, yb + 0.72, sg * (Wd / 2 - 0.01)); caja(0.72, 0.42, 0.02, M.vidrio, -0.18, yb + 0.72, sg * (Wd / 2 - 0.01)); });
+    caja(0.02, 0.4, Wd - 0.4, M.vidrio, -0.73, yb + 0.72, 0);         // vidrio trasero
+    // tolva
+    const xT = -1.72, LT = 1.9;
+    caja(LT, 0.05, Wd - 0.12, M.oscuro, xT, yb + 0.26, 0);
+    [1, -1].forEach(sg => caja(LT, 0.42, 0.06, M.verde, xT, yb + 0.46, sg * (Wd / 2 - 0.03)));
+    caja(0.06, 0.42, Wd, M.verde, xT - LT / 2, yb + 0.46, 0);
+    // barra antivuelco
+    const xR = -0.86, hR = 0.62, yR = yb + 0.67;
+    [1, -1].forEach(sg => cil(0.035, 0.035, hR + 0.4, M.acero, xR, yR + hR / 2 - 0.2, sg * (Wd / 2 - 0.12), null, 12));
+    cil(0.035, 0.035, Wd - 0.24, M.acero, xR, yR + hR + 0.02, 0, [Math.PI / 2, 0, 0], 12);
+    // parachoques, focos, espejos
+    caja(0.16, 0.22, Wd + 0.04, M.oscuro, 2.62, 0.72, 0); caja(0.14, 0.2, Wd + 0.04, M.oscuro, -2.68, 0.72, 0);
+    [1, -1].forEach(sg => { caja(0.02, 0.13, 0.32, M.luz, 2.6, yb + 0.12, sg * 0.62); caja(0.02, 0.16, 0.14, M.rojo, -2.67, yb + 0.15, sg * 0.78); caja(0.08, 0.14, 0.18, M.oscuro, 1.1, yb + 0.72, sg * (Wd / 2 + 0.1)); });
+    caja(0.02, 0.18, 1.0, M.oscuro, 2.58, yb + 0.12, 0);              // parrilla
+    return { top: techo, Wd, yb, xT, LT, xR, yR, hR, cab,
+      logos: [[0.28, yb + 0.08, Wd / 2 + 0.006, 0], [0.28, yb + 0.08, -Wd / 2 - 0.006, Math.PI]], logoW: 0.85 };
+  };
+  const esVeh = !!opciones.vehiculo;
+  const fig = esVeh ? 'camioneta' : figuraDe(tipo);
   const A = (FIG[fig] || FIG.generador)();
 
   // ---------- elementos del estándar ----------
   const items = {};   // k → [objetos]
   const reg = (k, o) => { (items[k] = items[k] || []).push(o); o.traverse(x => { x.userData.k = k; }); return o; };
   const grupo = (x, y, z, rotY = 0) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = rotY; equipo.add(g); return g; };
+  if (esVeh) {
+    // ---------- elementos del check list de VEHÍCULO (EVL-FRC) ----------
+    const { yb, xT, LT, xR, yR, hR, Wd, top } = A, piso = yb + 0.29, zI = Wd / 2 - 0.12;
+    const naranjo = mat(0xf97316, { roughness: 0.6 }), lima = mat(0xc6e632, { roughness: 0.8, metalness: 0 }), gris = mat(0x8b949c, { roughness: 0.6 });
+    // logos FRC en las puertas y patente
+    A.logos.forEach(([x, y, z, r]) => placa(A.logoW, A.logoW / 2, texLogo, x, y, z, r));
+    const texPat = textura((ctx, w, h) => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = '#111'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, w - 10, h - 10); ctx.fillStyle = '#111'; ctx.font = 'bold 110px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(afi || 'PATENTE'), w / 2, h / 2 + 6); });
+    placa(0.42, 0.13, texPat, 2.71, 0.72, 0, Math.PI / 2); placa(0.42, 0.13, texPat, -2.76, 0.72, 0, -Math.PI / 2);
+    // baliza sobre la barra antivuelco
+    { const g = grupo(xR, yR + hR + 0.06, 0); cil(0.08, 0.09, 0.05, M.oscuro, 0, 0.025, 0, null, 24, g); const luz = cil(0.06, 0.07, 0.14, new THREE.MeshStandardMaterial({ color: AMBAR, emissive: AMBAR, emissiveIntensity: 1.2, transparent: true, opacity: 0.92 }), 0, 0.12, 0, null, 24, g); luz.userData.baliza = true; reg('baliza', g); }
+    // GPS en el techo
+    { const g = grupo(0.55, top + 0.03, -0.45); caja(0.18, 0.05, 0.12, M.goma, 0, 0.0, 0, g); cil(0.012, 0.012, 0.12, M.goma, 0.06, 0.08, 0, null, 8, g); reg('gps', g); }
+    // pértiga con banderín (esquina trasera de la tolva)
+    { const g = grupo(xT - LT / 2 + 0.12, piso, -zI + 0.04); cil(0.022, 0.022, 3.0, mat(0xffffff, { roughness: 0.5 }), 0, 1.5, 0, null, 10, g); for (let i = 0; i < 6; i++) cil(0.024, 0.024, 0.18, M.rojo, 0, 0.4 + i * 0.42, 0, null, 10, g);
+      const ban = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 3.0, 0), new THREE.Vector3(0.55, 2.86, 0), new THREE.Vector3(0, 2.7, 0)]), new THREE.MeshStandardMaterial({ color: 0xf97316, side: THREE.DoubleSide, emissive: 0x7a2e00, emissiveIntensity: 0.25 })); ban.geometry.computeVertexNormals(); g.add(ban); reg('pertiga', g); }
+    // extintor en la pared delantera de la tolva
+    { const g = grupo(xT + LT / 2 - 0.12, piso + 0.24, zI - 0.18); cil(0.075, 0.075, 0.42, M.rojo, 0, 0, 0, null, 24, g); cil(0.03, 0.04, 0.06, M.oscuro, 0, 0.24, 0, null, 12, g); caja(0.1, 0.02, 0.03, M.oscuro, 0.05, 0.28, 0, g); caja(0.04, 0.22, 0.16, M.oscuro, 0.09, 0, 0, g); reg('extintor', g); }
+    // neumático de repuesto parado contra la pared delantera
+    { const g = grupo(xT + LT / 2 - 0.2, piso + 0.36, -0.3); cil(0.36, 0.36, 0.25, M.goma, 0, 0, 0, [0, 0, Math.PI / 2], 32, g); cil(0.2, 0.2, 0.27, M.acero, 0, 0, 0, [0, 0, Math.PI / 2], 24, g); reg('repuesto', g); }
+    // gata (tijera) en el piso de la tolva
+    { const g = grupo(xT + 0.1, piso, zI - 0.25); caja(0.36, 0.03, 0.12, M.oscuro, 0, 0.015, 0, g); [1, -1].forEach(sg => { const b = caja(0.24, 0.035, 0.05, M.verdeOsc, sg * 0.08, 0.1, 0, g); b.rotation.z = sg * 0.7; const c = caja(0.24, 0.035, 0.05, M.verdeOsc, sg * 0.08, 0.24, 0, g); c.rotation.z = -sg * 0.7; }); caja(0.2, 0.03, 0.1, M.oscuro, 0, 0.33, 0, g); cil(0.012, 0.012, 0.6, M.acero, 0, 0.17, 0, [0, 0, Math.PI / 2], 8, g); reg('gata', g); }
+    // llave de rueda (cruz)
+    { const g = grupo(xT - 0.35, piso + 0.03, 0.25); caja(0.5, 0.03, 0.03, M.acero, 0, 0, 0, g).rotation.y = 0.78; caja(0.5, 0.03, 0.03, M.acero, 0, 0, 0, g).rotation.y = -0.78; [[0.18, 0.18], [-0.18, 0.18], [0.18, -0.18], [-0.18, -0.18]].forEach(([x, z]) => cil(0.03, 0.03, 0.05, M.oscuro, x, 0, z, null, 10, g)); reg('llave_rueda', g); }
+    // triángulos (2) parados
+    [-0.05, 0.12].forEach((dz, i) => { const g = grupo(xT - LT / 2 + 0.3 + i * 0.12, piso + 0.02, -0.25 + dz); const tri = new THREE.Mesh(new THREE.CircleGeometry(0.2, 3), M.rojo); tri.rotation.set(0, Math.PI / 2, Math.PI / 2); tri.position.y = 0.17; g.add(tri); caja(0.04, 0.02, 0.26, M.oscuro, 0, 0.0, 0, g); reg('triangulos', g); });
+    // caballete de seguridad (torre de apoyo)
+    { const g = grupo(xT + 0.25, piso, -0.05); [[0.12, 0.12], [-0.12, 0.12], [0.12, -0.12], [-0.12, -0.12]].forEach(([x, z]) => { const p = cil(0.018, 0.018, 0.4, M.rojo, x * 0.6, 0.18, z * 0.6, null, 8, g); p.rotation.set(z * 1.6, 0, -x * 1.6); }); cil(0.035, 0.035, 0.25, gris, 0, 0.3, 0, null, 12, g); caja(0.16, 0.03, 0.08, M.oscuro, 0, 0.43, 0, g); reg('caballete', g); }
+    // kit antiderrame (balde verde)
+    { const g = grupo(xT - LT / 2 + 0.3, piso, zI - 0.25); cil(0.15, 0.12, 0.34, M.verdeOsc, 0, 0.17, 0, null, 20, g); cil(0.16, 0.16, 0.04, M.oscuro, 0, 0.35, 0, null, 20, g); reg('antiderrame', g); }
+    // cuñas (2) en la rueda trasera
+    [-1.6 + 0.48, -1.6 - 0.48].forEach((x, i) => { const g = grupo(x, 0, Wd / 2 - 0.08); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.24, 3, 1), M.amarillo); c.rotation.set(Math.PI / 2, 0, i ? Math.PI / 6 : -Math.PI / 6 + Math.PI); c.position.y = 0.07; sombra(c); g.add(c); reg('cunas', g); });
+    // alarma de retroceso bajo el parachoques trasero
+    { const g = grupo(-2.55, 0.55, 0.35); caja(0.1, 0.1, 0.14, M.goma, 0, 0, 0, g); cil(0.04, 0.04, 0.02, mat(0x444444), -0.06, 0, 0, [0, 0, Math.PI / 2], 16, g); reg('alarma_retro', g); }
+    // dentro de la cabina (se ven por las ventanas): chaleco, botiquín y documentos
+    { const g = grupo(0.15, yb + 0.55, zI - 0.1); caja(0.04, 0.38, 0.3, lima, 0, 0, 0, g); caja(0.045, 0.04, 0.3, M.blanco, 0, -0.06, 0, g); caja(0.045, 0.04, 0.3, M.blanco, 0, 0.08, 0, g); reg('chaleco', g); }
+    { const g = grupo(-0.55, yb + 0.5, -0.35); caja(0.22, 0.16, 0.3, M.blanco, 0, 0, 0, g); caja(0.225, 0.1, 0.03, M.rojo, 0, 0, 0, g); caja(0.225, 0.03, 0.1, M.rojo, 0, 0, 0, g); reg('botiquin', g); }
+    { const g = grupo(0.95, yb + 0.42, 0.45); caja(0.2, 0.02, 0.26, M.blanco, 0, 0, 0, g).rotation.z = -0.3; caja(0.2, 0.02, 0.26, mat(0x2563eb), 0.02, -0.02, 0, g).rotation.z = -0.3; reg('documentos', g); }
+  } else {
   // baliza
   { const g = grupo(...A.baliza); cil(0.08, 0.09, 0.05, M.oscuro, 0, 0.025, 0, null, 24, g); const luz = cil(0.06, 0.07, 0.14, new THREE.MeshStandardMaterial({ color: AMBAR, emissive: AMBAR, emissiveIntensity: 1.2, transparent: true, opacity: 0.92 }), 0, 0.12, 0, null, 24, g); luz.userData.baliza = true; reg('baliza', g); }
   // GPS
@@ -362,11 +428,13 @@ export async function montarEquipo3D(host, opciones = {}) {
     { const g = grupo(xE - 0.32, yb + 0.62, -zF - 0.03, Math.PI); caja(0.24, 0.3, 0.03, mat(0xd8e2e8, { transparent: true, opacity: 0.85, roughness: 0.2 }), 0, 0, 0, g); caja(0.19, 0.25, 0.005, M.blanco, 0, 0.0, 0.018, g); caja(0.12, 0.02, 0.006, M.rojo, 0, 0.09, 0.022, g); reg('hoja_comb', g); }
   }
 
+  }
   // ---------- encuadre ----------
   const caj = new THREE.Box3().setFromObject(equipo), centro = caj.getCenter(new THREE.Vector3()), tam = caj.getSize(new THREE.Vector3());
   equipo.position.x -= centro.x; equipo.position.z -= centro.z;
   const radio = Math.max(tam.x, tam.y * 1.2, tam.z) * 0.95;
-  let dist = radio * 2.3, alt = 0.32, ang = -0.65, auto = true;
+  const ALT0 = esVeh ? 0.6 : 0.32;
+  let dist = radio * 2.3, alt = ALT0, ang = -0.65, auto = true;
   const objetivo = new THREE.Vector3(0, tam.y * 0.42, 0);
   const ubicarCamara = () => { camera.position.set(Math.sin(ang) * Math.cos(alt) * dist, objetivo.y + Math.sin(alt) * dist, Math.cos(ang) * Math.cos(alt) * dist); camera.lookAt(objetivo); };
 
@@ -423,7 +491,9 @@ export async function montarEquipo3D(host, opciones = {}) {
     rotulo_cap: 'Rótulo capacidades', rotulo_uso: 'Rótulo uso', rotulo_mant: 'Rótulo mantención',
     sen_bloqueo: 'Señalética bloqueo', sen_bateria: 'Señalética batería', sen_atrap: 'Señalética atrapamiento', sen_energias: 'Señalética energías', sen_comb: 'Señalética combustible',
     huincha: 'Huincha reflectante', bandeja: 'Bandeja antiderrame', termoseal: 'Termoseal escape',
-    bloqueo: 'Punto de bloqueo', bateria: 'Batería', guardas: 'Guardas partes móviles', barra_cooper: 'Barra Cooper', hoja_comb: 'Hoja seguridad combustible' };
+    bloqueo: 'Punto de bloqueo', bateria: 'Batería', guardas: 'Guardas partes móviles', barra_cooper: 'Barra Cooper', hoja_comb: 'Hoja seguridad combustible',
+    gata: 'Gata', llave_rueda: 'Llave de rueda', repuesto: 'Neumático repuesto', triangulos: 'Triángulos', chaleco: 'Chaleco reflectante', botiquin: 'Botiquín', documentos: 'Documentos',
+    cunas: 'Cuñas', caballete: 'Caballete', pertiga: 'Pértiga', alarma_retro: 'Alarma retroceso', antiderrame: 'Kit antiderrame' };
   if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
   const capa = document.createElement('div');
   capa.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;font-family:Inter,system-ui,sans-serif';
@@ -517,7 +587,7 @@ export async function montarEquipo3D(host, opciones = {}) {
     actualizar(nuevos) { estados = nuevos || {}; aplicarEstados(); pintarEtiquetas(); },
     nombres(v) { conNombres = v; },
     resaltar(k) { resaltado = k; },
-    vista(v) { auto = false; ang = { frente: 0, lado: -Math.PI / 2, atras: Math.PI, arriba: ang }[v] ?? ang; if (v === 'arriba') alt = 1.1; else alt = 0.32; },
+    vista(v) { auto = false; ang = { frente: 0, lado: -Math.PI / 2, atras: Math.PI, arriba: ang }[v] ?? ang; if (v === 'arriba') alt = 1.1; else alt = ALT0; },
     girar(v) { auto = v; },
     destruir() { vivo = false; ro.disconnect(); renderer.dispose(); el.remove(); capa.remove(); }
   };

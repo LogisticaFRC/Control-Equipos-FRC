@@ -159,7 +159,7 @@ export default /* html */ `
       </div>
 
       <div class="shrink-0 flex gap-1 px-6 pt-3 border-b border-slate-300 bg-slate-100 overflow-x-auto">
-        <button v-for="p in [{k:'resumen',l:'Resumen',i:'fa-car'},{k:'km',l:'Kilometraje',i:'fa-road'},{k:'documentos',l:'Documentos',i:'fa-folder-open'}]" :key="p.k" @click="tabPerfilVeh = p.k"
+        <button v-for="p in [{k:'resumen',l:'Resumen',i:'fa-car'},{k:'km',l:'Kilometraje',i:'fa-road'},{k:'documentos',l:'Documentos',i:'fa-folder-open'},{k:'checklist',l:'Check list',i:'fa-clipboard-check'}]" :key="p.k" @click="tabPerfilVeh = p.k"
           :class="['px-4 py-2.5 font-bold rounded-t-lg border border-b-0 -mb-px transition', tabPerfilVeh === p.k ? 'bg-white text-amber-600 border-slate-300' : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800']">
           <i :class="['fa-solid mr-1.5', p.i]"></i>{{ p.l }}
           <span v-if="p.k === 'documentos' && (vehPerfil.nVencidos + vehPerfil.nPorVencer)" :class="['ml-1 px-1.5 rounded-full text-[10px] text-white', vehPerfil.nVencidos ? 'bg-rose-600' : 'bg-amber-500']">{{ vehPerfil.nVencidos + vehPerfil.nPorVencer }}</span>
@@ -260,6 +260,15 @@ export default /* html */ `
               </table>
             </div>
           </div>
+        </template>
+
+        <!-- ---------- CHECK LIST DE VEHÍCULO (2026-11-25): estándar EVL-FRC, figura 3D y registros ---------- -->
+        <template v-if="tabPerfilVeh === 'checklist' && vehPerfil.eq">
+          <div class="grid md:grid-cols-[1fr_auto] gap-3 items-center">
+            <estandar-boton :eq="vehPerfil.eq"></estandar-boton>
+            <a href="plantillas/checklist-vehiculo-FRC.pdf" target="_blank" rel="noopener" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-3 font-bold text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-print text-2xl text-emerald-700"></i><span>Hoja para imprimir<span class="block text-[11px] font-semibold text-slate-500">PDF en blanco, para llenar a mano</span></span></a>
+          </div>
+          <estandar-equipo :eq="vehPerfil.eq"></estandar-equipo>
         </template>
 
         <!-- ---------- DOCUMENTOS ---------- -->

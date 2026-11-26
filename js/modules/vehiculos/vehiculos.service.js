@@ -271,7 +271,7 @@ export const irAVehiculos = () => { currentTab.value = 'vehiculos'; };
 // Perfil del vehículo
 // ---------------------------------------------------------------------
 export const vehAbierto = ref('');          // patente del perfil abierto
-export const tabPerfilVeh = ref('resumen'); // resumen | km | documentos
+export const tabPerfilVeh = ref('resumen'); // resumen | km | documentos | checklist
 export const formConf = ref({});
 export const formKm = ref({});
 export const vehPerfil = computed(() => vehAbierto.value ? vehiculoDe(vehAbierto.value) : null);

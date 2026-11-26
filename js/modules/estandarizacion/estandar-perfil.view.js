@@ -21,7 +21,7 @@ export default {
     <!-- Figura 3D -->
     <div class="lg:col-span-3 rounded-2xl border overflow-hidden bg-gradient-to-b from-slate-50 to-emerald-50 relative">
       <div class="absolute top-3 left-4 z-10">
-        <p class="text-[10px] font-black uppercase tracking-wider text-emerald-800">Figura del equipo</p>
+        <p class="text-[10px] font-black uppercase tracking-wider text-emerald-800">{{ esVeh ? 'Figura del vehículo' : 'Figura del equipo' }}</p>
         <p class="text-lg font-black text-slate-800 leading-tight">AFI {{ eq.afi }} <span class="text-sm font-bold text-slate-500">{{ eq.tipo }}</span></p>
       </div>
       <div class="absolute top-3 right-3 z-10 flex gap-1">
@@ -41,7 +41,7 @@ export default {
     <div class="lg:col-span-2 rounded-2xl border bg-white flex flex-col max-h-[440px]">
       <div class="p-4 border-b">
         <div class="flex items-start justify-between gap-2">
-          <div><p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Última estandarización</p>
+          <div><p class="text-[10px] font-black uppercase tracking-wider text-slate-500">{{ esVeh ? 'Último check list' : 'Última estandarización' }}<span v-if="ult && E.tipoInspeccionDe(ult)" class="ml-1 normal-case tracking-normal px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">{{ E.tipoInspeccionDe(ult) }}</span></p>
             <p v-if="ult" class="font-bold text-slate-800">{{ formatDateForDisplay(ult.fecha) }} <span class="text-xs text-slate-500 font-semibold">· {{ responsables(ult) }}</span></p>
             <p v-else class="text-sm text-slate-500">Este equipo aún no tiene estandarización. La hace el mecánico desde la app.</p></div>
           <div v-if="ult" class="text-right"><div :class="['text-3xl font-black leading-none', E.colorPct(ult.cumplimiento)]">{{ ult.cumplimiento }}%</div><div class="text-[10px] text-slate-500">{{ nBuenos }} bueno · {{ nMalos }} malo</div></div>
@@ -70,7 +70,7 @@ export default {
       <tbody>
         <template v-for="r in lista" :key="r.id || r.created_at">
         <tr class="border-t hover:bg-slate-50 cursor-pointer" @click="abierto = abierto === r ? null : r">
-          <td class="px-4 py-2 font-mono">{{ formatDateForDisplay(r.fecha) }}</td>
+          <td class="px-4 py-2 font-mono">{{ formatDateForDisplay(r.fecha) }}<span v-if="E.tipoInspeccionDe(r)" class="block font-sans text-[10px] text-slate-500">{{ E.tipoInspeccionDe(r) }}</span></td>
           <td class="px-2"><b :class="E.colorPct(r.cumplimiento)">{{ r.cumplimiento }}%</b></td>
           <td class="px-2"><span v-if="malos(r).length" class="text-rose-700 font-bold">{{ malos(r).length }}</span><span v-else class="text-emerald-700">0</span></td>
           <td class="px-2 hidden sm:table-cell text-xs">{{ responsables(r) }}</td>
@@ -96,6 +96,7 @@ export default {
     const host3d = ref(null), error3d = ref(''), sel = ref(null), abierto = ref(null), conNombres = ref(true);
     const alternarNombres = () => { conNombres.value = !conNombres.value; vis && vis.nombres(conNombres.value); };
     let vis = null;
+    const esVeh = computed(() => E.esVehiculoEst(props.eq));
     const lista = computed(() => E.registrosDe(props.eq.afi));
     const ult = computed(() => lista.value[0] || null);
     const nBuenos = computed(() => (ult.value?.items || []).filter(i => i.estado === 'BUENO').length);
@@ -107,7 +108,7 @@ export default {
       if (vis) { vis.destruir(); vis = null; }
       await nextTick();
       if (!host3d.value) return;
-      try { vis = await montarEquipo3D(host3d.value, { tipo: props.eq.tipo, afi: props.eq.afi, estados: estados3d(), nombres: conNombres.value, onPick: (k) => { sel.value = k; vis && vis.resaltar(k); if (k) { const b = document.querySelector(`[data-est=perfil] [data-k="${k}"]`); b && b.scrollIntoView({ block: 'nearest' }); } } }); error3d.value = ''; }
+      try { vis = await montarEquipo3D(host3d.value, { tipo: props.eq.tipo, afi: props.eq.afi, vehiculo: E.esVehiculoEst(props.eq), estados: estados3d(), nombres: conNombres.value, onPick: (k) => { sel.value = k; vis && vis.resaltar(k); if (k) { const b = document.querySelector(`[data-est=perfil] [data-k="${k}"]`); b && b.scrollIntoView({ block: 'nearest' }); } } }); error3d.value = ''; }
       catch (e) { error3d.value = 'No se pudo cargar la figura 3D (revisa la conexión a internet).'; console.warn(e); }
     };
     const elegir = (k) => { sel.value = sel.value === k ? null : k; vis && vis.resaltar(sel.value); };
@@ -117,6 +118,6 @@ export default {
     watch(() => props.eq.afi, async () => { await E.cargarEstandarizaciones(props.eq.afi); montar(); });
     watch(ult, () => { vis && vis.actualizar(estados3d()); });
     onBeforeUnmount(() => { vis && vis.destruir(); });
-    return { E, conNombres, alternarNombres, VISTAS, host3d, error3d, sel, abierto, lista, ult, nBuenos, nMalos, malos, responsables, elegir, hover, vista, isAdmin, formatDateForDisplay, figuraDe };
+    return { E, esVeh, conNombres, alternarNombres, VISTAS, host3d, error3d, sel, abierto, lista, ult, nBuenos, nMalos, malos, responsables, elegir, hover, vista, isAdmin, formatDateForDisplay, figuraDe };
   }
 };

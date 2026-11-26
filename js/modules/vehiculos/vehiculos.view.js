@@ -7,12 +7,15 @@ import { comunes } from '../../core/comunes.js';
 import { hoyISO, diasEntre } from '../../core/utils.js';
 import { getBadgeClass, getEstadoText, uploadFotoEquipo, empresaDe } from '../inventario/inventario.service.js';
 import * as S from './vehiculos.service.js';
+import EstandarEquipo from '../estandarizacion/estandar-perfil.view.js';   // pestaña Check list (2026-11-25)
+import EstandarBoton from '../estandarizacion/estandar-form.view.js';
 
 const { onMounted, ref, computed } = Vue;
 
 export default {
   name: 'VehiculosView',
   template,
+  components: { EstandarEquipo, EstandarBoton },
   setup() {
     onMounted(() => { S.cargarVehiculos(); });
     const verAvisos = ref(true);

@@ -10,6 +10,7 @@
 import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
 import { usuarioActivo } from '../../core/store.js';
 import { hoyISO, limpiarAfi, mismoAfi } from '../../core/utils.js';
+import { esVehiculo } from '../inventario/inventario.mapper.js';
 
 const { ref } = Vue;
 const kAfi = (a) => limpiarAfi(a).toUpperCase();
@@ -42,16 +43,40 @@ const ITEMS_EGT = [
   { k: 'gps', t: 'Dispositivo GPS (correctamente instalado)', cant: 1 },
   { k: 'gps_func', t: 'Comprobar funcionamiento del dispositivo GPS', cant: 1 }
 ];
+// 2026-11-25 · Estándar de VEHÍCULO (camionetas y vehículos con patente). ley: true = exigido por la Ley de Tránsito (art. 75).
+const ITEMS_EVL = [
+  { k: 'gata', t: 'Gata (hidráulica o mecánica)', cant: 1, ley: true },
+  { k: 'llave_rueda', t: 'Llave de rueda (cruz)', cant: 1, ley: true },
+  { k: 'repuesto', t: 'Neumático de repuesto en buen estado', cant: 1, ley: true },
+  { k: 'triangulos', t: 'Triángulos reflectantes', cant: 2, ley: true },
+  { k: 'extintor', t: 'Extintor PQS con carga vigente', cant: 1, ley: true },
+  { k: 'chaleco', t: 'Chaleco reflectante', cant: 1, ley: true },
+  { k: 'botiquin', t: 'Botiquín de primeros auxilios', cant: 1, ley: true },
+  { k: 'documentos', t: 'Documentos al día (padrón, permiso de circulación, revisión técnica, SOAP)', cant: 1, ley: true },
+  { k: 'cunas', t: 'Cuñas de seguridad', cant: 2 },
+  { k: 'caballete', t: 'Caballete de seguridad', cant: 1 },
+  { k: 'baliza', t: 'Baliza (color ámbar)', cant: 1 },
+  { k: 'pertiga', t: 'Pértiga con banderín', cant: 1 },
+  { k: 'alarma_retro', t: 'Alarma de retroceso', cant: 1 },
+  { k: 'antiderrame', t: 'Kit antiderrame', cant: 1 },
+  { k: 'gps', t: 'Dispositivo GPS (instalado y funcionando)', cant: 1 }
+];
 export const PLANTILLAS = {
-  'EGT-FRC': { codigo: 'EGT-FRC', titulo: 'Estándar de Generadores & Torres de Iluminación', revision: '01', fecha: '02-12-2025', items: ITEMS_EGT }
+  'EGT-FRC': { codigo: 'EGT-FRC', titulo: 'Estándar de Generadores & Torres de Iluminación', revision: '01', fecha: '02-12-2025', items: ITEMS_EGT },
+  'EVL-FRC': { codigo: 'EVL-FRC', titulo: 'Estándar de Vehículo (camioneta)', revision: '01', fecha: '25-11-2026', items: ITEMS_EVL, vehiculo: true }
 };
-/** Plantilla del equipo según su tipo (por ahora todos usan EGT-FRC; aquí se agregan las de compresores, bombas, etc.). */
-export const plantillaDe = (_eq) => PLANTILLAS['EGT-FRC'];
-/** ¿El tipo tiene un estándar propio cargado? (generadores y torres sí) */
-export const tieneEstandarPropio = (eq) => /GENERADOR|TORRE/i.test(String(eq?.tipo || ''));
+export const TIPOS_INSPECCION = { PROGRAMADA: 'Inspección programada', NO_PROGRAMADA: 'Inspección no programada' };
+/** ¿Es vehículo? (AFI = patente, o tipo camioneta/auto/furgón/vehículo liviano) */
+export const esVehiculoEst = (eq) => esVehiculo(eq) || /CAMIONETA|AUTOM[OÓ]VIL|FURG[OÓ]N|VEH[IÍ]CULO|PICK ?UP|SUV|JEEP/i.test(String(eq?.tipo || ''));
+/** Plantilla del equipo según su tipo: vehículos → EVL-FRC; el resto EGT-FRC (aquí se agregan las de compresores, bombas, etc.). */
+export const plantillaDe = (eq) => (esVehiculoEst(eq) ? PLANTILLAS['EVL-FRC'] : PLANTILLAS['EGT-FRC']);
+/** ¿El tipo tiene un estándar propio cargado? (generadores, torres y vehículos sí) */
+export const tieneEstandarPropio = (eq) => esVehiculoEst(eq) || /GENERADOR|TORRE/i.test(String(eq?.tipo || ''));
 
 export const ESTADOS = { BUENO: { t: 'Bueno', c: 'bg-emerald-500 text-white border-emerald-600' }, MALO: { t: 'Malo', c: 'bg-rose-500 text-white border-rose-600' }, NA: { t: 'N/A', c: 'bg-slate-500 text-white border-slate-600' } };
 
+/** Tipo de inspección de un registro (columna nueva o, si no existe, lo escrito en Observaciones). */
+export const tipoInspeccionDe = (r) => TIPOS_INSPECCION[r?.tipo_inspeccion] || (String(r?.observaciones || '').match(/^\[(Inspección (?:no )?programada)\]/i) || [])[1] || '';
 /** Cumplimiento: ítems Bueno / ítems evaluados (sin N/A), en %. */
 export const cumplimiento = (items) => {
   const ev = (items || []).filter(i => i.estado === 'BUENO' || i.estado === 'MALO');
@@ -86,8 +111,8 @@ export const abrirEstandarizacion = (eq) => {
   const ult = ultimaDe(eq.afi);
   formEst.value = {
     afi: kAfi(eq.afi), equipo: [eq.tipo, eq.marca, eq.modelo].filter(Boolean).join(' '), tipo: eq.tipo || '',
-    fecha: hoyISO(), plantilla: p.codigo, horometro: '',
-    items: p.items.map(i => ({ k: i.k, t: i.t, cant: i.cant, encontrada: i.cant, estado: '', obs: '' })),
+    fecha: hoyISO(), plantilla: p.codigo, horometro: '', vehiculo: !!p.vehiculo, tipoInspeccion: '',
+    items: p.items.map(i => ({ k: i.k, t: i.t, cant: i.cant, encontrada: i.cant, estado: '', obs: '', ley: !!i.ley })),
     observaciones: '', responsables: [{ nombre: quien(), firma: '' }],
     anterior: ult ? ult.fecha : null
   };
@@ -103,6 +128,7 @@ export const guardarEstandarizacion = async () => {
   if (sinMarcar.length) { alert(`Faltan ${sinMarcar.length} ítem(s) por marcar (Bueno, Malo o N/A). El primero: ${sinMarcar[0].t}.`); return false; }
   const malosSinObs = f.items.filter(i => i.estado === 'MALO' && !String(i.obs || '').trim());
   if (malosSinObs.length && !confirm(`Hay ${malosSinObs.length} ítem(s) MALO sin comentario. ¿Enviar igual?`)) return false;
+  if (f.vehiculo && !f.tipoInspeccion) { alert('Marca si es Inspección programada o no programada.'); return false; }
   const resp = f.responsables.filter(r => String(r.nombre || '').trim());
   if (!resp.length) { alert('Escribe el nombre del trabajador responsable.'); return false; }
   if (!resp[0].firma) { alert('Falta la firma del responsable.'); return false; }
@@ -120,11 +146,20 @@ export const guardarEstandarizacion = async () => {
     const fila = {
       afi: f.afi, equipo: f.equipo || null, fecha: f.fecha, plantilla: f.plantilla,
       horometro: f.horometro === '' ? null : Number(f.horometro) || null,
-      items: f.items.map(({ k, t, cant, encontrada, estado, obs }) => ({ k, t, cant, encontrada: encontrada === '' ? null : Number(encontrada), estado, obs: String(obs || '').trim() || null })),
+      items: f.items.map(({ k, t, cant, encontrada, estado, obs, ley }) => ({ k, t, cant, encontrada: encontrada === '' ? null : Number(encontrada), estado, obs: String(obs || '').trim() || null, ...(ley ? { ley: true } : {}) })),
       observaciones: String(f.observaciones || '').trim() || null,
       responsables, cumplimiento: cumplimiento(f.items), usuario: quien()
     };
-    const [nueva] = await sb(supabaseClient.from(TABLA_EST).insert([fila]).select());
+    if (f.tipoInspeccion) fila.tipo_inspeccion = f.tipoInspeccion;
+    let nueva;
+    try { [nueva] = await sb(supabaseClient.from(TABLA_EST).insert([fila]).select()); }
+    catch (e1) {
+      // Sin la columna tipo_inspeccion (falta sql/estandarizacion_vehiculos.sql): se guarda igual, con el tipo en Observaciones
+      if (!fila.tipo_inspeccion || !/tipo_inspeccion/i.test(errMsg(e1))) throw e1;
+      const t = TIPOS_INSPECCION[fila.tipo_inspeccion]; delete fila.tipo_inspeccion;
+      fila.observaciones = `[${t}]` + (fila.observaciones ? ' ' + fila.observaciones : '');
+      [nueva] = await sb(supabaseClient.from(TABLA_EST).insert([fila]).select());
+    }
     porAfi.value = { ...porAfi.value, [f.afi]: [nueva || { ...fila, created_at: new Date().toISOString() }, ...registrosDe(f.afi)] };
     formEst.value = null;
     return true;
