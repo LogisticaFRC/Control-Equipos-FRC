@@ -55,7 +55,7 @@ export default {
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-fit">
       <div v-for="r in S.listaPanel.value" :key="r.id" @click="S.abrirRegPanel(r)" :class="['p-3 border-b cursor-pointer hover:bg-slate-50', S.regPanel.value && S.regPanel.value.id === r.id ? 'bg-emerald-50' : '']">
         <div class="flex items-start justify-between gap-2">
-          <div><b class="text-amber-700">AFI {{ r.afi }}</b> <span class="font-bold text-slate-700">· {{ r.modo === 'INSPECCION' ? 'OT Terreno · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span>
+          <div><b class="text-amber-700">AFI {{ r.afi }}</b> <span class="font-bold text-slate-700">· {{ r.modo === 'INSPECCION' ? 'OT Terreno · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'MANTENCION' ? 'Pauta mantención' : r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span>
             <div class="text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }} · {{ (r.mecanicos || []).map(m => m.nombre).join(', ') }}</div></div>
           <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]">{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
         </div>
@@ -75,11 +75,11 @@ export default {
       <div v-if="!r" class="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-400 font-bold">Elige una intervención de la lista.</div>
       <div v-else class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b bg-slate-50">
-          <div class="font-extrabold text-slate-800">{{ r.modo === 'INSPECCION' ? 'OTT-' + S.folioOF(r) : 'N° ' + r.id }} · AFI {{ r.afi }} · {{ r.modo === 'INSPECCION' ? 'OT Terreno' + (r.tipo === 'ELECTRICA' ? ' (eléctrico)' : ' (mecánico)') : r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
+          <div class="font-extrabold text-slate-800">{{ r.modo === 'INSPECCION' ? 'OTT-' + S.folioOF(r) : 'N° ' + r.id }} · AFI {{ r.afi }} · {{ r.tipo === 'MANTENCION' ? 'Pauta de mantención' : r.modo === 'INSPECCION' ? 'OT Terreno' + (r.tipo === 'ELECTRICA' ? ' (eléctrico)' : ' (mecánico)') : r.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica' }}</div>
           <div class="flex gap-2">
             <button @click="S.descargarPDF(r)" class="px-3 py-1.5 rounded-lg border font-bold"><i class="fa-solid fa-file-pdf text-rose-600 mr-1"></i>PDF</button>
             <a v-if="r.documento_url" :href="r.documento_url" target="_blank" class="px-3 py-1.5 rounded-lg border font-bold text-emerald-700"><i class="fa-solid fa-link mr-1"></i>Doc. Historial</a>
-            <button @click="editando = !editando" v-if="r.estado !== 'EN_HISTORIAL'" :class="['px-3 py-1.5 rounded-lg border font-bold', editando ? 'bg-amber-100 border-amber-300' : '']"><i class="fa-solid fa-pen mr-1"></i>{{ editando ? 'Ver hoja' : 'Corregir' }}</button>
+            <button @click="editando = !editando" v-if="r.estado !== 'EN_HISTORIAL' && r.tipo !== 'MANTENCION'" :class="['px-3 py-1.5 rounded-lg border font-bold', editando ? 'bg-amber-100 border-amber-300' : '']"><i class="fa-solid fa-pen mr-1"></i>{{ editando ? 'Ver hoja' : 'Corregir' }}</button>
             <button @click="S.eliminarReg(r)" class="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold"><i class="fa-solid fa-trash"></i></button>
           </div>
         </div>

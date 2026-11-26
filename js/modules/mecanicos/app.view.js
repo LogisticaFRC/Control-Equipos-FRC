@@ -14,7 +14,9 @@ import { textoEstado } from '../../core/comunes.js';   // 2026-11-23: "En Manten
 import { logoSrc, onLogoError } from '../configuracion/configuracion.service.js';
 import TallerMecanico from '../taller/taller-mecanico.view.js';
 import ActividadesEquipo from './actividades-equipo.view.js';
-import EstandarBoton from '../estandarizacion/estandar-form.view.js';   // Inspección general estandarización (2026-11-18)
+import EstandarBoton from '../estandarizacion/estandar-form.view.js';
+import PautaMantencion from './pauta-form.view.js';   // PAUTAS DE MANTENCIÓN (2026-11-26)
+import { pautaDeEquipo } from './pautas.js';   // Inspección general estandarización (2026-11-18)
 import * as F from './fallas-equipo.js';
 import { EstadoEnvios } from '../../core/offline.js';   // SIN INTERNET: barra de envíos guardados (2026-11-19)
 import RiesgosRf from '../seguridad/riesgos-rf.view.js';   // 31 Riesgos de Fatalidad Codelco (2026-11-18)
@@ -33,7 +35,7 @@ const LUGARES = ['TALLER FRC', 'TERRENO', 'FAENA CLIENTE'];
 
 export default {
   name: 'MecanicoApp',
-  components: { EstadoEnvios, RiesgosRf, TallerMecanico, ActividadesEquipo, EstandarBoton, LevantamientosEquipo, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
+  components: { EstadoEnvios, RiesgosRf, TallerMecanico, ActividadesEquipo, EstandarBoton, PautaMantencion, LevantamientosEquipo, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
 <div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
@@ -45,7 +47,7 @@ export default {
     <button v-else-if="tab !== 'inicio'" @click="tab = 'inicio'" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Menú"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <div v-else class="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center"><img :src="logoSrc" @error="onLogoError" class="max-h-full max-w-full object-contain" referrerpolicy="no-referrer"></div>
     <div class="flex-1 min-w-0">
-      <div class="font-extrabold leading-tight truncate">{{ CH.formCheck.value ? 'Check list camión · ' + (CH.formCheck.value.patente || 'nuevo') : S.formInt.value ? (S.formInt.value.modo === 'INSPECCION' ? 'OT Terreno' : S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
+      <div class="font-extrabold leading-tight truncate">{{ CH.formCheck.value ? 'Check list camión · ' + (CH.formCheck.value.patente || 'nuevo') : S.formInt.value ? (S.formInt.value.tipo === 'MANTENCION' ? 'Pauta mantención' : S.formInt.value.modo === 'INSPECCION' ? 'OT Terreno' : S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
       <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Técnicos FRC' + (S.cargoActual.value ? ' · ' + S.cargoActual.value : '') + ' · ' + (S.esChofer.value ? 'Chofer' : S.esCrtg.value ? 'Terreno CRTG' : S.esTaller.value ? 'Taller' : 'Terreno') }}</div>
     </div>
     <img v-if="S.esCrtg.value" :src="LOGO_CRTG" alt="CRTG" title="CRTG" class="h-8 w-8 object-contain bg-white rounded-lg p-0.5 shrink-0">
@@ -67,7 +69,7 @@ export default {
       <div v-if="f.motivo_rechazo && f.estado === 'RECHAZADA'" class="mx-4 mt-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-3 text-sm"><b>Corregir:</b> {{ f.motivo_rechazo }}</div>
 
       <!-- Paso 1: datos -->
-      <section v-show="S.pasoInt.value === 1" class="p-4 space-y-3">
+      <section v-if="f.tipo !== 'MANTENCION'" v-show="S.pasoInt.value === 1" class="p-4 space-y-3">
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <label class="block"><span class="lbl">{{ f.modo != null ? 'Fecha inicio' : 'Fecha' }}</span><input type="date" v-model="f.fecha" class="inp"></label>
@@ -88,7 +90,7 @@ export default {
       </section>
 
       <!-- Paso 2: qué se hizo -->
-      <section v-show="S.pasoInt.value === 2" class="p-4 space-y-3">
+      <section v-if="f.tipo !== 'MANTENCION'" v-show="S.pasoInt.value === 2" class="p-4 space-y-3">
         <!-- 2026-11-18: INSPECCIÓN (observación + fallas enumeradas) o REPARACIÓN de una falla · cada envío = un report -->
         <div v-if="f.modo != null && !f.modoFijo" class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
           <span class="lbl">¿Qué vas a registrar?</span>
@@ -189,7 +191,7 @@ export default {
       </section>
 
       <!-- Paso 3: seguridad -->
-      <section v-show="S.pasoInt.value === 3" class="p-4 space-y-3">
+      <section v-if="f.tipo !== 'MANTENCION'" v-show="S.pasoInt.value === 3" class="p-4 space-y-3">
         <!-- 2026-11-18: ART y BLOQUEO se llenan en papel → solo FOTO de las hojas -->
         <div v-if="f.modo != null" class="bg-white rounded-2xl p-4 shadow-sm space-y-4" data-int="seguridad">
           <div><span class="lbl">¿Se usó ART?</span>
@@ -297,6 +299,9 @@ export default {
         </template>
       </section>
 
+      <!-- PAUTA DE MANTENCIÓN (2026-11-26): pasos 1-3 propios; el paso 4 (firmas) es el mismo -->
+      <pauta-mantencion v-if="f.tipo === 'MANTENCION'" :f="f" :paso="S.pasoInt.value"></pauta-mantencion>
+
       <!-- Paso 4: firmas -->
       <section v-show="S.pasoInt.value === 4" class="p-4 space-y-3">
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
@@ -392,6 +397,7 @@ export default {
         <button v-if="S.esCrtg.value" @click="K.afiPedido.value = eq.afi; tab = 'repuestos'; S.cerrarEquipo()" class="w-full bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left"><span class="w-14 h-14 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-cart-plus"></i></span><span class="flex-1"><b class="block text-lg">Pedir repuestos</b><span class="text-xs text-slate-500">Para este u otro equipo, con fotos</span></span></button>
         <!-- TALLER: solo equipos en nave tienen actividades; los demás solo se pueden agregar a una nave (no programado) -->
         <actividades-equipo v-if="S.esTaller.value && naveDeAfi(eq.afi)" :eq="eq"></actividades-equipo>
+        <button v-if="S.esTaller.value && naveDeAfi(eq.afi)" @click="S.abrirIntervencion('MANTENCION', eq)" :disabled="!S.tienePauta(eq)" class="w-full bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99] disabled:opacity-60" data-menu="pauta-taller"><span class="w-14 h-14 rounded-2xl bg-lime-100 text-lime-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-oil-can"></i></span><span class="flex-1"><b class="block text-lg">Mantención (pauta)</b><span class="text-xs text-slate-500">{{ S.tienePauta(eq) ? pautaTitulo(eq) : 'Sin pauta para este tipo de equipo' }}</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
         <div v-else-if="S.esTaller.value" class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
           <div class="lbl"><i class="fa-solid fa-warehouse mr-1"></i>Agregar a una nave (equipo no programado)</div>
           <p class="text-xs text-slate-500">En taller solo se trabaja con equipos que están en una nave. Si este equipo llegó sin estar en el programa, ingrésalo a una nave:</p>
@@ -406,7 +412,7 @@ export default {
           <button @click="S.abrirLevantamiento(eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]" data-menu="levantamiento"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-list-ol"></i></span><span class="flex-1"><b class="block text-lg">OT Terreno</b><span class="text-xs text-slate-500">Observación del equipo y fallas enumeradas</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <estandar-boton :eq="eq"></estandar-boton>
           <button @click="S.abrirIntervencion('ELECTRICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-bolt"></i></span><span class="flex-1"><b class="block text-lg">Intervención eléctrica</b><span class="text-xs text-slate-500">IE-FRC</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
-          <div class="bg-white/60 rounded-2xl p-4 flex items-center gap-4 opacity-60"><span class="w-14 h-14 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-oil-can"></i></span><span class="flex-1"><b class="block text-lg">Mantenciones</b><span class="text-xs">Próximamente</span></span></div>
+          <button @click="S.abrirIntervencion('MANTENCION', eq)" :disabled="!S.tienePauta(eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99] disabled:opacity-60" data-menu="pauta"><span class="w-14 h-14 rounded-2xl bg-lime-100 text-lime-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-oil-can"></i></span><span class="flex-1"><b class="block text-lg">Mantención (pauta)</b><span class="text-xs text-slate-500">{{ S.tienePauta(eq) ? pautaTitulo(eq) : 'Sin pauta para este tipo de equipo' }}</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
         </div>
         </template>
         <!-- Últimos registros -->
@@ -485,7 +491,7 @@ export default {
         </div>
         <div v-for="r in (S.carpetaApp.value === 'SIN_FIRMA' ? S.misSinFirma.value : S.misRealizados.value)" :key="r.id" class="bg-white rounded-2xl shadow-sm p-4">
           <div class="flex items-start justify-between gap-2">
-            <div><b class="text-[#1f4d3a]">AFI {{ r.afi }}</b> · <span class="text-sm">{{ r.modo === 'INSPECCION' ? 'OT Terreno · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span><div class="text-xs text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }}</div></div>
+            <div><b class="text-[#1f4d3a]">AFI {{ r.afi }}</b> · <span class="text-sm">{{ r.modo === 'INSPECCION' ? 'OT Terreno · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'MANTENCION' ? 'Pauta mantención' : r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span><div class="text-xs text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }}</div></div>
             <span :class="['text-[10px] font-bold px-2 py-1 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]"><i :class="['fa-solid mr-1', S.ESTADOS_MEC[r.estado]?.i]"></i>{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
           </div>
           <div class="text-sm text-slate-600 mt-1 line-clamp-2"><b v-if="r.tipo === 'MECANICA' && r.causa_falla">{{ r.causa_falla }} · </b>{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
@@ -531,7 +537,7 @@ export default {
     const tab = S.tabApp;
     const limite = ref(40);
     // 2026-11-18: el LEVANTAMIENTO termina en el paso 2 (Crear); la REPARACIÓN de cada falla lleva tiempos, ART, bloqueo y firmas
-    const pasos = computed(() => (S.formInt.value?.modo === 'INSPECCION' ? ['Datos', 'Fallas encontradas'] : ['Datos', 'Trabajo realizado', 'Seguridad', 'Firmas']));
+    const pasos = computed(() => (S.formInt.value?.tipo === 'MANTENCION' ? ['Datos', 'Pauta', 'Repuestos', 'Firmas'] : S.formInt.value?.modo === 'INSPECCION' ? ['Datos', 'Fallas encontradas'] : ['Datos', 'Trabajo realizado', 'Seguridad', 'Firmas']));
     const f = computed(() => S.formInt.value || {});
     const fallasEq = computed(() => (S.formInt.value ? F.fallasAbiertasDe(S.formInt.value.afi) : []));
     const b = computed(() => (S.formInt.value && S.formInt.value.registro_bloqueo) || {});
@@ -612,7 +618,8 @@ export default {
       try { if (await ingresarANave(nave, { afi: e.afi })) S.avisoApp(`AFI ${e.afi} ingresado a la ${nave} ✔`); }
       finally { ocupado.value = false; }
     };
-    return { verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, textoEstado, logoSrc, onLogoError, config,
+    const pautaTitulo = (e) => { const p = pautaDeEquipo(e); return p ? `${p.titulo} · ${p.codigo}` : ''; };
+    return { pautaTitulo, verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, textoEstado, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };

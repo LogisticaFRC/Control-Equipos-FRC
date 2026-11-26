@@ -38,7 +38,7 @@ export default {
         <p v-if="!intsFRC.length" class="text-sm text-slate-500">No hay reports pendientes.</p>
         <button v-for="r in intsFRC" :key="r.id" @click="abrir(r)" class="w-full text-left border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 rounded-xl p-3 flex items-center gap-3" data-porfirmar="int">
           <i class="fa-solid fa-file-signature text-2xl text-amber-600"></i>
-          <span class="flex-1 min-w-0"><b class="font-mono">AFI {{ r.afi }}</b> · {{ r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }} · {{ fecha(r.fecha) }}
+          <span class="flex-1 min-w-0"><b class="font-mono">AFI {{ r.afi }}</b> · {{ r.tipo === 'MANTENCION' ? 'Pauta mantención' : r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }} · {{ fecha(r.fecha) }}
             <span class="block text-[11px] text-slate-600 truncate">{{ (r.mecanicos || []).map(m => m.nombre).join(', ') }} — {{ r.causa_intervencion || r.falla_texto || r.descripcion }}</span></span>
           <span class="px-3 py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm">Ver y firmar</span>
         </button>

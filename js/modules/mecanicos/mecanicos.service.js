@@ -24,6 +24,8 @@ import { ACEITES } from '../historial/historial.mapper.js';
 import { naveDeAfi } from '../taller/taller.service.js';   // TALLER: solo equipos en nave (2026-11-17)
 import { crearFallasDeInspeccion, marcarFallaReparada, fallaPorId, textoFalla, asegurarFallas, SQL_FALLAS, dbProblemasRef } from './fallas-equipo.js';   // 2026-11-18
 import * as OFF from '../../core/offline.js';   // SIN INTERNET (2026-11-19)
+import { pautaDeEquipo, pautaVacia, hojaPauta, resumenPauta } from './pautas.js';   // PAUTAS DE MANTENCIÓN (2026-11-26)
+import { requeridosPorModelo } from '../filtros/filtros.service.js';
 import { PLANTILLA_INT, hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 
 const { ref, computed, watch } = Vue;
@@ -210,6 +212,14 @@ const horaAhora = () => { const d = new Date(); return `${String(d.getHours()).p
 export { horaAhora };
 /** Ítem del levantamiento de fallas (2026-11-18): falla + repuesto (código, serie motor) + hasta 2 fotos. */
 export const itemFallaVacio = () => ({ descripcion: '', sistema: '', necesita_repuesto: false, repuesto: '', cantidad: '', codigo_repuesto: '', serie_motor: '', fotos: [] });
+/** PAUTA DE MANTENCIÓN (2026-11-26): pauta vacía del tipo de equipo, con los filtros del modelo (módulo Filtros) ya cargados. */
+const pautaNueva = (e) => {
+  const p = pautaDeEquipo(e); if (!p) return null;
+  let fil = [];
+  try { fil = requeridosPorModelo(e.marca, e.modelo).map(g => { const o = g.mejor || g.filas[0] || {}; return { filtro: g.tipo, marca: o.marca || '', ref: o.codigo || '', cant: String(g.cantidad || 1) }; }); } catch (_) { fil = []; }
+  return pautaVacia(p, e, fil);
+};
+export const tienePauta = (e) => Boolean(pautaDeEquipo(e));
 export const nuevaIntervencion = (tipo, e) => ({
   id: null, tipo, afi: String(e.afi), equipo: [e.tipo, e.marca, e.modelo].filter(Boolean).join(' '),
   fecha: hoyISO(), horometro: e.horometros?.hTomado ? String(e.horometros.hTomado) : '', turno: new Date().getHours() >= 20 || new Date().getHours() < 8 ? 'NOCHE' : 'DÍA',
@@ -222,6 +232,7 @@ export const nuevaIntervencion = (tipo, e) => ({
   art_fotos: [], bloqueo_foto: '', modoFijo: false, fecha_termino: hoyISO(), terminado: false, fecha_falla: hoyISO(),   // ART (2 hojas) y bloqueo (1 hoja) en fotos: el papel se llena físico
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
+  ...(tipo === 'MANTENCION' ? { modo: null, pauta: pautaNueva(e), hora_termino: '' } : {}),
   supervisor: { modo: 'DESPUES', nombre: '', nombre_pila: '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', firma: '' }
 });
 export const formInt = ref(null);       // intervención en edición (app)
@@ -230,6 +241,7 @@ export const abrirIntervencion = (tipo, e, falla = null) => {
   // TALLER: intervenciones solo en equipos que están en una nave · CHOFER: nunca (2026-11-17)
   if (esChofer.value) { alert('El perfil Chofer no hace intervenciones: registra el check list / report del camión.'); return; }
   if (esTaller.value && !naveDeAfi(e.afi)) { alert(`El AFI ${e.afi} no está en una nave. En taller primero se ingresa el equipo a una nave.`); return; }
+  if (tipo === 'MANTENCION' && !pautaDeEquipo(e)) { alert(`Todavía no hay una pauta de mantención para "${e.tipo || 'este tipo de equipo'}".`); return; }
   let b = null; try { b = JSON.parse(localStorage.getItem(BORRADOR()) || 'null'); } catch (x) { b = null; }
   if (b && b.afi === String(e.afi) && b.tipo === tipo && confirm('Tienes un borrador sin enviar de este equipo. ¿Seguir con ese borrador?')) formInt.value = b;
   else formInt.value = nuevaIntervencion(tipo, e);
@@ -324,6 +336,19 @@ export const activarBloqueo = (f) => {
 export const faltantes = (f) => {
   const x = [];
   if (!f.fecha) x.push('Fecha');
+  if (f.tipo === 'MANTENCION') {   // PAUTA DE MANTENCIÓN (2026-11-26)
+    const pa = f.pauta || {};
+    if (!f.hora_inicio) x.push('Hora inicio');
+    if (!f.hora_termino) x.push('Hora término');
+    if (!pa.tipo_mant) x.push('Tipo de mantención');
+    const sin = (pa.items || []).filter(i => !i.e).length;
+    if (sin) x.push(`${sin} ítem(s) de la pauta sin marcar`);
+    if ((pa.lubricantes || []).some(l => (l.key || String(l.tipo || '').trim()) && !(Number(String(l.litros).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
+    if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
+    if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
+    if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo !== 'AHORA' && f.supervisor?.tipo === 'CLIENTE') { if (!String(f.supervisor.nombre_pila || '').trim()) x.push('Nombre del supervisor (cliente)'); if (!String(f.supervisor.apellido || '').trim()) x.push('Apellido del supervisor (cliente)'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(f.supervisor.correo || '').trim())) x.push('Correo de empresa del supervisor (cliente)'); }
+    return x;
+  }
   if (f.modo === 'INSPECCION') {   // 2026-11-18: el levantamiento solo lleva datos, observación y fallas (se crea en el paso 2)
     if (!String(f.descripcion || '').trim()) x.push('Observación del equipo');
     if (!(f.fallas || []).some(i => String(i.descripcion || '').trim())) x.push('Al menos una falla');
@@ -372,7 +397,13 @@ const filaDB = (f) => ({
   lubricantes: (f.lubricantes || []).filter(l => l.key || String(l.tipo || '').trim()),
   usuario_arriendo: String(f.usuario_arriendo || '').trim() || null, operador: String(f.operador || '').trim() || null,
   vale_consumo: String(f.vale_consumo || '').trim() || null,
-  registro_bloqueo: f.bloqueo && f.modo == null ? f.registro_bloqueo : null,   // 2026-11-18: formato nuevo = foto del papel
+  registro_bloqueo: f.bloqueo && f.modo == null && f.tipo !== 'MANTENCION' ? f.registro_bloqueo : null,   // 2026-11-18: formato nuevo = foto del papel
+  ...(f.tipo === 'MANTENCION' && f.pauta ? {   // PAUTA DE MANTENCIÓN (2026-11-26, sql/pauta_mantencion.sql)
+    pauta: f.pauta,
+    causa_intervencion: `${String(f.pauta.titulo || 'PAUTA DE MANTENCION').replace(/^PAUTA\s+(MANTENCION\s+)?/i, 'PAUTA ')}${f.pauta.frecuencia ? ' ' + f.pauta.frecuencia + ' HRS' : ''}`,
+    causa_falla: 'MANTENCION', descripcion: resumenPauta(f),
+    lubricantes: (f.pauta.lubricantes || []).filter(l => l.key || String(l.tipo || '').trim()).map(l => ({ key: l.key || '', tipo: l.tipo || '', cantidad: l.litros || '' }))
+  } : {}),
   ...(f.modo ? {   // 2026-11-18 (sql/intervencion_fallas.sql)
     modo: f.modo, fecha_termino: normalizarFecha(f.fecha_termino) || null, terminado: Boolean(f.terminado), duracion_min: duracionMin(f),
     fallas: f.modo === 'INSPECCION' ? (f.fallas || []).filter(i => String(i.descripcion || '').trim()).map((i, k) => ({
@@ -458,6 +489,7 @@ export const enviarIntervencion = async () => {
   } catch (err) {
     if (offline && err && err.antesDeGuardar && OFF.esErrorRed(err)) return guardarSinSenal(f);   // se cortó al enviar: queda guardado
     const m = errMsg(err);
+    if (/'pauta'|column.*pauta/i.test(m)) return alert('Falta ejecutar sql/pauta_mantencion.sql en Supabase (SQL Editor → Run) para guardar las pautas de mantención.');
     alert(/'(modo|fallas|falla_id|falla_texto|fecha_termino|terminado|duracion_min|levantamiento_id|art_fotos|bloqueo_foto|codigo_repuesto|serie_motor|fecha_falla|disp_anterior|ot_fallas_folio|folio_falla)'/i.test(m) ? SQL_FALLAS : /bd_mec_intervenciones|schema cache|does not exist/i.test(m) ? 'Falta ejecutar sql/mecanicos.sql en Supabase.' : 'No se pudo enviar: ' + m);
   } finally { enviando.value = false; }
 };
@@ -606,6 +638,31 @@ export const generarPDF = async (r) => {
   const { html2canvas, jsPDF } = await libsPDF();
   const logo = (await logoDataURL())?.url || '';
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  if (r.tipo === 'MANTENCION') {   // PAUTA DE MANTENCIÓN: puede ocupar más de una página (se corta en hojas A4)
+    const c = await renderHTML(hojaPauta(r, logo, ANCHO_VERTICAL), ANCHO_VERTICAL, html2canvas);
+    const altoPag = Math.floor(c.width * 297 / 210);
+    const cx = c.getContext('2d');
+    // corta la hoja justo bajo una línea de tabla (fila con muchos píxeles oscuros) para no partir un ítem por la mitad
+    const corte = (yMax) => {
+      if (yMax >= c.height) return c.height;
+      const desde = Math.max(yMax - 260, 0), datos = cx.getImageData(0, desde, c.width, yMax - desde).data;
+      for (let fy = yMax - desde - 1; fy > 0; fy--) {
+        let oscuros = 0;
+        for (let x = 0; x < c.width; x += 4) { const i = (fy * c.width + x) * 4; if (datos[i] < 110 && datos[i + 1] < 110 && datos[i + 2] < 110) oscuros++; }
+        if (oscuros > c.width / 4 * 0.4) return desde + fy + 1;
+      }
+      return yMax;
+    };
+    for (let y = 0, k = 0; y < c.height; k++) {
+      const fin = corte(y + altoPag), h = fin - y;
+      const t = document.createElement('canvas'); t.width = c.width; t.height = h;
+      const ctx = t.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, t.width, h); ctx.drawImage(c, 0, y, c.width, h, 0, 0, c.width, h);
+      if (k) pdf.addPage('a4', 'portrait');
+      pdf.addImage(t.toDataURL('image/jpeg', 0.92), 'JPEG', 0, k ? 6 : 0, 210, h * 210 / c.width);
+      y = fin;
+    }
+    return pdf.output('blob');
+  }
   const c1 = await renderHTML(hojaIntervencion(r, logo), ANCHO_VERTICAL, html2canvas);
   const w1 = 210, h1 = Math.min(297, c1.height * w1 / c1.width);
   pdf.addImage(c1.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, w1, h1);
@@ -632,7 +689,7 @@ export const descargarPDF = async (r) => {
   try {
     const blob = await generarPDF(r);
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `${r.modo === 'INSPECCION' ? 'OT Terreno ' + (r.tipo === 'ELECTRICA' ? 'electrico' : 'mecanico') : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
+    a.download = r.tipo === 'MANTENCION' ? `Pauta mantencion AFI ${r.afi} ${r.fecha || ''}.pdf` : `${r.modo === 'INSPECCION' ? 'OT Terreno ' + (r.tipo === 'ELECTRICA' ? 'electrico' : 'mecanico') : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   } catch (err) { alert('No se pudo generar el PDF: ' + errMsg(err)); }
 };
@@ -642,8 +699,10 @@ const CAUSA_HIST_MEC = { 'FALLA MECANICA': 'FALLA MECANICA', 'FALLA OPERACIONAL'
 const CAUSA_HIST_ELEC = { 'FALLA OPERACIONAL': 'FALLA ELECTRICA', 'PUESTA EN MARCHA': 'PUESTA EN MARCHA', 'CONEXIÓN/DESCONEXIÓN DE EQUIPO': 'CONEXIÓN/DESCONEXION', 'INSPECCIÓN': 'INSPECCION (ELECTRICA)', 'PRUEBAS MEDICIONES': 'PRUEBAS MEDICIONES' };
 // MECÁNICA (2026-11-13): causa_falla guarda la CAUSA elegida de la lista del Historial (REPARACION, IMPLEMENTACION…)
 // y causa_intervencion la RAZÓN de la causa (título corto). Registros antiguos: ACCIDENTE/… → equivalente.
-const causaHistorial = (r) => (r.tipo === 'ELECTRICA' ? (CAUSA_HIST_ELEC[String(r.causa_intervencion || '').toUpperCase()] || 'FALLA ELECTRICA') : (CAUSA_HIST_MEC[r.causa_falla] && !listaCausas.includes(r.causa_falla) ? CAUSA_HIST_MEC[r.causa_falla] : (r.causa_falla || 'REPARACION')));
+const causaHistorial = (r) => (r.tipo === 'MANTENCION' ? 'MANTENCION' : r.tipo === 'ELECTRICA' ? (CAUSA_HIST_ELEC[String(r.causa_intervencion || '').toUpperCase()] || 'FALLA ELECTRICA') : (CAUSA_HIST_MEC[r.causa_falla] && !listaCausas.includes(r.causa_falla) ? CAUSA_HIST_MEC[r.causa_falla] : (r.causa_falla || 'REPARACION')));
 
+/** PAUTA: "PREVENTIVA 250 HRS" (como en el formulario del Historial) o el tipo elegido. */
+const tipoMantPauta = (r) => { const pa = r.pauta || {}; return pa.tipo_mant === 'PREVENTIVA' && pa.frecuencia ? `PREVENTIVA ${pa.frecuencia} HRS` : (pa.tipo_mant || 'PREVENTIVA'); };
 /** Crea el registro del Historial con la hoja en PDF. Devuelve true si quedó EN_HISTORIAL. */
 export const pasarAHistorial = async (r, opciones = {}) => {
   if (r.estado === 'EN_HISTORIAL') return true;
@@ -664,8 +723,8 @@ export const pasarAHistorial = async (r, opciones = {}) => {
     ].filter(Boolean);
     const payload = {
       afi: limpiarAfi(r.afi), fecha: r.fecha, equipo: (dbEquipos.value.find(e => mismoAfi(e.afi, r.afi)) || {}).tipo || r.equipo || '',
-      lugar: r.lugar || '', tipo_documento: 'INTERVENCION', causa: causaHistorial(r),
-      tipo_mantencion: r.tipo === 'ELECTRICA' ? 'INTERVENCION ELECTRICA' : 'INTERVENCION MECANICA',
+      lugar: r.lugar || '', tipo_documento: r.tipo === 'MANTENCION' ? 'PAUTA MANTENCION' : 'INTERVENCION', causa: causaHistorial(r),
+      tipo_mantencion: r.tipo === 'MANTENCION' ? tipoMantPauta(r) : r.tipo === 'ELECTRICA' ? 'INTERVENCION ELECTRICA' : 'INTERVENCION MECANICA',
       horometro: Number(r.horometro) || null,
       mecanico_1: mecs[0] || '', mecanico_2: mecs[1] || '', mecanico_3: mecs[2] || '', mecanico_4: mecs[3] || '',
       bloqueo_de_equipo: r.bloqueo ? 'SI' : 'NO', hora_falla: r.hora_falla || '', hora_inicio: r.hora_inicio || '', hora_termino: r.hora_termino || '',
@@ -680,6 +739,11 @@ export const pasarAHistorial = async (r, opciones = {}) => {
       ...aceites,
       falta_firma: provisional   // 2026-11-20: marca notoria en el Historial (sql/firma_pendiente.sql)
     };
+    if (r.tipo === 'MANTENCION') {   // PAUTA: filtros usados → columna de filtros del Historial · horas en número
+      const fil = ((r.pauta || {}).filtros || []).filter(x => String(x.filtro || x.ref || '').trim()).map(x => ({ tipo: String(x.filtro || '').toUpperCase(), marca: x.marca || '', codigo: x.ref || '', proveedor: '', precio: '', cantidad: Number(x.cant) || 1 }));
+      if (fil.length) payload.kit_bodega = JSON.stringify(fil);
+      payload.causa_falla = '';
+    }
     if (r.modo === 'REPARACION' && r.ot_fallas_folio) payload.numero_ot = 'OTT-' + r.ot_fallas_folio;   // N° OT del Historial = OT Terreno
     let data;
     if (r.historial_id) {   // ya estaba en el Historial (enviada sin firma): solo se cambia el documento
@@ -774,7 +838,7 @@ export const descargarFormatoVacio = async (tipo) => {
   } catch (err) { alert('No se pudo generar el formato: ' + errMsg(err)); }
 };
 
-export const htmlHoja = (r, logo = '') => hojaIntervencion(r, logo);
+export const htmlHoja = (r, logo = '') => (r && r.tipo === 'MANTENCION' ? hojaPauta(r, logo, ANCHO_VERTICAL) : hojaIntervencion(r, logo));
 export const htmlBloqueo = (r, logo = '') => hojaBloqueo(r, logo);
 
 /** TIEMPOS DE TRABAJO (2026-11-18): Excel con cada report (inspección / reparación), inicio, término y cuánto demoró. */
