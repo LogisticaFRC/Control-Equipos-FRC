@@ -854,6 +854,7 @@ export const exportarProgramaGanttExcel = async (prog) => {
           item.condicion || 'Arriendo', fechaExcel(normalizarFecha(item.fecha_inicio)) || '-', fechaExcel(normalizarFecha(item.fecha_fin)) || '-',
           item.realizado ? 'REPARADO (ON)' : 'PENDIENTE (OFF)',
           avanceItem(item) ? (item.realizado ? 1 : avanceItem(item).pct / 100) : (item.realizado ? 1 : '-'), enlaceItem(item),
+          reportesDeItem(item).length || '-', textoReportesExcel(item) || '-',
           ...dias.map(d => (esFechaEnRango(d.fechaStr, item.fecha_inicio, item.fecha_fin) ? '●' : ''))
         ]);
         const ws = hojaTabla(wb, logo, {
@@ -861,12 +862,15 @@ export const exportarProgramaGanttExcel = async (prog) => {
           columnas: [
             { t: 'TIPO EQUIPO', w: 18 }, { t: 'AFI', w: 10, bold: true }, { t: 'MARCA / MODELO', w: 22 }, { t: 'UBICACIÓN ACTUAL', w: 18 },
             { t: 'CONDICIÓN', w: 11 }, { t: 'INICIO', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'FIN', w: 12, fmt: 'dd-mm-yyyy' }, { t: 'ESTADO', w: 15, bold: true },
-            { t: '% AVANCE', w: 9, fmt: '0%', bold: true }, { t: 'INTERVENCIONES', w: 13 }, ...colsDias
+            { t: '% AVANCE', w: 9, fmt: '0%', bold: true }, { t: 'INTERVENCIONES', w: 13 },
+            { t: 'N° REPORTES', w: 9 }, { t: 'REPORTES DEL HISTORIAL (fecha · folio · OT · trabajo)', w: 60, al: 'left' }, ...colsDias
           ],
           filas, estiloFila: (f) => estiloEstado(f[7] === 'REPARADO (ON)')
         });
-        filas.forEach((f, i) => { const c = ws.getCell(7 + i, 10); if (c.value && c.value.hyperlink) c.font = { size: 9, color: { argb: 'FF1D4ED8' }, underline: true, bold: true }; });
-        pintarGantt(ws, filas.length, 11, v => (v === '●' ? 'prog' : ''));
+        filas.forEach((f, i) => { const c = ws.getCell(7 + i, 10); if (c.value && c.value.hyperlink) c.font = { size: 9, color: { argb: 'FF1D4ED8' }, underline: true, bold: true };
+          const r = ws.getCell(7 + i, 12); r.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
+          const n = String(f[11] || '').split('\n').length; if (n > 1) ws.getRow(7 + i).height = Math.min(15 * n + 4, 160); });
+        pintarGantt(ws, filas.length, 13, v => (v === '●' ? 'prog' : ''));
       });
       if (fueraRango.length) {
         hay = true;
@@ -932,6 +936,17 @@ export const cerrarOTsDeItem = async (item, cerrar = true) => {
     return await O.cerrarOTs(ids, cerrar);
   } catch (err) { console.warn('[Programas] No se pudieron actualizar las OT:', errMsg(err)); return 0; }
 };
+
+/** REPARACIÓN (2026-11-26): detalle de cada reporte del Historial (intervención mecánica) unido a este equipo del programa. */
+export const detalleReportesItem = (item) => reportesDeItem(item).map(m => ({
+  id: m.id, fecha: normalizarFecha(m.fecha), folio: m.numeroFolio || '', ot: m.numeroOT || '',
+  causa: m.causaDetallada || m.causa || '', descripcion: m.descripcion || '',
+  mecanicos: [m.mec1, m.mec2, m.mec3, m.mec4].filter(x => String(x || '').trim()).join(', '),
+  horas: m.horaTotal || '', link: m.linkDrive || '', terminado: !!m.reparacionTerminada
+}));
+/** Texto de los reportes para el Excel (uno por línea). */
+export const textoReportesExcel = (item) => detalleReportesItem(item).map(r =>
+  `${formatDateForDisplay(r.fecha)}${r.folio ? ' · Folio ' + r.folio : ''}${r.ot ? ' · OT ' + r.ot : ''} · ${r.causa}${r.mecanicos ? ' (' + r.mecanicos + ')' : ''}${r.terminado ? ' · TERMINADA' : ''}`).join('\n');
 
 /** REPARACIÓN: hay reportes pero el equipo aún no está reparado. */
 export const itemEnProceso = (item) => !item.realizado && reportesDeItem(item).length > 0;
@@ -1109,7 +1124,10 @@ const agregarFaltantesReparacion = async (prog, afi = '') => {
     for (const m of ord.slice(0, 1)) {
       const fecha = normalizarFecha(m.fecha) || null;
       const ult = normalizarFecha(ord[ord.length - 1].fecha) || fecha;
-      const payload = { programa_id: prog.id, afi: limpiarAfi(m.afi), tipo: 'Reparación', nave: null, condicion: 'Arriendo',
+      // 2026-11-26: si el equipo está hoy en una nave del Taller, queda en esa nave del programa
+      let nave = null;
+      try { const T = await import('../taller/taller.service.js'); const r = T.repActivaAfi(m.afi); if (r && /^NAVE/i.test(String(r.nave || ''))) nave = String(r.nave).toUpperCase(); } catch (_) { /* sin taller */ }
+      const payload = { programa_id: prog.id, afi: limpiarAfi(m.afi), tipo: 'Reparación', nave, condicion: 'Arriendo',
         fecha_programada: fecha, fecha_inicio: fecha, fecha_fin: ult, realizado: false };
       const data = await sb(supabaseClient.from(TABLA_PROGRAMAS_ITEMS).insert([payload]).select());
       if (data && data[0]) dbProgramasItems.value.push(data[0]);

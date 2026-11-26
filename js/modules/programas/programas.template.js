@@ -357,7 +357,18 @@ export default /* html */ `
                 <tbody class="divide-y text-[11px]">
                   <tr v-for="item in obtenerItemsProgramaEnRangoPorNave(progSelect.id, n_nave)" :key="item.id" :class="item.realizado ? 'bg-emerald-50/50' : 'hover:bg-slate-50'">
                     <td class="p-2.5"><span class="font-bold text-amber-700 cursor-pointer hover:underline" @click="verDetallePorAfiString(item.afi)">AFI {{ item.afi }}</span>
-                      <span v-if="textoReportesItem(item)" class="block text-[9px] font-semibold text-indigo-700" :title="'Reportes del Historial con este programa'"><i class="fa-solid fa-file-lines mr-0.5"></i>{{ textoReportesItem(item) }}</span></td>
+                      <details v-if="textoReportesItem(item)" class="mt-0.5 max-w-[340px] whitespace-normal">
+                        <summary class="cursor-pointer text-[9px] font-semibold text-indigo-700" title="Reportes del Historial (intervención mecánica) unidos a este equipo"><i class="fa-solid fa-file-lines mr-0.5"></i>{{ textoReportesItem(item) }}</summary>
+                        <div class="mt-1 space-y-1">
+                          <div v-for="r in detalleReportesItem(item)" :key="r.id" :class="['rounded border px-2 py-1 text-[10px] leading-snug', r.terminado ? 'bg-emerald-50 border-emerald-200' : 'bg-indigo-50 border-indigo-200']">
+                            <b>{{ formatDateForDisplay(r.fecha) }}</b><span v-if="r.folio"> · Folio {{ r.folio }}</span><span v-if="r.ot"> · OT {{ r.ot }}</span><span v-if="r.terminado" class="ml-1 px-1 rounded bg-emerald-600 text-white text-[8px] font-bold">TERMINADA</span>
+                            <a v-if="r.link" :href="r.link" target="_blank" rel="noopener" class="ml-1 text-rose-600" title="Ver hoja escaneada"><i class="fa-solid fa-file-pdf"></i></a>
+                            <span class="block text-slate-700 font-semibold">{{ r.causa }}</span>
+                            <span v-if="r.descripcion" class="block text-slate-500">{{ r.descripcion.length > 160 ? r.descripcion.slice(0, 160) + '…' : r.descripcion }}</span>
+                            <span v-if="r.mecanicos" class="block text-slate-400"><i class="fa-solid fa-user-gear"></i> {{ r.mecanicos }}<template v-if="r.horas"> · {{ r.horas }}</template></span>
+                          </div>
+                        </div>
+                      </details></td>
                     <td class="p-2.5 font-semibold text-slate-800">{{ obtenerDetalleEquipoPorAfi(item.afi, 'tipo') }}</td>
                     <td class="p-2.5 text-slate-600">{{ obtenerDetalleEquipoPorAfi(item.afi, 'marca') }}</td>
                     <td class="p-2.5 text-slate-600">{{ obtenerDetalleEquipoPorAfi(item.afi, 'modelo') }}</td>
