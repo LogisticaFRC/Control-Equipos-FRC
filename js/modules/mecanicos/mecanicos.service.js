@@ -15,7 +15,7 @@
 // =====================================================================
 import { supabaseClient, sb, errMsg, subirArchivoStorage } from '../../core/supabase.js';
 import { TABLAS } from '../../core/tablas.js';
-import { usuarioActivo, dbEquipos, dbIntervenciones, dbUsuarios, nivelEnArea, esAdminGeneral, cargarDatosDesdeSupabase, permisosDe, cargoDe, modoTecnicoDe, recalcularHorometros } from '../../core/store.js';
+import { listaEmpresas, usuarioActivo, dbEquipos, dbIntervenciones, dbUsuarios, nivelEnArea, esAdminGeneral, cargarDatosDesdeSupabase, permisosDe, cargoDe, modoTecnicoDe, recalcularHorometros } from '../../core/store.js';
 import { hoyISO, limpiarAfi, mismoAfi, normalizarFecha, calcularRestaHoras } from '../../core/utils.js';
 import { esVehiculo, empresaDe, EMPRESA_TALLER } from '../inventario/inventario.mapper.js';
 import { logoDataURL } from '../../core/excel.js';
@@ -216,10 +216,17 @@ export const itemFallaVacio = () => ({ descripcion: '', sistema: '', necesita_re
 const pautaNueva = (e) => {
   const p = pautaDeEquipo(e); if (!p) return null;
   let fil = [];
-  try { fil = requeridosPorModelo(e.marca, e.modelo).map(g => { const o = g.mejor || g.filas[0] || {}; return { filtro: g.tipo, marca: o.marca || '', ref: o.codigo || '', cant: String(g.cantidad || 1) }; }); } catch (_) { fil = []; }
+  try { fil = requeridosPorModelo(e.marca, e.modelo).map(g => { const o = g.mejor || g.filas[0] || {}; return { filtro: g.tipo, marca: o.marca || '', ref: o.codigo || '', cant: '' }; }); } catch (_) { fil = []; }   // la cantidad la pone el mecánico
   return pautaVacia(p, e, fil);
 };
 export const tienePauta = (e) => Boolean(pautaDeEquipo(e));
+/** Empresa que no estaba en la lista → se registra como EMPRESA en el módulo Áreas (si falla, no corta el envío). */
+const registrarEmpresaNueva = async (nombre) => {
+  const n = String(nombre || '').trim().toUpperCase();
+  if (!n || listaEmpresas.value.includes(n)) return;
+  try { const { crearNodo } = await import('../areas/areas.service.js'); await crearNodo('EMPRESA', n); }
+  catch (err) { console.warn('[Pauta] No se pudo registrar la empresa:', errMsg(err)); }
+};
 export const nuevaIntervencion = (tipo, e) => ({
   id: null, tipo, afi: String(e.afi), equipo: [e.tipo, e.marca, e.modelo].filter(Boolean).join(' '),
   fecha: hoyISO(), horometro: e.horometros?.hTomado ? String(e.horometros.hTomado) : '', turno: new Date().getHours() >= 20 || new Date().getHours() < 8 ? 'NOCHE' : 'DÍA',
@@ -343,6 +350,8 @@ export const faltantes = (f) => {
     if (!pa.tipo_mant) x.push('Tipo de mantención');
     const sin = (pa.items || []).filter(i => !i.e).length;
     if (sin) x.push(`${sin} ítem(s) de la pauta sin marcar`);
+    if (f.uso_art && (f.art_fotos || []).filter(Boolean).length < 2) x.push('Fotos de las 2 hojas del ART');
+    if (f.bloqueo && !f.bloqueo_foto) x.push('Foto del registro de bloqueo');
     if ((pa.lubricantes || []).some(l => (l.key || String(l.tipo || '').trim()) && !(Number(String(l.litros).replace(',', '.')) > 0))) x.push('Litros de cada lubricante');
     if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
     if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
@@ -402,7 +411,8 @@ const filaDB = (f) => ({
     pauta: f.pauta,
     causa_intervencion: `${String(f.pauta.titulo || 'PAUTA DE MANTENCION').replace(/^PAUTA\s+(MANTENCION\s+)?/i, 'PAUTA ')}${f.pauta.frecuencia ? ' ' + f.pauta.frecuencia + ' HRS' : ''}`,
     causa_falla: 'MANTENCION', descripcion: resumenPauta(f),
-    lubricantes: (f.pauta.lubricantes || []).filter(l => l.key || String(l.tipo || '').trim()).map(l => ({ key: l.key || '', tipo: l.tipo || '', cantidad: l.litros || '' }))
+    lubricantes: (f.pauta.lubricantes || []).filter(l => l.key || String(l.tipo || '').trim()).map(l => ({ key: l.key || '', tipo: l.tipo || '', cantidad: l.litros || '' })),
+    art_fotos: f.uso_art ? (f.art_fotos || []).filter(Boolean) : [], bloqueo_foto: f.bloqueo ? (f.bloqueo_foto || null) : null
   } : {}),
   ...(f.modo ? {   // 2026-11-18 (sql/intervencion_fallas.sql)
     modo: f.modo, fecha_termino: normalizarFecha(f.fecha_termino) || null, terminado: Boolean(f.terminado), duracion_min: duracionMin(f),
@@ -516,7 +526,8 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
     catch (e1) { if (!/plantilla/i.test(errMsg(e1))) throw e1; delete fila.plantilla; reg = (await guardar())[0]; }   // sin el SQL nuevo
   } catch (err) { if (err && typeof err === 'object') err.antesDeGuardar = true; throw err; }
   if (reg && alInsertar) await alInsertar(reg.id);
-  if (reg && fila.supervisor?.tipo === 'CLIENTE') await guardarContacto(fila.supervisor);   // 2026-11-20: agenda de supervisores de otras empresas
+  if (reg && fila.supervisor?.tipo === 'CLIENTE') await guardarContacto(fila.supervisor);
+  if (reg && f.tipo === 'MANTENCION') await registrarEmpresaNueva(fila.usuario_arriendo);   // 2026-11-26: empresa escrita a mano → queda en Áreas   // 2026-11-20: agenda de supervisores de otras empresas
   // Fallas del equipo (2026-11-18): la inspección las deja abiertas · la reparación cierra la elegida
   let avisoFallas = '';
   if (reg && f.modo === 'INSPECCION' && fila.fallas.length) {

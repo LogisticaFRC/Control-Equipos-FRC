@@ -5,8 +5,16 @@
 // =====================================================================
 import { ESTADOS_PAUTA, FRECUENCIAS, MEDICIONES_GEN, avancePauta, pautaPorClave } from './pautas.js';
 import { ACEITES } from '../historial/historial.mapper.js';
+import { subirFotoDoc, subiendoFoto } from './mecanicos.service.js';
+import { dbEquipos, dbLocaciones, dbFiltros, listaEmpresas, cargarDatosDesdeSupabase } from '../../core/store.js';
+import { empresaDe, EMPRESA_TALLER } from '../inventario/inventario.mapper.js';
+import { buscarEnCatalogo, listaTiposFiltro } from '../filtros/filtros.service.js';
+import { claveModelo } from '../filtros/filtros.mapper.js';
+import { mismoAfi } from '../../core/utils.js';
 
-const { computed, ref } = Vue;
+const { computed, ref, watch, onMounted } = Vue;
+const OTRA = '__OTRA__';
+const up = (v) => String(v || '').trim().toUpperCase();
 
 export default {
   name: 'PautaMantencion',
@@ -26,11 +34,25 @@ export default {
         <label class="block"><span class="lbl">Horómetro actual</span><input v-model="f.horometro" inputmode="decimal" class="inp font-mono" placeholder="Ej: 10875"></label>
         <label class="block"><span class="lbl">Hora inicio</span><input type="time" v-model="f.hora_inicio" class="inp px-2"><button @click="f.hora_inicio = ahora()" class="text-[11px] font-bold text-emerald-700 mt-1">Ahora</button></label>
         <label class="block"><span class="lbl">Hora término</span><input type="time" v-model="f.hora_termino" class="inp px-2"><button @click="f.hora_termino = ahora()" class="text-[11px] font-bold text-emerald-700 mt-1">Ahora</button></label>
-        <label class="block col-span-2"><span class="lbl">Horómetro próxima mantención</span><input v-model="pa.horometro_prox" inputmode="decimal" class="inp font-mono" :placeholder="sugerida ? 'Sugerido: ' + sugerida : 'Ej: 11125'">
-          <button v-if="sugerida && !pa.horometro_prox" @click="pa.horometro_prox = String(sugerida)" class="text-[11px] font-bold text-emerald-700 mt-1">Usar {{ sugerida }}</button></label>
+        <label class="block col-span-2"><span class="lbl">Horómetro próxima mantención</span><input v-model="pa.horometro_prox" inputmode="decimal" class="inp font-mono" placeholder="Se calcula al poner el horómetro actual" data-pauta="prox">
+          <span class="block text-[11px] text-slate-500 mt-1">Se suma solo: horómetro actual + frecuencia del equipo · <b>frecuencia {{ frecEquipo }} h</b></span></label>
       </div>
-      <label class="block"><span class="lbl">Empresa</span><input v-model="f.usuario_arriendo" class="inp uppercase"></label>
-      <label class="block"><span class="lbl">Ubicación</span><input v-model="f.lugar" class="inp uppercase"></label>
+      <label class="block"><span class="lbl">Empresa</span>
+        <select v-model="empresaSel" class="inp uppercase" data-pauta="empresa">
+          <option value="">— Elegir empresa —</option>
+          <optgroup v-if="empresasArriendo.length" label="Con equipos en arriendo"><option v-for="e in empresasArriendo" :key="'a' + e" :value="e">{{ e }}</option></optgroup>
+          <optgroup v-if="empresasOtras.length" label="Otras registradas"><option v-for="e in empresasOtras" :key="'o' + e" :value="e">{{ e }}</option></optgroup>
+          <option :value="OTRA">➕ Otra (escribirla)…</option>
+        </select>
+        <input v-if="otraEmpresa" v-model="f.usuario_arriendo" class="inp uppercase mt-2" placeholder="Nombre de la empresa" data-pauta="empresa-otra">
+        <span v-if="otraEmpresa && f.usuario_arriendo" class="block text-[11px] text-emerald-700 mt-1">Se registra en la lista de empresas al enviar la pauta.</span></label>
+      <label class="block"><span class="lbl">Ubicación</span>
+        <select v-model="lugarSel" class="inp uppercase" data-pauta="lugar">
+          <option value="">— Elegir ubicación —</option>
+          <option v-for="l in ubicaciones" :key="l" :value="l">{{ l }}</option>
+          <option :value="OTRA">➕ Otra (escribirla)…</option>
+        </select>
+        <input v-if="otroLugar" v-model="f.lugar" class="inp uppercase mt-2" placeholder="Ubicación"></label>
     </div>
     <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
       <div><span class="lbl">Tipo de mantención</span>
@@ -43,6 +65,16 @@ export default {
         <button @click="f.uso_art = !f.uso_art" :class="['chip-lg', f.uso_art ? 'on' : '']"><i :class="['fa-solid mr-1', f.uso_art ? 'fa-square-check' : 'fa-square']"></i>Uso de A.R.T.</button>
         <button @click="f.bloqueo = !f.bloqueo" :class="['chip-lg', f.bloqueo ? 'on' : '']"><i :class="['fa-solid mr-1', f.bloqueo ? 'fa-square-check' : 'fa-square']"></i>Bloqueo de equipo</button>
       </div>
+      <!-- Fotos de los papeles (igual que en las intervenciones) -->
+      <div v-for="h in hojasFoto" :key="h.k" class="border-2 border-dashed rounded-xl p-2 flex items-center gap-3" :data-pauta="'foto-' + h.k">
+        <img v-if="h.url" :src="h.url" class="w-16 h-20 object-cover rounded-lg border" alt="">
+        <span v-else class="w-16 h-20 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 text-2xl"><i class="fa-solid fa-file-image"></i></span>
+        <div class="flex-1"><b class="text-sm block">{{ h.titulo }}</b>
+          <label class="inline-block mt-1 px-3 py-2 rounded-lg bg-[#1f4d3a] text-white text-xs font-bold cursor-pointer"><i :class="['fa-solid mr-1', subiendoFoto === h.cual + h.i ? 'fa-spinner fa-spin' : 'fa-camera']"></i>{{ h.url ? 'Cambiar foto' : 'Tomar / subir foto' }}
+            <input type="file" accept="image/*" capture="environment" class="hidden" @change="e => subirFotoDoc(f, h.cual, h.i, e.target.files[0])"></label></div>
+        <i v-if="h.url" class="fa-solid fa-circle-check text-emerald-600 text-xl"></i>
+      </div>
+      <p v-if="hojasFoto.length" class="text-[11px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>Los papeles se llenan a mano: saca una foto clara de cada hoja. Quedan en el PDF de la pauta.</p>
     </div>
   </section>
 
@@ -75,9 +107,13 @@ export default {
   <section v-show="paso === 3" class="p-4 space-y-3" data-pauta="repuestos">
     <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
       <span class="lbl">Repuestos · filtros</span>
-      <div v-for="(x, i) in pa.filtros" :key="'f' + i" class="border rounded-xl p-2 space-y-1.5">
-        <div class="flex gap-2"><input v-model="x.filtro" class="inp flex-1" placeholder="Filtro (ej. ACEITE MOTOR)"><button @click="pa.filtros.splice(i, 1)" class="w-9 text-rose-500"><i class="fa-solid fa-trash"></i></button></div>
-        <div class="grid grid-cols-3 gap-2"><input v-model="x.marca" class="inp" placeholder="Marca"><input v-model="x.ref" class="inp font-mono" placeholder="Referencia"><input v-model="x.cant" inputmode="numeric" class="inp" placeholder="Cant."></div>
+      <p class="text-[11px] text-slate-500 -mt-1">Escribe primero el código: si está en la base se completan el tipo y la marca (puedes cambiarlos). 366/492 = 366-492 = 366492.</p>
+      <datalist id="pauta-tipos-filtro"><option v-for="t in listaTiposFiltro" :key="t" :value="t"></option></datalist>
+      <div v-for="(x, i) in pa.filtros" :key="'f' + i" class="border rounded-xl p-2 space-y-1.5" data-pauta="filtro">
+        <div class="flex gap-2"><input v-model="x.ref" @change="buscarCodigo(x)" class="inp flex-1 font-mono font-bold uppercase" placeholder="Código (ej. P550388)" data-pauta="filtro-cod"><button @click="pa.filtros.splice(i, 1)" class="w-9 text-rose-500"><i class="fa-solid fa-trash"></i></button></div>
+        <p v-if="x.en_base === true" class="text-[11px] font-bold text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>Código en la base: se completó tipo y marca</p>
+        <p v-else-if="x.en_base === false" class="text-[11px] font-bold text-amber-700"><i class="fa-solid fa-circle-info mr-1"></i>Código nuevo: completa tipo y marca</p>
+        <div class="grid grid-cols-5 gap-2"><input v-model="x.filtro" list="pauta-tipos-filtro" class="inp col-span-2 uppercase" placeholder="Tipo de filtro"><input v-model="x.marca" class="inp col-span-2 uppercase" placeholder="Marca"><input v-model="x.cant" inputmode="numeric" class="inp" placeholder="Cant."></div>
       </div>
       <button @click="pa.filtros.push({ filtro: '', marca: '', ref: '', cant: '' })" class="text-sm font-bold text-emerald-700"><i class="fa-solid fa-plus mr-1"></i>Agregar filtro</button>
     </div>
@@ -110,9 +146,52 @@ export default {
     const av = computed(() => avancePauta(pa.value));
     const abierta = ref('');
     const tipos = computed(() => (pautaPorClave(pa.value?.clave) || {}).tipos || ['PREVENTIVA', 'CORRECTIVA', 'PREDICTIVA']);
-    const sugerida = computed(() => { const h = Number(String(props.f.horometro || '').replace(/\./g, '').replace(',', '.')); const fr = Number(pa.value?.frecuencia); return h > 0 && fr > 0 ? Math.round(h + fr) : null; });
+    // ---- Horómetro próxima mantención = actual + frecuencia del equipo (inventario, por defecto 250)
+    const equipo = computed(() => dbEquipos.value.find(e => mismoAfi(e.afi, props.f.afi)) || null);
+    const frecEquipo = computed(() => Number(pa.value?.frec_equipo) || Number(equipo.value?.frecuenciaMantencion) || 250);
+    const sugerida = computed(() => { const h = Number(String(props.f.horometro || '').replace(/\./g, '').replace(',', '.')); return h > 0 ? Math.round(h + frecEquipo.value) : null; });
+    watch(sugerida, (v) => { if (pa.value && v) pa.value.horometro_prox = String(v); });
+    if (pa.value && sugerida.value && !pa.value.horometro_prox) pa.value.horometro_prox = String(sugerida.value);
+    // ---- Empresa y ubicación: listas desplegables + "Otra"
+    const empresasArriendo = computed(() => [...new Set(dbEquipos.value.map(e => up(empresaDe(e))).filter(e => e && e !== EMPRESA_TALLER))].sort());
+    const empresasOtras = computed(() => listaEmpresas.value.map(up).filter(e => e && !empresasArriendo.value.includes(e)));
+    const enListaEmp = (v) => empresasArriendo.value.includes(up(v)) || empresasOtras.value.includes(up(v));
+    const otraEmpresa = ref(Boolean(props.f.usuario_arriendo) && !enListaEmp(props.f.usuario_arriendo));
+    const empresaSel = computed({
+      get: () => otraEmpresa.value ? OTRA : (enListaEmp(props.f.usuario_arriendo) ? up(props.f.usuario_arriendo) : ''),
+      set: (v) => { if (v === OTRA) { otraEmpresa.value = true; props.f.usuario_arriendo = ''; } else { otraEmpresa.value = false; props.f.usuario_arriendo = v; } }
+    });
+    const ubicaciones = computed(() => {
+      const emp = up(props.f.usuario_arriendo);
+      const nodoEmp = emp ? dbLocaciones.value.find(n => n.tipo === 'EMPRESA' && up(n.nombre) === emp) : null;
+      const deLoc = [];
+      if (nodoEmp) { let cola = [nodoEmp.id]; while (cola.length) { const hijos = dbLocaciones.value.filter(n => cola.some(id => String(n.padreId ?? '') === String(id))); hijos.forEach(n => deLoc.push(up(n.nombre))); cola = hijos.map(n => n.id); } }
+      const deEq = dbEquipos.value.filter(e => !emp || up(empresaDe(e)) === emp).map(e => up(e.ubicacion));
+      return [...new Set(['TALLER FRC', ...deLoc, ...deEq].filter(Boolean))].sort((a, b) => (a === 'TALLER FRC' ? -1 : b === 'TALLER FRC' ? 1 : a.localeCompare(b)));
+    });
+    const otroLugar = ref(Boolean(props.f.lugar) && !ubicaciones.value.includes(up(props.f.lugar)));
+    const lugarSel = computed({
+      get: () => otroLugar.value ? OTRA : (ubicaciones.value.includes(up(props.f.lugar)) ? up(props.f.lugar) : ''),
+      set: (v) => { if (v === OTRA) { otroLugar.value = true; props.f.lugar = ''; } else { otroLugar.value = false; props.f.lugar = v; } }
+    });
+    // ---- Fotos ART (2 hojas) y bloqueo
+    const hojasFoto = computed(() => [
+      ...(props.f.uso_art ? [0, 1].map(i => ({ k: 'art-' + i, cual: 'ART', i, titulo: `ART · hoja ${i + 1}`, url: (props.f.art_fotos || [])[i] || '' })) : []),
+      ...(props.f.bloqueo ? [{ k: 'bloqueo', cual: 'BLOQUEO', i: 0, titulo: 'Registro de bloqueo (FRC-RE-OP-015)', url: props.f.bloqueo_foto || '' }] : [])
+    ]);
+    // ---- Filtros: código primero → completa tipo y marca desde la base (366/492 = 366492)
+    const buscarCodigo = (x) => {
+      if (!String(x.ref || '').trim()) { x.en_base = null; return; }
+      const c = buscarEnCatalogo(x.ref);
+      if (!c) { x.ref = up(x.ref); x.en_base = false; return; }
+      const eq = equipo.value;
+      const app = eq ? c.aplicaciones.find(a => claveModelo(a.equipoMarca, a.equipoModelo) === claveModelo(eq.marca, eq.modelo)) : null;
+      x.ref = c.codigo; x.marca = c.marca || x.marca; x.filtro = (app ? app.tipo : c.tipo) || x.filtro; x.en_base = true;
+    };
+    onMounted(() => { const faltan = [!dbLocaciones.value.length && 'locaciones', !dbFiltros.value.length && 'filtros'].filter(Boolean); if (faltan.length) cargarDatosDesdeSupabase(faltan).catch(() => {}); });
     const marcarFaltantes = (e) => (pa.value?.items || []).forEach(i => { if (!i.e) i.e = e; });
     const ahora = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
-    return { pa, secciones, av, abierta, tipos, sugerida, marcarFaltantes, ahora, ESTADOS_PAUTA, FRECUENCIAS, MEDICIONES_GEN, ACEITES };
+    return { pa, secciones, av, abierta, tipos, sugerida, frecEquipo, marcarFaltantes, ahora, ESTADOS_PAUTA, FRECUENCIAS, MEDICIONES_GEN, ACEITES,
+      OTRA, empresasArriendo, empresasOtras, otraEmpresa, empresaSel, ubicaciones, otroLugar, lugarSel, hojasFoto, subirFotoDoc, subiendoFoto, buscarCodigo, listaTiposFiltro };
   }
 };

@@ -7,7 +7,7 @@
 import { supabaseClient, sb, errMsg } from '../../core/supabase.js';
 import { dbFiltros, dbFiltrosPrecios, dbEquipos, currentTab, cargarDatosDesdeSupabase, soloAdmin, soloEditor } from '../../core/store.js';
 import { parseNum, formatIsoDateForSupabase, formatDateForDisplay, hoyISO, resetInputFile } from '../../core/utils.js';
-import { TABLA_FILTROS, TABLA_FILTROS_PRECIOS, normTxt, normCodigo, normTipo, claveModelo } from './filtros.mapper.js';
+import { TABLA_FILTROS, TABLA_FILTROS_PRECIOS, normTxt, normCodigo, claveCodigo, normTipo, claveModelo } from './filtros.mapper.js';
 
 const { ref, computed } = Vue;
 
@@ -86,7 +86,9 @@ export const catalogo = computed(() => {
   });
   return map;
 });
-export const buscarEnCatalogo = (codigo) => catalogo.value.get(normCodigo(codigo)) || null;
+/** Índice por clave sin '-', '/' ni espacios: 366/492, 366-492 y 366492 son el mismo filtro. */
+const catalogoPorClave = computed(() => { const m = new Map(); catalogo.value.forEach(c => { const k = claveCodigo(c.codigo); if (k && !m.has(k)) m.set(k, c); }); return m; });
+export const buscarEnCatalogo = (codigo) => catalogo.value.get(normCodigo(codigo)) || catalogoPorClave.value.get(claveCodigo(codigo)) || null;
 
 // ---------- Filtros de la pantalla ----------
 const FILTRO_DEFAULT = () => ({ texto: '', equipoMarca: 'ALL', equipoModelo: 'ALL', tipo: 'ALL', proveedor: 'ALL' });
@@ -450,8 +452,8 @@ export const registrarFiltrosDesdeMantencion = async (equipo, filtros, fechaISO,
   const vistos = new Set();
 
   for (const f of validos) {
-    const codigo = normCodigo(f.codigo);
-    const cat = catalogo.value.get(codigo);
+    const cat = buscarEnCatalogo(f.codigo);
+    const codigo = cat ? cat.codigo : normCodigo(f.codigo);   // mismo código escrito con '-' o '/' → el de la base
     const tipo = normTipo(f.tipo) || cat?.tipo || 'SIN TIPO';
     const marca = normTxt(f.marca) || cat?.marca || '';
     const proveedor = normTxt(f.proveedor);
@@ -464,7 +466,7 @@ export const registrarFiltrosDesdeMantencion = async (equipo, filtros, fechaISO,
         if (!vistos.has(clave)) {
           vistos.add(clave);
           const delModelo = dbFiltros.value.filter(a => a.equipoMarca === em && a.equipoModelo === mo && a.tipo === tipo);
-          const existente = delModelo.find(a => a.codigo === codigo);
+          const existente = delModelo.find(a => claveCodigo(a.codigo) === claveCodigo(codigo));
           if (existente) {
             await sb(supabaseClient.from(TABLA_FILTROS).update({ ultimo_uso: fecha, ultimo_afi: String(afi || ''), updated_at: ahora(), ...(!existente.marca && marca ? { marca } : {}) }).eq('id', existente.id));
           } else {
@@ -478,7 +480,7 @@ export const registrarFiltrosDesdeMantencion = async (equipo, filtros, fechaISO,
       }
       // 2) Lista de precios
       if (proveedor && precio > 0) {
-        const fila = dbFiltrosPrecios.value.find(p => p.codigo === codigo && p.proveedor === proveedor);
+        const fila = dbFiltrosPrecios.value.find(p => claveCodigo(p.codigo) === claveCodigo(codigo) && p.proveedor === proveedor);
         if (!fila) {
           await sb(supabaseClient.from(TABLA_FILTROS_PRECIOS).insert([{ codigo, marca, tipo, proveedor, precio, fecha_precio: fecha }]));
         } else if (!fila.fechaPrecio || fecha >= fila.fechaPrecio) {
@@ -499,6 +501,7 @@ export const registrarFiltrosDesdeMantencion = async (equipo, filtros, fechaISO,
 export const autocompletarFiltro = (f, equipo, campo = 'codigo') => {
   const c = buscarEnCatalogo(f.codigo);
   if (!c) return;
+  if (campo === 'codigo') f.codigo = c.codigo;   // 366/492 → se guarda como está en la base (366492)
   if (!f.marca) f.marca = c.marca;
   if (!f.tipo) {
     const app = equipo ? c.aplicaciones.find(a => claveModelo(a.equipoMarca, a.equipoModelo) === claveModelo(equipo.marca, equipo.modelo)) : null;

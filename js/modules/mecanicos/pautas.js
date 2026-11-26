@@ -27,7 +27,7 @@ export const MEDICIONES_GEN = [
 /** Pauta vacía para un equipo (va en f.pauta de la intervención). */
 export const pautaVacia = (p, eq = {}, filtrosModelo = []) => ({
   clave: p.clave, codigo: p.codigo, titulo: p.titulo, fecha_doc: p.fecha, rev: p.rev,
-  tipo_mant: 'PREVENTIVA', frecuencia: '250', horometro_prox: '', marca_modelo: [eq.marca, eq.modelo].filter(Boolean).join(' '),
+  tipo_mant: 'PREVENTIVA', frecuencia: '250', horometro_prox: '', frec_equipo: Number(eq.frecuenciaMantencion) || 250, marca_modelo: [eq.marca, eq.modelo].filter(Boolean).join(' '),
   items: p.secciones.flatMap(s => s.items.map(t => ({ s: s.s, t, e: '' }))),
   filtros: filtrosModelo.length ? filtrosModelo : [0, 1, 2].map(() => ({ filtro: '', marca: '', ref: '', cant: '' })),
   lubricantes: [{ key: '', tipo: '', sae: '', api: '', marca: '', litros: '' }],

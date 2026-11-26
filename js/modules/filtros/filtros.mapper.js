@@ -20,6 +20,8 @@ export const normCodigo = (v) => {
   if (typeof v === 'number') return Number.isInteger(v) ? v.toFixed(0) : String(v);
   return normTxt(v);
 };
+/** Clave para COMPARAR códigos (2026-11-26): sin guiones, barras ni espacios → 366/492 = 366-492 = 366492. */
+export const claveCodigo = (v) => normCodigo(v).replace(/[\s\-\/]/g, '');
 
 /** Corrige tipos mal escritos / equivalentes para que la referencia cruzada calce. */
 const ALIAS_TIPO = {
