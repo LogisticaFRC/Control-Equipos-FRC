@@ -397,7 +397,7 @@ export default /* html */ `
                       <div v-if="avanceDeItem(item)" class="mt-1 flex items-center gap-1.5 min-w-[120px]" :title="avanceDeItem(item).done + ' de ' + avanceDeItem(item).total + ' ítems de la OT terminados'">
                         <div class="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden"><div :class="['h-2 rounded-full', colorAvance(avanceDeItem(item).pct)]" :style="{ width: avanceDeItem(item).pct + '%' }"></div></div>
                         <span :class="['text-[11px] font-black w-9 text-right', textoAvance(avanceDeItem(item).pct)]">{{ avanceDeItem(item).pct }}%</span>
-                        <button v-if="avanceDeItem(item).done" @click="abrirPDFItem(item)" class="text-rose-600 hover:text-rose-800" title="PDF de las intervenciones hechas"><i class="fa-solid fa-file-pdf"></i></button>
+                        <button v-if="avanceDeItem(item).done || textoReportesItem(item)" @click="abrirPDFItem(item)" class="text-rose-600 hover:text-rose-800" title="PDF de las intervenciones hechas"><i class="fa-solid fa-file-pdf"></i></button>
                       </div></td>
                     <td v-if="puedeEditar" class="p-2.5 text-center whitespace-nowrap">
                       <button @click="abrirEditarItemPrograma(item)" class="text-blue-600 hover:text-blue-800 p-1" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
