@@ -125,7 +125,7 @@ export default {
           <select v-model="l.key" @change="l.tipo = (ACEITES.find(a => a.key === l.key) || {}).label || l.tipo" class="inp flex-1 font-bold"><option value="">— Lubricante (lista) —</option><option v-for="a in ACEITES" :key="a.key" :value="a.key">{{ a.label }}</option></select>
           <button @click="pa.lubricantes.splice(i, 1)" class="w-9 text-rose-500"><i class="fa-solid fa-trash"></i></button></div>
         <input v-if="!l.key" v-model="l.tipo" class="inp" placeholder="Tipo (si no está en la lista)">
-        <div class="grid grid-cols-4 gap-2"><input v-model="l.sae" class="inp" placeholder="SAE"><input v-model="l.api" class="inp" placeholder="API"><input v-model="l.marca" class="inp" placeholder="Marca"><input v-model="l.litros" inputmode="decimal" class="inp" placeholder="Litros"></div>
+        <div class="grid grid-cols-2 gap-2"><!-- 2026-11-27: SAE y API se quitaron por ahora --><input v-model="l.marca" class="inp" placeholder="Marca"><input v-model="l.litros" inputmode="decimal" class="inp" placeholder="Litros"></div>
       </div>
       <button @click="pa.lubricantes.push({ key: '', tipo: '', sae: '', api: '', marca: '', litros: '' })" class="text-sm font-bold text-emerald-700"><i class="fa-solid fa-plus mr-1"></i>Agregar lubricante</button>
     </div>

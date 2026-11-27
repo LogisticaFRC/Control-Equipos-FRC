@@ -40,9 +40,14 @@ export const avancePauta = (pa) => { const it = (pa && pa.items) || []; return {
 const V = '#0f7a3d', VO = '#1f4d3a';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fecha = (iso) => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : esc(iso); };
-const X = (on) => `<span style="display:inline-block;width:15px;height:13px;border:1px solid #333;text-align:center;line-height:11px;font-weight:900;font-size:11px">${on ? 'X' : '&nbsp;'}</span>`;
+// 2026-11-27: casilla dibujada (SVG) para que la X quede centrada en el PDF (html2canvas corría el texto hacia abajo)
+const svgX = (on) => 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="28" viewBox="0 0 16 14"><rect x="0.5" y="0.5" width="15" height="13" fill="#fff" stroke="#333" stroke-width="1"/>${on ? '<path d="M4 3 L12 11 M12 3 L4 11" stroke="#000" stroke-width="2" stroke-linecap="round"/>' : ''}</svg>`);
+const X_SI = svgX(true), X_NO = svgX(false);
+const X = (on) => `<img src="${on ? X_SI : X_NO}" width="16" height="14" style="display:block;margin:0 auto;width:16px;height:14px">`;
 const firmaImg = (src, h = 30) => (src ? `<img src="${src}" style="height:${h}px;max-width:100%;object-fit:contain">` : '');
-const td = 'border:1px solid #333;padding:1px 5px 4px;font-size:9.5px';
+const td = 'border:1px solid #333;padding:0 5px 6px;font-size:9.5px;vertical-align:middle';
+const tdT = 'border:1px solid #333;padding:0 5px 6px;font-size:9.5px;vertical-align:middle';   // texto del ítem centrado en la fila (html2canvas lo baja ~3px)
+const tdX = 'border:1px solid #333;padding:2px 4px;text-align:center;vertical-align:middle';
 const th = `border:1px solid #333;padding:1px 5px 4px;font-size:9.5px;background:${V};color:#fff;font-weight:800`;
 export const hojaPauta = (r, logo = '', ancho = 794) => {
   const pa = r.pauta || {};
@@ -51,7 +56,7 @@ export const hojaPauta = (r, logo = '', ancho = 794) => {
   const secs = []; (pa.items || []).forEach(i => { let s = secs.find(x => x.s === i.s); if (!s) secs.push(s = { s: i.s, items: [] }); s.items.push(i); });
   const tablaSec = (s) => `<table style="width:100%;border-collapse:collapse;margin-bottom:8px">
     <tr><td style="${th}">${esc(s.s)}</td><td style="${th};width:46px;text-align:center">REV.</td><td style="${th};width:52px;text-align:center">REEMP.</td><td style="${th};width:34px;text-align:center">N/A</td></tr>
-    ${s.items.map(i => `<tr><td style="${td}">${esc(i.t)}</td><td style="${td};text-align:center">${X(i.e === 'REV')}</td><td style="${td};text-align:center">${X(i.e === 'REEMP')}</td><td style="${td};text-align:center">${X(i.e === 'NA')}</td></tr>`).join('')}
+    ${s.items.map(i => `<tr><td style="${tdT}">${esc(i.t)}</td><td style="${tdX}">${X(i.e === 'REV')}</td><td style="${tdX}">${X(i.e === 'REEMP')}</td><td style="${tdX}">${X(i.e === 'NA')}</td></tr>`).join('')}
   </table>`;
   // dos columnas de secciones, repartidas por cantidad de ítems
   const izq = [], der = []; let ni = 0, nd = 0;
@@ -69,7 +74,7 @@ export const hojaPauta = (r, logo = '', ancho = 794) => {
     <td style="width:140px">${logo ? `<img src="${logo}" style="height:44px">` : `<b style="font-size:22px;color:${VO}">FRC</b>`}</td>
     <td style="text-align:center;font-size:18px;color:${V};font-weight:700">${esc(pa.titulo || 'PAUTA DE MANTENCIÓN')}</td>
     <td style="width:170px"><table style="border-collapse:collapse;width:100%;font-size:9px;color:${V};font-weight:700">
-      ${[['CÓDIGO:', pa.codigo], ['FECHA:', pa.fecha_doc], ['VERSIÓN:', pa.rev]].map(([l, v]) => `<tr><td style="border:1px solid #333;padding:0 4px 4px;text-align:center">${l}</td><td style="border:1px solid #333;padding:0 4px 4px;text-align:center">${esc(v)}</td></tr>`).join('')}
+      ${[['CÓDIGO:', pa.codigo], ['FECHA:', pa.fecha_doc], ['VERSIÓN:', pa.rev]].map(([l, v]) => `<tr><td style="border:1px solid #333;padding:0 4px 6px;text-align:center;vertical-align:middle">${l}</td><td style="border:1px solid #333;padding:0 4px 6px;text-align:center;vertical-align:middle">${esc(v)}</td></tr>`).join('')}
     </table></td></tr></table>
   <table style="width:100%;border-collapse:collapse;margin-bottom:6px">
     <tr>${dato('EMPRESA', r.usuario_arriendo)}${dato('UBICACIÓN', r.lugar)}${dato('FECHA', fecha(r.fecha))}</tr>
@@ -86,9 +91,9 @@ export const hojaPauta = (r, logo = '', ancho = 794) => {
       ${(filtros.length ? filtros : [{}, {}, {}]).map(f => `<tr><td style="${td};height:14px">${esc(f.filtro)}</td><td style="${td}">${esc(f.marca)}</td><td style="${td}">${esc(f.ref)}</td><td style="${td};text-align:center">${esc(f.cant)}</td></tr>`).join('')}
     </table></td>
     <td style="vertical-align:top;padding-left:4px"><table style="width:100%;border-collapse:collapse">
-      <tr><td colspan="5" style="${th}">LUBRICANTES</td></tr>
-      <tr><td style="${td};font-weight:800">TIPO</td><td style="${td};font-weight:800">SAE</td><td style="${td};font-weight:800">API</td><td style="${td};font-weight:800">MARCA</td><td style="${td};font-weight:800">LITROS</td></tr>
-      ${(lubs.length ? lubs : [{}, {}]).map(l => `<tr><td style="${td};height:14px">${esc(l.tipo)}</td><td style="${td}">${esc(l.sae)}</td><td style="${td}">${esc(l.api)}</td><td style="${td}">${esc(l.marca)}</td><td style="${td};text-align:center">${esc(l.litros)}</td></tr>`).join('')}
+      <tr><td colspan="3" style="${th}">LUBRICANTES</td></tr>
+      <tr><td style="${td};font-weight:800">TIPO</td><td style="${td};font-weight:800">MARCA</td><td style="${td};font-weight:800">LITROS</td></tr>
+      ${(lubs.length ? lubs : [{}, {}]).map(l => `<tr><td style="${td};height:14px">${esc(l.tipo)}</td><td style="${td}">${esc(l.marca)}</td><td style="${td};text-align:center">${esc(l.litros)}</td></tr>`).join('')}
     </table></td></tr></table>
   <div style="${th};margin-top:8px">OBSERVACIONES</div>
   <div style="border:1px solid #333;border-top:0;min-height:44px;padding:3px 6px 6px;font-size:10.5px;white-space:pre-wrap">${esc(pa.observaciones)}</div>
@@ -111,7 +116,7 @@ export const resumenPauta = (r) => {
     `Ítems: ${it.filter(i => i.e === 'REV').length} revisados · ${reemp.length} reemplazados · ${it.filter(i => i.e === 'NA').length} N/A`,
     reemp.length ? 'Reemplazos: ' + reemp.join('; ') : '',
     ...(pa.filtros || []).filter(f => String(f.filtro || f.ref || '').trim()).map(f => `Filtro: ${f.filtro} ${f.marca ? f.marca + ' ' : ''}${f.ref || ''}${f.cant ? ' x' + f.cant : ''}`),
-    ...(pa.lubricantes || []).filter(l => String(l.tipo || '').trim()).map(l => `Lubricante: ${l.tipo}${l.sae ? ' SAE ' + l.sae : ''}${l.api ? ' API ' + l.api : ''}${l.marca ? ' · ' + l.marca : ''}${l.litros ? ' (' + l.litros + ' L)' : ''}`),
+    ...(pa.lubricantes || []).filter(l => String(l.tipo || '').trim()).map(l => `Lubricante: ${l.tipo}${l.marca ? ' · ' + l.marca : ''}${l.litros ? ' (' + l.litros + ' L)' : ''}`),
     pa.horometro_prox ? 'Horómetro próxima mantención: ' + pa.horometro_prox : '',
     pa.observaciones ? 'Observaciones: ' + pa.observaciones : ''
   ];

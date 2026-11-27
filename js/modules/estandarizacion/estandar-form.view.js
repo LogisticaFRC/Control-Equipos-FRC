@@ -7,7 +7,7 @@ import * as E from './estandarizacion.service.js';
 import { formatDateForDisplay } from '../../core/utils.js';
 import { iconoUrl } from './iconos-vehiculo.js';
 
-const { computed, onMounted } = Vue;
+const { computed, onMounted, watch } = Vue;
 
 export default {
   name: 'EstandarBoton',
@@ -25,7 +25,7 @@ export default {
   <teleport to="body">
   <div v-if="f && E.mismoAfi(f.afi, eq.afi)" class="fixed inset-0 z-[80] bg-slate-100 overflow-y-auto" data-est="form">
     <div class="sticky top-0 z-10 bg-[#1f4d3a] text-white px-4 py-3 flex items-center gap-3 shadow">
-      <button @click="E.cerrarEstandarizacion()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Cerrar"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <button @click="salir" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Cerrar"><i class="fa-solid fa-xmark text-lg"></i></button>
       <div class="min-w-0 flex-1"><div class="font-extrabold leading-tight truncate">{{ esVeh ? 'Check list vehículo · ' : 'Estandarización · AFI ' }}{{ f.afi }}</div><div class="text-[11px] text-emerald-200 truncate">{{ E.plantillaDe(eq).codigo }} · {{ E.plantillaDe(eq).titulo }}</div></div>
       <div class="text-right"><div :class="['text-xl font-black leading-none', pct >= 90 ? 'text-emerald-300' : pct >= 70 ? 'text-amber-300' : 'text-rose-300']">{{ pct }}%</div><div class="text-[10px] text-emerald-200">{{ marcados }}/{{ f.items.length }}</div></div>
     </div>
@@ -77,7 +77,7 @@ export default {
       <div class="bg-white rounded-2xl shadow-sm p-4 space-y-3">
         <span class="lbl">Trabajador(es) responsable(s)</span>
         <div v-for="(r, i) in f.responsables" :key="i" class="space-y-2 border-b last:border-0 pb-3">
-          <div class="flex gap-2"><input v-model="r.nombre" class="inp flex-1" placeholder="Nombre"><button v-if="i > 0" @click="f.responsables.splice(i, 1)" class="px-3 rounded-xl border text-slate-400"><i class="fa-solid fa-trash"></i></button></div>
+          <div class="flex gap-2"><input v-model="r.nombre" class="inp flex-1" placeholder="Nombre y apellido de quien hizo la inspección"><button v-if="i > 0" @click="f.responsables.splice(i, 1)" class="px-3 rounded-xl border text-slate-400"><i class="fa-solid fa-trash"></i></button></div>
           <firma-pad :firma="r.firma" :titulo="'Firma · ' + (r.nombre || 'responsable')" @guardar="v => r.firma = v"></firma-pad>
         </div>
         <button v-if="f.responsables.length < 3" @click="f.responsables.push({ nombre: '', firma: '' })" class="text-sm font-bold text-emerald-700"><i class="fa-solid fa-user-plus mr-1"></i>Agregar otro responsable</button>
@@ -99,8 +99,10 @@ export default {
     const icono = (k) => iconoUrl(k);
     const marcar = (it, est) => { it.estado = it.estado === est ? '' : est; };
     const abrir = () => { E.abrirEstandarizacion(props.eq); window.scrollTo(0, 0); };
+    const salir = () => { if (confirm(`¿Salir del ${esVeh.value ? 'check list de vehículo' : 'formulario de estandarización'}?\n\nLo que llevas (ítems, fotos y firmas) queda guardado en este celular y lo retomas al volver a abrirla.`)) E.cerrarEstandarizacion(); };   // 2026-11-27
     const enviar = async () => { if (await E.guardarEstandarizacion()) alert((esVeh.value ? 'Check list guardado' : 'Estandarización guardada') + ' ✔ Queda en el perfil del equipo.'); };
     onMounted(() => E.cargarEstandarizaciones(props.eq.afi));
-    return { E, f, ult, afiEq, marcados, pct, marcar, abrir, enviar, formatDateForDisplay, esVeh, icono };
+    watch(() => E.formEst.value, () => E.guardarBorradorEst(), { deep: true });   // 2026-11-27: se guarda mientras llena
+    return { salir, E, f, ult, afiEq, marcados, pct, marcar, abrir, enviar, formatDateForDisplay, esVeh, icono };
   }
 };

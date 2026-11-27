@@ -42,8 +42,8 @@ export default {
 <div class="app-tec min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
   <!-- Barra superior -->
   <header class="sticky top-0 z-30 bg-[#1f4d3a] text-white px-4 py-3 flex items-center gap-3 shadow">
-    <button v-if="CH.formCheck.value" @click="CH.cerrarChecklist()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
-    <button v-else-if="S.formInt.value" @click="S.cerrarIntervencion()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
+    <button v-if="CH.formCheck.value" @click="salirActividad('el check list del camión', () => CH.cerrarChecklist())" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
+    <button v-else-if="S.formInt.value" @click="salirActividad(nombreActividad(), () => S.cerrarIntervencion())" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <button v-else-if="S.equipoSel.value" @click="S.cerrarEquipo()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <button v-else-if="tab !== 'inicio'" @click="tab = 'inicio'" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Menú"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <div v-else class="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center"><img :src="logoSrc" @error="onLogoError" class="max-h-full max-w-full object-contain" referrerpolicy="no-referrer"></div>
@@ -351,12 +351,13 @@ export default {
           <h4 class="sec">{{ f.tipo === 'ELECTRICA' ? 'Electricista(s)' : 'Mecánico(s) responsable(s)' }}</h4>
           <div v-for="(m, i) in f.mecanicos" :key="i" class="border rounded-xl p-3 space-y-2">
             <div class="flex items-center gap-2">
-              <select v-model="m.usuario" @change="m.nombre = S.nombreDeCuenta(m.usuario) || m.nombre" :disabled="i === 0 && m.usuario === (usuarioActivo && usuarioActivo.usuario)" class="inp flex-1 font-bold">
+              <b v-if="S.FIRMA_EN_EL_MOMENTO" class="flex-1 text-sm text-slate-700">{{ i === 0 ? 'Mecánico responsable' : 'Mecánico ' + (i + 1) }}</b>
+              <select v-else v-model="m.usuario" @change="m.nombre = S.nombreDeCuenta(m.usuario) || m.nombre" :disabled="i === 0 && m.usuario === (usuarioActivo && usuarioActivo.usuario)" class="inp flex-1 font-bold">
                 <option value="">— Sin cuenta (escribir nombre) —</option>
                 <option v-for="c in S.cuentasUsuarios.value" :key="c.usuario" :value="c.usuario">{{ c.nombre }}{{ c.mec ? ' · mecánico' : '' }}</option>
               </select>
               <button v-if="i > 0" @click="f.mecanicos.splice(i, 1)" class="w-10 text-rose-500"><i class="fa-solid fa-trash"></i></button></div>
-            <input v-model="m.nombre" class="inp" :placeholder="i === 0 ? 'Nombre (responsable)' : 'Nombre'">
+            <input v-model="m.nombre" class="inp" :placeholder="S.FIRMA_EN_EL_MOMENTO ? 'Nombre y apellido de quien hizo la actividad' : (i === 0 ? 'Nombre (responsable)' : 'Nombre')">
             <p v-if="i > 0 && m.usuario && !S.FIRMA_EN_EL_MOMENTO" class="text-[11px] text-emerald-700"><i class="fa-solid fa-share-nodes mr-1"></i>Le aparecerá en su carpeta (puede ver el PDF y firmar su parte).</p>
             <p v-if="i > 0 && S.FIRMA_EN_EL_MOMENTO" class="text-[11px] text-amber-700"><i class="fa-solid fa-pen-nib mr-1"></i>Debe firmar ahora.</p>
             <firma-pad :firma="m.firma" :titulo="'Firma · ' + (m.nombre || 'mecánico')" @guardar="v => m.firma = v"></firma-pad>
@@ -489,6 +490,16 @@ export default {
     <!-- ========== MENÚ EN TARJETAS (2026-11-16) / EQUIPOS / TALLER / DOCUMENTOS / TAREAS ========== -->
     <template v-else>
       <section v-if="tab === 'inicio'" class="p-4 space-y-3">
+        <!-- ACTIVIDADES SIN TERMINAR (2026-11-27): lo que se dejó a medias queda guardado con sus firmas -->
+        <div v-if="S.borradores.value.length" class="bg-white rounded-3xl shadow-sm p-4 space-y-2 border-2 border-sky-200" data-borradores>
+          <b class="text-slate-800 flex items-center gap-2"><span class="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center"><i class="fa-solid fa-floppy-disk"></i></span>Actividades sin terminar <span class="ml-auto text-xs font-black px-2.5 py-1 rounded-full bg-sky-600 text-white">{{ S.borradores.value.length }}</span></b>
+          <div v-for="x in S.borradores.value" :key="x.k" class="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5">
+            <span class="flex-1 min-w-0"><b class="block text-sm text-[#1f4d3a] truncate">AFI {{ x.b.afi }} · {{ S.nombreTipoBorrador(x.b) }}</b>
+              <span class="block text-[11px] text-slate-600">Paso {{ x.b._paso || 1 }}{{ x.b._guardado ? ' · guardado ' + new Date(x.b._guardado).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' }}{{ (x.b.mecanicos || []).some(m => m.firma) ? ' · con firma' : '' }}</span></span>
+            <button @click="S.continuarBorrador(x)" class="px-3 py-2 rounded-xl bg-sky-600 text-white text-xs font-black">Continuar</button>
+            <button @click="S.descartarBorrador(x)" class="w-9 h-9 rounded-xl border border-sky-200 text-slate-400" aria-label="Descartar"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
         <!-- OT TERRENO ABIERTAS (2026-11-19): acceso directo para seguir reparando -->
         <div v-if="verOTAbiertas && S.otTerrenoAbiertas.value.length" class="bg-white rounded-3xl shadow-sm p-4 space-y-2 border-2 border-amber-200" data-ot-abiertas>
           <div class="flex items-center justify-between gap-2">
@@ -605,7 +616,9 @@ export default {
     const fmtH = (h) => (Number(h) > 0 ? Number(h).toLocaleString('es-CL') + ' h' : '—');
     const pendientesMios = computed(() => S.misRegistros.value.filter(r => r.estado === 'RECHAZADA').length);
     // borrador automático mientras escribe
-    watch(() => S.formInt.value, () => S.guardarBorrador(), { deep: true });
+    watch(() => [S.formInt.value, S.pasoInt.value], () => S.guardarBorrador(), { deep: true });   // 2026-11-27: también el paso en que va
+    watch(() => S.formInt.value, (v) => { if (!v) S.refrescarBorradores(); });
+    onMounted(() => S.refrescarBorradores());
     // dictado por voz (Chrome / Edge / Android)
     const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
     const hayVoz = Boolean(Rec);
@@ -678,8 +691,14 @@ export default {
       finally { ocupado.value = false; }
     };
     const pautaTitulo = (e) => { const p = pautaDeEquipo(e); return p ? `${p.titulo} · ${p.codigo}` : ''; };
+    // 2026-11-27: la flecha de arriba saca de la actividad → se pregunta antes (entre pasos se usan Atrás / Siguiente)
+    const nombreActividad = () => { const f = S.formInt.value || {}; return f.tipo === 'MANTENCION' ? 'la pauta de mantención' : f.tipo === 'INSPECCION' ? 'la inspección' : f.modo === 'INSPECCION' ? 'la OT Terreno' : f.tipo === 'ELECTRICA' ? 'la intervención eléctrica' : 'la intervención mecánica'; };
+    const salirActividad = (que, salir) => {
+      if (!confirm(`¿Salir de ${que}?\n\nLo que llevas (datos, fotos y firmas) queda guardado en este celular: lo retomas desde "Actividades sin terminar" en el inicio o al volver a abrirla. Para moverte entre los pasos usa los botones "Atrás" y "Siguiente" de abajo.`)) return;
+      salir();
+    };
     const irPaso = (n) => { S.pasoInt.value = n; window.scrollTo(0, 0); };   // 2026-11-27: pasos con nombre
-    return { CATEGORIAS_HALLAZGO, irPaso, pautaTitulo, verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, textoEstado, logoSrc, onLogoError, config,
+    return { nombreActividad, salirActividad, CATEGORIAS_HALLAZGO, irPaso, pautaTitulo, verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, textoEstado, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };

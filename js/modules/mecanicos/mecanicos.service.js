@@ -209,6 +209,31 @@ export const ESTADOS_MEC = {
 
 // ---------- Formulario (app) ----------
 const BORRADOR = () => 'frc_mec_borrador_' + String(usuarioActivo.value?.usuario || '').toLowerCase();
+/** 2026-11-27: un borrador por actividad (equipo + tipo + falla, o registro que se corrige), con firmas y el paso en que iba. */
+const BORRADOR_KEY = (afi, tipo, fallaId = null, id = null) => `${BORRADOR()}__${limpiarAfi(afi)}__${tipo}${fallaId ? '__f' + fallaId : ''}${id ? '__id' + id : ''}`;
+const claveDe = (f) => BORRADOR_KEY(f.afi, f.tipo, f.id || !f.modoFijo ? null : f.falla_id, f.id);
+const leerBorrador = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (x) { return null; } };
+export const borrarBorrador = (f) => { try { if (f) localStorage.removeItem(claveDe(f)); localStorage.removeItem(BORRADOR()); } catch (e) { /* */ } refrescarBorradores(); };
+/** Lista de actividades sin terminar guardadas en este celular (menú de inicio). */
+export const borradores = ref([]);
+export const refrescarBorradores = () => {
+  const out = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(BORRADOR() + '__')) continue;
+      const b = leerBorrador(k); if (b && b.afi) out.push({ k, b });
+    }
+  } catch (e) { /* */ }
+  borradores.value = out.sort((a, b) => String(b.b._guardado || '').localeCompare(String(a.b._guardado || '')));
+};
+export const nombreTipoBorrador = (b) => (b.tipo === 'MANTENCION' ? 'Pauta de mantención' : b.tipo === 'INSPECCION' ? 'Inspección (solo visual)' : b.modo === 'INSPECCION' ? 'OT Terreno' : b.modo === 'REPARACION' ? 'Reparación' : b.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + (b.id ? ' (corrección N° ' + b.id + ')' : '');
+export const continuarBorrador = (x) => {
+  const e = dbEquipos.value.find(q => mismoAfi(q.afi, x.b.afi));
+  if (e) equipoSel.value = e;
+  formInt.value = x.b; pasoInt.value = x.b._paso || 1; asegurarFallas();
+};
+export const descartarBorrador = (x) => { if (!confirm(`¿Descartar lo que llevabas de ${nombreTipoBorrador(x.b)} · AFI ${x.b.afi}? Se borra de este celular.`)) return; try { localStorage.removeItem(x.k); } catch (e) { /* */ } refrescarBorradores(); };
 const horaAhora = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 export { horaAhora };
 /** Ítem del levantamiento de fallas (2026-11-18): falla + repuesto (código, serie motor) + hasta 2 fotos. */
@@ -234,7 +259,8 @@ export const nuevaIntervencion = (tipo, e) => ({
   fecha: hoyISO(), horometro: e.horometros?.hTomado ? String(e.horometros.hTomado) : '', turno: new Date().getHours() >= 20 || new Date().getHours() < 8 ? 'NOCHE' : 'DÍA',
   lugar: enTaller(e) ? 'TALLER FRC' : (e.ubicacion || empresaDe(e) || ''), hora_falla: '', hora_inicio: horaAhora(), hora_termino: '',
   uso_art: false, bloqueo: false,
-  mecanicos: [{ nombre: usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || '', usuario: usuarioActivo.value?.usuario || '', firma: '' }],
+  // 2026-11-27: con firma en el momento NO se pone la cuenta (ej. "TERRENO"): escriben los nombres de quienes hicieron la actividad
+  mecanicos: [FIRMA_EN_EL_MOMENTO ? { nombre: '', usuario: '', firma: '' } : { nombre: usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || '', usuario: usuarioActivo.value?.usuario || '', firma: '' }],
   causa_intervencion: '', descripcion: '', interferencia: '', causa_falla: '',
   // 2026-11-18: modo INSPECCION (observación + fallas enumeradas) | REPARACION (una falla abierta) · cada envío = un report
   modo: '', fallas: [itemFallaVacio()], falla_id: null, falla_texto: '', levantamiento_id: null,
@@ -259,9 +285,10 @@ export const abrirIntervencion = (tipo, e, falla = null) => {
   if (esChofer.value) { alert('El perfil Chofer no hace intervenciones: registra el check list / report del camión.'); return; }
   if (esTaller.value && !naveDeAfi(e.afi)) { alert(`El AFI ${e.afi} no está en una nave. En taller primero se ingresa el equipo a una nave.`); return; }
   if (tipo === 'MANTENCION' && !pautaDeEquipo(e)) { alert(`Todavía no hay una pauta de mantención para "${e.tipo || 'este tipo de equipo'}".`); return; }
-  let b = null; try { b = JSON.parse(localStorage.getItem(BORRADOR()) || 'null'); } catch (x) { b = null; }
-  if (b && b.afi === String(e.afi) && b.tipo === tipo && confirm('Tienes un borrador sin enviar de este equipo. ¿Seguir con ese borrador?')) formInt.value = b;
-  else formInt.value = nuevaIntervencion(tipo, e);
+  let b = leerBorrador(BORRADOR_KEY(e.afi, tipo, falla ? falla.id : null));
+  if (!b) { const v = leerBorrador(BORRADOR()); if (v && v.afi === String(e.afi) && v.tipo === tipo && !v.id) b = v; }   // borrador del formato anterior
+  if (b && confirm('Tienes lo que dejaste a medias de esta actividad (con sus firmas). ¿Seguir desde ahí?\n\n"Cancelar" = empezar de nuevo.')) { formInt.value = b; pasoInt.value = b._paso || 1; asegurarFallas(); return; }
+  formInt.value = nuevaIntervencion(tipo, e);
   if (falla) { elegirFalla(formInt.value, falla); formInt.value.modoFijo = true; if (tipo === 'MANTENCION') formInt.value.terminado = true; }   // la pauta cierra la falla de la OT
   pasoInt.value = 1;
   asegurarFallas();
@@ -325,6 +352,8 @@ export const subirFotoDoc = async (f, cual, i, file) => {
   finally { subiendoFoto.value = ''; }
 };
 export const editarRegistro = (r) => {
+  const bk = leerBorrador(BORRADOR_KEY(r.afi, r.tipo, null, r.id));   // 2026-11-27: cambios que dejó a medias al corregir
+  if (bk && confirm('Tienes cambios sin enviar de este registro (con sus firmas). ¿Seguir desde ahí?\n\n"Cancelar" = partir del registro guardado.')) { formInt.value = bk; pasoInt.value = bk._paso || 1; return; }
   formInt.value = { ...JSON.parse(JSON.stringify(r)), horometro: r.horometro ? String(r.horometro) : '', supervisor: r.supervisor && !r.supervisor.firma ? { modo: modoFirmaInicial(), nombre: '', nombre_pila: r.supervisor.nombre_pila ?? r.supervisor.nombre ?? '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', ...r.supervisor, ...(FIRMA_EN_EL_MOMENTO ? { modo: 'AHORA', nombre: r.supervisor.nombre || '' } : {}), firma: '' } : { modo: modoFirmaInicial(), nombre: '', nombre_pila: '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', firma: '' } };
   if (formInt.value.modo) {   // formato 2026-11-18
     if (!formInt.value.fecha_termino) formInt.value.fecha_termino = formInt.value.fecha;
@@ -338,8 +367,15 @@ export const editarRegistro = (r) => {
   }
   pasoInt.value = 1;
 };
-export const guardarBorrador = () => { try { if (formInt.value && !formInt.value.id) localStorage.setItem(BORRADOR(), JSON.stringify(formInt.value)); } catch (e) { /* lleno */ } };
-export const cerrarIntervencion = () => { guardarBorrador(); formInt.value = null; };
+export const guardarBorrador = () => {   // 2026-11-27: también al corregir un registro; guarda firmas y el paso en que iba
+  const f = formInt.value; if (!f || !f.afi) return;
+  const k = claveDe(f), txt = JSON.stringify({ ...f, _paso: pasoInt.value, _guardado: new Date().toISOString() });
+  try { localStorage.setItem(k, txt); }
+  catch (e) {   // celular lleno: se borran los borradores más antiguos y se reintenta
+    try { refrescarBorradores(); borradores.value.filter(x => x.k !== k).slice(-3).forEach(x => localStorage.removeItem(x.k)); localStorage.setItem(k, txt); } catch (_) { /* sin espacio */ }
+  }
+};
+export const cerrarIntervencion = () => { guardarBorrador(); formInt.value = null; refrescarBorradores(); };
 export const activarBloqueo = (f) => {
   if (!f.registro_bloqueo) {
     const b = bloqueoVacio();
@@ -489,7 +525,7 @@ const guardarSinSenal = async (f) => {
     (datos.fallas || []).forEach(i => { if (String(i.descripcion || '').trim() && !i.id && !i.tmp_id) i.tmp_id = OFF.nuevoTempId(); });
   }
   await OFF.guardarTrabajo('intervencion', datos, etiquetaInt(f));
-  try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
+  borrarBorrador(f);
   formInt.value = null;
   await aplicarPendientesLocales();
   if (esLev) { tabApp.value = 'equipos'; levAbrir.value = datos._tmp_id; }   // queda en el equipo con su carpeta
@@ -599,7 +635,7 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
     else if (reg && !esLev) await pasarAHistorial(reg, { provisional: true });
     return reg;
   }
-  try { localStorage.removeItem(BORRADOR()); } catch (e) { /* */ }
+  borrarBorrador(f);
   formInt.value = null;
   if (esLev) {   // vuelve al equipo: ahí aparece la carpeta del levantamiento con sus fallas y el botón Reparar
     if (reg && !dbMec.value.some(x => x.id === reg.id)) dbMec.value = [reg, ...dbMec.value];

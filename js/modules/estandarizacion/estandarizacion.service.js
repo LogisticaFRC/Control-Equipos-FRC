@@ -106,14 +106,20 @@ export const ultimaDe = (afi) => registrosDe(afi)[0] || null;
 export const formEst = ref(null);       // formulario abierto (o null)
 export const guardandoEst = ref(false);
 const quien = () => { const u = usuarioActivo.value; return (u && (u.nombre || u.usuario)) || ''; };
+/** 2026-11-27: borrador en el celular (ítems, fotos y firmas) por equipo: si se sale, queda guardado. */
+const EST_BORRADOR = (afi) => 'frc_est_borrador_' + kAfi(afi);
+export const guardarBorradorEst = () => { const f = formEst.value; if (!f || !f.afi) return; try { localStorage.setItem(EST_BORRADOR(f.afi), JSON.stringify({ ...f, _guardado: new Date().toISOString() })); } catch (e) { /* sin espacio */ } };
+const borrarBorradorEst = (afi) => { try { localStorage.removeItem(EST_BORRADOR(afi)); } catch (e) { /* */ } };
 export const abrirEstandarizacion = (eq) => {
+  let b = null; try { b = JSON.parse(localStorage.getItem(EST_BORRADOR(eq.afi)) || 'null'); } catch (_) { b = null; }
+  if (b && confirm('Tienes una inspección de este equipo a medias (con sus firmas). ¿Seguir desde ahí?\n\n"Cancelar" = empezar de nuevo.')) { formEst.value = b; return; }
   const p = plantillaDe(eq);
   const ult = ultimaDe(eq.afi);
   formEst.value = {
     afi: kAfi(eq.afi), equipo: [eq.tipo, eq.marca, eq.modelo].filter(Boolean).join(' '), tipo: eq.tipo || '',
     fecha: hoyISO(), plantilla: p.codigo, horometro: '', vehiculo: !!p.vehiculo, tipoInspeccion: '',
     items: p.items.map(i => ({ k: i.k, t: i.t, cant: i.cant, encontrada: i.cant, estado: '', obs: '', ley: !!i.ley })),
-    observaciones: '', responsables: [{ nombre: quien(), firma: '' }], fotos: [],
+    observaciones: '', responsables: [{ nombre: '', firma: '' }], fotos: [],   // 2026-11-27: sin la cuenta: escriben el nombre de quien inspeccionó
     anterior: ult ? ult.fecha : null
   };
 };
@@ -185,6 +191,7 @@ export const guardarEstandarizacion = async () => {
         } else throw e1;
       }
     }
+    borrarBorradorEst(f.afi);
     porAfi.value = { ...porAfi.value, [f.afi]: [nueva || { ...fila, created_at: new Date().toISOString() }, ...registrosDe(f.afi)] };
     formEst.value = null;
     return true;
