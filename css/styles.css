@@ -49,3 +49,55 @@
 .chip-lg.on { background:#ecfdf5; border-color:#059669; color:#065f46; }
 .mini { border:1.5px solid #cbd5e1; border-radius:10px; padding:6px 10px; font-size:12px; font-weight:800; background:#fff; color:#475569; }
 .sec { font-size:13px; font-weight:900; color:#1f4d3a; text-transform:uppercase; margin-bottom:6px; }
+
+/* =====================================================================
+   APP TÉCNICOS · REDISEÑO 2026-11-27: casillas y botones más marcados, pasos con nombre, tablet.
+   Aplica dentro de la app de técnicos (.app-tec) y del formulario de estandarización ([data-est="form"]).
+   ===================================================================== */
+.app-tec, [data-est="form"] { background:#e5ebf1 !important; }
+.app-tec main { font-size:15.5px; }
+/* Tarjetas: borde y sombra para que se separen del fondo */
+.app-tec .bg-white.rounded-2xl, .app-tec .bg-white.rounded-3xl, [data-est="form"] .bg-white.rounded-2xl {
+  border:1.5px solid #b4c0cd !important; box-shadow:0 2px 8px rgba(15,23,42,.08) !important; }
+/* Títulos de campo */
+.app-tec .lbl, [data-est="form"] .lbl { font-size:13px; color:#0f172a; letter-spacing:.03em; display:flex; align-items:center; gap:6px; }
+.app-tec .lbl::before, [data-est="form"] .lbl::before { content:''; width:4px; height:13px; border-radius:3px; background:#059669; flex-shrink:0; }
+.app-tec .sec { font-size:14px; border-left:4px solid #059669; padding-left:8px; }
+/* Casillas de texto */
+.app-tec .inp, [data-est="form"] .inp { border:2px solid #64748b; border-radius:12px; min-height:50px; font-weight:600; color:#0f172a; background-color:#fff; }
+.app-tec .inp::placeholder, [data-est="form"] .inp::placeholder { color:#94a3b8; font-weight:500; }
+.app-tec .inp:focus, [data-est="form"] .inp:focus { border-color:#059669; background-color:#f0fdf4; box-shadow:0 0 0 4px rgba(5,150,105,.25); }
+.app-tec select.inp { appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231f4d3a' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:36px; }
+/* Botones de opción (SÍ/NO, turnos, tipo…) */
+.app-tec .chip-lg { border:2px solid #64748b; background:#fff; color:#334155; min-height:52px; box-shadow:0 1px 0 #cbd5e1; }
+.app-tec .chip-lg.on { background:#059669; border-color:#047857; color:#fff; box-shadow:0 3px 8px rgba(5,150,105,.35); }
+.app-tec .chip-lg.on::before { content:'\2713\00a0'; font-weight:900; }
+/* Botones de marcar (Revisión / Reemplazo / N/A, Bueno / Malo / N/A) */
+.app-tec .border-slate-200, [data-est="form"] .border-slate-200 { border-color:#a3b0bf !important; }
+.app-tec button.border-2.bg-white, [data-est="form"] button.border-2.bg-white { color:#334155 !important; }
+.app-tec button.border-2, [data-est="form"] button.border-2 { min-height:44px; }
+/* Ítem sin marcar: franja ámbar a la izquierda para ubicar lo que falta */
+.app-tec .bg-amber-50\/50 { background:#fffbeb !important; box-shadow:inset 5px 0 0 #f59e0b; }
+[data-est="form"] .border-amber-200 { border-color:#f59e0b !important; box-shadow:inset 5px 0 0 #f59e0b !important; }
+/* Barra inferior Atrás / Siguiente */
+.app-tec .fixed.bottom-0 { box-shadow:0 -4px 14px rgba(15,23,42,.12); border-top:2px solid #b4c0cd; }
+/* Pasos con nombre (reemplaza la barra fina) */
+.paso-nav { display:flex; gap:6px; padding:12px 16px 4px; }
+.paso-nav .p { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10.5px; font-weight:800; color:#64748b; text-transform:uppercase; text-align:center; }
+.paso-nav .p b { width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:#fff; border:2px solid #64748b; color:#475569; font-size:13px; }
+.paso-nav .p.ok b { background:#059669; border-color:#047857; color:#fff; }
+.paso-nav .p.act b { background:#1f4d3a; border-color:#1f4d3a; color:#fff; box-shadow:0 0 0 4px rgba(5,150,105,.3); }
+.paso-nav .p.act { color:#1f4d3a; }
+/* Tablet: contenido más ancho */
+@media (min-width:700px) { .app-tec, .app-tec .fixed.bottom-0 { max-width:820px !important; } }
+/* Horómetro + fecha en una fila: la casilla del horómetro no se aplasta */
+.app-tec .flex > .inp.flex-1 { min-width:0; flex:1 1 0%; }
+.app-tec .flex > input[type="date"].inp.w-36 { flex:0 0 150px; width:150px; min-width:0; }
+.paso-nav button.p { background:none; border:0; padding:0; cursor:pointer; }
+/* Tablet: ítems de la pauta en 2 columnas */
+@media (min-width:700px) {
+  .app-tec [data-pauta="items"] .divide-y { display:grid; grid-template-columns:1fr 1fr; }
+  .app-tec [data-pauta="items"] .divide-y > * { border-top:1px solid #e2e8f0; }
+  .app-tec [data-pauta="items"] .divide-y > button:last-child { grid-column:1 / -1; }
+  [data-est="form"] > .max-w-xl, [data-est="form"] > .fixed.bottom-0 { max-width:820px; }
+}

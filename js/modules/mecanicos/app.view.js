@@ -38,7 +38,7 @@ export default {
   components: { EstadoEnvios, RiesgosRf, TallerMecanico, ActividadesEquipo, EstandarBoton, PautaMantencion, LevantamientosEquipo, ChoferChecklist, ChecklistLista, CrtgPrograma, CrtgPedido, CrtgUbicacion },
   props: { salir: { type: Function, default: null }, preview: Boolean },
   template: /* html */ `
-<div class="min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
+<div class="app-tec min-h-screen bg-slate-100 flex flex-col text-slate-800 max-w-xl mx-auto w-full shadow-xl relative">
   <!-- Barra superior -->
   <header class="sticky top-0 z-30 bg-[#1f4d3a] text-white px-4 py-3 flex items-center gap-3 shadow">
     <button v-if="CH.formCheck.value" @click="CH.cerrarChecklist()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Volver"><i class="fa-solid fa-arrow-left text-lg"></i></button>
@@ -61,11 +61,11 @@ export default {
   <main class="flex-1 pb-24">
     <!-- ========== FORMULARIO DE INTERVENCIÓN ========== -->
     <template v-if="S.formInt.value">
-      <div class="px-4 pt-3">
-        <div class="flex gap-1">
-          <button v-for="(p, i) in pasos" :key="i" @click="S.pasoInt.value = i + 1" :class="['flex-1 h-2 rounded-full', i + 1 <= S.pasoInt.value ? 'bg-emerald-600' : 'bg-slate-300']" :aria-label="p"></button>
-        </div>
-      </div>
+      <!-- 2026-11-27: pasos con número y nombre (se puede tocar para saltar) -->
+      <nav class="paso-nav" data-int="pasos">
+        <button v-for="(p, i) in pasos" :key="i" type="button" @click="irPaso(i + 1)" :class="['p', i + 1 < S.pasoInt.value ? 'ok' : i + 1 === S.pasoInt.value ? 'act' : '']" :aria-label="'Paso ' + (i + 1) + ': ' + p">
+          <b>{{ i + 1 < S.pasoInt.value ? '✓' : i + 1 }}</b>{{ p }}</button>
+      </nav>
       <div v-if="f.motivo_rechazo && f.estado === 'RECHAZADA'" class="mx-4 mt-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-3 text-sm"><b>Corregir:</b> {{ f.motivo_rechazo }}</div>
 
       <!-- Paso 1: datos -->
@@ -634,7 +634,8 @@ export default {
       finally { ocupado.value = false; }
     };
     const pautaTitulo = (e) => { const p = pautaDeEquipo(e); return p ? `${p.titulo} · ${p.codigo}` : ''; };
-    return { pautaTitulo, verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, textoEstado, logoSrc, onLogoError, config,
+    const irPaso = (n) => { S.pasoInt.value = n; window.scrollTo(0, 0); };   // 2026-11-27: pasos con nombre
+    return { irPaso, pautaTitulo, verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, textoEstado, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };
