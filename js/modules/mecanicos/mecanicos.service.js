@@ -26,6 +26,7 @@ import { crearFallasDeInspeccion, marcarFallaReparada, fallaPorId, textoFalla, a
 import * as OFF from '../../core/offline.js';   // SIN INTERNET (2026-11-19)
 import { pautaDeEquipo, pautaVacia, hojaPauta, resumenPauta } from './pautas.js';   // PAUTAS DE MANTENCIÓN (2026-11-26)
 import { requeridosPorModelo } from '../filtros/filtros.service.js';
+import { hojaInspeccion, resumenInspeccion, hallazgoVacio } from './inspeccion.js';   // INSPECCIÓN (solo visual) 2026-11-27
 import { PLANTILLA_INT, hojaIntervencion, hojaBloqueo, bloqueoVacio, ANCHO_VERTICAL, ANCHO_HORIZONTAL, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 
 const { ref, computed, watch } = Vue;
@@ -219,6 +220,7 @@ const pautaNueva = (e) => {
   try { fil = requeridosPorModelo(e.marca, e.modelo).map(g => { const o = g.mejor || g.filas[0] || {}; return { filtro: g.tipo, marca: o.marca || '', ref: o.codigo || '', cant: '' }; }); } catch (_) { fil = []; }   // la cantidad la pone el mecánico
   return pautaVacia(p, e, fil);
 };
+export { hallazgoVacio };
 export const tienePauta = (e) => Boolean(pautaDeEquipo(e));
 /** Empresa que no estaba en la lista → se registra como EMPRESA en el módulo Áreas (si falla, no corta el envío). */
 const registrarEmpresaNueva = async (nombre) => {
@@ -240,6 +242,7 @@ export const nuevaIntervencion = (tipo, e) => ({
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
   ...(tipo === 'MANTENCION' ? { modo: null, pauta: pautaNueva(e), hora_termino: '' } : {}),
+  ...(tipo === 'INSPECCION' ? { modo: null, descripcion_insp: '', hallazgos_si: null, hallazgos: [], hora_termino: '' } : {}),   // 2026-11-27: inspección solo visual
   supervisor: { modo: modoFirmaInicial(), nombre: '', nombre_pila: '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', firma: '' }
 });
 export const formInt = ref(null);       // intervención en edición (app)
@@ -315,6 +318,7 @@ export const subirFotoDoc = async (f, cual, i, file) => {
     const nombre = `intervenciones_app/fotos/${limpiarAfi(f.afi).replace(/[^\w-]/g, '')}_${cual}_${Date.now()}_${i + 1}.jpg`;
     const url = await subirArchivoStorage(nombre, new File([blob], nombre.split('/').pop(), { type: 'image/jpeg' }));
     if (cual === 'ART') { const a = [...(f.art_fotos || [])]; a[i] = url; f.art_fotos = a; }
+    else if (typeof cual === 'string' && cual.startsWith('HALL')) { const h = (f.hallazgos || [])[Number(cual.slice(4))]; if (h) h.foto = url; }
     else if (typeof cual === 'string' && cual.startsWith('FALLA')) { const it = f.fallas[Number(cual.slice(5))]; if (it) { const a = [...(it.fotos || [])]; a[i] = url; it.fotos = a; } }
     else f.bloqueo_foto = url;
   } catch (err) { alert('No se pudo subir la foto: ' + errMsg(err)); }
@@ -325,6 +329,12 @@ export const editarRegistro = (r) => {
   if (formInt.value.modo) {   // formato 2026-11-18
     if (!formInt.value.fecha_termino) formInt.value.fecha_termino = formInt.value.fecha;
     if (!(formInt.value.fallas || []).length) formInt.value.fallas = [itemFallaVacio()];
+  }
+  if (formInt.value.tipo === 'INSPECCION') {   // 2026-11-27: vuelve a armar el formulario de la inspección
+    const pa = formInt.value.pauta || {};
+    formInt.value.descripcion_insp = pa.descripcion || '';
+    formInt.value.hallazgos = (formInt.value.fallas || []).map(h => ({ descripcion: h.descripcion || '', categoria: h.categoria || '', foto: h.foto || '' }));
+    formInt.value.hallazgos_si = pa.hallazgos_si ?? formInt.value.hallazgos.length > 0;
   }
   pasoInt.value = 1;
 };
@@ -362,6 +372,17 @@ export const faltantes = (f) => {
 const faltantesBase = (f) => {
   const x = [];
   if (!f.fecha) x.push('Fecha');
+  if (f.tipo === 'INSPECCION') {   // INSPECCIÓN (solo visual) 2026-11-27: sin ART ni bloqueo
+    if (!String(f.descripcion_insp || '').trim()) x.push('Descripción de la inspección');
+    if (f.hallazgos_si == null) x.push('¿Encontraste algo por realizar? (Sí / No)');
+    if (f.hallazgos_si && !(f.hallazgos || []).some(h => String(h.descripcion || '').trim())) x.push('Al menos un punto por realizar');
+    if (!f.hora_inicio) x.push('Hora inicio');
+    if (!f.hora_termino) x.push('Hora término'); else if (duracionMin(f) == null) x.push('El término no puede ser antes del inicio');
+    if (!f.mecanicos.some(m => String(m.nombre).trim())) x.push('Nombre del mecánico');
+    if (!f.mecanicos[0]?.firma) x.push('Firma del mecánico responsable');
+    if (f.supervisor?.modo === 'AHORA' && (!String(f.supervisor.nombre || '').trim() || !f.supervisor.firma)) x.push('Nombre y firma del supervisor'); if (f.supervisor?.modo !== 'AHORA' && f.supervisor?.tipo === 'CLIENTE') { if (!String(f.supervisor.nombre_pila || '').trim()) x.push('Nombre del supervisor (cliente)'); if (!String(f.supervisor.apellido || '').trim()) x.push('Apellido del supervisor (cliente)'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(f.supervisor.correo || '').trim())) x.push('Correo de empresa del supervisor (cliente)'); }
+    return x;
+  }
   if (f.tipo === 'MANTENCION') {   // PAUTA DE MANTENCIÓN (2026-11-26)
     const pa = f.pauta || {};
     if (!f.hora_inicio) x.push('Hora inicio');
@@ -432,6 +453,12 @@ const filaDB = (f) => ({
     causa_falla: 'MANTENCION', descripcion: resumenPauta(f),
     lubricantes: (f.pauta.lubricantes || []).filter(l => l.key || String(l.tipo || '').trim()).map(l => ({ key: l.key || '', tipo: l.tipo || '', cantidad: l.litros || '' })),
     art_fotos: f.uso_art ? (f.art_fotos || []).filter(Boolean) : [], bloqueo_foto: f.bloqueo ? (f.bloqueo_foto || null) : null
+  } : {}),
+  ...(f.tipo === 'INSPECCION' ? {   // INSPECCIÓN (solo visual) 2026-11-27: puntos por realizar → columna fallas · descripción → pauta.descripcion
+    causa_intervencion: 'INSPECCIÓN VISUAL', causa_falla: 'INSPECCION', descripcion: resumenInspeccion(f),
+    pauta: { tipo: 'INSPECCION', descripcion: String(f.descripcion_insp || '').trim(), hallazgos_si: Boolean(f.hallazgos_si) },
+    fallas: f.hallazgos_si ? (f.hallazgos || []).filter(h => String(h.descripcion || '').trim()).map((h, k) => ({ n: k + 1, descripcion: String(h.descripcion).trim(), categoria: h.categoria || '', foto: h.foto || '' })) : [],
+    duracion_min: duracionMin(f), uso_art: false, bloqueo: false, art_fotos: [], bloqueo_foto: null, lubricantes: [], registro_bloqueo: null
   } : {}),
   ...(f.modo ? {   // 2026-11-18 (sql/intervencion_fallas.sql)
     modo: f.modo, fecha_termino: normalizarFecha(f.fecha_termino) || null, terminado: Boolean(f.terminado), duracion_min: duracionMin(f),
@@ -695,7 +722,7 @@ export const generarPDF = async (r) => {
     }
     return pdf.output('blob');
   }
-  const c1 = await renderHTML(hojaIntervencion(r, logo), ANCHO_VERTICAL, html2canvas);
+  const c1 = await renderHTML(r.tipo === 'INSPECCION' ? hojaInspeccion(r, logo, ANCHO_VERTICAL) : hojaIntervencion(r, logo), ANCHO_VERTICAL, html2canvas);
   const w1 = 210, h1 = Math.min(297, c1.height * w1 / c1.width);
   pdf.addImage(c1.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, w1, h1);
   if (r.bloqueo && r.registro_bloqueo) {
@@ -705,7 +732,7 @@ export const generarPDF = async (r) => {
     pdf.addImage(c2.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, w2, h2);
   }
   // Fotos de los papeles (2026-11-18): ART (2 hojas) y registro de bloqueo, una por página
-  const fotos = [...(r.modo === 'INSPECCION' ? (r.fallas || []).flatMap(i => (i.fotos || []).map((u, k) => [u, `Falla ${i.n} · foto ${k + 1} · ${String(i.descripcion || '').slice(0, 60)}`])) : []), ...(r.uso_art ? (r.art_fotos || []).map((u, i) => [u, `ART · hoja ${i + 1}`]) : []), ...(r.bloqueo && r.bloqueo_foto ? [[r.bloqueo_foto, 'Registro de bloqueo FRC-RE-OP-015']] : [])].filter(x => x[0]);
+  const fotos = [...(r.tipo === 'INSPECCION' ? (r.fallas || []).filter(h => h.foto).map(h => [h.foto, `Punto ${h.n} · ${String(h.descripcion || '').slice(0, 60)}`]) : []), ...(r.modo === 'INSPECCION' ? (r.fallas || []).flatMap(i => (i.fotos || []).map((u, k) => [u, `Falla ${i.n} · foto ${k + 1} · ${String(i.descripcion || '').slice(0, 60)}`])) : []), ...(r.uso_art ? (r.art_fotos || []).map((u, i) => [u, `ART · hoja ${i + 1}`]) : []), ...(r.bloqueo && r.bloqueo_foto ? [[r.bloqueo_foto, 'Registro de bloqueo FRC-RE-OP-015']] : [])].filter(x => x[0]);
   for (const [url, titulo] of fotos) {
     try {
       const img = await imagenDataURL(url);
@@ -721,7 +748,7 @@ export const descargarPDF = async (r) => {
   try {
     const blob = await generarPDF(r);
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = r.tipo === 'MANTENCION' ? `Pauta mantencion AFI ${r.afi} ${r.fecha || ''}.pdf` : `${r.modo === 'INSPECCION' ? 'OT Terreno ' + (r.tipo === 'ELECTRICA' ? 'electrico' : 'mecanico') : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
+    a.download = r.tipo === 'MANTENCION' ? `Pauta mantencion AFI ${r.afi} ${r.fecha || ''}.pdf` : r.tipo === 'INSPECCION' ? `Inspeccion visual AFI ${r.afi} ${r.fecha || ''}.pdf` : `${r.modo === 'INSPECCION' ? 'OT Terreno ' + (r.tipo === 'ELECTRICA' ? 'electrico' : 'mecanico') : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}.pdf`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   } catch (err) { alert('No se pudo generar el PDF: ' + errMsg(err)); }
 };
@@ -731,7 +758,7 @@ const CAUSA_HIST_MEC = { 'FALLA MECANICA': 'FALLA MECANICA', 'FALLA OPERACIONAL'
 const CAUSA_HIST_ELEC = { 'FALLA OPERACIONAL': 'FALLA ELECTRICA', 'PUESTA EN MARCHA': 'PUESTA EN MARCHA', 'CONEXIÓN/DESCONEXIÓN DE EQUIPO': 'CONEXIÓN/DESCONEXION', 'INSPECCIÓN': 'INSPECCION (ELECTRICA)', 'PRUEBAS MEDICIONES': 'PRUEBAS MEDICIONES' };
 // MECÁNICA (2026-11-13): causa_falla guarda la CAUSA elegida de la lista del Historial (REPARACION, IMPLEMENTACION…)
 // y causa_intervencion la RAZÓN de la causa (título corto). Registros antiguos: ACCIDENTE/… → equivalente.
-const causaHistorial = (r) => (r.tipo === 'MANTENCION' ? 'MANTENCION' : r.tipo === 'ELECTRICA' ? (CAUSA_HIST_ELEC[String(r.causa_intervencion || '').toUpperCase()] || 'FALLA ELECTRICA') : (CAUSA_HIST_MEC[r.causa_falla] && !listaCausas.includes(r.causa_falla) ? CAUSA_HIST_MEC[r.causa_falla] : (r.causa_falla || 'REPARACION')));
+const causaHistorial = (r) => (r.tipo === 'MANTENCION' ? 'MANTENCION' : r.tipo === 'INSPECCION' ? 'INSPECCION' : r.tipo === 'ELECTRICA' ? (CAUSA_HIST_ELEC[String(r.causa_intervencion || '').toUpperCase()] || 'FALLA ELECTRICA') : (CAUSA_HIST_MEC[r.causa_falla] && !listaCausas.includes(r.causa_falla) ? CAUSA_HIST_MEC[r.causa_falla] : (r.causa_falla || 'REPARACION')));
 
 /** PAUTA: "PREVENTIVA 250 HRS" (como en el formulario del Historial) o el tipo elegido. */
 const tipoMantPauta = (r) => { const pa = r.pauta || {}; return pa.tipo_mant === 'PREVENTIVA' && pa.frecuencia ? `PREVENTIVA ${pa.frecuencia} HRS` : (pa.tipo_mant || 'PREVENTIVA'); };
@@ -755,8 +782,8 @@ export const pasarAHistorial = async (r, opciones = {}) => {
     ].filter(Boolean);
     const payload = {
       afi: limpiarAfi(r.afi), fecha: r.fecha, equipo: (dbEquipos.value.find(e => mismoAfi(e.afi, r.afi)) || {}).tipo || r.equipo || '',
-      lugar: r.lugar || '', tipo_documento: r.tipo === 'MANTENCION' ? 'PAUTA MANTENCION' : 'INTERVENCION', causa: causaHistorial(r),
-      tipo_mantencion: r.tipo === 'MANTENCION' ? tipoMantPauta(r) : r.tipo === 'ELECTRICA' ? 'INTERVENCION ELECTRICA' : 'INTERVENCION MECANICA',
+      lugar: r.lugar || '', tipo_documento: r.tipo === 'MANTENCION' ? 'PAUTA MANTENCION' : r.tipo === 'INSPECCION' ? 'INSPECCION' : 'INTERVENCION', causa: causaHistorial(r),
+      tipo_mantencion: r.tipo === 'MANTENCION' ? tipoMantPauta(r) : r.tipo === 'INSPECCION' ? 'INSPECCION VISUAL' : r.tipo === 'ELECTRICA' ? 'INTERVENCION ELECTRICA' : 'INTERVENCION MECANICA',
       horometro: Number(r.horometro) || null,
       mecanico_1: mecs[0] || '', mecanico_2: mecs[1] || '', mecanico_3: mecs[2] || '', mecanico_4: mecs[3] || '',
       bloqueo_de_equipo: r.bloqueo ? 'SI' : 'NO', hora_falla: r.hora_falla || '', hora_inicio: r.hora_inicio || '', hora_termino: r.hora_termino || '',
@@ -771,6 +798,7 @@ export const pasarAHistorial = async (r, opciones = {}) => {
       ...aceites,
       falta_firma: provisional   // 2026-11-20: marca notoria en el Historial (sql/firma_pendiente.sql)
     };
+    if (r.tipo === 'INSPECCION') payload.causa_falla = '';
     if (r.tipo === 'MANTENCION') {   // PAUTA: filtros usados → columna de filtros del Historial · horas en número
       const fil = ((r.pauta || {}).filtros || []).filter(x => String(x.filtro || x.ref || '').trim()).map(x => ({ tipo: String(x.filtro || '').toUpperCase(), marca: x.marca || '', codigo: x.ref || '', proveedor: '', precio: '', cantidad: Number(x.cant) || 1 }));
       if (fil.length) payload.kit_bodega = JSON.stringify(fil);
@@ -870,7 +898,7 @@ export const descargarFormatoVacio = async (tipo) => {
   } catch (err) { alert('No se pudo generar el formato: ' + errMsg(err)); }
 };
 
-export const htmlHoja = (r, logo = '') => (r && r.tipo === 'MANTENCION' ? hojaPauta(r, logo, ANCHO_VERTICAL) : hojaIntervencion(r, logo));
+export const htmlHoja = (r, logo = '') => (r && r.tipo === 'MANTENCION' ? hojaPauta(r, logo, ANCHO_VERTICAL) : r && r.tipo === 'INSPECCION' ? hojaInspeccion(r, logo, ANCHO_VERTICAL) : hojaIntervencion(r, logo));
 export const htmlBloqueo = (r, logo = '') => hojaBloqueo(r, logo);
 
 /** TIEMPOS DE TRABAJO (2026-11-18): Excel con cada report (inspección / reparación), inicio, término y cuánto demoró. */

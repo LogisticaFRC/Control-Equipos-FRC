@@ -24,7 +24,7 @@ export const abrirDocApp = async (id, ventana = null) => {
     const r = (await sb(supabaseClient.from(TABLAS.MEC_INTERVENCIONES).select('*').eq('id', id).limit(1)))[0];
     if (!r) throw new Error(`No existe el report APP-${id} (pudo ser eliminado).`);
     const blob = await generarPDF(r);
-    const nombre = `${r.tipo === 'MANTENCION' ? 'Pauta mantencion' : r.modo === 'INSPECCION' ? 'OT Terreno' : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}${r.estado === 'EN_HISTORIAL' || r.estado === 'FIRMADA' ? '' : ' (SIN FIRMA)'}.pdf`;
+    const nombre = `${r.tipo === 'MANTENCION' ? 'Pauta mantencion' : r.tipo === 'INSPECCION' ? 'Inspeccion visual' : r.modo === 'INSPECCION' ? 'OT Terreno' : 'Intervencion ' + (r.tipo === 'ELECTRICA' ? 'electrica' : 'mecanica')} AFI ${r.afi} ${r.fecha || ''}${r.estado === 'EN_HISTORIAL' || r.estado === 'FIRMADA' ? '' : ' (SIN FIRMA)'}.pdf`;
     const url = URL.createObjectURL(new File([blob], nombre, { type: 'application/pdf' }));
     const movil = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
     if (!movil && ventana) { ventana.location.href = url; return; }

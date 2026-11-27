@@ -5,6 +5,7 @@
 //   Mis registros: estado de lo enviado (pendiente de firma, en Historial, rechazada para corregir)
 // =====================================================================
 import * as S from './mecanicos.service.js';
+import { CATEGORIAS_HALLAZGO } from './inspeccion.js';   // 2026-11-27
 import { CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO } from './hojas.js';
 import { usuarioActivo, config } from '../../core/store.js';
 import { listaCausas } from '../historial/historial.service.js';
@@ -47,7 +48,7 @@ export default {
     <button v-else-if="tab !== 'inicio'" @click="tab = 'inicio'" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center" aria-label="Menú"><i class="fa-solid fa-arrow-left text-lg"></i></button>
     <div v-else class="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center"><img :src="logoSrc" @error="onLogoError" class="max-h-full max-w-full object-contain" referrerpolicy="no-referrer"></div>
     <div class="flex-1 min-w-0">
-      <div class="font-extrabold leading-tight truncate">{{ CH.formCheck.value ? 'Check list camión · ' + (CH.formCheck.value.patente || 'nuevo') : S.formInt.value ? (S.formInt.value.tipo === 'MANTENCION' ? 'Pauta mantención' : S.formInt.value.modo === 'INSPECCION' ? 'OT Terreno' : S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
+      <div class="font-extrabold leading-tight truncate">{{ CH.formCheck.value ? 'Check list camión · ' + (CH.formCheck.value.patente || 'nuevo') : S.formInt.value ? (S.formInt.value.tipo === 'MANTENCION' ? 'Pauta mantención' : S.formInt.value.tipo === 'INSPECCION' ? 'Inspección (solo visual)' : S.formInt.value.modo === 'INSPECCION' ? 'OT Terreno' : S.formInt.value.tipo === 'ELECTRICA' ? 'Intervención eléctrica' : 'Intervención mecánica') + ' · AFI ' + S.formInt.value.afi : S.equipoSel.value ? 'AFI ' + S.equipoSel.value.afi : (TITULOS[tab] || 'Hola, ' + nombreCorto) }}</div>
       <div class="text-[11px] text-emerald-200 truncate">{{ S.formInt.value ? 'Paso ' + S.pasoInt.value + ' de ' + pasos.length + ' · ' + pasos[S.pasoInt.value - 1] : 'App Técnicos FRC' + (S.cargoActual.value ? ' · ' + S.cargoActual.value : '') + ' · ' + (S.esChofer.value ? 'Chofer' : S.esCrtg.value ? 'Terreno CRTG' : S.esTaller.value ? 'Taller' : 'Terreno') }}</div>
     </div>
     <img v-if="S.esCrtg.value" :src="LOGO_CRTG" alt="CRTG" title="CRTG" class="h-8 w-8 object-contain bg-white rounded-lg p-0.5 shrink-0">
@@ -70,6 +71,7 @@ export default {
 
       <!-- Paso 1: datos -->
       <section v-if="f.tipo !== 'MANTENCION'" v-show="S.pasoInt.value === 1" class="p-4 space-y-3">
+        <p v-if="f.tipo === 'INSPECCION'" class="text-xs bg-sky-50 border border-sky-200 text-sky-900 rounded-xl p-2.5"><i class="fa-solid fa-eye mr-1"></i><b>Inspección solo visual:</b> no se interviene el equipo (sin ART ni bloqueo).</p>
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <label class="block"><span class="lbl">{{ f.modo != null ? 'Fecha inicio' : 'Fecha' }}</span><input type="date" v-model="f.fecha" class="inp"></label>
@@ -80,7 +82,7 @@ export default {
           </div>
           <label class="block"><span class="lbl">Lugar de la intervención</span><input v-model="f.lugar" list="mec-lugares" class="inp uppercase" placeholder="Ej: TALLER FRC">
             <datalist id="mec-lugares"><option v-for="l in LUGARES" :key="l" :value="l"></option></datalist></label>
-          <div v-if="f.modo == null" class="grid grid-cols-3 gap-2">
+          <div v-if="f.modo == null && f.tipo !== 'INSPECCION'" class="grid grid-cols-3 gap-2">
             <label v-for="h in [['hora_falla','Hora falla'],['hora_inicio','Hora inicio'],['hora_termino','Hora término']]" :key="h[0]" class="block">
               <span class="lbl">{{ h[1] }}</span><input type="time" v-model="f[h[0]]" class="inp px-2">
               <button @click="f[h[0]] = S.horaAhora()" class="text-[11px] font-bold text-emerald-700 mt-1">Ahora</button>
@@ -90,11 +92,11 @@ export default {
       </section>
 
       <!-- Paso 2: qué se hizo -->
-      <section v-if="f.tipo !== 'MANTENCION'" v-show="S.pasoInt.value === 2" class="p-4 space-y-3">
+      <section v-if="f.tipo !== 'MANTENCION' && f.tipo !== 'INSPECCION'" v-show="S.pasoInt.value === 2" class="p-4 space-y-3">
         <!-- 2026-11-18: INSPECCIÓN (observación + fallas enumeradas) o REPARACIÓN de una falla · cada envío = un report -->
         <div v-if="f.modo != null && !f.modoFijo" class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
           <span class="lbl">¿Qué vas a registrar?</span>
-          <button @click="S.elegirModo(f, 'INSPECCION')" :class="['chip-lg text-left w-full', f.modo === 'INSPECCION' ? 'on' : '']" data-int="modo-insp"><i class="fa-solid fa-list-ol mr-2"></i>OT Terreno<span class="block text-[11px] font-normal opacity-80">Sin intervenir el equipo: anota la observación y enumera las fallas</span></button>
+          <button @click="S.elegirModo(f, 'INSPECCION')" :class="['chip-lg text-left w-full', f.modo === 'INSPECCION' ? 'on' : '']" data-int="modo-insp"><i class="fa-solid fa-list-ol mr-2"></i>OT Terreno (Falla/Reparación)<span class="block text-[11px] font-normal opacity-80">Sin intervenir el equipo: anota la observación y enumera las fallas</span></button>
           <button @click="S.elegirModo(f, 'REPARACION')" :class="['chip-lg text-left w-full', f.modo === 'REPARACION' ? 'on' : '']" data-int="modo-rep"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>Reparar una falla<span class="block text-[11px] font-normal opacity-80">Elige una falla abierta del equipo y registra lo que hiciste</span></button>
         </div>
         <div v-if="f.modo === 'INSPECCION'" class="bg-white rounded-2xl p-4 shadow-sm space-y-3" data-int="inspeccion">
@@ -191,7 +193,7 @@ export default {
       </section>
 
       <!-- Paso 3: seguridad -->
-      <section v-if="f.tipo !== 'MANTENCION'" v-show="S.pasoInt.value === 3" class="p-4 space-y-3">
+      <section v-if="f.tipo !== 'MANTENCION' && f.tipo !== 'INSPECCION'" v-show="S.pasoInt.value === 3" class="p-4 space-y-3">
         <!-- 2026-11-18: ART y BLOQUEO se llenan en papel → solo FOTO de las hojas -->
         <div v-if="f.modo != null" class="bg-white rounded-2xl p-4 shadow-sm space-y-4" data-int="seguridad">
           <div><span class="lbl">¿Se usó ART?</span>
@@ -302,8 +304,49 @@ export default {
       <!-- PAUTA DE MANTENCIÓN (2026-11-26): pasos 1-3 propios; el paso 4 (firmas) es el mismo -->
       <pauta-mantencion v-if="f.tipo === 'MANTENCION'" :f="f" :paso="S.pasoInt.value"></pauta-mantencion>
 
-      <!-- Paso 4: firmas -->
-      <section v-show="S.pasoInt.value === 4" class="p-4 space-y-3">
+      <!-- INSPECCIÓN (solo visual) 2026-11-27 · paso 2: descripción, puntos por realizar (no fallas) y tiempo -->
+      <section v-if="f.tipo === 'INSPECCION'" v-show="S.pasoInt.value === 2" class="p-4 space-y-3" data-insp="paso2">
+        <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+          <span class="lbl">Descripción de la inspección</span>
+          <textarea v-model="f.descripcion_insp" rows="4" class="inp" placeholder="Qué se revisó y cómo está el equipo" data-insp="descripcion"></textarea>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+          <span class="lbl">¿Encontraste algo por realizar que NO sea falla? (estético u otro)</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button @click="f.hallazgos_si = true; if (!f.hallazgos.length) f.hallazgos.push(S.hallazgoVacio())" :class="['chip-lg', f.hallazgos_si === true ? 'on' : '']" data-insp="si">SÍ</button>
+            <button @click="f.hallazgos_si = false" :class="['chip-lg', f.hallazgos_si === false ? 'on' : '']" data-insp="no">NO</button>
+          </div>
+          <template v-if="f.hallazgos_si">
+            <div v-for="(h, i) in f.hallazgos" :key="i" class="border-2 border-slate-200 rounded-xl p-3 space-y-2" :data-insp="'punto-' + i">
+              <div class="flex items-center gap-2"><b class="w-7 h-7 rounded-full bg-[#1f4d3a] text-white text-sm flex items-center justify-center shrink-0">{{ i + 1 }}</b>
+                <input v-model="h.descripcion" class="inp flex-1" placeholder="Qué hay que hacer (ej. pintar tapa, limpiar cabina)">
+                <button @click="f.hallazgos.splice(i, 1)" class="w-9 text-rose-500" aria-label="Quitar"><i class="fa-solid fa-trash"></i></button></div>
+              <div class="flex flex-wrap gap-1.5">
+                <button v-for="c in CATEGORIAS_HALLAZGO" :key="c" @click="h.categoria = h.categoria === c ? '' : c" :class="['px-2.5 py-1.5 rounded-lg border-2 text-[11px] font-bold', h.categoria === c ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-200']">{{ c }}</button>
+              </div>
+              <div class="flex items-center gap-2">
+                <img v-if="h.foto" :src="h.foto" class="w-14 h-14 rounded-lg object-cover border" alt="">
+                <label class="inline-block px-3 py-2 rounded-lg bg-[#1f4d3a] text-white text-xs font-bold cursor-pointer"><i :class="['fa-solid mr-1', S.subiendoFoto.value === 'HALL' + i + '0' ? 'fa-spinner fa-spin' : 'fa-camera']"></i>{{ h.foto ? 'Cambiar foto' : 'Foto (opcional)' }}
+                  <input type="file" accept="image/*" class="hidden" @change="e => S.subirFotoDoc(f, 'HALL' + i, 0, e.target.files[0])"></label>
+              </div>
+            </div>
+            <button @click="f.hallazgos.push(S.hallazgoVacio())" class="w-full py-2.5 rounded-xl border-2 border-dashed border-emerald-400 text-emerald-700 font-bold text-sm" data-insp="agregar"><i class="fa-solid fa-plus mr-1"></i>Agregar otro punto</button>
+          </template>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+          <span class="lbl">¿Cuánto se demoraron?</span>
+          <div class="grid grid-cols-2 gap-3">
+            <label v-for="h in [['hora_inicio','Hora inicio'],['hora_termino','Hora término']]" :key="h[0]" class="block">
+              <span class="text-[11px] font-bold text-slate-500">{{ h[1] }}</span><input type="time" v-model="f[h[0]]" class="inp px-2">
+              <button @click="f[h[0]] = S.horaAhora()" class="text-[11px] font-bold text-emerald-700 mt-1">Ahora</button>
+            </label>
+          </div>
+          <p class="text-sm font-bold text-[#1f4d3a]" data-insp="duracion"><i class="fa-solid fa-stopwatch mr-1"></i>Duración: {{ S.textoDuracion(S.duracionMin(f)) }}</p>
+        </div>
+      </section>
+
+      <!-- Paso 4: firmas (en la inspección es el paso 3) -->
+      <section v-show="S.pasoInt.value === (f.tipo === 'INSPECCION' ? 3 : 4)" class="p-4 space-y-3">
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <h4 class="sec">{{ f.tipo === 'ELECTRICA' ? 'Electricista(s)' : 'Mecánico(s) responsable(s)' }}</h4>
           <div v-for="(m, i) in f.mecanicos" :key="i" class="border rounded-xl p-3 space-y-2">
@@ -424,7 +467,8 @@ export default {
         <!-- TERRENO: opciones de siempre -->
         <div v-else class="grid grid-cols-1 gap-3">
           <levantamientos-equipo :eq="eq" @reparar="x => S.abrirIntervencion(x.tipo, eq, x.falla)"></levantamientos-equipo>
-          <button @click="S.abrirLevantamiento(eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]" data-menu="levantamiento"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-list-ol"></i></span><span class="flex-1"><b class="block text-lg">OT Terreno</b><span class="text-xs text-slate-500">Observación del equipo y fallas enumeradas</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
+          <button @click="S.abrirLevantamiento(eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]" data-menu="levantamiento"><span class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-list-ol"></i></span><span class="flex-1"><b class="block text-lg">OT Terreno <span class="text-sm font-bold text-slate-500">(Falla/Reparación)</span></b><span class="text-xs text-slate-500">Observación del equipo y fallas enumeradas</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
+          <button @click="S.abrirIntervencion('INSPECCION', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]" data-menu="inspeccion"><span class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-eye"></i></span><span class="flex-1"><b class="block text-lg">Inspección <span class="text-sm font-bold text-slate-500">(Solo visual)</span></b><span class="text-xs text-slate-500">Breve: descripción, puntos por realizar, tiempo y firmas</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <estandar-boton :eq="eq"></estandar-boton>
           <button @click="S.abrirIntervencion('ELECTRICA', eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99]"><span class="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-bolt"></i></span><span class="flex-1"><b class="block text-lg">Intervención eléctrica</b><span class="text-xs text-slate-500">IE-FRC</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
           <button @click="S.abrirIntervencion('MANTENCION', eq)" :disabled="!S.tienePauta(eq)" class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4 text-left active:scale-[.99] disabled:opacity-60" data-menu="pauta"><span class="w-14 h-14 rounded-2xl bg-lime-100 text-lime-700 flex items-center justify-center text-2xl"><i class="fa-solid fa-oil-can"></i></span><span class="flex-1"><b class="block text-lg">Mantención (pauta)</b><span class="text-xs text-slate-500">{{ S.tienePauta(eq) ? pautaTitulo(eq) : 'Sin pauta para este tipo de equipo' }}</span></span><i class="fa-solid fa-chevron-right text-slate-300"></i></button>
@@ -506,7 +550,7 @@ export default {
         </div>
         <div v-for="r in (S.carpetaApp.value === 'SIN_FIRMA' ? S.misSinFirma.value : S.misRealizados.value)" :key="r.id" class="bg-white rounded-2xl shadow-sm p-4">
           <div class="flex items-start justify-between gap-2">
-            <div><b class="text-[#1f4d3a]">AFI {{ r.afi }}</b> · <span class="text-sm">{{ r.modo === 'INSPECCION' ? 'OT Terreno · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'MANTENCION' ? 'Pauta mantención' : r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span><div class="text-xs text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }}</div></div>
+            <div><b class="text-[#1f4d3a]">AFI {{ r.afi }}</b> · <span class="text-sm">{{ r.modo === 'INSPECCION' ? 'OT Terreno · ' : r.modo === 'REPARACION' ? 'Reparación · ' : '' }}{{ r.tipo === 'MANTENCION' ? 'Pauta mantención' : r.tipo === 'INSPECCION' ? 'Inspección visual' : r.tipo === 'ELECTRICA' ? 'Eléctrica' : 'Mecánica' }}</span><div class="text-xs text-slate-500 font-mono">{{ formatDateForDisplay(r.fecha) }} · N° {{ r.id }}</div></div>
             <span :class="['text-[10px] font-bold px-2 py-1 rounded-full border whitespace-nowrap', S.ESTADOS_MEC[r.estado]?.c]"><i :class="['fa-solid mr-1', S.ESTADOS_MEC[r.estado]?.i]"></i>{{ S.ESTADOS_MEC[r.estado]?.t }}</span>
           </div>
           <div class="text-sm text-slate-600 mt-1 line-clamp-2"><b v-if="r.tipo === 'MECANICA' && r.causa_falla">{{ r.causa_falla }} · </b>{{ r.causa_intervencion }} — {{ r.descripcion }}</div>
@@ -552,7 +596,7 @@ export default {
     const tab = S.tabApp;
     const limite = ref(40);
     // 2026-11-18: el LEVANTAMIENTO termina en el paso 2 (Crear); la REPARACIÓN de cada falla lleva tiempos, ART, bloqueo y firmas
-    const pasos = computed(() => (S.formInt.value?.tipo === 'MANTENCION' ? ['Datos', 'Pauta', 'Repuestos', 'Firmas'] : S.formInt.value?.modo === 'INSPECCION' ? ['Datos', 'Fallas encontradas'] : ['Datos', 'Trabajo realizado', 'Seguridad', 'Firmas']));
+    const pasos = computed(() => (S.formInt.value?.tipo === 'MANTENCION' ? ['Datos', 'Pauta', 'Repuestos', 'Firmas'] : S.formInt.value?.tipo === 'INSPECCION' ? ['Datos', 'Inspección', 'Firmas'] : S.formInt.value?.modo === 'INSPECCION' ? ['Datos', 'Fallas encontradas'] : ['Datos', 'Trabajo realizado', 'Seguridad', 'Firmas']));
     const f = computed(() => S.formInt.value || {});
     const fallasEq = computed(() => (S.formInt.value ? F.fallasAbiertasDe(S.formInt.value.afi) : []));
     const b = computed(() => (S.formInt.value && S.formInt.value.registro_bloqueo) || {});
@@ -635,7 +679,7 @@ export default {
     };
     const pautaTitulo = (e) => { const p = pautaDeEquipo(e); return p ? `${p.titulo} · ${p.codigo}` : ''; };
     const irPaso = (n) => { S.pasoInt.value = n; window.scrollTo(0, 0); };   // 2026-11-27: pasos con nombre
-    return { irPaso, pautaTitulo, verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, textoEstado, logoSrc, onLogoError, config,
+    return { CATEGORIAS_HALLAZGO, irPaso, pautaTitulo, verOTAbiertas, verTodasOT, esMia, F, fallasEq, hoyISO, S, CH, K, LOGO_CRTG, naveDeAfi, colorNave, navesLibres, cuposNave, CAPACIDAD_NAVE, TITULOS, irA, tarjetas, listaEquipos, ocupado, agregarANave, usuarioActivo, tab, limite, pasos, f, b, eq, nombreCorto, fmtH, pendientesMios, hayVoz, dictando, dictar, formatDateForDisplay, textoEstado, logoSrc, onLogoError, config,
       CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, CAUSAS_MEC_RAPIDAS, listaCausas, ACEITES, LUGARES, ENERGIAS, DOCUMENTOS_BLOQUEO, REGLAS_ORO, TIPOS_EQUIPO_BLOQUEO };
   }
 };

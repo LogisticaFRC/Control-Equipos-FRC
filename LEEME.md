@@ -1305,3 +1305,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - Inventario → botón "Historial horómetros" (solo Admin general): todos los equipos, buscar por AFI o usuario, filtro Manual / Historial y "Solo a revisar".
 - En rojo: bajó o se borró · en ámbar: subió más de 2.000 h de una vez. Botón "Restaurar" vuelve al valor anterior (en el Inventario o en ese registro del Historial; el restaurar también queda registrado).
 - Nuevo: js/modules/inventario/horometro-log.view.js. APP_VERSION '2026-11-27 historial horometro'. SQL: sql/horometro_historial.sql (los cambios se registran desde que se ejecuta).
+
+## 2026-11-27 · App técnicos: INSPECCIÓN (solo visual)
+- Ficha del equipo: "OT Terreno (Falla/Reparación)" (antes "OT Terreno") y nuevo ítem "Inspección (Solo visual)" (terreno y taller en nave).
+- Inspección: 3 pasos · 1 Datos (fecha, horómetro, turno, lugar) · 2 Inspección: descripción, "¿Encontraste algo por realizar que NO sea falla?" SÍ/NO y lista de puntos (descripción + tipo Estético / Limpieza / Pintura / Señalética / Orden / Otro + foto opcional, "Agregar otro punto"), hora inicio/término con duración · 3 Firmas (mecánicos y supervisor). Sin ART ni bloqueo.
+- Se guarda en bd_mec_intervenciones con tipo = 'INSPECCION' (puntos en la columna fallas, descripción en pauta.descripcion, duracion_min). Pasa al Historial con causa INSPECCION, tipo "INSPECCION VISUAL" y documento INSPECCION. PDF propio con formato FRC (js/modules/mecanicos/inspeccion.js) + fotos de los puntos.
+- Panel, Por firmar, Mis documentos y ?doc=APP-id la muestran como "Inspección visual". APP_VERSION '2026-11-27 inspeccion visual'. Sin SQL nuevo (usa columnas ya creadas por intervencion_fallas.sql y pauta_mantencion.sql).
