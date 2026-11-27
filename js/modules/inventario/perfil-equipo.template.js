@@ -115,6 +115,8 @@ export default /* html */ `
           </div>
         </div>
       </div>
+      <!-- 2026-11-27: historial de cambios del horómetro (solo Admin general) -->
+      <horometro-log v-if="$adminGeneral && perfilEquipo.afi" :afi="String(perfilEquipo.afi)"></horometro-log>
         <div class="bg-white p-4 rounded-xl border shadow-sm space-y-2">
           <div class="flex items-center justify-between"><h4 class="font-bold text-slate-800 uppercase"><i class="fa-solid fa-wand-magic-sparkles text-violet-500 mr-1"></i> Hallazgos de fallas</h4><button @click="perfilTab = 'fallas'" class="text-blue-700 underline font-bold">Ver análisis →</button></div>
           <div class="grid md:grid-cols-2 gap-2">

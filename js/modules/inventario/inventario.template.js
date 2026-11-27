@@ -1,6 +1,7 @@
 // Plantilla HTML del componente 'inventario' (extraída del index original)
 export default /* html */ `
 <section class="space-y-4">
+  <horometro-log-modal></horometro-log-modal>
   <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
@@ -19,6 +20,7 @@ export default /* html */ `
           <option value="asc">Ascendente</option>
         </select>
         <button v-if="nVehiculosInv" @click="irAVehiculos" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white flex items-center gap-1.5" title="Los vehículos (AFI = patente XXXX-XX) están en su propio módulo"><i class="fa-solid fa-car-side text-amber-400"></i> Vehículos ({{ nVehiculosInv }})</button>
+        <button v-if="$adminGeneral" @click="verLogGlobal = true" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white flex items-center gap-1.5" title="Cambios del horómetro de todos los equipos (solo Admin general)"><i class="fa-solid fa-clock-rotate-left text-amber-300"></i> Historial horómetros</button>
         <button @click="abrirRegistroEliminados" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border flex items-center gap-1.5" title="Equipos eliminados, con su motivo"><i class="fa-solid fa-box-archive text-rose-500"></i> Equipos eliminados</button>
         <button @click="resetFiltrosInventario" class="text-xs text-slate-500 hover:text-slate-800 underline mx-2">Limpiar</button>
         <button v-if="$adminGeneral" @click="exportarInventarioCSV" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
