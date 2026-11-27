@@ -9,6 +9,7 @@
 // Es material de difusión: manda siempre el documento oficial vigente de Codelco.
 // =====================================================================
 import { RF } from './riesgos-rf.data.js';
+import { exportarPdfRF } from './riesgos-pdf.js';   // 2026-11-27: PDF resumido para imprimir
 const { ref, computed } = Vue;
 
 const NARANJO = '#E8622A';
@@ -45,6 +46,7 @@ export default {
       <div class="flex rounded-xl p-1" style="background:rgba(0,0,0,.25)">
         <button v-for="r in ROLES" :key="r.k" @click="rol = r.k" :class="['px-3 py-1.5 rounded-lg text-xs font-black transition', rol === r.k ? 'bg-white text-slate-900 shadow' : 'text-white']"><i :class="['fa-solid mr-1', r.icon]"></i>{{ r.label }}</button>
       </div>
+      <button @click="pdf" :disabled="generando" class="px-3 py-2 rounded-xl bg-white text-slate-900 text-xs font-black shadow disabled:opacity-60" data-rf="pdf"><i :class="['fa-solid mr-1', generando ? 'fa-spinner fa-spin' : 'fa-file-pdf text-red-600']"></i>{{ generando ? 'Generando…' : 'PDF para imprimir' }}</button>
     </div>
   </div>
 
@@ -138,6 +140,8 @@ export default {
     const idx = () => { const i = RF.findIndex(r => r.n === abierto.value?.n); return i < 0 ? 0 : i; };
     const vecino = (d) => RF[(idx() + d + RF.length) % RF.length];
     const mover = (d) => abrir(vecino(d));
-    return { ROLES, NARANJO, buscar, abierto, rol, lista, cuenta, grupos, abrir, cerrar, mover, vecino, iconoRF, pad, partir: partirPregunta };
+    const generando = ref(false);
+    const pdf = async () => { generando.value = true; try { await exportarPdfRF(); } catch (err) { alert('No se pudo generar el PDF: ' + (err?.message || err)); } finally { generando.value = false; } };
+    return { generando, pdf, ROLES, NARANJO, buscar, abierto, rol, lista, cuenta, grupos, abrir, cerrar, mover, vecino, iconoRF, pad, partir: partirPregunta };
   }
 };

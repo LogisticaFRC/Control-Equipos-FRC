@@ -6,6 +6,7 @@
 // Fuente: Codelco · Estándares de Control de Fatalidades (ECF 1 al 12 y ECF 21).
 // Es material de difusión: el documento oficial vigente manda (SIGO-ECF de Codelco).
 // =====================================================================
+import { exportarPdfECF } from './riesgos-pdf.js';   // 2026-11-27: PDF resumido para imprimir
 const { ref, computed } = Vue;
 
 // ---------- Dibujos (SVG propios, trazo simple) ----------
@@ -96,6 +97,7 @@ export default {
     </div>
     <div class="mt-3 flex flex-wrap gap-2">
       <input v-model="buscar" placeholder="Buscar riesgo (altura, bloqueo, izaje…)" class="flex-1 min-w-[180px] px-3 py-2 rounded-xl text-slate-900 text-sm">
+      <button @click="pdf" :disabled="generando" class="px-3 py-2 rounded-xl bg-white text-slate-900 text-xs font-black shadow disabled:opacity-60" data-ecf="pdf"><i :class="['fa-solid mr-1', generando ? 'fa-spinner fa-spin' : 'fa-file-pdf text-red-600']"></i>{{ generando ? 'Generando…' : 'PDF para imprimir' }}</button>
     </div>
   </div>
 
@@ -144,6 +146,8 @@ export default {
       abierto.value = ECF[((i < 0 ? 0 : i) + d + ECF.length) % ECF.length];
       Vue.nextTick(() => { const el = document.querySelector('[data-ecf=detalle] > div'); if (el) el.scrollTop = 0; });
     };
-    return { buscar, abierto, lista, mover, dibujoECF };
+    const generando = ref(false);
+    const pdf = async () => { generando.value = true; try { await exportarPdfECF(ECF, dibujoECF); } catch (err) { alert('No se pudo generar el PDF: ' + (err?.message || err)); } finally { generando.value = false; } };
+    return { buscar, abierto, lista, mover, dibujoECF, generando, pdf };
   }
 };
