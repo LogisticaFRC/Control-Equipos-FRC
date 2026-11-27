@@ -34,7 +34,7 @@ export const avisoSesion = ref('');
 /** true → se muestra (obligatorio) el cuadro para cambiar la contraseña. */
 export const debeCambiarClave = ref(false);
 
-export const APP_VERSION = '2026-11-27 ot terreno sin taller';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
+export const APP_VERSION = '2026-11-27 firmas al momento';   // se ve en el login: sirve para confirmar que el navegador cargó la versión nueva
 
 // ---------- Pequeño almacenamiento tolerante a fallos ----------
 const get = (st, k) => { try { return st.getItem(k); } catch (e) { return null; } };

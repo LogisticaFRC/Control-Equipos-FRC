@@ -20,7 +20,8 @@ import { hoyISO, formatDateForDisplay, mismoAfi } from '../../core/utils.js';
 import { esVehiculo } from '../inventario/inventario.mapper.js';
 import { abrirPdfChecklist, generarPdfBlob, guardarPdf } from './chofer.pdf.js';   // PDF guardado en Supabase y abierto al enviar
 import * as OFF from '../../core/offline.js';   // SIN INTERNET (2026-11-19)
-import { avisoApp } from './mecanicos.service.js';
+import { avisoApp, FIRMA_EN_EL_MOMENTO } from './mecanicos.service.js';
+export { FIRMA_EN_EL_MOMENTO };   // 2026-11-27: el supervisor firma en el momento (false = vuelve "Firma después")
 import { dbLocaciones } from '../../core/store.js';
 import { TIPOS, textoUbicacion, rutaDe } from '../areas/areas.service.js';
 
@@ -76,7 +77,7 @@ let uidN = 0;
 export const actVacia = () => ({ uid: Date.now() + '_' + (++uidN), traslado: 'TRASLADO', subarrendado: false, equipo: '', afi: '', cu: '', desde: '', hasta: '', h_ini: '', h_fin: '', fotos: [] });
 export const checklistVacio = (formato = 'CAMION_PLUMA') => ({
   formato, firma: '',
-  sup_modo: 'DESPUES', sup_nombre: '', sup_firma: '',   // supervisor: firma ahora (en el celular) o después (Personal Técnico → Choferes)
+  sup_modo: FIRMA_EN_EL_MOMENTO ? 'AHORA' : 'DESPUES', sup_nombre: '', sup_firma: '',   // supervisor: firma ahora (en el celular) o después (Personal Técnico → Choferes)
   patente: '', marca: '', modelo: '', fecha: hoyISO(), venc_revision: '', venc_permiso: '',
   cam_hrs_ini: '', cam_hrs_fin: '', cam_hrs_prox: '', km_ini: '', km_fin: '', km_prox: '',
   pluma_hrs_ini: '', pluma_hrs_fin: '', pluma_prox_fecha: '',   // Pluma: próxima mantención = FECHA
@@ -281,6 +282,7 @@ export const enviarChecklist = async () => {
   if (!f.fecha) { pasoCheck.value = 1; alert('Falta la fecha.'); return false; }
   if (num(f.km_ini) && num(f.km_fin) && num(f.km_fin) < num(f.km_ini)) { pasoCheck.value = 1; alert('El km de término es menor que el de inicio.'); return false; }
   if (!f.firma) { pasoCheck.value = 4; alert('Falta tu firma (paso 4).'); return false; }
+  if (FIRMA_EN_EL_MOMENTO) f.sup_modo = 'AHORA';
   if (f.sup_modo === 'AHORA' && (!String(f.sup_nombre || '').trim() || !f.sup_firma)) { pasoCheck.value = 4; alert('Falta el nombre y la firma del supervisor (o elige "Firma después").'); return false; }
   if (f.sup_modo !== 'AHORA') { f.sup_nombre = ''; f.sup_firma = ''; }
   if (OFF.dispositivoOffline() && OFF.sinSenal()) return guardarChecklistSinSenal(f);

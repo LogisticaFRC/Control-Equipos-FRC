@@ -240,10 +240,17 @@ export const nuevaIntervencion = (tipo, e) => ({
   lubricantes: [], usuario_arriendo: enTaller(e) ? '' : (empresaDe(e) || ''), operador: '', vale_consumo: '',
   registro_bloqueo: null,
   ...(tipo === 'MANTENCION' ? { modo: null, pauta: pautaNueva(e), hora_termino: '' } : {}),
-  supervisor: { modo: 'DESPUES', nombre: '', nombre_pila: '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', firma: '' }
+  supervisor: { modo: modoFirmaInicial(), nombre: '', nombre_pila: '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', firma: '' }
 });
 export const formInt = ref(null);       // intervención en edición (app)
 export const pasoInt = ref(1);
+/** Falla (o su OT Terreno) que habla de mantención → se atiende con la pauta. */
+const RX_MANT = /MANT[EÉ]N(CI[OÓ]N|IMIENTO)|\bMANTENC|PREVENTIV|PAUTA/i;
+export const esFallaMantencion = (h) => {
+  if (!h) return false;
+  const lev = h.intervencion_id ? dbMec.value.find(x => String(x.id) === String(h.intervencion_id)) : null;
+  return RX_MANT.test([h.descripcion, h.sistema, textoFalla(h), lev && lev.descripcion, lev && lev.causa_intervencion].filter(Boolean).join(' '));
+};
 export const abrirIntervencion = (tipo, e, falla = null) => {
   // TALLER: intervenciones solo en equipos que están en una nave · CHOFER: nunca (2026-11-17)
   if (esChofer.value) { alert('El perfil Chofer no hace intervenciones: registra el check list / report del camión.'); return; }
@@ -252,7 +259,7 @@ export const abrirIntervencion = (tipo, e, falla = null) => {
   let b = null; try { b = JSON.parse(localStorage.getItem(BORRADOR()) || 'null'); } catch (x) { b = null; }
   if (b && b.afi === String(e.afi) && b.tipo === tipo && confirm('Tienes un borrador sin enviar de este equipo. ¿Seguir con ese borrador?')) formInt.value = b;
   else formInt.value = nuevaIntervencion(tipo, e);
-  if (falla) { elegirFalla(formInt.value, falla); formInt.value.modoFijo = true; }
+  if (falla) { elegirFalla(formInt.value, falla); formInt.value.modoFijo = true; if (tipo === 'MANTENCION') formInt.value.terminado = true; }   // la pauta cierra la falla de la OT
   pasoInt.value = 1;
   asegurarFallas();
 };
@@ -314,7 +321,7 @@ export const subirFotoDoc = async (f, cual, i, file) => {
   finally { subiendoFoto.value = ''; }
 };
 export const editarRegistro = (r) => {
-  formInt.value = { ...JSON.parse(JSON.stringify(r)), horometro: r.horometro ? String(r.horometro) : '', supervisor: r.supervisor && !r.supervisor.firma ? { modo: 'DESPUES', nombre: '', nombre_pila: r.supervisor.nombre_pila ?? r.supervisor.nombre ?? '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', ...r.supervisor, firma: '' } : { modo: 'DESPUES', nombre: '', nombre_pila: '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', firma: '' } };
+  formInt.value = { ...JSON.parse(JSON.stringify(r)), horometro: r.horometro ? String(r.horometro) : '', supervisor: r.supervisor && !r.supervisor.firma ? { modo: modoFirmaInicial(), nombre: '', nombre_pila: r.supervisor.nombre_pila ?? r.supervisor.nombre ?? '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', ...r.supervisor, ...(FIRMA_EN_EL_MOMENTO ? { modo: 'AHORA', nombre: r.supervisor.nombre || '' } : {}), firma: '' } : { modo: modoFirmaInicial(), nombre: '', nombre_pila: '', apellido: '', empresa: '', correo: '', contacto_id: null, tipo: 'FRC', firma: '' } };
   if (formInt.value.modo) {   // formato 2026-11-18
     if (!formInt.value.fecha_termino) formInt.value.fecha_termino = formInt.value.fecha;
     if (!(formInt.value.fallas || []).length) formInt.value.fallas = [itemFallaVacio()];
@@ -339,8 +346,20 @@ export const activarBloqueo = (f) => {
   }
 };
 
+/** FIRMAS (2026-11-27): true = el supervisor y TODOS los mecánicos firman en el momento, en el celular.
+ *  Para volver al sistema anterior (supervisor firma después en "Por firmar" o por correo el cliente), poner false. */
+export const FIRMA_EN_EL_MOMENTO = true;
+export const modoFirmaInicial = () => (FIRMA_EN_EL_MOMENTO ? 'AHORA' : 'DESPUES');
 /** Qué falta para poder enviar (lista de textos). */
 export const faltantes = (f) => {
+  const x = faltantesBase(f);
+  if (FIRMA_EN_EL_MOMENTO && f.modo !== 'INSPECCION') {   // el levantamiento (OT Terreno) se crea sin firmas
+    (f.mecanicos || []).forEach((m, i) => { if (i > 0 && String(m.nombre || '').trim() && !m.firma) x.push(`Firma de ${String(m.nombre).trim()}`); });
+    if (f.supervisor && f.supervisor.modo !== 'AHORA') x.push('Firma del supervisor (firma en el momento)');
+  }
+  return x;
+};
+const faltantesBase = (f) => {
   const x = [];
   if (!f.fecha) x.push('Fecha');
   if (f.tipo === 'MANTENCION') {   // PAUTA DE MANTENCIÓN (2026-11-26)
@@ -510,7 +529,7 @@ const procesarIntervencion = async (f, { ui = true, alInsertar = null } = {}) =>
   const esLev = f.modo === 'INSPECCION';   // el levantamiento se CREA sin firmas (las llevan las reparaciones)
   const conFirma = !esLev && f.supervisor?.modo === 'AHORA';
   if (esLev) { fila.hora_inicio = null; fila.hora_termino = null; fila.fecha_termino = null; fila.duracion_min = null; fila.lubricantes = []; fila.uso_art = false; fila.bloqueo = false; fila.art_fotos = []; fila.bloqueo_foto = null; fila.terminado = true; }
-  fila.supervisor = conFirma ? { nombre: f.supervisor.nombre.trim(), empresa: String(f.supervisor.empresa || '').trim(), tipo: f.supervisor.tipo || 'CLIENTE', firma: f.supervisor.firma, fecha: new Date().toISOString() } : null;
+  fila.supervisor = conFirma ? { nombre: f.supervisor.nombre.trim(), empresa: String(f.supervisor.empresa || '').trim().toUpperCase() || (f.supervisor.tipo === 'CLIENTE' ? '' : 'FAST RENTAL CHILE'), tipo: f.supervisor.tipo || 'CLIENTE', firma: f.supervisor.firma, fecha: new Date().toISOString() } : null;
   // 2026-11-20: sin firma → queda quién debe firmar (FRC o cliente con su correo); el mecánico ya no firma por el supervisor
   if (!conFirma && !esLev) fila.supervisor = f.supervisor?.tipo === 'CLIENTE'
     ? { tipo: 'CLIENTE', nombre_pila: String(f.supervisor.nombre_pila || '').trim(), apellido: String(f.supervisor.apellido || '').trim(), nombre: (String(f.supervisor.nombre_pila || '').trim() + ' ' + String(f.supervisor.apellido || '').trim()).trim(), empresa: String(f.supervisor.empresa || '').trim().toUpperCase(), correo: String(f.supervisor.correo || '').trim().toLowerCase(), contacto_id: f.supervisor.contacto_id || null, firma: '', pendiente: true }

@@ -27,6 +27,7 @@ export default {
       <p class="text-[11px] font-black uppercase tracking-wide text-emerald-700">{{ pa.codigo }}</p>
       <h3 class="font-extrabold text-lg leading-tight">{{ pa.titulo }}</h3>
       <p class="text-xs text-slate-500">AFI {{ f.afi }} · {{ pa.marca_modelo || f.equipo }}</p>
+      <p v-if="f.falla_id" class="text-xs font-bold text-amber-700 mt-1"><i class="fa-solid fa-link mr-1"></i>De la OT{{ f.ot_fallas_folio ? ' N° ' + f.ot_fallas_folio : '' }}: {{ f.falla_texto }} · al enviar queda reparada</p>
     </div>
     <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
       <div class="grid grid-cols-2 gap-3">

@@ -1284,3 +1284,9 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - ECF: por estándar el riesgo, los controles críticos y lo prohibido, con su dibujo y color (3 hojas A4).
 - A4 vertical a 2 columnas, encabezado con logo FRC, aviso "si falta un control, detén la actividad", fuente y N° de página. Texto real (jsPDF), liviano y nítido al imprimir. Nuevo: js/modules/seguridad/riesgos-pdf.js. APP_VERSION '2026-11-27 pdf riesgos'. Sin SQL.
 - (2026-11-27, ajuste) App técnicos · menú de TERRENO: el cuadro "OT Terreno abiertas" ya no muestra las OT del taller (equipo que hoy está en TALLER FRC o levantamiento hecho en el taller). mecanicos.service.js: otTerrenoAbiertas. APP_VERSION '2026-11-27 ot terreno sin taller'.
+
+## 2026-11-27 · Firmas en el momento + OT de mantención con pauta
+- FIRMAS: el supervisor (FRC o del cliente: nombre, empresa y firma) y TODOS los mecánicos firman en el momento, en el celular (intervenciones, reparaciones y pautas; check list del chofer: solo "Firma ahora"). Al enviar queda FIRMADA y pasa al Historial. El levantamiento (OT Terreno) se sigue creando sin firmas.
+  Para volver al sistema anterior (supervisor firma después en "Por firmar" / correo al cliente; mecánicos adicionales firman desde su carpeta): en js/modules/mecanicos/mecanicos.service.js poner FIRMA_EN_EL_MOMENTO = false. Todo el código anterior quedó intacto.
+- OT con "mantención": si la falla de una OT (o la observación de la OT) dice mantención / mantenimiento / preventiva / pauta y el equipo tiene pauta, el botón es "Pauta" (abre la pauta de mantención enlazada a esa falla, que queda REPARADA al enviar); queda un botón chico "Intervención" por si se necesita la intervención mecánica. esFallaMantencion en mecanicos.service.js.
+- APP_VERSION '2026-11-27 firmas al momento'. Sin SQL.

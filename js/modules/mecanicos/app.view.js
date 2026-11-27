@@ -314,12 +314,26 @@ export default {
               </select>
               <button v-if="i > 0" @click="f.mecanicos.splice(i, 1)" class="w-10 text-rose-500"><i class="fa-solid fa-trash"></i></button></div>
             <input v-model="m.nombre" class="inp" :placeholder="i === 0 ? 'Nombre (responsable)' : 'Nombre'">
-            <p v-if="i > 0 && m.usuario" class="text-[11px] text-emerald-700"><i class="fa-solid fa-share-nodes mr-1"></i>Le aparecerá en su carpeta (puede ver el PDF y firmar su parte).</p>
+            <p v-if="i > 0 && m.usuario && !S.FIRMA_EN_EL_MOMENTO" class="text-[11px] text-emerald-700"><i class="fa-solid fa-share-nodes mr-1"></i>Le aparecerá en su carpeta (puede ver el PDF y firmar su parte).</p>
+            <p v-if="i > 0 && S.FIRMA_EN_EL_MOMENTO" class="text-[11px] text-amber-700"><i class="fa-solid fa-pen-nib mr-1"></i>Debe firmar ahora.</p>
             <firma-pad :firma="m.firma" :titulo="'Firma · ' + (m.nombre || 'mecánico')" @guardar="v => m.firma = v"></firma-pad>
           </div>
           <button v-if="f.mecanicos.length < 4" @click="f.mecanicos.push({ nombre: '', usuario: '', firma: '' })" class="text-sm font-bold text-emerald-700"><i class="fa-solid fa-user-plus mr-1"></i>Agregar otro</button>
         </div>
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+          <!-- 2026-11-27: FIRMA EN EL MOMENTO (S.FIRMA_EN_EL_MOMENTO = true en mecanicos.service.js). Con false vuelve el sistema anterior (firma después). -->
+          <template v-if="S.FIRMA_EN_EL_MOMENTO">
+            <h4 class="sec">Supervisor · firma ahora</h4>
+            <div class="grid grid-cols-2 gap-2" data-int="sup-tipo">
+              <button @click="f.supervisor.tipo = 'FRC'; f.supervisor.modo = 'AHORA'; f.supervisor.empresa = 'FAST RENTAL CHILE'" :class="['chip-lg text-sm', f.supervisor.tipo !== 'CLIENTE' ? 'on' : '']"><i class="fa-solid fa-user-tie mr-1"></i>Supervisor FRC</button>
+              <button @click="f.supervisor.tipo = 'CLIENTE'; f.supervisor.modo = 'AHORA'; if (f.supervisor.empresa === 'FAST RENTAL CHILE') f.supervisor.empresa = ''" :class="['chip-lg text-sm', f.supervisor.tipo === 'CLIENTE' ? 'on' : '']"><i class="fa-solid fa-handshake mr-1"></i>Del cliente</button>
+            </div>
+            <input v-model="f.supervisor.nombre" @input="f.supervisor.modo = 'AHORA'" class="inp" placeholder="Nombre y apellido del supervisor" data-int="sup-nombre-ahora">
+            <input v-if="f.supervisor.tipo === 'CLIENTE'" v-model="f.supervisor.empresa" class="inp uppercase" placeholder="Empresa del supervisor">
+            <firma-pad :firma="f.supervisor.firma" :titulo="'Firma · ' + (f.supervisor.nombre || 'supervisor')" @guardar="v => { f.supervisor.firma = v; f.supervisor.modo = 'AHORA'; }"></firma-pad>
+            <p class="text-[11px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>El supervisor y todos los mecánicos firman ahora en este celular. Al enviar queda firmado y en el Historial.</p>
+          </template>
+          <template v-else>
           <h4 class="sec">¿Quién firma como supervisor?</h4>
           <!-- 2026-11-20: el mecánico NO firma por el supervisor. Se envía con su firma y queda en el Historial marcado FALTA FIRMA. -->
           <div class="grid grid-cols-1 gap-2" data-int="sup-opciones">
@@ -343,6 +357,7 @@ export default {
             <p v-if="f.supervisor.contacto_id" class="text-[11px] text-slate-500"><i class="fa-solid fa-pen mr-1"></i>Si algún dato quedó mal guardado, corrígelo aquí: se actualiza al enviar.</p>
           </template>
           <p class="text-[11px] text-amber-800 bg-amber-50 rounded-lg p-2"><i class="fa-solid fa-circle-info mr-1"></i>Al enviar queda en el Historial del equipo marcado <b>FALTA FIRMA</b> hasta que el supervisor firme.</p>
+          </template>
         </div>
         <label v-if="f.modo === 'REPARACION'" :class="['flex items-start gap-3 rounded-2xl p-4 border-2 cursor-pointer', f.terminado ? 'bg-emerald-50 border-emerald-500' : 'bg-white border-slate-300']" data-int="terminado">
           <input type="checkbox" v-model="f.terminado" class="w-7 h-7 mt-0.5 accent-emerald-600 shrink-0">

@@ -189,7 +189,7 @@ export const ChoferChecklist = {
       <p class="lbl"><i class="fa-solid fa-user-tie mr-1"></i>Firma del supervisor</p>
       <div class="grid grid-cols-2 gap-2">
         <button @click="f.sup_modo = 'AHORA'" data-chofer="sup-ahora" :class="['py-2.5 rounded-xl border-2 font-black text-sm', f.sup_modo === 'AHORA' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-500']">Firma ahora</button>
-        <button @click="f.sup_modo = 'DESPUES'" :class="['py-2.5 rounded-xl border-2 font-black text-sm', f.sup_modo !== 'AHORA' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-500']">Firma después</button>
+        <button v-if="!C.FIRMA_EN_EL_MOMENTO" @click="f.sup_modo = 'DESPUES'" :class="['py-2.5 rounded-xl border-2 font-black text-sm', f.sup_modo !== 'AHORA' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-500']">Firma después</button>
       </div>
       <template v-if="f.sup_modo === 'AHORA'">
         <input v-model="f.sup_nombre" class="inp uppercase" placeholder="Nombre del supervisor" data-chofer="sup-nombre">

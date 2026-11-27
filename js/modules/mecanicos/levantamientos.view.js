@@ -48,7 +48,11 @@ export default {
             <template v-if="i.estado === 'REPARADO'"><b class="text-emerald-700">Reparada</b>{{ i.reparado_por ? ' por ' + i.reparado_por : '' }}<template v-for="x in i.reparaciones" :key="x.id"> · report N° {{ x.id }}</template></template></p>
         </div>
         <div v-if="i.id && ['PENDIENTE', 'AGREGADO'].includes(i.estado)" class="flex flex-col gap-1 shrink-0">
-          <button @click="reparar(i, 'MECANICA', l)" class="px-2.5 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-extrabold" :data-lev="'reparar-' + i.id"><i class="fa-solid fa-wrench mr-1"></i>Reparar</button>
+          <template v-if="esMant(i, l)">
+            <button @click="reparar(i, 'MANTENCION', l)" class="px-2.5 py-1.5 rounded-lg bg-lime-600 text-white text-xs font-extrabold" :data-lev="'pauta-' + i.id"><i class="fa-solid fa-oil-can mr-1"></i>Pauta</button>
+            <button @click="reparar(i, 'MECANICA', l)" class="px-2 py-1 rounded-lg border text-[10px] font-bold text-slate-500" :data-lev="'reparar-' + i.id">Intervención</button>
+          </template>
+          <button v-else @click="reparar(i, 'MECANICA', l)" class="px-2.5 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-extrabold" :data-lev="'reparar-' + i.id"><i class="fa-solid fa-wrench mr-1"></i>Reparar</button>
         </div>
       </div>
     </div>
@@ -61,7 +65,11 @@ export default {
       <span class="w-7 h-7 rounded-full bg-slate-400 text-white font-black text-sm flex items-center justify-center shrink-0">{{ k + 1 }}</span>
       <div class="flex-1 min-w-0"><p class="font-bold text-sm leading-snug">{{ h.descripcion }}</p><p class="text-[11px] text-slate-500">{{ h.sistema ? h.sistema + ' · ' : '' }}{{ h.reportado_por }}</p></div>
       <div class="flex flex-col gap-1 shrink-0">
-        <button @click="$emit('reparar', { falla: h, tipo: 'MECANICA' })" class="px-2.5 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-extrabold"><i class="fa-solid fa-wrench mr-1"></i>Reparar</button>
+        <template v-if="esMantH(h)">
+          <button @click="$emit('reparar', { falla: h, tipo: 'MANTENCION' })" class="px-2.5 py-1.5 rounded-lg bg-lime-600 text-white text-xs font-extrabold"><i class="fa-solid fa-oil-can mr-1"></i>Pauta</button>
+          <button @click="$emit('reparar', { falla: h, tipo: 'MECANICA' })" class="px-2 py-1 rounded-lg border text-[10px] font-bold text-slate-500">Intervención</button>
+        </template>
+        <button v-else @click="$emit('reparar', { falla: h, tipo: 'MECANICA' })" class="px-2.5 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-extrabold"><i class="fa-solid fa-wrench mr-1"></i>Reparar</button>
       </div>
     </div>
   </div>
@@ -103,6 +111,9 @@ export default {
       const real = (fallasAbiertasDe(props.eq.afi).find(x => String(x.id) === String(i.id))) || h;
       emit('reparar', { falla: real, tipo });
     };
-    return { S, abrir, activos, completos, sueltas, nAbiertas, reparar, formatDateForDisplay };
+    // 2026-11-27: falla u OT que dice "mantención" → se hace la PAUTA DE MANTENCIÓN (queda la intervención como opción)
+    const esMantH = (h) => S.tienePauta(props.eq) && S.esFallaMantencion(h);
+    const esMant = (i, l) => esMantH({ descripcion: i.descripcion, sistema: i.sistema, intervencion_id: l ? l.r.id : null });
+    return { S, abrir, activos, completos, sueltas, nAbiertas, reparar, esMant, esMantH, formatDateForDisplay };
   }
 };
