@@ -113,10 +113,29 @@ export const abrirEstandarizacion = (eq) => {
     afi: kAfi(eq.afi), equipo: [eq.tipo, eq.marca, eq.modelo].filter(Boolean).join(' '), tipo: eq.tipo || '',
     fecha: hoyISO(), plantilla: p.codigo, horometro: '', vehiculo: !!p.vehiculo, tipoInspeccion: '',
     items: p.items.map(i => ({ k: i.k, t: i.t, cant: i.cant, encontrada: i.cant, estado: '', obs: '', ley: !!i.ley })),
-    observaciones: '', responsables: [{ nombre: quien(), firma: '' }],
+    observaciones: '', responsables: [{ nombre: quien(), firma: '' }], fotos: [],
     anterior: ult ? ult.fecha : null
   };
 };
+/** FOTOS GENERALES (2026-11-27): hasta 5 por inspección. Se achican y se suben al tiro al Storage. */
+export const MAX_FOTOS_EST = 5;
+export const subiendoFotoEst = ref(false);
+export const agregarFotosEst = async (f, files) => {
+  const lista = [...(files || [])].slice(0, MAX_FOTOS_EST - (f.fotos || []).length);
+  if (!lista.length) { if ((files || []).length) alert(`Máximo ${MAX_FOTOS_EST} fotos.`); return; }
+  subiendoFotoEst.value = true;
+  try {
+    const { comprimirImagen } = await import('../inventario/fotos-equipo.js');
+    for (const [i, file] of lista.entries()) {
+      const blob = await comprimirImagen(file, 1600, 0.82);
+      const nombre = `estandarizacion/fotos/${f.afi}_${f.fecha}_${Date.now()}_${i + 1}.jpg`;
+      const url = await subirArchivoStorage(nombre, new File([blob], nombre.split('/').pop(), { type: 'image/jpeg' }));
+      f.fotos = [...(f.fotos || []), url];
+    }
+  } catch (err) { alert('No se pudo subir la foto: ' + errMsg(err)); }
+  finally { subiendoFotoEst.value = false; }
+};
+export const quitarFotoEst = (f, i) => { f.fotos.splice(i, 1); };
 export const cerrarEstandarizacion = () => { formEst.value = null; };
 export const marcarTodoBueno = (f) => f.items.forEach(i => { if (!i.estado) i.estado = 'BUENO'; });
 
@@ -151,14 +170,20 @@ export const guardarEstandarizacion = async () => {
       responsables, cumplimiento: cumplimiento(f.items), usuario: quien()
     };
     if (f.tipoInspeccion) fila.tipo_inspeccion = f.tipoInspeccion;
+    if ((f.fotos || []).length) fila.fotos = f.fotos.slice(0, MAX_FOTOS_EST);
     let nueva;
-    try { [nueva] = await sb(supabaseClient.from(TABLA_EST).insert([fila]).select()); }
-    catch (e1) {
-      // Sin la columna tipo_inspeccion (falta sql/estandarizacion_vehiculos.sql): se guarda igual, con el tipo en Observaciones
-      if (!fila.tipo_inspeccion || !/tipo_inspeccion/i.test(errMsg(e1))) throw e1;
-      const t = TIPOS_INSPECCION[fila.tipo_inspeccion]; delete fila.tipo_inspeccion;
-      fila.observaciones = `[${t}]` + (fila.observaciones ? ' ' + fila.observaciones : '');
-      [nueva] = await sb(supabaseClient.from(TABLA_EST).insert([fila]).select());
+    // Se reintenta sin las columnas nuevas si aún no se ejecutó su SQL: el dato queda en Observaciones
+    for (let intento = 0; ; intento++) {
+      try { [nueva] = await sb(supabaseClient.from(TABLA_EST).insert([fila]).select()); break; }
+      catch (e1) {
+        const m = errMsg(e1);
+        if (intento < 3 && fila.fotos && /fotos/i.test(m)) {   // falta sql/estandarizacion_fotos.sql
+          fila.observaciones = [fila.observaciones, 'Fotos: ' + fila.fotos.join(' ')].filter(Boolean).join(' · '); delete fila.fotos;
+        } else if (intento < 3 && fila.tipo_inspeccion && /tipo_inspeccion/i.test(m)) {   // falta sql/estandarizacion_vehiculos.sql
+          const t = TIPOS_INSPECCION[fila.tipo_inspeccion]; delete fila.tipo_inspeccion;
+          fila.observaciones = `[${t}]` + (fila.observaciones ? ' ' + fila.observaciones : '');
+        } else throw e1;
+      }
     }
     porAfi.value = { ...porAfi.value, [f.afi]: [nueva || { ...fila, created_at: new Date().toISOString() }, ...registrosDe(f.afi)] };
     formEst.value = null;

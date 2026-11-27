@@ -57,6 +57,19 @@ export default {
         </div>
         <input v-if="it.estado === 'MALO' || it.obs" v-model="it.obs" class="ml-8 w-[calc(100%-2rem)] p-2 border-2 border-rose-200 rounded-lg text-sm" placeholder="¿Qué falta o qué está malo?">
       </div>
+      <!-- 2026-11-27: hasta 5 fotos generales del equipo -->
+      <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2" data-est="fotos">
+        <div class="flex items-center justify-between"><span class="lbl">Fotos generales del equipo</span><span class="text-xs font-bold text-slate-500">{{ (f.fotos || []).length }}/{{ E.MAX_FOTOS_EST }}</span></div>
+        <div class="grid grid-cols-3 gap-2">
+          <div v-for="(u, i) in f.fotos || []" :key="u" class="relative aspect-square rounded-xl overflow-hidden border-2 border-slate-200">
+            <img :src="u" class="w-full h-full object-cover" alt="">
+            <button @click="E.quitarFotoEst(f, i)" class="absolute top-1 right-1 w-7 h-7 rounded-full bg-rose-600 text-white text-xs shadow" aria-label="Quitar foto"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <label v-if="(f.fotos || []).length < E.MAX_FOTOS_EST" class="aspect-square rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50 text-emerald-700 flex flex-col items-center justify-center gap-1 cursor-pointer font-bold text-xs" data-est="foto-agregar">
+            <i :class="['fa-solid text-2xl', E.subiendoFotoEst.value ? 'fa-spinner fa-spin' : 'fa-camera']"></i>{{ E.subiendoFotoEst.value ? 'Subiendo…' : 'Agregar foto' }}
+            <input type="file" accept="image/*" multiple class="hidden" @change="e => { E.agregarFotosEst(f, e.target.files); e.target.value = ''; }"></label>
+        </div>
+      </div>
       <div class="bg-white rounded-2xl shadow-sm p-4 space-y-2">
         <span class="lbl">Observaciones</span>
         <textarea v-model="f.observaciones" rows="3" class="inp" placeholder="Observaciones generales del equipo"></textarea>

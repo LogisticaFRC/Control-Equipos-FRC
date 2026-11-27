@@ -58,6 +58,7 @@ export default {
         </button>
       </div>
       <p v-if="ult && ult.observaciones" class="p-3 border-t text-xs text-slate-600"><b>Obs.:</b> {{ ult.observaciones }}</p>
+      <div v-if="ult && (ult.fotos || []).length" class="p-3 border-t flex gap-2 flex-wrap"><a v-for="u in ult.fotos" :key="u" :href="u" target="_blank" rel="noopener"><img :src="u" class="w-16 h-16 rounded-lg object-cover border" alt="foto"></a></div>
     </div>
   </div>
 
@@ -83,6 +84,7 @@ export default {
             <div v-for="it in r.items" :key="it.k" class="flex gap-2"><i :class="['fa-solid mt-0.5', it.estado === 'BUENO' ? 'fa-check text-emerald-600' : it.estado === 'MALO' ? 'fa-xmark text-rose-600' : 'fa-minus text-slate-300']"></i><span :class="it.estado === 'MALO' ? 'text-rose-700 font-bold' : ''">{{ it.t }}<template v-if="it.obs"> · {{ it.obs }}</template></span></div>
           </div>
           <p v-if="r.observaciones" class="mt-2 text-xs"><b>Observaciones:</b> {{ r.observaciones }}</p>
+          <div v-if="(r.fotos || []).length" class="mt-2 flex gap-2 flex-wrap"><a v-for="u in r.fotos" :key="u" :href="u" target="_blank" rel="noopener"><img :src="u" class="w-16 h-16 rounded-lg object-cover border" alt="foto"></a></div>
           <div class="mt-2 flex flex-wrap gap-3"><div v-for="p in r.responsables || []" :key="p.nombre" class="text-[11px] text-slate-500 text-center"><img v-if="p.firma_url" :src="p.firma_url" class="h-12 bg-white border rounded" alt="firma"><span class="block">{{ p.nombre }}</span></div></div>
         </td></tr>
         </template>
