@@ -233,7 +233,7 @@ export default /* html */ `
           { k: 'FALTANTES', t: 'Con faltantes', c: 'border-rose-300 bg-rose-50', h: 'text-rose-800', i: 'fa-triangle-exclamation' },
           { k: 'LISTO', t: 'Listos / reparados', c: 'border-emerald-300 bg-emerald-50', h: 'text-emerald-800', i: 'fa-circle-check' }]" :key="col.k"
           :class="['rounded-2xl border-2 p-3 space-y-2', col.c]">
-        <p :class="['font-extrabold text-sm flex justify-between', col.h]"><span><i :class="['fa-solid mr-1.5', col.i]"></i>{{ col.t }}</span><span>{{ resumenPrograma[col.k].length }}</span></p>
+        <p :class="['font-extrabold text-sm flex justify-between', col.h]"><span><i :class="['fa-solid mr-1.5', col.i]"></i>{{ col.t }}</span><span>{{ resumenPrograma[col.k].length }}<template v-if="col.k === 'LISTO' && listosFueraPrograma.length"> <span class="text-sky-700" title="Listos fuera del programa">+{{ listosFueraPrograma.length }}</span></template></span></p>
         <div class="space-y-2 max-h-[360px] overflow-y-auto pr-1">
           <div v-for="item in resumenPrograma[col.k]" :key="item.id" class="bg-white rounded-xl border p-2.5 flex gap-2.5 items-center">
             <img :src="fotoDe(item.afi)" class="w-14 h-10 rounded-md object-cover bg-slate-200 shrink-0" alt="">
@@ -248,7 +248,20 @@ export default /* html */ `
               </p>
             </div>
           </div>
-          <p v-if="!resumenPrograma[col.k].length" class="text-xs text-slate-400 italic p-1">—</p>
+          <p v-if="!resumenPrograma[col.k].length && !(col.k === 'LISTO' && listosFueraPrograma.length)" class="text-xs text-slate-400 italic p-1">—</p>
+          <!-- 2026-11-27: listos que NO están en el programa (sin programa o de otro), dentro del período -->
+          <template v-if="col.k === 'LISTO' && listosFueraPrograma.length">
+            <p class="text-[11px] font-black uppercase text-sky-800 pt-2 flex justify-between" data-taller="listos-fuera"><span><i class="fa-solid fa-circle-plus mr-1"></i>Fuera del programa</span><span>{{ listosFueraPrograma.length }}</span></p>
+            <div v-for="r in listosFueraPrograma" :key="'fp' + r.id" class="bg-white rounded-xl border border-sky-200 p-2.5 flex gap-2.5 items-center">
+              <img :src="fotoDe(r.afi)" class="w-14 h-10 rounded-md object-cover bg-slate-200 shrink-0" alt="">
+              <div class="min-w-0 flex-1">
+                <p class="font-black text-sm text-slate-800 flex items-center gap-1.5">AFI {{ r.afi }}
+                  <span class="text-[9px] font-extrabold uppercase bg-sky-600 text-white px-1.5 rounded">{{ r.programa_id == null ? 'Sin programa' : 'Otro programa' }}</span></p>
+                <p class="text-[11px] text-slate-500 truncate">{{ obtenerDetalleEquipoPorAfi(r.afi, 'tipo') }}</p>
+                <p class="text-[10px] font-mono text-slate-500">{{ ultimaNaveRep(r) ? ultimaNaveRep(r) + ' · ' : '' }}salió {{ formatDateForDisplay(String(r.fecha_salida).slice(0, 10)) }}</p>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>

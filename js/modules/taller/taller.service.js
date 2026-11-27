@@ -237,6 +237,23 @@ export const resumenPrograma = computed(() => {
 export const totalPrograma = computed(() => { const r = resumenPrograma.value; return r.PENDIENTE.length + r.EN_NAVE.length + r.FALTANTES.length + r.LISTO.length; });
 export const pctPrograma = computed(() => (totalPrograma.value ? Math.round(resumenPrograma.value.LISTO.length / totalPrograma.value * 100) : 0));
 
+/** 2026-11-27: equipos LISTOS que NO son del programa elegido (sin programa o de otro), salidos dentro del período
+ *  del programa (si no tiene fechas: últimos 60 días). Se muestran aparte en "Listos / reparados". */
+export const listosFueraPrograma = computed(() => {
+  const prog = programaTaller.value;
+  if (!prog) return [];
+  const iniP = normalizarFecha(prog.fecha_inicio_programa), finP = normalizarFecha(prog.fecha_termino_programa);
+  const desde = iniP || new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+  const hasta = finP || '9999-12-31';
+  const items = new Set(obtenerItemsPrograma(prog.id).map(i => String(i.id)));
+  return dbReparaciones.value.filter(r => r.estado === ESTADO_REP.LISTO && r.fecha_salida
+      && !(r.programa_item_id != null && items.has(String(r.programa_item_id)))
+      && String(r.programa_id ?? '') !== String(prog.id)
+      && String(r.fecha_salida).slice(0, 10) >= desde && String(r.fecha_salida).slice(0, 10) <= hasta)
+    .sort((a, b) => String(b.fecha_salida).localeCompare(String(a.fecha_salida)));
+});
+/** Última nave donde estuvo una reparación (al quedar LISTO la nave se borra; queda en el historial). */
+export const ultimaNaveRep = (r) => { const h = [...(r.historial || [])].reverse().find(x => x && (x.nave || x.nave_anterior)); return (h && (h.nave || h.nave_anterior)) || ''; };
 /** "Equipos reparación sin programa" (todavía no listos). */
 export const repsSinPrograma = computed(() => dbReparaciones.value.filter(r => r.programa_id == null && r.estado !== ESTADO_REP.LISTO));
 /** Equipos que salieron de nave sin terminar (de cualquier programa o sin programa). */
