@@ -37,7 +37,9 @@ import RecordatoriosView from './modules/recordatorios/recordatorios.view.js';
 import MotoresView from './modules/motores/motores.view.js';
 import MecanicoApp from './modules/mecanicos/app.view.js';
 import TotemView from './modules/taller/totem.view.js';
+import { activarElegirFoto } from './core/elegir-foto.js';   // 2026-11-27: al subir una foto, elegir Cámara o Galería (celular/tablet)
 import { InstalarApp, AvisoVersion } from './core/instalar-app.js';   // botón Instalar app + aviso de versión nueva
+activarElegirFoto();
 import MecanicosPanelView from './modules/mecanicos/panel.view.js';
 import { ChoferesPanelView } from './modules/mecanicos/chofer-checklist.view.js';   // Personal Técnico → Choferes (2026-11-17)
 import { esModoMecanico, esSupervisorMec, vistaAppForzada } from './modules/mecanicos/mecanicos.service.js';
