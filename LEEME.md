@@ -1283,3 +1283,4 @@ Se quitó la sección antigua "Enviar nuevo problema para OT" del modal REPARAR 
 - 31 RF: ícono, N° y nombre de cada riesgo con sus controles críticos (CCP preventivos / CCM mitigadores), sin las preguntas de verificación (3 hojas A4).
 - ECF: por estándar el riesgo, los controles críticos y lo prohibido, con su dibujo y color (3 hojas A4).
 - A4 vertical a 2 columnas, encabezado con logo FRC, aviso "si falta un control, detén la actividad", fuente y N° de página. Texto real (jsPDF), liviano y nítido al imprimir. Nuevo: js/modules/seguridad/riesgos-pdf.js. APP_VERSION '2026-11-27 pdf riesgos'. Sin SQL.
+- (2026-11-27, ajuste) App técnicos · menú de TERRENO: el cuadro "OT Terreno abiertas" ya no muestra las OT del taller (equipo que hoy está en TALLER FRC o levantamiento hecho en el taller). mecanicos.service.js: otTerrenoAbiertas. APP_VERSION '2026-11-27 ot terreno sin taller'.

@@ -607,6 +607,8 @@ export const otTerrenoAbiertas = computed(() => {
     .filter(r => r.modo === 'INSPECCION' && (r.fallas || []).length && visibles.has(limpiarAfi(r.afi)))
     .map(r => ({ r, av: avanceLevantamiento(r), eq: dbEquipos.value.find(e => mismoAfi(e.afi, r.afi)) || null }))
     .filter(o => o.av.total > o.av.listas)
+    // 2026-11-27: las OT del taller (equipo hoy en TALLER FRC o levantamiento hecho en el taller) no van en el menú de terreno
+    .filter(o => !(o.eq && enTaller(o.eq)) && !/TALLER/i.test(String(o.r.lugar || '')))
     .sort((a, b) => String(b.r.fecha || '').localeCompare(String(a.r.fecha || '')) || b.r.id - a.r.id);
 });
 /** Carpeta (OT Terreno) que se abre al entrar desde el menú. */
