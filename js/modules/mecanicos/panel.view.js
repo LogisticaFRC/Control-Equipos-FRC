@@ -7,7 +7,7 @@ import * as S from './mecanicos.service.js';
 import { asegurarFallas } from './fallas-equipo.js';
 import { logoSrc } from '../configuracion/configuracion.service.js';
 import { formatDateForDisplay } from '../../core/utils.js';
-import { dbUsuarios, permisosDe } from '../../core/store.js';
+import { dbUsuarios, permisosDe, esAdminGeneral } from '../../core/store.js';
 import { CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC } from './hojas.js';
 import { listaCausas } from '../historial/historial.service.js';
 
@@ -82,6 +82,24 @@ export default {
             <button @click="editando = !editando" v-if="r.estado !== 'EN_HISTORIAL' && r.tipo !== 'MANTENCION' && r.tipo !== 'INSPECCION'" :class="['px-3 py-1.5 rounded-lg border font-bold', editando ? 'bg-amber-100 border-amber-300' : '']"><i class="fa-solid fa-pen mr-1"></i>{{ editando ? 'Ver hoja' : 'Corregir' }}</button>
             <button @click="S.eliminarReg(r)" class="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold"><i class="fa-solid fa-trash"></i></button>
           </div>
+        </div>
+        <!-- 2026-11-27: ENLAZAR ART / BLOQUEO (solo Admin general): no cambia el report, el documento sale al final del PDF -->
+        <div v-if="esAdminGeneral && r.modo !== 'INSPECCION' && r.tipo !== 'INSPECCION'" class="px-4 py-3 border-b bg-sky-50/50" data-panel="enlazar">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-extrabold text-slate-800 mr-auto"><i class="fa-solid fa-paperclip mr-1 text-sky-700"></i>Enlazar ART / bloqueo <span class="text-[10px] font-bold text-slate-500">(solo Admin · sale al final del PDF)</span></span>
+            <label v-for="t in [['ART', 'Enlazar ART'], ['BLOQUEO', 'Enlazar bloqueo']]" :key="t[0]" class="px-3 py-1.5 rounded-lg border border-sky-300 bg-white font-bold text-sky-800 cursor-pointer hover:bg-sky-50">
+              <i :class="['fa-solid mr-1', S.enlazando.value === t[0] ? 'fa-spinner fa-spin' : 'fa-file-circle-plus']"></i>{{ t[1] }}
+              <input type="file" accept="image/*,application/pdf" class="hidden" @change="e => { S.enlazarAdjunto(r, t[0], e.target.files[0]); e.target.value = ''; }"></label>
+          </div>
+          <div v-if="(r.adjuntos || []).length" class="mt-2 flex flex-wrap gap-2">
+            <span v-for="(a, i) in r.adjuntos" :key="a.url" class="inline-flex items-center gap-1.5 text-xs bg-white border border-sky-200 rounded-lg pl-2 pr-1 py-1">
+              <i :class="['fa-solid', a.pdf ? 'fa-file-pdf text-rose-600' : 'fa-image text-sky-600']"></i>
+              <a :href="a.url" target="_blank" rel="noopener" class="font-bold text-slate-700 hover:underline">{{ a.tipo === 'BLOQUEO' ? 'Bloqueo' : 'ART' }}{{ a.nombre ? ' · ' + a.nombre.slice(0, 28) : '' }}</a>
+              <span class="text-slate-400">{{ formatDateForDisplay(String(a.fecha || '').slice(0, 10)) }}{{ a.por ? ' · ' + a.por : '' }}</span>
+              <button @click="S.quitarAdjunto(r, i)" class="w-6 h-6 rounded text-slate-400 hover:text-rose-600" title="Quitar enlace"><i class="fa-solid fa-xmark"></i></button>
+            </span>
+          </div>
+          <p v-else class="text-[11px] text-slate-500 mt-1">Si la ART o el registro de bloqueo no se adjuntaron en el momento, súbelos aquí (foto o PDF).</p>
         </div>
         <!-- Enlaces (2026-11-18): OT Terreno ↔ reports de reparación -->
         <div v-if="r.modo === 'INSPECCION'" class="px-4 py-3 border-b bg-amber-50/40" data-panel="enlaces">
@@ -171,6 +189,6 @@ export default {
     const mecanicos = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'subadmin' && !['chofer', 'totem'].includes(permisosDe(u).mec_modo)).map(u => u.usuario));
     const supervisores = computed(() => dbUsuarios.value.filter(u => u.rol !== 'admin' && permisosDe(u).mecanicos === 'admin').map(u => u.usuario));
     onMounted(() => { S.cargarMec(); asegurarFallas(); });
-    return { av, lev, S, r, editando, escala, altoHoja, kpis, mecanicos, supervisores, logoSrc, formatDateForDisplay, CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, listaCausas };
+    return { esAdminGeneral, av, lev, S, r, editando, escala, altoHoja, kpis, mecanicos, supervisores, logoSrc, formatDateForDisplay, CAUSAS_ELECTRICA, CAUSAS_FALLA_MEC, listaCausas };
   }
 };

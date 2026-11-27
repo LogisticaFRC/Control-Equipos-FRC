@@ -733,31 +733,12 @@ export const generarPDF = async (r) => {
   const { html2canvas, jsPDF } = await libsPDF();
   const logo = (await logoDataURL())?.url || '';
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  if (r.tipo === 'MANTENCION') {   // PAUTA DE MANTENCIÓN: puede ocupar más de una página (se corta en hojas A4)
+  if (r.tipo === 'MANTENCION') {   // PAUTA DE MANTENCIÓN (2026-11-27): siempre UNA hoja A4, sin cortes (se achica si no cabe y se centra)
     const c = await renderHTML(hojaPauta(r, logo, ANCHO_VERTICAL), ANCHO_VERTICAL, html2canvas);
-    const altoPag = Math.floor(c.width * 297 / 210);
-    const cx = c.getContext('2d');
-    // corta la hoja justo bajo una línea de tabla (fila con muchos píxeles oscuros) para no partir un ítem por la mitad
-    const corte = (yMax) => {
-      if (yMax >= c.height) return c.height;
-      const desde = Math.max(yMax - 260, 0), datos = cx.getImageData(0, desde, c.width, yMax - desde).data;
-      for (let fy = yMax - desde - 1; fy > 0; fy--) {
-        let oscuros = 0;
-        for (let x = 0; x < c.width; x += 4) { const i = (fy * c.width + x) * 4; if (datos[i] < 110 && datos[i + 1] < 110 && datos[i + 2] < 110) oscuros++; }
-        if (oscuros > c.width / 4 * 0.4) return desde + fy + 1;
-      }
-      return yMax;
-    };
-    for (let y = 0, k = 0; y < c.height; k++) {
-      const fin = corte(y + altoPag), h = fin - y;
-      const t = document.createElement('canvas'); t.width = c.width; t.height = h;
-      const ctx = t.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, t.width, h); ctx.drawImage(c, 0, y, c.width, h, 0, 0, c.width, h);
-      if (k) pdf.addPage('a4', 'portrait');
-      pdf.addImage(t.toDataURL('image/jpeg', 0.92), 'JPEG', 0, k ? 6 : 0, 210, h * 210 / c.width);
-      y = fin;
-    }
-    return pdf.output('blob');
-  }
+    let w = 210, h = c.height * 210 / c.width;
+    if (h > 297) { w = 210 * 297 / h; h = 297; }
+    pdf.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', (210 - w) / 2, (297 - h) / 2, w, h);
+  } else {
   const c1 = await renderHTML(r.tipo === 'INSPECCION' ? hojaInspeccion(r, logo, ANCHO_VERTICAL) : hojaIntervencion(r, logo), ANCHO_VERTICAL, html2canvas);
   const w1 = 210, h1 = Math.min(297, c1.height * w1 / c1.width);
   pdf.addImage(c1.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, w1, h1);
@@ -767,8 +748,12 @@ export const generarPDF = async (r) => {
     const w2 = 297, h2 = Math.min(210, c2.height * w2 / c2.width);
     pdf.addImage(c2.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, w2, h2);
   }
+  }
   // Fotos de los papeles (2026-11-18): ART (2 hojas) y registro de bloqueo, una por página
   const fotos = [...(r.tipo === 'INSPECCION' ? (r.fallas || []).filter(h => h.foto).map(h => [h.foto, `Punto ${h.n} · ${String(h.descripcion || '').slice(0, 60)}`]) : []), ...(r.modo === 'INSPECCION' ? (r.fallas || []).flatMap(i => (i.fotos || []).map((u, k) => [u, `Falla ${i.n} · foto ${k + 1} · ${String(i.descripcion || '').slice(0, 60)}`])) : []), ...(r.uso_art ? (r.art_fotos || []).map((u, i) => [u, `ART · hoja ${i + 1}`]) : []), ...(r.bloqueo && r.bloqueo_foto ? [[r.bloqueo_foto, 'Registro de bloqueo FRC-RE-OP-015']] : [])].filter(x => x[0]);
+  // 2026-11-27: documentos ENLAZADOS por el Admin (ART / bloqueo que no se hicieron en el momento) → al final del PDF
+  const pdfsExtra = [];
+  (r.adjuntos || []).forEach(a => { if (!a || !a.url) return; const t = `${a.tipo === 'BLOQUEO' ? 'Registro de bloqueo' : 'ART'} · enlazado${a.nombre ? ' · ' + a.nombre : ''}`; if (a.pdf || /\.pdf(\?|$)/i.test(a.url)) pdfsExtra.push([a.url, t]); else fotos.push([a.url, t]); });
   for (const [url, titulo] of fotos) {
     try {
       const img = await imagenDataURL(url);
@@ -778,7 +763,46 @@ export const generarPDF = async (r) => {
       pdf.addImage(img.url, 'JPEG', (210 - img.w * k) / 2, 15, img.w * k, img.h * k);
     } catch (e) { console.warn('[Mecánicos] Foto no agregada al PDF', e); }
   }
-  return pdf.output('blob');
+  if (!pdfsExtra.length) return pdf.output('blob');
+  try {   // documentos PDF enlazados: se pegan completos al final (pdf-lib)
+    const PDFLib = await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', 'PDFLib');
+    const out = await PDFLib.PDFDocument.load(pdf.output('arraybuffer'));
+    for (const [url, titulo] of pdfsExtra) {
+      try {
+        const src = await PDFLib.PDFDocument.load(await (await fetch(url)).arrayBuffer(), { ignoreEncryption: true });
+        (await out.copyPages(src, src.getPageIndices())).forEach(pg => out.addPage(pg));
+      } catch (e) { const pg = out.addPage([595, 842]); pg.drawText(`No se pudo adjuntar: ${titulo}`, { x: 40, y: 790, size: 12 }); pg.drawText(String(url).slice(0, 90), { x: 40, y: 770, size: 8 }); }
+    }
+    return new Blob([await out.save()], { type: 'application/pdf' });
+  } catch (e) { console.warn('[Mecánicos] PDF enlazado no agregado', e); return pdf.output('blob'); }
+};
+
+/** ENLAZAR ART / BLOQUEO (2026-11-27, solo Admin general): no modifica el report; agrega el documento en la columna adjuntos
+ *  y aparece al final del PDF (sql/mec_adjuntos.sql). Acepta foto o PDF. */
+export const SQL_ADJUNTOS = 'Falta ejecutar sql/mec_adjuntos.sql en Supabase (SQL Editor → Run) para enlazar documentos.';
+export const enlazando = ref('');
+const guardarAdjuntos = async (r, lista) => {
+  try { await sb(supabaseClient.from(TABLA_MEC).update({ adjuntos: lista }).eq('id', r.id)); r.adjuntos = lista; const m = dbMec.value.find(x => x.id === r.id); if (m) m.adjuntos = lista; return true; }
+  catch (err) { alert(/adjuntos|column|schema cache/i.test(errMsg(err)) ? SQL_ADJUNTOS : 'No se pudo guardar: ' + errMsg(err)); return false; }
+};
+export const enlazarAdjunto = async (r, tipo, file) => {
+  if (!file || !r?.id) return;
+  enlazando.value = tipo;
+  try {
+    const esPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name || '');
+    let cuerpo = file, ext = 'pdf';
+    if (!esPdf) { const { comprimirImagen } = await import('../inventario/fotos-equipo.js'); cuerpo = new File([await comprimirImagen(file, 1800, 0.85)], 'x.jpg', { type: 'image/jpeg' }); ext = 'jpg'; }
+    const nombre = `intervenciones_app/enlazados/${limpiarAfi(r.afi).replace(/[^\w-]/g, '')}_${r.id}_${tipo}_${Date.now()}.${ext}`;
+    const url = await subirArchivoStorage(nombre, new File([cuerpo], nombre.split('/').pop(), { type: esPdf ? 'application/pdf' : 'image/jpeg' }));
+    const a = { tipo, url, pdf: esPdf, nombre: file.name || '', fecha: new Date().toISOString(), por: usuarioActivo.value?.nombre || usuarioActivo.value?.usuario || '' };
+    if (await guardarAdjuntos(r, [...(r.adjuntos || []), a])) avisoApp(`${tipo === 'BLOQUEO' ? 'Registro de bloqueo' : 'ART'} enlazado ✔ (sale al final del PDF)`);
+  } catch (err) { alert('No se pudo subir el documento: ' + errMsg(err)); }
+  finally { enlazando.value = ''; }
+};
+export const quitarAdjunto = async (r, i) => {
+  const a = (r.adjuntos || [])[i]; if (!a) return;
+  if (!confirm(`¿Quitar el enlace "${a.nombre || a.tipo}" de este report?`)) return;
+  await guardarAdjuntos(r, (r.adjuntos || []).filter((_, k) => k !== i));
 };
 export const descargarPDF = async (r) => {
   try {

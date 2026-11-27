@@ -132,7 +132,7 @@ export default {
     <div v-if="pa.mediciones" class="bg-white rounded-2xl p-4 shadow-sm">
       <span class="lbl">Mediciones del generador</span>
       <div class="grid grid-cols-2 gap-2 mt-1">
-        <label v-for="m in MEDICIONES_GEN" :key="m[0]" class="block"><span class="text-[11px] font-bold text-slate-500">{{ m[1] }}</span><input v-model="pa.mediciones[m[0]]" :inputmode="m[0] === 'temp_ok' ? 'text' : 'decimal'" class="inp"></label>
+        <label v-for="m in MEDICIONES_GEN" :key="m[0]" class="block"><span class="text-[11px] font-bold text-slate-500">{{ m[1] }}</span><input v-model="pa.mediciones[m[0]]" inputmode="decimal" class="inp"></label>
       </div>
     </div>
     <div class="bg-white rounded-2xl p-4 shadow-sm">

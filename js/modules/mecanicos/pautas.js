@@ -22,7 +22,7 @@ export const MEDICIONES_GEN = [
   ['v_l1n', 'Tensión L1-N (V)'], ['v_l2n', 'Tensión L2-N (V)'], ['v_l3n', 'Tensión L3-N (V)'],
   ['i_l1', 'Corriente L1 (A)'], ['i_l2', 'Corriente L2 (A)'], ['i_l3', 'Corriente L3 (A)'],
   ['hz', 'Frecuencia (Hz)'], ['rpm', 'RPM'], ['v_alt', 'Frecuencia del alternador (V)'],
-  ['psi', 'Presión de aceite motor (PSI)'], ['comb', 'Nivel de combustible (%)'], ['temp_ok', 'Temperatura motor dentro del rango (SÍ/NO)']
+  ['psi', 'Presión de aceite motor (PSI)'], ['comb', 'Nivel de combustible (%)'], ['temp_ok', 'Temperatura motor diésel dentro del rango (%)']
 ];
 /** Pauta vacía para un equipo (va en f.pauta de la intervención). */
 export const pautaVacia = (p, eq = {}, filtrosModelo = []) => ({
@@ -46,11 +46,15 @@ const X_SI = svgX(true), X_NO = svgX(false);
 const X = (on) => `<img src="${on ? X_SI : X_NO}" width="16" height="14" style="display:block;margin:0 auto;width:16px;height:14px">`;
 const firmaImg = (src, h = 30) => (src ? `<img src="${src}" style="height:${h}px;max-width:100%;object-fit:contain">` : '');
 const td = 'border:1px solid #333;padding:0 5px 6px;font-size:9.5px;vertical-align:middle';
-const tdT = 'border:1px solid #333;padding:0 5px 6px;font-size:9.5px;vertical-align:middle';   // texto del ítem centrado en la fila (html2canvas lo baja ~3px)
-const tdX = 'border:1px solid #333;padding:2px 4px;text-align:center;vertical-align:middle';
+const TD_T = 'border:1px solid #333;padding:0 5px 6px;font-size:9.5px;vertical-align:middle';   // texto del ítem centrado en la fila (html2canvas lo baja ~3px)
+const TD_X = 'border:1px solid #333;padding:2px 4px;text-align:center;vertical-align:middle';
 const th = `border:1px solid #333;padding:1px 5px 4px;font-size:9.5px;background:${V};color:#fff;font-weight:800`;
 export const hojaPauta = (r, logo = '', ancho = 794) => {
   const pa = r.pauta || {};
+  // 2026-11-27: pautas largas (excavadora, retro, manipulador, minicargador) → filas más bajas para que la hoja quepa en UNA A4
+  const comp = (pa.items || []).length > 40;
+  const tdT = comp ? 'border:1px solid #333;padding:0 4px 5px;font-size:9px;vertical-align:middle' : TD_T;
+  const tdX = comp ? 'border:1px solid #333;padding:1px 3px;text-align:center;vertical-align:middle' : TD_X;
   const sup = r.supervisor || {};
   const mecs = [...(r.mecanicos || [])]; while (mecs.length < 3) mecs.push({ nombre: '', firma: '' });
   const secs = []; (pa.items || []).forEach(i => { let s = secs.find(x => x.s === i.s); if (!s) secs.push(s = { s: i.s, items: [] }); s.items.push(i); });
